@@ -6,6 +6,12 @@ A Python 3.10-inspired standard library for AutoHotkey v2.
 `#Include <stdlib\...>` surface, with focused behavior tests and examples for
 each promoted module.
 
+## Check Version
+`ahktest` requires at least AutoHotkey v2.0.5+, mainly because it uses several `unset`-related language features.
+
+It is currently developed and tested with AutoHotkey v2.0.26 / v2.1-alpha.30.
+
+
 ## Status
 
 This project is under active rebuild.
