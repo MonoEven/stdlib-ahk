@@ -428,6 +428,21 @@ class Tk
         return this.eval("winfo manager .")
     }
 
+    pack_slaves(args*)
+    {
+        return AhkStdlibTkinterPackSlaves(this, ".", args*)
+    }
+
+    grid_slaves(args*)
+    {
+        return AhkStdlibTkinterGridSlaves(this, ".", args*)
+    }
+
+    place_slaves(args*)
+    {
+        return AhkStdlibTkinterPlaceSlaves(this, ".", args*)
+    }
+
     winfo_children(args*)
     {
         return AhkStdlibTkinterWinfoChildren(this, ".", args*)
@@ -603,6 +618,11 @@ class AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    pack_slaves(args*)
+    {
+        return AhkStdlibTkinterPackSlaves(this.AhkStdlibRoot, this._w, args*)
+    }
+
     grid(args*)
     {
         if args.Length > 1
@@ -631,6 +651,11 @@ class AhkStdlibTkinterWidget
             throw TypeError("Grid.grid_remove() takes 1 positional argument but " args.Length + 1 " were given", -1)
         this.AhkStdlibRoot.eval("grid remove " this._w)
         return stdlib.None
+    }
+
+    grid_slaves(args*)
+    {
+        return AhkStdlibTkinterGridSlaves(this.AhkStdlibRoot, this._w, args*)
     }
 
     grid_info(args*)
@@ -667,6 +692,11 @@ class AhkStdlibTkinterWidget
             throw TypeError("Place.place_forget() takes 1 positional argument but " args.Length + 1 " were given", -1)
         this.AhkStdlibRoot.eval("place forget " this._w)
         return stdlib.None
+    }
+
+    place_slaves(args*)
+    {
+        return AhkStdlibTkinterPlaceSlaves(this.AhkStdlibRoot, this._w, args*)
     }
 
     place_info(args*)
@@ -2197,6 +2227,51 @@ AhkStdlibTkinterWinfoString(root, window, command, methodName, args*)
     if args.Length != 0
         throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
     return root.eval("winfo " command " " window)
+}
+
+AhkStdlibTkinterPackSlaves(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.pack_slaves() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return AhkStdlibTkinterWidgetListFromPathList(root, root.eval("pack slaves " window))
+}
+
+AhkStdlibTkinterGridSlaves(root, window, args*)
+{
+    if args.Length > 2
+        throw TypeError("Misc.grid_slaves() takes from 1 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "grid slaves " window
+    if args.Length = 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1]) {
+        options := args[1]
+        for key, value in options.OwnProps() {
+            if key != "row" && key != "column"
+                throw TypeError("Misc.grid_slaves() got an unexpected keyword argument '" key "'", -1)
+            if !AhkStdlibIsNone(value)
+                script .= " -" key " " AhkStdlibTkinterTclWord(value)
+        }
+    } else {
+        if args.Length >= 1 && !AhkStdlibIsNone(args[1])
+            script .= " -row " AhkStdlibTkinterTclWord(args[1])
+        if args.Length >= 2 && !AhkStdlibIsNone(args[2])
+            script .= " -column " AhkStdlibTkinterTclWord(args[2])
+    }
+    return AhkStdlibTkinterWidgetListFromPathList(root, root.eval(script))
+}
+
+AhkStdlibTkinterPlaceSlaves(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.place_slaves() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return AhkStdlibTkinterWidgetListFromPathList(root, root.eval("place slaves " window))
+}
+
+AhkStdlibTkinterWidgetListFromPathList(root, value)
+{
+    result := []
+    for path in AhkStdlibTkinterSimpleList(value)
+        result.Push(AhkStdlibTkinterWidgetFromPath(root, path))
+    return result
 }
 
 AhkStdlibTkinterPackInfo(widget)

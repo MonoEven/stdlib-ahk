@@ -140,8 +140,10 @@ try {
     tkinter_example_button_pack_info_after_forget_error := ""
     try tkinter_example_button.pack_info()
     catch as tkinter_example_button_pack_info_after_forget_error
-        tkinter_example_button_pack_info_after_forget_message := tkinter_example_button_pack_info_after_forget_error.Message
+    tkinter_example_button_pack_info_after_forget_message := tkinter_example_button_pack_info_after_forget_error.Message
     tkinter_example_button_pack_restore_return := tkinter_example_button.pack()
+    tkinter_example_root_pack_slaves := tkinter_example_root.pack_slaves()
+    tkinter_example_frame_pack_slaves := tkinter_example_frame.pack_slaves()
     tkinter_example_frame_viewable := tkinter_example_frame.winfo_viewable()
     tkinter_example_frame_ismapped := tkinter_example_frame.winfo_ismapped()
     tkinter_example_frame_width := tkinter_example_frame.winfo_width()
@@ -244,13 +246,18 @@ try {
     tkinter_example_grid_remove_return := tkinter_example_grid_label.grid_remove()
     tkinter_example_grid_info_after_remove := tkinter_example_grid_label.grid_info()
     tkinter_example_grid_restore_after_remove_return := tkinter_example_grid_label.grid()
+    tkinter_example_grid_slaves := tkinter_example_grid_frame.grid_slaves()
+    tkinter_example_grid_row_slaves := tkinter_example_grid_frame.grid_slaves(1)
+    tkinter_example_grid_column_slaves := tkinter_example_grid_frame.grid_slaves({ column: 2 })
     tkinter_example_place_label := stdlib.tkinter.Label(tkinter_example_grid_frame, { text: "Placed" })
     tkinter_example_place_return := tkinter_example_place_label.place({ x: 5, y: 6, width: 70, height: 20, anchor: "nw" })
     tkinter_example_place_manager := tkinter_example_place_label.winfo_manager()
     tkinter_example_place_info := tkinter_example_place_label.place_info()
+    tkinter_example_place_slaves := tkinter_example_grid_frame.place_slaves()
     tkinter_example_place_forget_return := tkinter_example_place_label.place_forget()
     tkinter_example_place_info_after_forget := tkinter_example_place_label.place_info()
     tkinter_example_place_empty_return := tkinter_example_place_label.place()
+    tkinter_example_place_slaves_after_forget := tkinter_example_grid_frame.place_slaves()
     tkinter_example_canvas := stdlib.tkinter.Canvas(tkinter_example_root, { width: 120, height: 80, bg: "white" })
     tkinter_example_canvas_pack_return := tkinter_example_canvas.pack()
     tkinter_example_canvas_line := tkinter_example_canvas.create_line(0, 1, 10, 20, { fill: "red", width: 2, tags: "path shape" })
