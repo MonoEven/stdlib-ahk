@@ -2282,6 +2282,19 @@ class Canvas extends AhkStdlibTkinterWidget
         return this.itemconfigure(args*)
     }
 
+    postscript(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Canvas.postscript() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " postscript"
+        if args.Length = 1 {
+            if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+                throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
+            script .= AhkStdlibTkinterOptionsToScript(args[1], false)
+        }
+        return this.AhkStdlibRoot.eval(script)
+    }
+
     delete(args*)
     {
         script := this._w " delete"

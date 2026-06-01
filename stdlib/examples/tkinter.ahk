@@ -27,6 +27,7 @@ tkinter_example_tk_package := tkinter_example_tk_interp.eval("package require Tk
 tkinter_example_root := stdlib.tkinter.Tk()
 tkinter_example_saved_clipboard := A_Clipboard
 tkinter_example_option_file := A_Temp "\stdlib-tkinter-example-options-" A_TickCount "-" Random(100000, 999999) ".txt"
+tkinter_example_postscript_file := A_Temp "\stdlib-tkinter-example-canvas-" A_TickCount "-" Random(100000, 999999) ".ps"
 try {
     tkinter_example_root_manager := tkinter_example_root.winfo_manager()
     tkinter_example_root_state_before := tkinter_example_root.state()
@@ -505,6 +506,12 @@ try {
     tkinter_example_canvas_tag_event_return := tkinter_example_canvas.event_generate("<Button-1>", { x: 16, y: 26 })
     tkinter_example_canvas_tag_update_return := tkinter_example_root.update()
     tkinter_example_canvas_tag_unbind_return := tkinter_example_canvas.tag_unbind("shape", "<Button-1>", tkinter_example_canvas_tag_command)
+    tkinter_example_canvas_postscript := tkinter_example_canvas.postscript()
+    tkinter_example_canvas_postscript_color := tkinter_example_canvas.postscript({ colormode: "color" })
+    tkinter_example_canvas_postscript_area := tkinter_example_canvas.postscript({ x: 0, y: 0, width: 60, height: 40 })
+    try FileDelete tkinter_example_postscript_file
+    tkinter_example_canvas_postscript_file_return := tkinter_example_canvas.postscript({ file: tkinter_example_postscript_file })
+    tkinter_example_canvas_postscript_file_exists := FileExist(tkinter_example_postscript_file)
     tkinter_example_canvas_scale_return := tkinter_example_canvas.scale("shape", 10, 10, 1.5, 0.5)
     tkinter_example_canvas_line_after_scale := tkinter_example_canvas.coords(tkinter_example_canvas_line)
     tkinter_example_canvas_shape_bbox_after_scale := tkinter_example_canvas.bbox("shape")
@@ -524,6 +531,7 @@ try {
 } finally {
     try tkinter_example_root.destroy()
     try FileDelete tkinter_example_option_file
+    try FileDelete tkinter_example_postscript_file
     A_Clipboard := tkinter_example_saved_clipboard
 }
 

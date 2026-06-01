@@ -2267,6 +2267,50 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCanvasPostscriptSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        outputPath := A_Temp "\stdlib-tkinter-postscript-" A_TickCount "-" Random(100000, 999999) ".ps"
+        try {
+            root.geometry("240x180+0+0")
+            canvas := stdlib.tkinter.Canvas(root, { width: 120, height: 80, bg: "white" })
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            canvas.create_line(0, 1, 10, 20, { fill: "red", width: 2 })
+            canvas.create_rectangle(20, 25, 60, 70, { outline: "blue", fill: "green" })
+            canvas.create_text(40, 20, { text: "Hi", anchor: "nw" })
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            raw := canvas.postscript()
+            AhkTest.AssertTrue(InStr(raw, "%!PS-Adobe-3.0 EPSF-3.0") = 1)
+            AhkTest.AssertTrue(InStr(raw, "%%Creator: Tk Canvas Widget") > 0)
+            AhkTest.AssertTrue(InStr(raw, "%%BoundingBox:") > 0)
+            AhkTest.AssertTrue(StrLen(canvas.postscript({ colormode: "color" })) > 1000)
+            AhkTest.AssertTrue(StrLen(canvas.postscript({ colormode: "gray" })) > 1000)
+            AhkTest.AssertTrue(StrLen(canvas.postscript({ x: 0, y: 0, width: 60, height: 40 })) > 1000)
+            AhkTest.AssertTrue(StrLen(canvas.postscript({ pagex: 10, pagey: 20, pagewidth: 50, pageheight: 40, rotate: stdlib.True })) > 1000)
+            AhkTest.AssertTrue(InStr(canvas.postscript({}), "%!PS-Adobe-3.0 EPSF-3.0") = 1)
+
+            try FileDelete outputPath
+            AhkTest.AssertEqual("", canvas.postscript({ file: outputPath }))
+            AhkTest.AssertTrue(FileExist(outputPath) != "")
+            fileText := FileRead(outputPath, "UTF-8")
+            AhkTest.AssertTrue(InStr(fileText, "%!PS-Adobe-3.0 EPSF-3.0") = 1)
+
+            missingPath := "Z:\definitely\missing\out.ps"
+            AhkTest.AssertEqual('couldn' Chr(39) 't open "' missingPath '": no such file or directory', canvas.postscript({ file: missingPath }))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.postscript\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => canvas.postscript({}, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^object of type 'int' has no len\(\)$", (*) => canvas.postscript(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => canvas.postscript({ bad: 1 }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad color mode "bad": must be monochrome, gray, or color$', (*) => canvas.postscript({ colormode: "bad" }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.postscript({ x: "bad" }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected boolean value but got "bad"$', (*) => canvas.postscript({ rotate: "bad" }))
+        } finally {
+            try FileDelete outputPath
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCanvasFindQuerySurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
