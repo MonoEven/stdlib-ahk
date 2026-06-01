@@ -342,6 +342,49 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCanvasDrawableSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            canvas := stdlib.tkinter.Canvas(root, { width: 120, height: 80, bg: "white" })
+            lineId := canvas.create_line(0, 1, 10, 20, { fill: "red", width: 2 })
+            rectId := canvas.create_rectangle(5, 6, 30, 40, { outline: "blue", fill: "green" })
+
+            AhkTest.AssertEqual("Canvas", Type(canvas))
+            AhkTest.AssertEqual(".!canvas", String(canvas))
+            AhkTest.AssertEqual("120", canvas.cget("width"))
+            AhkTest.AssertEqual("80", canvas.cget("height"))
+            AhkTest.AssertEqual("white", canvas.cget("bg"))
+            AhkTest.AssertEqual(1, lineId)
+            AhkTest.AssertEqual(2, rectId)
+            AhkTest.AssertEqual([0.0, 1.0, 10.0, 20.0], canvas.coords(lineId))
+            AhkTest.AssertEqual([5.0, 6.0, 30.0, 40.0], canvas.coords(rectId))
+            AhkTest.AssertEqual("red", canvas.itemcget(lineId, "fill"))
+            AhkTest.AssertEqual("2.0", canvas.itemcget(lineId, "width"))
+            AhkTest.AssertEqual("blue", canvas.itemcget(rectId, "outline"))
+            AhkTest.AssertEqual(stdlib.None, canvas.itemconfigure(lineId, { fill: "purple" }))
+            AhkTest.AssertEqual("purple", canvas.itemcget(lineId, "fill"))
+            AhkTest.AssertEqual([], canvas.coords(lineId, 2, 3, 12, 13))
+            AhkTest.AssertEqual([2.0, 3.0, 12.0, 13.0], canvas.coords(lineId))
+            AhkTest.AssertEqual(stdlib.None, canvas.delete(lineId))
+            AhkTest.AssertEqual([], canvas.coords(lineId))
+            AhkTest.AssertEqual("", canvas.itemcget(lineId, "fill"))
+            AhkTest.AssertEqual(stdlib.None, canvas.delete(999))
+            AhkTest.AssertEqual(stdlib.None, canvas.delete())
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => canvas.create_line())
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => canvas.create_rectangle())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^wrong # args: should be .* coords tagOrId", (*) => canvas.coords())
+            AhkTest.AssertEqual([], canvas.coords("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.itemcget\(\) missing 2 required positional arguments: 'tagOrId' and 'option'$", (*) => canvas.itemcget())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.itemcget\(\) missing 1 required positional argument: 'option'$", (*) => canvas.itemcget(lineId))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.itemconfigure\(\) missing 1 required positional argument: 'tagOrId'$", (*) => canvas.itemconfigure())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestGridAndPlaceManagersMatchLocal310()
     {
         root := stdlib.tkinter.Tk()

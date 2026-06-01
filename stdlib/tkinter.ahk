@@ -62,6 +62,11 @@ class AhkStdlibTkinter
         return Button(args*)
     }
 
+    static Canvas(args*)
+    {
+        return Canvas(args*)
+    }
+
     static Entry(args*)
     {
         return Entry(args*)
@@ -515,6 +520,75 @@ class Button extends AhkStdlibTkinterWidget
         if args.Length != 0
             throw TypeError("Button.invoke() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval(this._w " invoke")
+    }
+}
+
+class Canvas extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Canvas", "canvas", args*)
+    }
+
+    cget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.cget() missing 1 required positional argument: 'key'", -1)
+        if args.Length > 1
+            throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " cget -" args[1])
+    }
+
+    create_line(args*)
+    {
+        return AhkStdlibTkinterCanvasCreateItem(this, "line", args*)
+    }
+
+    create_rectangle(args*)
+    {
+        return AhkStdlibTkinterCanvasCreateItem(this, "rectangle", args*)
+    }
+
+    coords(args*)
+    {
+        script := this._w " coords"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        return AhkStdlibTkinterCanvasCoordList(this.AhkStdlibRoot.eval(script))
+    }
+
+    itemcget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Canvas.itemcget() missing 2 required positional arguments: 'tagOrId' and 'option'", -1)
+        if args.Length = 1
+            throw TypeError("Canvas.itemcget() missing 1 required positional argument: 'option'", -1)
+        if args.Length > 2
+            throw TypeError("Canvas.itemcget() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " itemcget " AhkStdlibTkinterTclWord(args[1]) " -" args[2])
+    }
+
+    itemconfigure(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Canvas.itemconfigure() missing 1 required positional argument: 'tagOrId'", -1)
+        if args.Length > 2
+            throw TypeError("Canvas.itemconfigure() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 1
+            return stdlib.None
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+            throw TypeError("cnf must be a dictionary", -1)
+        this.AhkStdlibRoot.eval(this._w " itemconfigure " AhkStdlibTkinterTclWord(args[1]) AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    delete(args*)
+    {
+        script := this._w " delete"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
     }
 }
 
@@ -1046,6 +1120,43 @@ AhkStdlibTkinterSetResult(interp, value)
 {
     valueBuffer := AhkStdlibTkinterUtf8Buffer(value)
     DllCall("tcl86t\Tcl_SetResult", "Ptr", interp, "Ptr", valueBuffer.Ptr, "Ptr", 1)
+}
+
+AhkStdlibTkinterCanvasCreateItem(canvas, itemType, args*)
+{
+    if args.Length = 0
+        throw IndexError("tuple index out of range", -1)
+
+    options := unset
+    coordCount := args.Length
+    if AhkStdlibTkinterIsPlainKeywordObject(args[args.Length]) {
+        options := args[args.Length]
+        coordCount -= 1
+    }
+    if coordCount = 0
+        throw IndexError("tuple index out of range", -1)
+
+    script := canvas._w " create " itemType
+    index := 1
+    while index <= coordCount {
+        script .= " " AhkStdlibTkinterTclWord(args[index])
+        index += 1
+    }
+    if IsSet(options)
+        script .= AhkStdlibTkinterOptionsToScript(options, false, canvas.AhkStdlibRoot)
+    return Integer(canvas.AhkStdlibRoot.eval(script))
+}
+
+AhkStdlibTkinterCanvasCoordList(value)
+{
+    result := []
+    value := Trim(value)
+    if value = ""
+        return result
+    for part in StrSplit(value, " ")
+        if part != ""
+            result.Push(Float(part))
+    return result
 }
 
 AhkStdlibTkinterCgetValue(key, value)
