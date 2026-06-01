@@ -792,12 +792,32 @@ class Tk
 
     winfo_screenwidth(args*)
     {
-        return AhkStdlibTkinterWinfoInteger(this, ".", "screenwidth", "winfo_screenwidth", args*)
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this, ".", "screenwidth", "winfo_screenwidth", args*)
     }
 
     winfo_screenheight(args*)
     {
-        return AhkStdlibTkinterWinfoInteger(this, ".", "screenheight", "winfo_screenheight", args*)
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this, ".", "screenheight", "winfo_screenheight", args*)
+    }
+
+    winfo_vrootwidth(args*)
+    {
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this, ".", "vrootwidth", "winfo_vrootwidth", args*)
+    }
+
+    winfo_vrootheight(args*)
+    {
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this, ".", "vrootheight", "winfo_vrootheight", args*)
+    }
+
+    winfo_vrootx(args*)
+    {
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this, ".", "vrootx", "winfo_vrootx", args*)
+    }
+
+    winfo_vrooty(args*)
+    {
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this, ".", "vrooty", "winfo_vrooty", args*)
     }
 
     winfo_screen(args*)
@@ -1429,12 +1449,32 @@ class AhkStdlibTkinterWidget
 
     winfo_screenwidth(args*)
     {
-        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "screenwidth", "winfo_screenwidth", args*)
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this.AhkStdlibRoot, this._w, "screenwidth", "winfo_screenwidth", args*)
     }
 
     winfo_screenheight(args*)
     {
-        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "screenheight", "winfo_screenheight", args*)
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this.AhkStdlibRoot, this._w, "screenheight", "winfo_screenheight", args*)
+    }
+
+    winfo_vrootwidth(args*)
+    {
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this.AhkStdlibRoot, this._w, "vrootwidth", "winfo_vrootwidth", args*)
+    }
+
+    winfo_vrootheight(args*)
+    {
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this.AhkStdlibRoot, this._w, "vrootheight", "winfo_vrootheight", args*)
+    }
+
+    winfo_vrootx(args*)
+    {
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this.AhkStdlibRoot, this._w, "vrootx", "winfo_vrootx", args*)
+    }
+
+    winfo_vrooty(args*)
+    {
+        return AhkStdlibTkinterWinfoLogicalScreenInteger(this.AhkStdlibRoot, this._w, "vrooty", "winfo_vrooty", args*)
     }
 
     winfo_screen(args*)
@@ -3439,6 +3479,15 @@ AhkStdlibTkinterWinfoInteger(root, window, command, methodName, args*)
     if args.Length != 0
         throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
     return Integer(root.eval("winfo " command " " window))
+}
+
+AhkStdlibTkinterWinfoLogicalScreenInteger(root, window, command, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    value := Integer(root.eval("winfo " command " " window))
+    dpi := A_ScreenDPI + 0
+    return dpi > 0 ? Round(value * 96 / dpi) : value
 }
 
 AhkStdlibTkinterWinfoPixels(root, window, command, methodName, args*)

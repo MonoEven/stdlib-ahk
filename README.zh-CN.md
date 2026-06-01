@@ -15,7 +15,7 @@
 校验报告已随 `stdlib\tkinter\lib\README.md` 和
 `stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
 当前已覆盖的 GUI 表面包括带选项配置、`keys()` 选项自省、可见性、状态、transient 从属关系、overrideredirect、最小化/恢复、几何尺寸与窗口尺寸 API 的 `Tk` 根窗口、带状态、transient 从属关系、overrideredirect、最小化/恢复、几何尺寸与窗口尺寸 API 的 `Toplevel` 窗口、`Frame`、
-`Label`、`Button`、`Checkbutton`、`Radiobutton`、`Scale`、`Scrollbar`、`Menu`、`Entry`、`Listbox`、`Text`、`Canvas` 控件与 `PhotoImage` 图像对象、图像注册表查询、控件选项键自省、可见性、坐标/尺寸、屏幕元数据、像素距离与 RGB 颜色 winfo 查询、身份树查询与路径反查，
+`Label`、`Button`、`Checkbutton`、`Radiobutton`、`Scale`、`Scrollbar`、`Menu`、`Entry`、`Listbox`、`Text`、`Canvas` 控件与 `PhotoImage` 图像对象、图像注册表查询、控件选项键自省、可见性、坐标/尺寸、屏幕元数据、逻辑屏幕与 virtual-root 尺寸、像素距离与 RGB 颜色 winfo 查询、身份树查询与路径反查，
 以及聚焦覆盖的 `pack`、`grid`、`place` 布局、信息查询、移除、子控件查询、网格几何查询、行列配置、布局传播与 grid anchor 行为、窗口管理 protocol 回调、通过 `invoke()` 执行的
 `Button` / `Checkbutton` / `Radiobutton` command 回调、`Scale` 数值状态、`Scrollbar` 范围状态、`Menu` command 条目、`Entry` 光标与选区状态、焦点管理、剪贴板访问、option database API、变量 trace 回调、`getint()` / `getdouble()` / `getboolean()` 转换、事件绑定、`bind_all()` / `bind_class()` 路由、unbind API、bind-tag 路由、虚拟事件注册表查询与合成事件生成、`lift()` / `tkraise()` / `lower()` 窗口/控件堆叠、`grab_set()` / `grab_release()` / `grab_current()` / `grab_status()` 本地 grab 状态、`wait_variable()` / `waitvar()` / `wait_window()` / `wait_visibility()` 变量与窗口生命周期等待、command 参数桥接、Canvas line/rectangle/oval/polygon/text/arc/bitmap/image/window 项目创建、文本项目编辑与选区、原始与便捷 find 查询、项目发现、tag 管理、tag 事件绑定、移动、绝对移动、坐标转换、坐标缩放、scan 拖拽滚动、项目层级控制、项目配置别名、PostScript 导出与滚动视图控制、图像型控件选项，并包含聚焦覆盖的 `after` /
 `after_idle` / `mainloop` / `quit` 事件循环切片。

@@ -795,6 +795,38 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWinfoLogicalScreenAndVirtualRootQueriesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            frame := stdlib.tkinter.Frame(root, { name: "vroot_host" })
+            label := stdlib.tkinter.Label(frame, { name: "caption", text: "Hello" })
+            AhkTest.AssertEqual(stdlib.None, frame.pack())
+            AhkTest.AssertEqual(stdlib.None, label.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            for widget in [root, frame, label] {
+                AhkTest.AssertEqual(1707, widget.winfo_screenwidth())
+                AhkTest.AssertEqual(1067, widget.winfo_screenheight())
+                AhkTest.AssertEqual(1707, widget.winfo_vrootwidth())
+                AhkTest.AssertEqual(1067, widget.winfo_vrootheight())
+                AhkTest.AssertEqual(0, widget.winfo_vrootx())
+                AhkTest.AssertEqual(0, widget.winfo_vrooty())
+            }
+
+            label.destroy()
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.vroot_host\.caption"$', (*) => label.winfo_vrootwidth())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.vroot_host\.caption"$', (*) => label.winfo_screenwidth())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_vrootwidth\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_vrootwidth(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_vrootx\(\) takes 1 positional argument but 2 were given$", (*) => frame.winfo_vrootx(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_screenwidth\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_screenwidth(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetIdentityTreeSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
