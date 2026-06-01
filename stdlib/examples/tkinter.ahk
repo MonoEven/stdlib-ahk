@@ -24,9 +24,25 @@ tkinter_example_tk_package := tkinter_example_tk_interp.eval("package require Tk
 tkinter_example_root := stdlib.tkinter.Tk()
 try {
     tkinter_example_root.eval("wm withdraw .")
+    tkinter_example_root_title_before := tkinter_example_root.title()
+    tkinter_example_root_title_return := tkinter_example_root.title("Stdlib Example")
+    tkinter_example_root_title_after := tkinter_example_root.title()
     tkinter_example_root_type := Type(tkinter_example_root)
     tkinter_example_root_string := String(tkinter_example_root)
     tkinter_example_root_exists := tkinter_example_root.eval("winfo exists .")
+
+    tkinter_example_frame := stdlib.tkinter.Frame(tkinter_example_root, { name: "host" })
+    tkinter_example_label := stdlib.tkinter.Label(tkinter_example_root, { text: "Hello" })
+    tkinter_example_button := stdlib.tkinter.Button(tkinter_example_frame, { text: "Press" })
+    tkinter_example_label_text := tkinter_example_label.cget("text")
+    tkinter_example_label_configure_return := tkinter_example_label.configure({ text: "Changed" })
+    tkinter_example_label_after_configure := tkinter_example_label.cget("text")
+    tkinter_example_frame_pack_return := tkinter_example_frame.pack()
+    tkinter_example_label_pack_return := tkinter_example_label.pack()
+    tkinter_example_button_pack_return := tkinter_example_button.pack()
+    tkinter_example_label_manager := tkinter_example_label.winfo_manager()
+    tkinter_example_button_exists := tkinter_example_button.winfo_exists()
+
     tkinter_example_root_destroy_return := tkinter_example_root.destroy()
 } finally {
     try tkinter_example_root.destroy()

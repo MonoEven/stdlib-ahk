@@ -190,6 +190,49 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWidgetsSupportVisibleGuiSurfaceLikeLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+
+            AhkTest.AssertEqual("tk", root.title())
+            AhkTest.AssertEqual("", root.title("Stdlib Probe"))
+            AhkTest.AssertEqual("Stdlib Probe", root.title())
+
+            frame := stdlib.tkinter.Frame(root, { name: "host" })
+            label := stdlib.tkinter.Label(root, { text: "Hello" })
+            button := stdlib.tkinter.Button(frame, { text: "Press" })
+
+            AhkTest.AssertEqual("Frame", Type(frame))
+            AhkTest.AssertEqual("Label", Type(label))
+            AhkTest.AssertEqual("Button", Type(button))
+            AhkTest.AssertEqual(".host", String(frame))
+            AhkTest.AssertEqual(".!label", String(label))
+            AhkTest.AssertEqual(".host.!button", String(button))
+            AhkTest.AssertSame(root, frame._root())
+            AhkTest.AssertSame(root, label._root())
+            AhkTest.AssertSame(root, button._root())
+            AhkTest.AssertEqual(1, frame.winfo_exists())
+            AhkTest.AssertEqual(1, label.winfo_exists())
+            AhkTest.AssertEqual(1, button.winfo_exists())
+            AhkTest.AssertEqual("Hello", label.cget("text"))
+            AhkTest.AssertEqual(stdlib.None, label.configure({ text: "Changed" }))
+            AhkTest.AssertEqual("Changed", label.cget("text"))
+            AhkTest.AssertEqual("Press", button.cget("text"))
+            AhkTest.AssertEqual(stdlib.None, frame.pack())
+            AhkTest.AssertEqual(stdlib.None, label.pack())
+            AhkTest.AssertEqual(stdlib.None, button.pack())
+            AhkTest.AssertEqual("pack", frame.winfo_manager())
+            AhkTest.AssertEqual("pack", label.winfo_manager())
+            AhkTest.AssertEqual("pack", button.winfo_manager())
+            AhkTest.AssertEqual(stdlib.None, label.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .!label"))
+        } finally {
+            try root.destroy()
+        }
+    }
+
     static TestBundledTclTkDllsExistForUseTkRuntime()
     {
         dllDir := StdlibTkinterTest.RuntimeLibDir()
@@ -220,6 +263,8 @@ class StdlibTkinterTest
     static TestObservedTkinterArityAndTypeErrorsMatchLocal310()
     {
         interp := stdlib.tkinter.Tcl()
+        gui := stdlib.tkinter.Tk()
+        gui.eval("wm withdraw .")
 
         AhkTest.RaisesMatch(TypeError, "^Tcl\(\) takes from 0 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.Tcl(1, 2, 3, 4, 5))
         AhkTest.RaisesMatch(TypeError, "^Tcl\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.Tcl({ extra: 1 }))
@@ -256,6 +301,10 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(TypeError, "^BooleanVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.BooleanVar({ master: interp, extra: 1 }))
         AhkTest.RaisesMatch(TypeError, "^BooleanVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.BooleanVar(interp, 1, "custom_bool", "extra"))
         AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.BooleanVar({ master: interp, name: 1 }))
+        AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Label({ master: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^Label\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Label(gui, {}, "extra"))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Label(gui, { extra_kw: 1 }))
+        try gui.destroy()
     }
 
     static RuntimeLibDir()

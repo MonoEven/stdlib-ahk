@@ -47,6 +47,21 @@ class AhkStdlibTkinter
         return AhkStdlibTkinterPublicVariable(args*)
     }
 
+    static Frame(args*)
+    {
+        return Frame(args*)
+    }
+
+    static Label(args*)
+    {
+        return Label(args*)
+    }
+
+    static Button(args*)
+    {
+        return Button(args*)
+    }
+
     static StringVar(args*)
     {
         return AhkStdlibTkinterStringVar(args*)
@@ -149,6 +164,8 @@ class Tk
         this.AhkStdlibClassName := className
         this.AhkStdlibUseTk := useTk
         this.AhkStdlibSync := sync
+        this.AhkStdlibChildCounters := Map()
+        this.tk := this
         if hasUse
             this.AhkStdlibUse := use
     }
@@ -207,6 +224,15 @@ class Tk
         return this
     }
 
+    title(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_title() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0
+            return this.eval("wm title .")
+        return this.eval("wm title . " AhkStdlibTkinterTclWord(args[1]))
+    }
+
     destroy()
     {
         resultCode := DllCall("tcl86t\Tcl_Eval", "Ptr", this.AhkStdlibInterp, "Ptr", AhkStdlibTkinterUtf8Buffer("destroy .").Ptr, "Int")
@@ -224,6 +250,135 @@ class Tk
     {
         if this.AhkStdlibInterp
             AhkStdlibTkinterDeleteInterp(this.AhkStdlibInterp)
+    }
+}
+
+class AhkStdlibTkinterWidget
+{
+    __New(className, tkCommand, args*)
+    {
+        if args.Length > 2
+            throw TypeError(className ".__init__() takes from 1 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        master := stdlib.None
+        options := {}
+        if args.Length = 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1]) {
+            options := args[1]
+            if options.HasOwnProp("master")
+                master := options.master
+        } else {
+            if args.Length >= 1
+                master := args[1]
+            if args.Length >= 2 {
+                if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+                    throw TypeError("cnf must be a dictionary", -1)
+                options := args[2]
+            }
+        }
+
+        if AhkStdlibIsNone(master)
+            throw RuntimeError("Too early to create widget: no default root window", -1)
+        if !IsObject(master) || !HasProp(master, "tk")
+            throw AttributeError("'" AhkStdlibPyTypeName(master) "' object has no attribute 'tk'", -1)
+
+        this.master := master
+        this.tk := master.tk
+        this.AhkStdlibRoot := master._root()
+        this.AhkStdlibTkCommand := tkCommand
+        this._w := AhkStdlibTkinterResolveWidgetPath(this.AhkStdlibRoot, String(master), tkCommand, options)
+
+        script := tkCommand " " this._w AhkStdlibTkinterOptionsToScript(options, false)
+        this.AhkStdlibRoot.eval(script)
+    }
+
+    _root()
+    {
+        return this.AhkStdlibRoot
+    }
+
+    cget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.cget() missing 1 required positional argument: 'key'", -1)
+        if args.Length > 1
+            throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " cget -" args[1])
+    }
+
+    configure(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Misc.configure() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0
+            return stdlib.None
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            throw TypeError("cnf must be a dictionary", -1)
+        this.AhkStdlibRoot.eval(this._w " configure" AhkStdlibTkinterOptionsToScript(args[1], false))
+        return stdlib.None
+    }
+
+    config(args*)
+    {
+        return this.configure(args*)
+    }
+
+    pack(args*)
+    {
+        if args.Length > 1
+            throw TypeError("pack_configure() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        script := "pack " this._w
+        if args.Length = 1 {
+            if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+                throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
+            script .= AhkStdlibTkinterOptionsToScript(args[1], true)
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    winfo_exists()
+    {
+        return Integer(this.AhkStdlibRoot.eval("winfo exists " this._w))
+    }
+
+    winfo_manager()
+    {
+        return this.AhkStdlibRoot.eval("winfo manager " this._w)
+    }
+
+    destroy()
+    {
+        this.AhkStdlibRoot.eval("destroy " this._w)
+        return stdlib.None
+    }
+
+    ToString()
+    {
+        return this._w
+    }
+}
+
+class Frame extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Frame", "frame", args*)
+    }
+}
+
+class Label extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Label", "label", args*)
+    }
+}
+
+class Button extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Button", "button", args*)
     }
 }
 
@@ -605,6 +760,42 @@ AhkStdlibTkinterVarExists(interp, name)
     return !(AhkStdlibTkinterGetVar(interp, name) == AhkStdlibTkinterMissingValue())
 }
 
+AhkStdlibTkinterResolveWidgetPath(root, parentPath, tkCommand, options)
+{
+    if options.HasOwnProp("name") {
+        name := AhkStdlibTkinterNormalizeVarName(options.name)
+        if name != ""
+            return AhkStdlibTkinterJoinWidgetPath(parentPath, name)
+    }
+
+    key := parentPath "|" tkCommand
+    counter := root.AhkStdlibChildCounters.Has(key) ? root.AhkStdlibChildCounters[key] : 0
+    index := counter + 1
+    root.AhkStdlibChildCounters[key] := index
+    name := "!" tkCommand (index = 1 ? "" : index)
+    return AhkStdlibTkinterJoinWidgetPath(parentPath, name)
+}
+
+AhkStdlibTkinterJoinWidgetPath(parentPath, name)
+{
+    if parentPath = "."
+        return "." name
+    return parentPath "." name
+}
+
+AhkStdlibTkinterOptionsToScript(options, includeName)
+{
+    script := ""
+    for key, value in options.OwnProps() {
+        if key = "master"
+            continue
+        if key = "name" && !includeName
+            continue
+        script .= " -" key " " AhkStdlibTkinterTclWord(value)
+    }
+    return script
+}
+
 AhkStdlibTkinterValueToString(value)
 {
     if AhkStdlibIsNone(value)
@@ -612,6 +803,15 @@ AhkStdlibTkinterValueToString(value)
     if AhkStdlibIsBool(value)
         return value.Value ? "1" : "0"
     return value ""
+}
+
+AhkStdlibTkinterTclWord(value)
+{
+    text := AhkStdlibTkinterValueToString(value)
+    text := StrReplace(text, "\", "\\")
+    text := StrReplace(text, "{", "\{")
+    text := StrReplace(text, "}", "\}")
+    return "{" text "}"
 }
 
 AhkStdlibTkinterIntVarValueToString(value)
