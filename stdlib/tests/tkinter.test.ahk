@@ -583,6 +583,29 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkRootOptionConfigurationMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+
+            AhkTest.AssertEqual(stdlib.None, root.configure({ bg: "#112233" }))
+            AhkTest.AssertEqual("#112233", root.cget("bg"))
+            AhkTest.AssertEqual(stdlib.None, root.config({ bg: "white" }))
+            AhkTest.AssertEqual("white", root.cget("background"))
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.cget\(\) missing 1 required positional argument: 'key'$", (*) => root.cget())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.cget\(\) takes 2 positional arguments but 3 were given$", (*) => root.cget("bg", "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => root.cget("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.configure\(\) takes from 1 to 2 positional arguments but 4 were given$", (*) => root.configure({}, {}, {}))
+            AhkTest.RaisesMatch(TypeError, "^object of type 'int' has no len\(\)$", (*) => root.configure(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => root.configure({ bad: 1 }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestToplevelWindowSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

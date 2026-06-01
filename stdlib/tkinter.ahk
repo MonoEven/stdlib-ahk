@@ -284,6 +284,33 @@ class Tk
         return this
     }
 
+    cget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.cget() missing 1 required positional argument: 'key'", -1)
+        if args.Length > 1
+            throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.eval(". cget -" args[1])
+        return AhkStdlibTkinterCgetValue(args[1], value)
+    }
+
+    configure(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Misc.configure() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0
+            return stdlib.None
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
+        this.eval(". configure" AhkStdlibTkinterOptionsToScript(args[1], false, this))
+        return stdlib.None
+    }
+
+    config(args*)
+    {
+        return this.configure(args*)
+    }
+
     title(args*)
     {
         if args.Length > 1

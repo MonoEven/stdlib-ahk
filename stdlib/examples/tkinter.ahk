@@ -53,6 +53,10 @@ try {
     tkinter_example_root_title_before := tkinter_example_root.title()
     tkinter_example_root_title_return := tkinter_example_root.title("Stdlib Example")
     tkinter_example_root_title_after := tkinter_example_root.title()
+    tkinter_example_root_configure_return := tkinter_example_root.configure({ bg: "#112233" })
+    tkinter_example_root_bg_after_configure := tkinter_example_root.cget("bg")
+    tkinter_example_root_config_return := tkinter_example_root.config({ bg: "white" })
+    tkinter_example_root_bg_after_config := tkinter_example_root.cget("background")
     tkinter_example_root_protocols := tkinter_example_root.protocol()
     tkinter_example_root_protocol_before := tkinter_example_root.protocol("WM_DELETE_WINDOW")
     tkinter_example_protocol_calls := []
