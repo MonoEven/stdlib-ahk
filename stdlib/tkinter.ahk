@@ -683,9 +683,19 @@ class Tk
         return AhkStdlibTkinterPackSlaves(this, ".", args*)
     }
 
+    slaves(args*)
+    {
+        return this.pack_slaves(args*)
+    }
+
     pack_propagate(args*)
     {
         return AhkStdlibTkinterPropagate(this, ".", "pack", "pack_propagate", args*)
+    }
+
+    propagate(args*)
+    {
+        return this.pack_propagate(args*)
     }
 
     grid_slaves(args*)
@@ -701,6 +711,11 @@ class Tk
     grid_anchor(args*)
     {
         return AhkStdlibTkinterGridAnchor(this, ".", args*)
+    }
+
+    anchor(args*)
+    {
+        return this.grid_anchor(args*)
     }
 
     grid_columnconfigure(args*)
@@ -728,9 +743,19 @@ class Tk
         return AhkStdlibTkinterGridSize(this, ".", args*)
     }
 
+    size(args*)
+    {
+        return this.grid_size(args*)
+    }
+
     grid_bbox(args*)
     {
         return AhkStdlibTkinterGridBbox(this, ".", args*)
+    }
+
+    bbox(args*)
+    {
+        return this.grid_bbox(args*)
     }
 
     grid_location(args*)
@@ -1103,11 +1128,23 @@ class AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    pack_configure(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Pack.pack_configure() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.pack(args*)
+    }
+
     pack_info(args*)
     {
         if args.Length != 0
             throw TypeError("Pack.pack_info() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return AhkStdlibTkinterPackInfo(this)
+    }
+
+    info(args*)
+    {
+        return this.pack_info(args*)
     }
 
     pack_forget(args*)
@@ -1118,14 +1155,29 @@ class AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    forget(args*)
+    {
+        return this.pack_forget(args*)
+    }
+
     pack_slaves(args*)
     {
         return AhkStdlibTkinterPackSlaves(this.AhkStdlibRoot, this._w, args*)
     }
 
+    slaves(args*)
+    {
+        return this.pack_slaves(args*)
+    }
+
     pack_propagate(args*)
     {
         return AhkStdlibTkinterPropagate(this.AhkStdlibRoot, this._w, "pack", "pack_propagate", args*)
+    }
+
+    propagate(args*)
+    {
+        return this.pack_propagate(args*)
     }
 
     grid(args*)
@@ -1140,6 +1192,11 @@ class AhkStdlibTkinterWidget
         }
         this.AhkStdlibRoot.eval(script)
         return stdlib.None
+    }
+
+    grid_configure(args*)
+    {
+        return this.grid(args*)
     }
 
     grid_forget(args*)
@@ -1173,6 +1230,11 @@ class AhkStdlibTkinterWidget
         return AhkStdlibTkinterGridAnchor(this.AhkStdlibRoot, this._w, args*)
     }
 
+    anchor(args*)
+    {
+        return this.grid_anchor(args*)
+    }
+
     grid_columnconfigure(args*)
     {
         return AhkStdlibTkinterGridAxisConfigure(this.AhkStdlibRoot, this._w, "column", "grid_columnconfigure", args*)
@@ -1198,14 +1260,29 @@ class AhkStdlibTkinterWidget
         return AhkStdlibTkinterGridSize(this.AhkStdlibRoot, this._w, args*)
     }
 
+    size(args*)
+    {
+        return this.grid_size(args*)
+    }
+
     grid_bbox(args*)
     {
         return AhkStdlibTkinterGridBbox(this.AhkStdlibRoot, this._w, args*)
     }
 
+    bbox(args*)
+    {
+        return this.grid_bbox(args*)
+    }
+
     grid_location(args*)
     {
         return AhkStdlibTkinterGridLocation(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    location(args*)
+    {
+        return this.grid_location(args*)
     }
 
     grid_info(args*)
@@ -1234,6 +1311,11 @@ class AhkStdlibTkinterWidget
         }
         this.AhkStdlibRoot.eval(script)
         return stdlib.None
+    }
+
+    place_configure(args*)
+    {
+        return this.place(args*)
     }
 
     place_forget(args*)
