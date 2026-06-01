@@ -471,6 +471,61 @@ class StdlibTkinterTest
         }
     }
 
+    static TestRadiobuttonVariableAndInvokeSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            calls := []
+            command := (*) => (calls.Push("cmd"), "done")
+            value := stdlib.tkinter.StringVar(root, "none", "radio_var")
+            radio := stdlib.tkinter.Radiobutton(root, { name: "choice", text: "Choice A", variable: value, value: "A", command: command })
+
+            AhkTest.AssertEqual("Radiobutton", Type(radio))
+            AhkTest.AssertEqual(".choice", String(radio))
+            AhkTest.AssertSame(root, radio._root())
+            AhkTest.AssertEqual(1, radio.winfo_exists())
+            AhkTest.AssertEqual("Choice A", radio.cget("text"))
+            AhkTest.AssertEqual("radio_var", radio.cget("variable"))
+            AhkTest.AssertEqual("A", radio.cget("value"))
+            AhkTest.AssertTrue(radio.cget("command") != "")
+            AhkTest.AssertEqual("none", value.get())
+            AhkTest.AssertEqual(stdlib.None, radio.select())
+            AhkTest.AssertEqual("A", value.get())
+            AhkTest.AssertEqual(stdlib.None, radio.deselect())
+            AhkTest.AssertEqual("", value.get())
+            AhkTest.AssertEqual(stdlib.None, radio.flash())
+            AhkTest.AssertEqual("done", radio.invoke())
+            AhkTest.AssertEqual("A", value.get())
+            AhkTest.AssertEqual(["cmd"], calls)
+            AhkTest.AssertEqual(stdlib.None, radio.pack())
+            AhkTest.AssertEqual("pack", radio.winfo_manager())
+            AhkTest.AssertEqual(stdlib.None, radio.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .choice"))
+
+            noCommand := stdlib.tkinter.Radiobutton(root)
+            AhkTest.AssertEqual("", noCommand.invoke())
+            noneButton := stdlib.tkinter.Radiobutton(root, { command: (*) => stdlib.None })
+            AhkTest.AssertEqual("None", noneButton.invoke())
+            strButton := stdlib.tkinter.Radiobutton(root, { command: (*) => "value" })
+            AhkTest.AssertEqual("value", strButton.invoke())
+            badButton := stdlib.tkinter.Radiobutton(root, { command: 1 })
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^invalid command name " Chr(34) "1" Chr(34) "$", (*) => badButton.invoke())
+            AhkTest.AssertEqual(".kw", String(stdlib.tkinter.Radiobutton({ master: root, name: "kw" })))
+            AhkTest.AssertEqual("CNF", stdlib.tkinter.Radiobutton(root, { name: "cnf", text: "CNF" }).cget("text"))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Radiobutton({ master: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Radiobutton\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Radiobutton(root, {}, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Radiobutton(root, { extra_kw: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Radiobutton\.invoke\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Radiobutton(root).invoke(1))
+            AhkTest.RaisesMatch(TypeError, "^Radiobutton\.select\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Radiobutton(root).select(1))
+            AhkTest.RaisesMatch(TypeError, "^Radiobutton\.deselect\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Radiobutton(root).deselect(1))
+            AhkTest.RaisesMatch(TypeError, "^Radiobutton\.flash\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Radiobutton(root).flash(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestEntryWidgetSupportsInputSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()

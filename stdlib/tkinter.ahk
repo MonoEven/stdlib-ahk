@@ -72,6 +72,11 @@ class AhkStdlibTkinter
         return Checkbutton(args*)
     }
 
+    static Radiobutton(args*)
+    {
+        return Radiobutton(args*)
+    }
+
     static Canvas(args*)
     {
         return Canvas(args*)
@@ -773,6 +778,45 @@ class Checkbutton extends AhkStdlibTkinterWidget
         if args.Length != 0
             throw TypeError("Checkbutton.toggle() takes 1 positional argument but " args.Length + 1 " were given", -1)
         this.AhkStdlibRoot.eval(this._w " toggle")
+        return stdlib.None
+    }
+}
+
+class Radiobutton extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Radiobutton", "radiobutton", args*)
+    }
+
+    deselect(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Radiobutton.deselect() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " deselect")
+        return stdlib.None
+    }
+
+    flash(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Radiobutton.flash() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " flash")
+        return stdlib.None
+    }
+
+    invoke(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Radiobutton.invoke() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " invoke")
+    }
+
+    select(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Radiobutton.select() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " select")
         return stdlib.None
     }
 }
