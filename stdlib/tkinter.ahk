@@ -399,6 +399,26 @@ class Tk
         return AhkStdlibTkinterStacking(this, ".", "lower", "lower", args*)
     }
 
+    grab_set(args*)
+    {
+        return AhkStdlibTkinterGrabSet(this, ".", "grab_set", args*)
+    }
+
+    grab_release(args*)
+    {
+        return AhkStdlibTkinterGrabRelease(this, ".", args*)
+    }
+
+    grab_current(args*)
+    {
+        return AhkStdlibTkinterGrabCurrent(this, ".", args*)
+    }
+
+    grab_status(args*)
+    {
+        return AhkStdlibTkinterGrabStatus(this, ".", args*)
+    }
+
     focus_set(args*)
     {
         return AhkStdlibTkinterFocusSet(this, ".", "focus_set", false, args*)
@@ -906,6 +926,26 @@ class AhkStdlibTkinterWidget
     lower(args*)
     {
         return AhkStdlibTkinterStacking(this.AhkStdlibRoot, this._w, "lower", "lower", args*)
+    }
+
+    grab_set(args*)
+    {
+        return AhkStdlibTkinterGrabSet(this.AhkStdlibRoot, this._w, "grab_set", args*)
+    }
+
+    grab_release(args*)
+    {
+        return AhkStdlibTkinterGrabRelease(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    grab_current(args*)
+    {
+        return AhkStdlibTkinterGrabCurrent(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    grab_status(args*)
+    {
+        return AhkStdlibTkinterGrabStatus(this.AhkStdlibRoot, this._w, args*)
     }
 
     focus_set(args*)
@@ -2778,6 +2818,40 @@ AhkStdlibTkinterStacking(root, window, command, methodName, args*)
         script .= " " AhkStdlibTkinterTclWord(args[1])
     root.eval(script)
     return stdlib.None
+}
+
+AhkStdlibTkinterGrabSet(root, window, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    root.eval("grab set " window)
+    return stdlib.None
+}
+
+AhkStdlibTkinterGrabRelease(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.grab_release() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    root.eval("grab release " window)
+    return stdlib.None
+}
+
+AhkStdlibTkinterGrabCurrent(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.grab_current() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    current := root.eval("grab current " window)
+    if current = ""
+        return stdlib.None
+    return AhkStdlibTkinterWidgetFromPath(root, current)
+}
+
+AhkStdlibTkinterGrabStatus(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.grab_status() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    status := root.eval("grab status " window)
+    return status = "" || status = "none" ? stdlib.None : status
 }
 
 AhkStdlibTkinterFocusSet(root, window, methodName, force, args*)

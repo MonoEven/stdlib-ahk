@@ -431,6 +431,48 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkGrabLocalModalStateMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            top := stdlib.tkinter.Toplevel(root, { name: "grab_dialog" })
+            button := stdlib.tkinter.Button(top, { name: "ok", text: "OK" })
+            top.withdraw()
+            AhkTest.AssertEqual(stdlib.None, button.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual(stdlib.None, root.grab_current())
+            AhkTest.AssertEqual(stdlib.None, top.grab_status())
+            AhkTest.AssertEqual(stdlib.None, button.grab_status())
+            AhkTest.AssertEqual(stdlib.None, top.grab_set())
+            AhkTest.AssertSame(top, root.grab_current())
+            AhkTest.AssertSame(top, top.grab_current())
+            AhkTest.AssertSame(top, button.grab_current())
+            AhkTest.AssertEqual("local", top.grab_status())
+            AhkTest.AssertEqual(stdlib.None, button.grab_status())
+            AhkTest.AssertEqual(stdlib.None, button.grab_set())
+            AhkTest.AssertSame(button, root.grab_current())
+            AhkTest.AssertEqual("local", button.grab_status())
+            AhkTest.AssertEqual(stdlib.None, top.grab_status())
+            AhkTest.AssertEqual(stdlib.None, button.grab_release())
+            AhkTest.AssertEqual(stdlib.None, root.grab_current())
+            AhkTest.AssertEqual(stdlib.None, top.grab_status())
+            AhkTest.AssertEqual(stdlib.None, top.grab_release())
+            AhkTest.AssertEqual(stdlib.None, root.grab_current())
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grab_set\(\) takes 1 positional argument but 2 were given$", (*) => top.grab_set(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grab_release\(\) takes 1 positional argument but 2 were given$", (*) => top.grab_release(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grab_current\(\) takes 1 positional argument but 2 were given$", (*) => top.grab_current(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grab_status\(\) takes 1 positional argument but 2 were given$", (*) => top.grab_status(1))
+        } finally {
+            try root.grab_release()
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWinfoCoordinateQueriesMatchLocal310()
     {
         root := stdlib.tkinter.Tk()
