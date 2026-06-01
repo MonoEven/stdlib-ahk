@@ -125,6 +125,45 @@ class StdlibTkinterTest
         AhkTest.AssertEqual("x", emptyName.get())
     }
 
+    static TestVariablePublicClassAndInitializeMatchObservedLocal310()
+    {
+        interp := stdlib.tkinter.Tcl()
+        interp.setvar("existing_variable", "kept")
+        interp.setvar("existing_variable_none", "kept")
+
+        value := stdlib.tkinter.Variable(interp, "seed", "custom_var")
+        existingOmit := stdlib.tkinter.Variable({ master: interp, name: "existing_variable" })
+        existingNone := stdlib.tkinter.Variable({ master: interp, value: stdlib.None, name: "existing_variable_none" })
+        generated := stdlib.tkinter.Variable(interp, "x", "")
+        stringValue := stdlib.tkinter.StringVar(interp, "s", "string_init")
+        intValue := stdlib.tkinter.IntVar(interp, 1, "int_init")
+        doubleValue := stdlib.tkinter.DoubleVar(interp, 1.25, "double_init")
+        boolValue := stdlib.tkinter.BooleanVar(interp, stdlib.True, "bool_init")
+
+        AhkTest.AssertEqual("seed", value.get())
+        AhkTest.AssertEqual("custom_var", value._name)
+        AhkTest.AssertEqual("custom_var", String(value))
+        AhkTest.AssertEqual(stdlib.None, value.set("grown"))
+        AhkTest.AssertEqual("grown", value.get())
+        AhkTest.AssertEqual(stdlib.None, value.initialize("fresh"))
+        AhkTest.AssertEqual("fresh", value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set(stdlib.None))
+        AhkTest.AssertEqual("None", value.get())
+        AhkTest.AssertEqual("kept", existingOmit.get())
+        AhkTest.AssertEqual("kept", existingNone.get())
+        AhkTest.AssertRegex(generated._name, "^" Chr(80) Chr(89) "_VAR[0-9]+$")
+        AhkTest.AssertEqual("x", generated.get())
+
+        AhkTest.AssertEqual(stdlib.None, stringValue.initialize(stdlib.None))
+        AhkTest.AssertEqual("None", stringValue.get())
+        AhkTest.AssertEqual(stdlib.None, intValue.initialize("3.5"))
+        AhkTest.AssertEqual(3, intValue.get())
+        AhkTest.AssertEqual(stdlib.None, doubleValue.initialize(2))
+        AhkTest.AssertEqual(2.0, doubleValue.get())
+        AhkTest.AssertEqual(stdlib.None, boolValue.initialize("off"))
+        AhkTest.AssertSame(stdlib.False, boolValue.get())
+    }
+
     static TestTclUseTkLoadsTkPackageLikeLocal310()
     {
         interp := stdlib.tkinter.Tcl({ useTk: stdlib.True })
@@ -192,6 +231,11 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(TypeError, "^Misc\.setvar\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => interp.setvar("x", "y", "z"))
         AhkTest.RaisesMatch(TypeError, "^Misc\.getvar\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => interp.getvar("x", "y"))
         AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't read " Chr(34) "missing" Chr(34) ": no such variable$", (*) => interp.getvar("missing"))
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.Variable())
+        AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_root'$", (*) => stdlib.tkinter.Variable({ master: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.Variable({ master: interp, extra: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.Variable(interp, "seed", "custom_var", "extra"))
+        AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.Variable({ master: interp, name: 1 }))
         AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.StringVar())
         AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_root'$", (*) => stdlib.tkinter.StringVar({ master: 1 }))
         AhkTest.RaisesMatch(TypeError, "^StringVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.StringVar({ master: interp, extra: 1 }))

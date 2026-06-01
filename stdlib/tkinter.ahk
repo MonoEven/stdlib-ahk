@@ -42,6 +42,11 @@ class AhkStdlibTkinter
         return Tk(true, "Tk", args*)
     }
 
+    static Variable(args*)
+    {
+        return AhkStdlibTkinterPublicVariable(args*)
+    }
+
     static StringVar(args*)
     {
         return AhkStdlibTkinterStringVar(args*)
@@ -284,6 +289,30 @@ class AhkStdlibTkinterVariable
     ToString()
     {
         return this._name
+    }
+
+    initialize(value)
+    {
+        return this.set(value)
+    }
+}
+
+class AhkStdlibTkinterPublicVariable extends AhkStdlibTkinterVariable
+{
+    __New(args*)
+    {
+        super.__New("Variable", "", args*)
+    }
+
+    get()
+    {
+        return this._tk.getvar(this._name)
+    }
+
+    set(value)
+    {
+        this._tk.setvar(this._name, AhkStdlibTkinterValueToString(value))
+        return stdlib.None
     }
 }
 

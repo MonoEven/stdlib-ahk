@@ -41,6 +41,13 @@ tkinter_example_named_after_set := tkinter_example_named.get()
 tkinter_example_named_set_none_return := tkinter_example_named.set(stdlib.None)
 tkinter_example_named_after_none := tkinter_example_named.get()
 
+tkinter_example_variable := stdlib.tkinter.Variable(tkinter_example_interp, "seed", "custom_var")
+tkinter_example_variable_name := tkinter_example_variable._name
+tkinter_example_variable_string := String(tkinter_example_variable)
+tkinter_example_variable_get := tkinter_example_variable.get()
+tkinter_example_variable_initialize_return := tkinter_example_variable.initialize("fresh")
+tkinter_example_variable_after_initialize := tkinter_example_variable.get()
+
 tkinter_example_generated := stdlib.tkinter.StringVar(tkinter_example_interp, "fresh")
 tkinter_example_generated_name := tkinter_example_generated._name
 tkinter_example_generated_get := tkinter_example_generated.get()
