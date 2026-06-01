@@ -21,11 +21,16 @@ class StdlibTkinterTest
         AhkTest.AssertEqual("3", interp.eval("expr 1 + 2"))
         AhkTest.AssertEqual(stdlib.None, interp.setvar("x", "hello"))
         AhkTest.AssertEqual("hello", interp.getvar("x"))
+        AhkTest.AssertEqual(stdlib.None, interp.setvar("none_value", stdlib.None))
+        AhkTest.AssertEqual("None", interp.getvar("none_value"))
         AhkTest.AssertEqual(".", String(interp._root()))
         AhkTest.AssertEqual("seed", named.get())
         AhkTest.AssertEqual("custom_name", named._name)
+        AhkTest.AssertEqual("custom_name", String(named))
         AhkTest.AssertEqual(stdlib.None, named.set("grown"))
         AhkTest.AssertEqual("grown", named.get())
+        AhkTest.AssertEqual(stdlib.None, named.set(stdlib.None))
+        AhkTest.AssertEqual("None", named.get())
         AhkTest.AssertEqual("grown", generated.get())
         AhkTest.AssertRegex(generated._name, "^" Chr(80) Chr(89) "_VAR[0-9]+$")
     }
@@ -37,6 +42,7 @@ class StdlibTkinterTest
 
         AhkTest.AssertEqual(7, value.get())
         AhkTest.AssertEqual("custom_int", value._name)
+        AhkTest.AssertEqual("custom_int", String(value))
         AhkTest.AssertEqual("7", interp.getvar("custom_int"))
         AhkTest.AssertEqual(stdlib.None, value.set(42))
         AhkTest.AssertEqual(42, value.get())
@@ -50,6 +56,73 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^expected floating-point number but got " Chr(34) "09" Chr(34) " \(looks like invalid octal number\)$", (*) => value.get())
         AhkTest.AssertEqual(stdlib.None, value.set("abc"))
         AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^expected floating-point number but got " Chr(34) "abc" Chr(34) "$", (*) => value.get())
+    }
+
+    static TestDoubleVarMatchesObservedLocal310Surface()
+    {
+        interp := stdlib.tkinter.Tcl()
+        value := stdlib.tkinter.DoubleVar(interp, 1.25, "custom_double")
+
+        AhkTest.AssertEqual(1.25, value.get())
+        AhkTest.AssertEqual("custom_double", value._name)
+        AhkTest.AssertEqual("custom_double", String(value))
+        AhkTest.AssertEqual("1.25", interp.getvar("custom_double"))
+        AhkTest.AssertEqual(stdlib.None, value.set(2))
+        AhkTest.AssertEqual(2.0, value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set(stdlib.True))
+        AhkTest.AssertEqual(1.0, value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set(stdlib.False))
+        AhkTest.AssertEqual(0.0, value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set("09"))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^expected floating-point number but got " Chr(34) "09" Chr(34) " \(looks like invalid octal number\)$", (*) => value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set(stdlib.None))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^expected floating-point number but got " Chr(34) "None" Chr(34) "$", (*) => value.get())
+    }
+
+    static TestBooleanVarMatchesObservedLocal310Surface()
+    {
+        interp := stdlib.tkinter.Tcl()
+        value := stdlib.tkinter.BooleanVar(interp, stdlib.True, "custom_bool")
+
+        AhkTest.AssertSame(stdlib.True, value.get())
+        AhkTest.AssertEqual("custom_bool", value._name)
+        AhkTest.AssertEqual("custom_bool", String(value))
+        AhkTest.AssertEqual("1", interp.getvar("custom_bool"))
+        AhkTest.AssertEqual(stdlib.None, value.set(stdlib.False))
+        AhkTest.AssertSame(stdlib.False, value.get())
+        AhkTest.AssertEqual("0", interp.getvar("custom_bool"))
+        AhkTest.AssertEqual(stdlib.None, value.set("yes"))
+        AhkTest.AssertSame(stdlib.True, value.get())
+        AhkTest.AssertEqual("1", interp.getvar("custom_bool"))
+        AhkTest.AssertEqual(stdlib.None, value.set("off"))
+        AhkTest.AssertSame(stdlib.False, value.get())
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^expected boolean value but got " Chr(34) "maybe" Chr(34) "$", (*) => value.set("maybe"))
+        AhkTest.RaisesMatch(TypeError, "^getboolean\(\) argument must be str, not None$", (*) => value.set(stdlib.None))
+        interp.setvar("custom_bool", "maybe")
+        AhkTest.RaisesMatch(ValueError, "^invalid literal for getboolean\(\)$", (*) => value.get())
+    }
+
+    static TestVariableConstructorNameRetentionMatchesObservedLocal310()
+    {
+        interp := stdlib.tkinter.Tcl()
+        interp.setvar("existing_string", "pre")
+        interp.setvar("existing_int", "7")
+        interp.setvar("existing_double", "2.5")
+        interp.setvar("existing_bool", "yes")
+
+        stringValue := stdlib.tkinter.StringVar({ master: interp, name: "existing_string" })
+        intValue := stdlib.tkinter.IntVar({ master: interp, name: "existing_int" })
+        doubleValue := stdlib.tkinter.DoubleVar({ master: interp, name: "existing_double" })
+        boolValue := stdlib.tkinter.BooleanVar({ master: interp, name: "existing_bool" })
+        emptyName := stdlib.tkinter.StringVar(interp, "x", "")
+
+        AhkTest.AssertEqual("pre", stringValue.get())
+        AhkTest.AssertEqual("existing_string", String(stringValue))
+        AhkTest.AssertEqual(7, intValue.get())
+        AhkTest.AssertEqual(2.5, doubleValue.get())
+        AhkTest.AssertSame(stdlib.True, boolValue.get())
+        AhkTest.AssertRegex(emptyName._name, "^" Chr(80) Chr(89) "_VAR[0-9]+$")
+        AhkTest.AssertEqual("x", emptyName.get())
     }
 
     static TestTclUseTkLoadsTkPackageLikeLocal310()
@@ -129,6 +202,16 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(TypeError, "^IntVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.IntVar({ master: interp, extra: 1 }))
         AhkTest.RaisesMatch(TypeError, "^IntVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.IntVar(interp, 1, "custom_int", "extra"))
         AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.IntVar({ master: interp, name: 1 }))
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.DoubleVar())
+        AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_root'$", (*) => stdlib.tkinter.DoubleVar({ master: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^DoubleVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.DoubleVar({ master: interp, extra: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^DoubleVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.DoubleVar(interp, 1, "custom_double", "extra"))
+        AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.DoubleVar({ master: interp, name: 1 }))
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.BooleanVar())
+        AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_root'$", (*) => stdlib.tkinter.BooleanVar({ master: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^BooleanVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.BooleanVar({ master: interp, extra: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^BooleanVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.BooleanVar(interp, 1, "custom_bool", "extra"))
+        AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.BooleanVar({ master: interp, name: 1 }))
     }
 
     static RuntimeLibDir()

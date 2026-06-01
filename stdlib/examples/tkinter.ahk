@@ -13,6 +13,8 @@ tkinter_example_interp_type := Type(tkinter_example_interp)
 tkinter_example_eval := tkinter_example_interp.eval("expr 1 + 2")
 tkinter_example_setvar_return := tkinter_example_interp.setvar("x", "hello")
 tkinter_example_getvar := tkinter_example_interp.getvar("x")
+tkinter_example_setvar_none_return := tkinter_example_interp.setvar("none_value", stdlib.None)
+tkinter_example_getvar_none := tkinter_example_interp.getvar("none_value")
 tkinter_example_root_string := String(tkinter_example_interp._root())
 
 tkinter_example_tk_interp := stdlib.tkinter.Tcl({ useTk: stdlib.True })
@@ -32,9 +34,12 @@ try {
 
 tkinter_example_named := stdlib.tkinter.StringVar(tkinter_example_interp, "seed", "custom_name")
 tkinter_example_named_name := tkinter_example_named._name
+tkinter_example_named_string := String(tkinter_example_named)
 tkinter_example_named_get := tkinter_example_named.get()
 tkinter_example_named_set_return := tkinter_example_named.set("grown")
 tkinter_example_named_after_set := tkinter_example_named.get()
+tkinter_example_named_set_none_return := tkinter_example_named.set(stdlib.None)
+tkinter_example_named_after_none := tkinter_example_named.get()
 
 tkinter_example_generated := stdlib.tkinter.StringVar(tkinter_example_interp, "fresh")
 tkinter_example_generated_name := tkinter_example_generated._name
@@ -45,6 +50,18 @@ tkinter_example_int_name := tkinter_example_int._name
 tkinter_example_int_get := tkinter_example_int.get()
 tkinter_example_int_set_return := tkinter_example_int.set("3.5")
 tkinter_example_int_after_set := tkinter_example_int.get()
+
+tkinter_example_double := stdlib.tkinter.DoubleVar(tkinter_example_interp, 1.25, "custom_double")
+tkinter_example_double_name := tkinter_example_double._name
+tkinter_example_double_get := tkinter_example_double.get()
+tkinter_example_double_set_return := tkinter_example_double.set(2)
+tkinter_example_double_after_set := tkinter_example_double.get()
+
+tkinter_example_bool := stdlib.tkinter.BooleanVar(tkinter_example_interp, stdlib.True, "custom_bool")
+tkinter_example_bool_name := tkinter_example_bool._name
+tkinter_example_bool_get := tkinter_example_bool.get()
+tkinter_example_bool_set_return := tkinter_example_bool.set("off")
+tkinter_example_bool_after_set := tkinter_example_bool.get()
 
 tkinter_example_missing_error := ""
 try {

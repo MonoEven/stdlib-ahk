@@ -51,6 +51,16 @@ class AhkStdlibTkinter
     {
         return AhkStdlibTkinterIntVar(args*)
     }
+
+    static DoubleVar(args*)
+    {
+        return AhkStdlibTkinterDoubleVar(args*)
+    }
+
+    static BooleanVar(args*)
+    {
+        return AhkStdlibTkinterBooleanVar(args*)
+    }
 }
 
 class Tk
@@ -212,13 +222,14 @@ class Tk
     }
 }
 
-class AhkStdlibTkinterStringVar
+class AhkStdlibTkinterVariable
 {
-    __New(args*)
+    __New(className, defaultValue, args*)
     {
         hasMaster := false
         master := stdlib.None
-        value := ""
+        hasValue := false
+        value := stdlib.None
         hasName := false
         name := ""
 
@@ -230,23 +241,26 @@ class AhkStdlibTkinterStringVar
                         hasMaster := true
                         master := optionValue
                     case "value":
+                        hasValue := true
                         value := optionValue
                     case "name":
                         hasName := true
                         name := optionValue
                     default:
-                        throw TypeError("StringVar.__init__() got an unexpected keyword argument '" key "'", -1)
+                        throw TypeError(className ".__init__() got an unexpected keyword argument '" key "'", -1)
                 }
             }
         } else {
             if args.Length > 3
-                throw TypeError("StringVar.__init__() takes from 1 to 4 positional arguments but " args.Length + 1 " were given", -1)
+                throw TypeError(className ".__init__() takes from 1 to 4 positional arguments but " args.Length + 1 " were given", -1)
             if args.Length >= 1 {
                 hasMaster := true
                 master := args[1]
             }
-            if args.Length >= 2
+            if args.Length >= 2 {
+                hasValue := true
                 value := args[2]
+            }
             if args.Length >= 3 {
                 hasName := true
                 name := args[3]
@@ -260,8 +274,24 @@ class AhkStdlibTkinterStringVar
 
         this._tk := master._root()
         this._master := master
-        this._name := hasName ? AhkStdlibTkinterNormalizeVarName(name) : AhkStdlibTkinterNextVarName()
-        this.set(value)
+        this._name := AhkStdlibTkinterResolveVarName(hasName, name)
+        if hasValue && !AhkStdlibIsNone(value)
+            this.set(value)
+        else if !AhkStdlibTkinterVarExists(this._tk.AhkStdlibInterp, this._name)
+            this.set(defaultValue)
+    }
+
+    ToString()
+    {
+        return this._name
+    }
+}
+
+class AhkStdlibTkinterStringVar extends AhkStdlibTkinterVariable
+{
+    __New(args*)
+    {
+        super.__New("StringVar", "", args*)
     }
 
     get()
@@ -276,56 +306,11 @@ class AhkStdlibTkinterStringVar
     }
 }
 
-class AhkStdlibTkinterIntVar
+class AhkStdlibTkinterIntVar extends AhkStdlibTkinterVariable
 {
     __New(args*)
     {
-        hasMaster := false
-        master := stdlib.None
-        value := 0
-        hasName := false
-        name := ""
-
-        if args.Length = 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1]) {
-            options := args[1]
-            for key, optionValue in options.OwnProps() {
-                switch key {
-                    case "master":
-                        hasMaster := true
-                        master := optionValue
-                    case "value":
-                        value := optionValue
-                    case "name":
-                        hasName := true
-                        name := optionValue
-                    default:
-                        throw TypeError("IntVar.__init__() got an unexpected keyword argument '" key "'", -1)
-                }
-            }
-        } else {
-            if args.Length > 3
-                throw TypeError("IntVar.__init__() takes from 1 to 4 positional arguments but " args.Length + 1 " were given", -1)
-            if args.Length >= 1 {
-                hasMaster := true
-                master := args[1]
-            }
-            if args.Length >= 2
-                value := args[2]
-            if args.Length >= 3 {
-                hasName := true
-                name := args[3]
-            }
-        }
-
-        if !hasMaster
-            throw RuntimeError("Too early to create variable: no default root window", -1)
-        if !HasMethod(master, "_root")
-            throw AttributeError("'" AhkStdlibPyTypeName(master) "' object has no attribute '_root'", -1)
-
-        this._tk := master._root()
-        this._master := master
-        this._name := hasName ? AhkStdlibTkinterNormalizeVarName(name) : AhkStdlibTkinterNextVarName()
-        this.set(AhkStdlibIsNone(value) ? 0 : value)
+        super.__New("IntVar", 0, args*)
     }
 
     get()
@@ -337,6 +322,53 @@ class AhkStdlibTkinterIntVar
     set(value)
     {
         this._tk.setvar(this._name, AhkStdlibTkinterIntVarValueToString(value))
+        return stdlib.None
+    }
+}
+
+class AhkStdlibTkinterDoubleVar extends AhkStdlibTkinterVariable
+{
+    __New(args*)
+    {
+        super.__New("DoubleVar", 0.0, args*)
+    }
+
+    get()
+    {
+        value := this._tk.getvar(this._name)
+        return AhkStdlibTkinterGetDouble(this._tk.AhkStdlibInterp, value)
+    }
+
+    set(value)
+    {
+        this._tk.setvar(this._name, AhkStdlibTkinterValueToString(value))
+        return stdlib.None
+    }
+}
+
+class AhkStdlibTkinterBooleanVar extends AhkStdlibTkinterVariable
+{
+    __New(args*)
+    {
+        super.__New("BooleanVar", stdlib.False, args*)
+    }
+
+    get()
+    {
+        try {
+            value := this._tk.getvar(this._name)
+            return AhkStdlibTkinterGetBoolean(this._tk.AhkStdlibInterp, value)
+        } catch as err {
+            if err is AhkStdlibTkinter.TclError
+                throw ValueError("invalid literal for getboolean()", -1)
+            throw err
+        }
+    }
+
+    set(value)
+    {
+        boolValue := AhkStdlibTkinterGetBoolean(this._tk.AhkStdlibInterp, value)
+        this._tk.setvar(this._name, boolValue.Value ? "1" : "0")
         return stdlib.None
     }
 }
@@ -522,15 +554,32 @@ AhkStdlibTkinterGetVar(interp, name)
 
 AhkStdlibTkinterNormalizeVarName(value)
 {
+    if AhkStdlibIsNone(value)
+        return ""
     if value is String
         return value
     throw TypeError("name must be a string", -1)
 }
 
+AhkStdlibTkinterResolveVarName(hasName, name)
+{
+    if hasName {
+        normalized := AhkStdlibTkinterNormalizeVarName(name)
+        if normalized != ""
+            return normalized
+    }
+    return AhkStdlibTkinterNextVarName()
+}
+
+AhkStdlibTkinterVarExists(interp, name)
+{
+    return !(AhkStdlibTkinterGetVar(interp, name) == AhkStdlibTkinterMissingValue())
+}
+
 AhkStdlibTkinterValueToString(value)
 {
     if AhkStdlibIsNone(value)
-        return ""
+        return "None"
     if AhkStdlibIsBool(value)
         return value.Value ? "1" : "0"
     return value ""
@@ -553,6 +602,21 @@ AhkStdlibTkinterGetDouble(interp, value)
     if result != 0
         throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
     return NumGet(doubleBuffer, 0, "Double")
+}
+
+AhkStdlibTkinterGetBoolean(interp, value)
+{
+    if AhkStdlibIsNone(value)
+        throw TypeError("getboolean() argument must be str, not None", -1)
+    if AhkStdlibIsBool(value)
+        return value.Value ? stdlib.True : stdlib.False
+
+    valueBuffer := AhkStdlibTkinterUtf8Buffer(value)
+    boolBuffer := Buffer(4, 0)
+    result := DllCall("tcl86t\Tcl_GetBoolean", "Ptr", interp, "Ptr", valueBuffer.Ptr, "Ptr", boolBuffer.Ptr, "Int")
+    if result != 0
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
+    return NumGet(boolBuffer, 0, "Int") ? stdlib.True : stdlib.False
 }
 
 AhkStdlibTkinterTruncateFloat(value)
