@@ -280,6 +280,66 @@ class StdlibTkinterTest
         }
     }
 
+    static TestListboxSelectionAndItemSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            listbox := stdlib.tkinter.Listbox(root, { name: "choices", height: 4, width: 12, selectmode: "extended" })
+
+            AhkTest.AssertEqual("Listbox", Type(listbox))
+            AhkTest.AssertEqual(".choices", String(listbox))
+            AhkTest.AssertSame(root, listbox._root())
+            AhkTest.AssertEqual(1, listbox.winfo_exists())
+            AhkTest.AssertEqual(4, listbox.cget("height"))
+            AhkTest.AssertEqual(12, listbox.cget("width"))
+            AhkTest.AssertEqual("extended", listbox.cget("selectmode"))
+            AhkTest.AssertEqual(0, listbox.size())
+            AhkTest.AssertEqual("", listbox.get(0))
+            AhkTest.AssertEqual(stdlib.None, listbox.insert("end", "alpha", "beta"))
+            AhkTest.AssertEqual(stdlib.None, listbox.insert(1, "gamma"))
+            AhkTest.AssertEqual(stdlib.None, listbox.insert("end"))
+            AhkTest.AssertEqual(3, listbox.size())
+            AhkTest.AssertEqual("alpha", listbox.get(0))
+            AhkTest.AssertEqual(stdlib.tuple(["alpha", "gamma", "beta"]), listbox.get(0, "end"))
+            AhkTest.AssertEqual(stdlib.tuple(["gamma", "beta"]), listbox.get(1, 2))
+            AhkTest.AssertEqual(3, listbox.index("end"))
+            AhkTest.AssertEqual(stdlib.None, listbox.selection_set(0, 1))
+            AhkTest.AssertEqual(stdlib.tuple([0, 1]), listbox.curselection())
+            AhkTest.AssertSame(stdlib.True, listbox.selection_includes(0))
+            AhkTest.AssertSame(stdlib.False, listbox.selection_includes(2))
+            AhkTest.AssertEqual(stdlib.None, listbox.selection_clear(0))
+            AhkTest.AssertEqual(stdlib.tuple([1]), listbox.curselection())
+            AhkTest.AssertEqual(stdlib.None, listbox.delete(1))
+            AhkTest.AssertEqual(stdlib.tuple(["alpha", "beta"]), listbox.get(0, "end"))
+            AhkTest.AssertEqual(stdlib.None, listbox.delete(0, "end"))
+            AhkTest.AssertEqual(0, listbox.size())
+            AhkTest.AssertEqual(stdlib.tuple(), listbox.curselection())
+            AhkTest.AssertEqual(stdlib.None, listbox.pack())
+            AhkTest.AssertEqual("pack", listbox.winfo_manager())
+            AhkTest.AssertEqual(stdlib.None, listbox.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .choices"))
+
+            AhkTest.AssertEqual(".kw", String(stdlib.tkinter.Listbox({ master: root, name: "kw" })))
+            AhkTest.AssertEqual(3, stdlib.tkinter.Listbox(root, { name: "cnf", height: 3 }).cget("height"))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Listbox({ master: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Listbox\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Listbox(root, {}, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Listbox(root, { extra_kw: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Listbox\.insert\(\) missing 1 required positional argument: 'index'$", (*) => stdlib.tkinter.Listbox(root).insert())
+            AhkTest.RaisesMatch(TypeError, "^Listbox\.get\(\) missing 1 required positional argument: 'first'$", (*) => stdlib.tkinter.Listbox(root).get())
+            AhkTest.RaisesMatch(TypeError, "^Listbox\.get\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Listbox(root).get(0, 1, 2))
+            AhkTest.RaisesMatch(TypeError, "^Listbox\.delete\(\) missing 1 required positional argument: 'first'$", (*) => stdlib.tkinter.Listbox(root).delete())
+            AhkTest.RaisesMatch(TypeError, "^Listbox\.size\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Listbox(root).size(1))
+            AhkTest.RaisesMatch(TypeError, "^Listbox\.curselection\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Listbox(root).curselection(1))
+            AhkTest.RaisesMatch(TypeError, "^Listbox\.selection_set\(\) missing 1 required positional argument: 'first'$", (*) => stdlib.tkinter.Listbox(root).selection_set())
+            AhkTest.RaisesMatch(TypeError, "^Listbox\.selection_includes\(\) missing 1 required positional argument: 'index'$", (*) => stdlib.tkinter.Listbox(root).selection_includes())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad listbox index "bad": must be active, anchor, end, @x,y, or a number$', (*) => stdlib.tkinter.Listbox(root).selection_includes("bad"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestButtonCommandInvokeMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

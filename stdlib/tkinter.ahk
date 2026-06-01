@@ -77,6 +77,11 @@ class AhkStdlibTkinter
         return Entry(args*)
     }
 
+    static Listbox(args*)
+    {
+        return Listbox(args*)
+    }
+
     static Text(args*)
     {
         return Text(args*)
@@ -895,6 +900,115 @@ class Entry extends AhkStdlibTkinterWidget
     }
 }
 
+class Listbox extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Listbox", "listbox", args*)
+    }
+
+    curselection(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Listbox.curselection() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return AhkStdlibTkinterIntegerTuple(this.AhkStdlibRoot.eval(this._w " curselection"))
+    }
+
+    delete(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.delete() missing 1 required positional argument: 'first'", -1)
+        if args.Length > 2
+            throw TypeError("Listbox.delete() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " delete " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    get(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.get() missing 1 required positional argument: 'first'", -1)
+        if args.Length > 2
+            throw TypeError("Listbox.get() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " get " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 1
+            return this.AhkStdlibRoot.eval(script)
+        script .= " " AhkStdlibTkinterTclWord(args[2])
+        return stdlib.tuple(AhkStdlibTkinterSimpleList(this.AhkStdlibRoot.eval(script)))
+    }
+
+    index(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.index() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Listbox.index() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " index " AhkStdlibTkinterTclWord(args[1]))
+        if value = "none"
+            return stdlib.None
+        return Integer(value)
+    }
+
+    insert(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.insert() missing 1 required positional argument: 'index'", -1)
+        script := this._w " insert " AhkStdlibTkinterTclWord(args[1])
+        index := 2
+        while index <= args.Length {
+            script .= " " AhkStdlibTkinterTclWord(args[index])
+            index += 1
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    selection_clear(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.selection_clear() missing 1 required positional argument: 'first'", -1)
+        if args.Length > 2
+            throw TypeError("Listbox.selection_clear() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " selection clear " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    selection_includes(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.selection_includes() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Listbox.selection_includes() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " selection includes " AhkStdlibTkinterTclWord(args[1])) = "1" ? stdlib.True : stdlib.False
+    }
+
+    selection_set(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.selection_set() missing 1 required positional argument: 'first'", -1)
+        if args.Length > 2
+            throw TypeError("Listbox.selection_set() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " selection set " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    size(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Listbox.size() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.AhkStdlibRoot.eval(this._w " size"))
+    }
+}
+
 class AhkStdlibTkinterVariable
 {
     __New(className, defaultValue, args*)
@@ -1508,6 +1622,27 @@ AhkStdlibTkinterRgbTuple(value)
         if part != ""
             result.Push(Integer(part))
     return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterIntegerTuple(value)
+{
+    result := []
+    for part in StrSplit(Trim(value), " ")
+        if part != ""
+            result.Push(Integer(part))
+    return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterSimpleList(value)
+{
+    result := []
+    value := Trim(value)
+    if value = ""
+        return result
+    for part in StrSplit(value, " ")
+        if part != ""
+            result.Push(part)
+    return result
 }
 
 AhkStdlibTkinterPhotoImageToOption(value)
