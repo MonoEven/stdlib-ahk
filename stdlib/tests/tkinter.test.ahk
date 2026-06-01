@@ -802,6 +802,43 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkVirtualEventRegistryMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            label := stdlib.tkinter.Label(root, { name: "event_label", text: "Events" })
+
+            AhkTest.AssertContains("<<Cut>>", root.event_info())
+            AhkTest.AssertContains("<<Cut>>", label.event_info(stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple([]), label.event_info("<<StdlibMissing>>"))
+
+            AhkTest.AssertEqual(stdlib.None, label.event_add("<<StdlibProbe>>", "<Button-1>", "<Key-a>"))
+            AhkTest.AssertContains("<<StdlibProbe>>", label.event_info())
+            AhkTest.AssertContains("<<StdlibProbe>>", root.event_info())
+            AhkTest.AssertEqual(stdlib.tuple(["<Button-1>", "a"]), label.event_info("<<StdlibProbe>>"))
+            AhkTest.AssertEqual(stdlib.tuple(["<Button-1>", "a"]), root.event_info("<<StdlibProbe>>"))
+
+            AhkTest.AssertEqual(stdlib.None, label.event_add("<<StdlibProbe>>", "<Button-1>"))
+            AhkTest.AssertEqual(stdlib.tuple(["<Button-1>", "a"]), label.event_info("<<StdlibProbe>>"))
+            AhkTest.AssertEqual(stdlib.None, label.event_delete("<<StdlibProbe>>", "<Key-a>"))
+            AhkTest.AssertEqual(stdlib.tuple(["<Button-1>"]), label.event_info("<<StdlibProbe>>"))
+            AhkTest.AssertEqual(stdlib.None, root.event_delete("<<StdlibProbe>>", "<Button-1>"))
+            AhkTest.AssertEqual(stdlib.tuple([]), label.event_info("<<StdlibProbe>>"))
+            AhkTest.AssertEqual(stdlib.None, label.event_delete("<<StdlibProbe>>"))
+            AhkTest.AssertEqual(stdlib.tuple([]), root.event_info("<<StdlibProbe>>"))
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.event_add\(\) missing 1 required positional argument: 'virtual'$", (*) => label.event_add())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.event_delete\(\) missing 1 required positional argument: 'virtual'$", (*) => root.event_delete())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.event_info\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => label.event_info("<<A>>", "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "event add virtual sequence \?sequence \.\.\.\?"$', (*) => label.event_add("<<NoSeq>>"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^virtual event "bad" is badly formed$', (*) => label.event_add("bad", "<Button-1>"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetsSupportVisibleGuiSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()

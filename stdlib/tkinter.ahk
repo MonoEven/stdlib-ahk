@@ -394,6 +394,21 @@ class Tk
         return AhkStdlibTkinterEventGenerate(this, ".", args*)
     }
 
+    event_add(args*)
+    {
+        return AhkStdlibTkinterEventAdd(this, args*)
+    }
+
+    event_delete(args*)
+    {
+        return AhkStdlibTkinterEventDelete(this, args*)
+    }
+
+    event_info(args*)
+    {
+        return AhkStdlibTkinterEventInfo(this, args*)
+    }
+
     lift(args*)
     {
         return AhkStdlibTkinterStacking(this, ".", "raise", "tkraise", args*)
@@ -972,6 +987,21 @@ class AhkStdlibTkinterWidget
     event_generate(args*)
     {
         return AhkStdlibTkinterEventGenerate(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    event_add(args*)
+    {
+        return AhkStdlibTkinterEventAdd(this.AhkStdlibRoot, args*)
+    }
+
+    event_delete(args*)
+    {
+        return AhkStdlibTkinterEventDelete(this.AhkStdlibRoot, args*)
+    }
+
+    event_info(args*)
+    {
+        return AhkStdlibTkinterEventInfo(this.AhkStdlibRoot, args*)
     }
 
     lift(args*)
@@ -2933,6 +2963,41 @@ AhkStdlibTkinterEventGenerate(root, window, args*)
     }
     root.eval(script)
     return stdlib.None
+}
+
+AhkStdlibTkinterEventAdd(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.event_add() missing 1 required positional argument: 'virtual'", -1)
+
+    script := "event add " AhkStdlibTkinterTclWord(args[1])
+    loop args.Length - 1
+        script .= " " AhkStdlibTkinterTclWord(args[A_Index + 1])
+    root.eval(script)
+    return stdlib.None
+}
+
+AhkStdlibTkinterEventDelete(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.event_delete() missing 1 required positional argument: 'virtual'", -1)
+
+    script := "event delete " AhkStdlibTkinterTclWord(args[1])
+    loop args.Length - 1
+        script .= " " AhkStdlibTkinterTclWord(args[A_Index + 1])
+    root.eval(script)
+    return stdlib.None
+}
+
+AhkStdlibTkinterEventInfo(root, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc.event_info() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "event info"
+    if args.Length = 1 && !AhkStdlibIsNone(args[1])
+        script .= " " AhkStdlibTkinterTclWord(args[1])
+    return stdlib.tuple(AhkStdlibTkinterSimpleList(root.eval(script)))
 }
 
 AhkStdlibTkinterStacking(root, window, command, methodName, args*)
