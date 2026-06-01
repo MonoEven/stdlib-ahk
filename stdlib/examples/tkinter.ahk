@@ -27,6 +27,7 @@ tkinter_example_tk_package := tkinter_example_tk_interp.eval("package require Tk
 tkinter_example_root := stdlib.tkinter.Tk()
 tkinter_example_saved_clipboard := A_Clipboard
 tkinter_example_option_file := A_Temp "\stdlib-tkinter-example-options-" A_TickCount "-" Random(100000, 999999) ".txt"
+tkinter_example_photo_file := A_Temp "\stdlib-tkinter-example-photo-" A_TickCount "-" Random(100000, 999999) ".png"
 tkinter_example_postscript_file := A_Temp "\stdlib-tkinter-example-canvas-" A_TickCount "-" Random(100000, 999999) ".ps"
 try {
     tkinter_example_root_manager := tkinter_example_root.winfo_manager()
@@ -411,6 +412,18 @@ try {
     tkinter_example_photo_height := tkinter_example_photo.height()
     tkinter_example_photo_put_return := tkinter_example_photo.put("{#ff0000 #00ff00} {#0000ff #ffffff}", { to: [0, 0, 2, 2] })
     tkinter_example_photo_pixel := tkinter_example_photo.get(1, 0)
+    tkinter_example_photo_duplicate := tkinter_example_photo.copy()
+    tkinter_example_photo_duplicate_pixel := tkinter_example_photo_duplicate.get(0, 1)
+    tkinter_example_photo_zoomed := tkinter_example_photo.zoom(2, 3)
+    tkinter_example_photo_zoomed_size := stdlib.tuple([tkinter_example_photo_zoomed.width(), tkinter_example_photo_zoomed.height()])
+    tkinter_example_photo_sampled := tkinter_example_photo_zoomed.subsample(2, 3)
+    tkinter_example_photo_sampled_size := stdlib.tuple([tkinter_example_photo_sampled.width(), tkinter_example_photo_sampled.height()])
+    tkinter_example_photo_transparent_before := tkinter_example_photo.transparency_get(0, 0)
+    tkinter_example_photo_transparent_set_return := tkinter_example_photo.transparency_set(0, 0, stdlib.True)
+    tkinter_example_photo_transparent_after := tkinter_example_photo.transparency_get(0, 0)
+    try FileDelete tkinter_example_photo_file
+    tkinter_example_photo_write_return := tkinter_example_photo.write(tkinter_example_photo_file, "png")
+    tkinter_example_photo_file_exists := FileExist(tkinter_example_photo_file)
     tkinter_example_photo_label := stdlib.tkinter.Label(tkinter_example_root, { image: tkinter_example_photo })
     tkinter_example_photo_label_image := tkinter_example_photo_label.cget("image")
     tkinter_example_root_image_types := tkinter_example_root.image_types()
@@ -586,6 +599,7 @@ try {
 } finally {
     try tkinter_example_root.destroy()
     try FileDelete tkinter_example_option_file
+    try FileDelete tkinter_example_photo_file
     try FileDelete tkinter_example_postscript_file
     A_Clipboard := tkinter_example_saved_clipboard
 }

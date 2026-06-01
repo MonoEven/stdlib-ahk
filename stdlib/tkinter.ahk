@@ -2074,6 +2074,15 @@ class PhotoImage extends AhkStdlibTkinterImage
         return stdlib.None
     }
 
+    copy(args*)
+    {
+        if args.Length != 0
+            throw TypeError("PhotoImage.copy() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        destImage := PhotoImage({ master: this.tk })
+        this.tk.eval(AhkStdlibTkinterTclWord(destImage.name) " copy " AhkStdlibTkinterTclWord(this.name))
+        return destImage
+    }
+
     cget(args*)
     {
         if args.Length = 0
@@ -2108,6 +2117,78 @@ class PhotoImage extends AhkStdlibTkinterImage
         }
         this.tk.eval(script)
         return stdlib.None
+    }
+
+    subsample(args*)
+    {
+        if args.Length = 0
+            throw TypeError("PhotoImage.subsample() missing 1 required positional argument: 'x'", -1)
+        if args.Length > 2
+            throw TypeError("PhotoImage.subsample() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        x := args[1]
+        y := args.Length = 1 || args[2] = "" ? x : args[2]
+        destImage := PhotoImage({ master: this.tk })
+        this.tk.eval(AhkStdlibTkinterTclWord(destImage.name) " copy " AhkStdlibTkinterTclWord(this.name) " -subsample " AhkStdlibTkinterTclWord(x) " " AhkStdlibTkinterTclWord(y))
+        return destImage
+    }
+
+    transparency_get(args*)
+    {
+        if args.Length = 0
+            throw TypeError("PhotoImage.transparency_get() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("PhotoImage.transparency_get() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("PhotoImage.transparency_get() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.tk.eval(AhkStdlibTkinterTclWord(this.name) " transparency get " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return AhkStdlibTkinterGetBoolean(this.tk.AhkStdlibInterp, value)
+    }
+
+    transparency_set(args*)
+    {
+        if args.Length = 0
+            throw TypeError("PhotoImage.transparency_set() missing 3 required positional arguments: 'x', 'y', and 'boolean'", -1)
+        if args.Length < 3
+            throw TypeError("PhotoImage.transparency_set() missing 1 required positional argument: 'boolean'", -1)
+        if args.Length > 3
+            throw TypeError("PhotoImage.transparency_set() takes 4 positional arguments but " args.Length + 1 " were given", -1)
+        this.tk.eval(AhkStdlibTkinterTclWord(this.name) " transparency set " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]) " " AhkStdlibTkinterTclWord(args[3]))
+        return stdlib.None
+    }
+
+    write(args*)
+    {
+        if args.Length = 0
+            throw TypeError("PhotoImage.write() missing 1 required positional argument: 'filename'", -1)
+        if args.Length > 3
+            throw TypeError("PhotoImage.write() takes from 2 to 4 positional arguments but " args.Length + 1 " were given", -1)
+        script := AhkStdlibTkinterTclWord(this.name) " write " AhkStdlibTkinterTclWord(args[1])
+        if args.Length >= 2 && AhkStdlibTruthValue(args[2])
+            script .= " -format " AhkStdlibTkinterTclWord(args[2])
+        if args.Length >= 3 && AhkStdlibTruthValue(args[3]) {
+            script .= " -from"
+            if args[3] is Array {
+                for value in args[3]
+                    script .= " " AhkStdlibTkinterTclWord(value)
+            } else {
+                script .= " " AhkStdlibTkinterTclWord(args[3])
+            }
+        }
+        this.tk.eval(script)
+        return stdlib.None
+    }
+
+    zoom(args*)
+    {
+        if args.Length = 0
+            throw TypeError("PhotoImage.zoom() missing 1 required positional argument: 'x'", -1)
+        if args.Length > 2
+            throw TypeError("PhotoImage.zoom() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        x := args[1]
+        y := args.Length = 1 || args[2] = "" ? x : args[2]
+        destImage := PhotoImage({ master: this.tk })
+        this.tk.eval(AhkStdlibTkinterTclWord(destImage.name) " copy " AhkStdlibTkinterTclWord(this.name) " -zoom " AhkStdlibTkinterTclWord(x) " " AhkStdlibTkinterTclWord(y))
+        return destImage
     }
 }
 

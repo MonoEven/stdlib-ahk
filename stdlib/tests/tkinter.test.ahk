@@ -2245,6 +2245,64 @@ class StdlibTkinterTest
         }
     }
 
+    static TestPhotoImageTransformWriteAndTransparencySurfaceMatchesLocal310()
+    {
+        outputPath := A_Temp "\stdlib-tkinter-photo-transform-" A_TickCount "-" Random(100000, 999999) ".png"
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            image := stdlib.tkinter.PhotoImage({ master: root, width: 3, height: 2 })
+            AhkTest.AssertEqual(stdlib.None, image.put("#112233", { to: [0, 0, 2, 1] }))
+            AhkTest.AssertEqual(stdlib.None, image.put("#abcdef", { to: [2, 1] }))
+
+            dupImage := image.copy()
+            AhkTest.AssertEqual("PhotoImage", Type(dupImage))
+            AhkTest.AssertEqual(3, dupImage.width())
+            AhkTest.AssertEqual(2, dupImage.height())
+            AhkTest.AssertEqual("photo", dupImage.type())
+            AhkTest.AssertEqual(stdlib.tuple([17, 34, 51]), dupImage.get(0, 0))
+            AhkTest.AssertEqual(stdlib.tuple([171, 205, 239]), dupImage.get(2, 1))
+
+            zoomed := image.zoom(2, 3)
+            AhkTest.AssertEqual(6, zoomed.width())
+            AhkTest.AssertEqual(6, zoomed.height())
+            AhkTest.AssertEqual(stdlib.tuple([17, 34, 51]), zoomed.get(1, 2))
+            sampled := zoomed.subsample(2, 3)
+            AhkTest.AssertEqual(3, sampled.width())
+            AhkTest.AssertEqual(2, sampled.height())
+            AhkTest.AssertEqual(stdlib.tuple([171, 205, 239]), sampled.get(2, 1))
+
+            AhkTest.AssertSame(stdlib.False, image.transparency_get(0, 0))
+            AhkTest.AssertEqual(stdlib.None, image.transparency_set(0, 0, stdlib.True))
+            AhkTest.AssertSame(stdlib.True, image.transparency_get(0, 0))
+            AhkTest.AssertEqual(stdlib.None, image.transparency_set(0, 0, stdlib.False))
+            AhkTest.AssertSame(stdlib.False, image.transparency_get(0, 0))
+
+            try FileDelete outputPath
+            AhkTest.AssertEqual(stdlib.None, image.write(outputPath, "png"))
+            AhkTest.AssertTrue(FileExist(outputPath) != "")
+
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.copy\(\) takes 1 positional argument but 2 were given$", (*) => image.copy(1))
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.zoom\(\) missing 1 required positional argument: 'x'$", (*) => image.zoom())
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.zoom\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => image.zoom(1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.subsample\(\) missing 1 required positional argument: 'x'$", (*) => image.subsample())
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.subsample\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => image.subsample(1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.write\(\) missing 1 required positional argument: 'filename'$", (*) => image.write())
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.transparency_get\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => image.transparency_get())
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.transparency_get\(\) missing 1 required positional argument: 'y'$", (*) => image.transparency_get(0))
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.transparency_get\(\) takes 3 positional arguments but 4 were given$", (*) => image.transparency_get(0, 0, 0))
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.transparency_set\(\) missing 3 required positional arguments: 'x', 'y', and 'boolean'$", (*) => image.transparency_set())
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.transparency_set\(\) missing 1 required positional argument: 'boolean'$", (*) => image.transparency_set(0, 0))
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.transparency_set\(\) takes 4 positional arguments but 5 were given$", (*) => image.transparency_set(0, 0, stdlib.True, stdlib.False))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => image.transparency_get("bad", 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected boolean value but got "maybe"$', (*) => image.transparency_set(0, 0, "maybe"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+            try FileDelete outputPath
+        }
+    }
+
     static TestTkImageRegistryQueriesMatchLocal310()
     {
         root := stdlib.tkinter.Tk()
