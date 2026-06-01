@@ -278,6 +278,51 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWindowIconifyLifecycleMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            AhkTest.AssertEqual("normal", root.state())
+            AhkTest.AssertEqual("", root.iconify())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("iconic", root.state())
+            AhkTest.AssertEqual(0, root.winfo_viewable())
+            AhkTest.AssertEqual(0, root.winfo_ismapped())
+            AhkTest.AssertEqual("", root.deiconify())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("normal", root.state())
+            AhkTest.AssertEqual(1, root.winfo_viewable())
+            AhkTest.AssertEqual(1, root.winfo_ismapped())
+            AhkTest.AssertEqual("", root.withdraw())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("withdrawn", root.state())
+            AhkTest.AssertEqual("", root.iconify())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("iconic", root.state())
+
+            top := stdlib.tkinter.Toplevel(root, { name: "icon_dialog" })
+            AhkTest.AssertEqual("normal", top.state())
+            AhkTest.AssertEqual("", top.iconify())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("iconic", top.state())
+            AhkTest.AssertEqual("", top.deiconify())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("normal", top.state())
+
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_iconify\(\) takes 1 positional argument but 2 were given$", (*) => root.iconify(1))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_iconify\(\) takes 1 positional argument but 2 were given$", (*) => top.iconify(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetIdentityTreeSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

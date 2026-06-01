@@ -341,6 +341,13 @@ class Tk
         return this.eval("wm withdraw .")
     }
 
+    iconify(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Wm.wm_iconify() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.eval("wm iconify .")
+    }
+
     deiconify(args*)
     {
         if args.Length != 0
@@ -912,6 +919,13 @@ class Toplevel extends AhkStdlibTkinterWidget
         if args.Length != 0
             throw TypeError("Wm.wm_withdraw() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval("wm withdraw " this._w)
+    }
+
+    iconify(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Wm.wm_iconify() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval("wm iconify " this._w)
     }
 
     deiconify(args*)
