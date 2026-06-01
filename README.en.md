@@ -20,7 +20,7 @@ geometry, and window sizing APIs, `Toplevel` windows with state, transient relat
 `PhotoImage` image objects, image registry queries, widget option-key introspection, visibility, coordinate/size, identity-tree queries, and path-to-widget lookup, plus focused `pack`, `grid`, and `place` layout/info/forget/child-query/geometry
 behavior, window-manager protocol callbacks, `Button` / `Checkbutton` / `Radiobutton` command callbacks through `invoke()`,
 `Scale` numeric state, `Scrollbar` range state, `Menu` command entries,
-`Entry` cursor and selection state, focus management, event binding, `bind_all()` / `bind_class()` routing, unbind APIs, bind-tag routing, virtual event registry queries, and synthetic event generation,
+`Entry` cursor and selection state, focus management, `getint()` / `getdouble()` / `getboolean()` conversions, event binding, `bind_all()` / `bind_class()` routing, unbind APIs, bind-tag routing, virtual event registry queries, and synthetic event generation,
 window/widget stacking with `lift()` / `tkraise()` / `lower()`, local grab state with
 `grab_set()` / `grab_release()` / `grab_current()` / `grab_status()`,
 window lifecycle waits with `wait_variable()` / `waitvar()` / `wait_window()` / `wait_visibility()`,

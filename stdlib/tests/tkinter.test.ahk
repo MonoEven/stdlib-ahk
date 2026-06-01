@@ -172,6 +172,66 @@ class StdlibTkinterTest
         AhkTest.AssertEqual("8.6.12", interp.eval("package require Tk"))
     }
 
+    static TestTkMiscNumericAndBooleanConversionsMatchLocal310()
+    {
+        interp := stdlib.tkinter.Tcl()
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            label := stdlib.tkinter.Label(root, { text: "Convert" })
+
+            for owner in [interp, root, label] {
+                AhkTest.AssertEqual(7, owner.getint("7"))
+                AhkTest.AssertEqual(7, owner.getint("+7"))
+                AhkTest.AssertEqual(-7, owner.getint("-7"))
+                AhkTest.AssertEqual(7, owner.getint(" 7 "))
+                AhkTest.AssertEqual(16, owner.getint("0x10"))
+                AhkTest.AssertSame(stdlib.True, owner.getint(stdlib.True))
+                AhkTest.AssertSame(stdlib.False, owner.getint(stdlib.False))
+
+                AhkTest.AssertEqual(1.25, owner.getdouble("1.25"))
+                AhkTest.AssertEqual(2.0, owner.getdouble("2"))
+                AhkTest.AssertEqual(3.5, owner.getdouble("+3.5"))
+                AhkTest.AssertEqual(4.5, owner.getdouble(" 4.5 "))
+                AhkTest.AssertEqual(1.0, owner.getdouble(stdlib.True))
+                AhkTest.AssertEqual(0.0, owner.getdouble(stdlib.False))
+
+                AhkTest.AssertSame(stdlib.True, owner.getboolean("1"))
+                AhkTest.AssertSame(stdlib.False, owner.getboolean("0"))
+                AhkTest.AssertSame(stdlib.True, owner.getboolean("true"))
+                AhkTest.AssertSame(stdlib.False, owner.getboolean("false"))
+                AhkTest.AssertSame(stdlib.True, owner.getboolean("yes"))
+                AhkTest.AssertSame(stdlib.False, owner.getboolean("no"))
+                AhkTest.AssertSame(stdlib.True, owner.getboolean("on"))
+                AhkTest.AssertSame(stdlib.False, owner.getboolean("off"))
+                AhkTest.AssertSame(stdlib.True, owner.getboolean(stdlib.True))
+                AhkTest.AssertSame(stdlib.False, owner.getboolean(stdlib.False))
+                AhkTest.AssertSame(stdlib.True, owner.getboolean(1))
+                AhkTest.AssertSame(stdlib.False, owner.getboolean(0))
+
+                AhkTest.RaisesMatch(ValueError, '^expected integer but got "3\.5"$', ObjBindMethod(owner, "getint", "3.5"))
+                AhkTest.RaisesMatch(ValueError, '^expected integer but got "09"$', ObjBindMethod(owner, "getint", "09"))
+                AhkTest.RaisesMatch(TypeError, "^getint\(\) argument must be str, not None$", ObjBindMethod(owner, "getint", stdlib.None))
+                AhkTest.RaisesMatch(TypeError, "^getint\(\) argument must be str, not list$", ObjBindMethod(owner, "getint", []))
+                AhkTest.RaisesMatch(ValueError, "^floating point value is Not a Number$", ObjBindMethod(owner, "getdouble", "nan"))
+                AhkTest.RaisesMatch(ValueError, '^expected floating-point number but got "09" \(looks like invalid octal number\)$', ObjBindMethod(owner, "getdouble", "09"))
+                AhkTest.RaisesMatch(TypeError, "^getdouble\(\) argument must be str, not None$", ObjBindMethod(owner, "getdouble", stdlib.None))
+                AhkTest.RaisesMatch(TypeError, "^getdouble\(\) argument must be str, not list$", ObjBindMethod(owner, "getdouble", []))
+                AhkTest.RaisesMatch(ValueError, "^invalid literal for getboolean\(\)$", ObjBindMethod(owner, "getboolean", "maybe"))
+                AhkTest.RaisesMatch(TypeError, "^getboolean\(\) argument must be str, not None$", ObjBindMethod(owner, "getboolean", stdlib.None))
+                AhkTest.RaisesMatch(TypeError, "^Misc\.getint\(\) missing 1 required positional argument: 's'$", ObjBindMethod(owner, "getint"))
+                AhkTest.RaisesMatch(TypeError, "^Misc\.getint\(\) takes 2 positional arguments but 3 were given$", ObjBindMethod(owner, "getint", "1", "2"))
+                AhkTest.RaisesMatch(TypeError, "^Misc\.getdouble\(\) missing 1 required positional argument: 's'$", ObjBindMethod(owner, "getdouble"))
+                AhkTest.RaisesMatch(TypeError, "^Misc\.getdouble\(\) takes 2 positional arguments but 3 were given$", ObjBindMethod(owner, "getdouble", "1", "2"))
+                AhkTest.RaisesMatch(TypeError, "^Misc\.getboolean\(\) missing 1 required positional argument: 's'$", ObjBindMethod(owner, "getboolean"))
+                AhkTest.RaisesMatch(TypeError, "^Misc\.getboolean\(\) takes 2 positional arguments but 3 were given$", ObjBindMethod(owner, "getboolean", "1", "2"))
+            }
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkPublicConstructorLoadsTkRootLikeLocal310()
     {
         root := stdlib.tkinter.Tk()

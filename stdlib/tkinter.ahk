@@ -279,6 +279,21 @@ class Tk
         return value
     }
 
+    getint(args*)
+    {
+        return AhkStdlibTkinterGetIntMethod(this, args*)
+    }
+
+    getdouble(args*)
+    {
+        return AhkStdlibTkinterGetDoubleMethod(this, args*)
+    }
+
+    getboolean(args*)
+    {
+        return AhkStdlibTkinterGetBooleanMethod(this, args*)
+    }
+
     _root()
     {
         return this
@@ -1144,6 +1159,21 @@ class AhkStdlibTkinterWidget
         if args.Length != 0
             throw TypeError("Misc.selection_get() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval("selection get")
+    }
+
+    getint(args*)
+    {
+        return AhkStdlibTkinterGetIntMethod(this.AhkStdlibRoot, args*)
+    }
+
+    getdouble(args*)
+    {
+        return AhkStdlibTkinterGetDoubleMethod(this.AhkStdlibRoot, args*)
+    }
+
+    getboolean(args*)
+    {
+        return AhkStdlibTkinterGetBooleanMethod(this.AhkStdlibRoot, args*)
     }
 
     winfo_exists(args*)
@@ -3494,6 +3524,98 @@ AhkStdlibTkinterValueToString(value)
     if IsObject(value) && HasMethod(value, "ToString")
         return String(value)
     return value ""
+}
+
+AhkStdlibTkinterGetIntMethod(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.getint() missing 1 required positional argument: 's'", -1)
+    if args.Length > 1
+        throw TypeError("Misc.getint() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    return AhkStdlibTkinterGetIntPublic(root.AhkStdlibInterp, args[1])
+}
+
+AhkStdlibTkinterGetDoubleMethod(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.getdouble() missing 1 required positional argument: 's'", -1)
+    if args.Length > 1
+        throw TypeError("Misc.getdouble() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    return AhkStdlibTkinterGetDoublePublic(root.AhkStdlibInterp, args[1])
+}
+
+AhkStdlibTkinterGetBooleanMethod(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.getboolean() missing 1 required positional argument: 's'", -1)
+    if args.Length > 1
+        throw TypeError("Misc.getboolean() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    return AhkStdlibTkinterGetBooleanPublic(root.AhkStdlibInterp, args[1])
+}
+
+AhkStdlibTkinterGetIntPublic(interp, value)
+{
+    AhkStdlibTkinterRequireStringLikeConversionValue("getint", value, false)
+    if AhkStdlibIsBool(value)
+        return value
+    if value is Integer
+        return value
+
+    valueBuffer := AhkStdlibTkinterUtf8Buffer(value)
+    intBuffer := Buffer(4, 0)
+    result := DllCall("tcl86t\Tcl_GetInt", "Ptr", interp, "Ptr", valueBuffer.Ptr, "Ptr", intBuffer.Ptr, "Int")
+    if result != 0
+        throw ValueError(AhkStdlibTkinterGetStringResult(interp), -1)
+    return NumGet(intBuffer, 0, "Int")
+}
+
+AhkStdlibTkinterGetDoublePublic(interp, value)
+{
+    AhkStdlibTkinterRequireStringLikeConversionValue("getdouble", value, true)
+    if AhkStdlibIsBool(value)
+        return value.Value ? 1.0 : 0.0
+    if (value is Integer) || (value is Float)
+        return Float(value)
+
+    try {
+        doubleValue := AhkStdlibTkinterGetDouble(interp, value)
+    } catch as err {
+        if err is AhkStdlibTkinter.TclError
+            throw ValueError(err.Message, -1)
+        throw err
+    }
+    if !(doubleValue = doubleValue)
+        throw ValueError("floating point value is Not a Number", -1)
+    return doubleValue
+}
+
+AhkStdlibTkinterGetBooleanPublic(interp, value)
+{
+    AhkStdlibTkinterRequireStringLikeConversionValue("getboolean", value, false)
+    if AhkStdlibIsBool(value)
+        return value
+    if value is Integer
+        return value ? stdlib.True : stdlib.False
+
+    try {
+        return AhkStdlibTkinterGetBoolean(interp, value)
+    } catch as err {
+        if err is AhkStdlibTkinter.TclError
+            throw ValueError("invalid literal for getboolean()", -1)
+        throw err
+    }
+}
+
+AhkStdlibTkinterRequireStringLikeConversionValue(functionName, value, allowFloat)
+{
+    if AhkStdlibIsNone(value)
+        throw TypeError(functionName "() argument must be str, not None", -1)
+    if AhkStdlibIsBool(value) || (value is Integer) || (allowFloat && value is Float) || value is String
+        return
+    throw TypeError(functionName "() argument must be str, not " AhkStdlibPythonTypeName(value), -1)
 }
 
 AhkStdlibTkinterTclWord(value)
