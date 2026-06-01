@@ -650,6 +650,70 @@ class StdlibTkinterTest
         }
     }
 
+    static TestMenuCommandEntrySurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            calls := []
+            command := (*) => (calls.Push("cmd"), "done")
+            menu := stdlib.tkinter.Menu(root, { name: "menubar", tearoff: 0 })
+
+            AhkTest.AssertEqual("Menu", Type(menu))
+            AhkTest.AssertEqual(".menubar", String(menu))
+            AhkTest.AssertSame(root, menu._root())
+            AhkTest.AssertEqual(1, menu.winfo_exists())
+            AhkTest.AssertEqual(0, menu.cget("tearoff"))
+            AhkTest.AssertEqual("", menu.cget("title"))
+            AhkTest.AssertEqual("normal", menu.cget("type"))
+            AhkTest.AssertEqual(stdlib.None, menu.index("end"))
+            AhkTest.AssertEqual(stdlib.None, menu.add_command({ label: "Open", command: command, accelerator: "Ctrl+O" }))
+            AhkTest.AssertEqual(0, menu.index("end"))
+            AhkTest.AssertEqual("Open", menu.entrycget(0, "label"))
+            AhkTest.AssertTrue(menu.entrycget(0, "command") != "")
+            AhkTest.AssertEqual("Ctrl+O", menu.entrycget(0, "accelerator"))
+            AhkTest.AssertEqual("normal", menu.entrycget(0, "state"))
+            AhkTest.AssertEqual("done", menu.invoke(0))
+            AhkTest.AssertEqual(["cmd"], calls)
+            AhkTest.AssertEqual(stdlib.None, menu.entryconfigure(0, { label: "Open file", state: "disabled" }))
+            AhkTest.AssertEqual("Open file", menu.entrycget(0, "label"))
+            AhkTest.AssertEqual("disabled", menu.entrycget(0, "state"))
+            AhkTest.AssertEqual("", menu.invoke(0))
+            AhkTest.AssertEqual(["cmd"], calls)
+            AhkTest.AssertEqual(stdlib.None, menu.delete(0))
+            AhkTest.AssertEqual(stdlib.None, menu.index("end"))
+            AhkTest.AssertEqual(stdlib.None, menu.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .menubar"))
+
+            AhkTest.AssertEqual(".kw", String(stdlib.tkinter.Menu({ master: root, name: "kw" })))
+            AhkTest.AssertEqual(0, stdlib.tkinter.Menu(root, { name: "cnf", tearoff: 0 }).cget("tearoff"))
+            dictMenu := stdlib.tkinter.Menu(root, { tearoff: 0 })
+            AhkTest.AssertEqual(stdlib.None, dictMenu.add_command({ label: "Dict" }))
+            AhkTest.AssertEqual("Dict", dictMenu.entrycget(0, "label"))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Menu({ master: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Menu\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Menu(root, {}, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Menu(root, { extra_kw: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^object of type 'int' has no len\(\)$", (*) => stdlib.tkinter.Menu(root).add_command(1))
+            AhkTest.RaisesMatch(TypeError, "^Menu\.entrycget\(\) missing 2 required positional arguments: 'index' and 'option'$", (*) => stdlib.tkinter.Menu(root).entrycget())
+            AhkTest.RaisesMatch(TypeError, "^Menu\.entrycget\(\) missing 1 required positional argument: 'option'$", (*) => stdlib.tkinter.Menu(root).entrycget(0))
+            AhkTest.RaisesMatch(TypeError, "^Menu\.entrycget\(\) takes 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Menu(root).entrycget(0, "label", "x"))
+            AhkTest.RaisesMatch(TypeError, "^Menu\.entryconfigure\(\) missing 1 required positional argument: 'index'$", (*) => stdlib.tkinter.Menu(root).entryconfigure())
+            AhkTest.RaisesMatch(TypeError, "^Menu\.entryconfigure\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Menu(root).entryconfigure(0, { label: "x" }, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Menu\.index\(\) missing 1 required positional argument: 'index'$", (*) => stdlib.tkinter.Menu(root).index())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad menu entry index "bad"$', (*) => stdlib.tkinter.Menu(root).index("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Menu\.index\(\) takes 2 positional arguments but 3 were given$", (*) => stdlib.tkinter.Menu(root).index("end", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Menu\.invoke\(\) missing 1 required positional argument: 'index'$", (*) => stdlib.tkinter.Menu(root).invoke())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad menu entry index "bad"$', (*) => stdlib.tkinter.Menu(root).invoke("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Menu\.invoke\(\) takes 2 positional arguments but 3 were given$", (*) => stdlib.tkinter.Menu(root).invoke(0, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Menu\.delete\(\) missing 1 required positional argument: 'index1'$", (*) => stdlib.tkinter.Menu(root).delete())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad menu entry index "bad"$', (*) => stdlib.tkinter.Menu(root).delete("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Menu\.delete\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Menu(root).delete(0, 1, 2))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestEntryWidgetSupportsInputSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()

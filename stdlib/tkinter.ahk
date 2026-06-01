@@ -87,6 +87,11 @@ class AhkStdlibTkinter
         return Scrollbar(args*)
     }
 
+    static Menu(args*)
+    {
+        return Menu(args*)
+    }
+
     static Canvas(args*)
     {
         return Canvas(args*)
@@ -959,6 +964,92 @@ class Scrollbar extends AhkStdlibTkinterWidget
     }
 }
 
+class Menu extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Menu", "menu", args*)
+    }
+
+    add_command(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Menu.add_command() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 {
+            this.AhkStdlibRoot.eval(this._w " add command")
+            return stdlib.None
+        }
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
+        this.AhkStdlibRoot.eval(this._w " add command" AhkStdlibTkinterOptionsToScript(args[1], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    delete(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.delete() missing 1 required positional argument: 'index1'", -1)
+        if args.Length > 2
+            throw TypeError("Menu.delete() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " delete " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    entrycget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.entrycget() missing 2 required positional arguments: 'index' and 'option'", -1)
+        if args.Length = 1
+            throw TypeError("Menu.entrycget() missing 1 required positional argument: 'option'", -1)
+        if args.Length > 2
+            throw TypeError("Menu.entrycget() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " entrycget " AhkStdlibTkinterTclWord(args[1]) " -" args[2])
+    }
+
+    entryconfigure(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.entryconfigure() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 2
+            throw TypeError("Menu.entryconfigure() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 1
+            return stdlib.None
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+            throw TypeError("cnf must be a dictionary", -1)
+        this.AhkStdlibRoot.eval(this._w " entryconfigure " AhkStdlibTkinterTclWord(args[1]) AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    entryconfig(args*)
+    {
+        return this.entryconfigure(args*)
+    }
+
+    index(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.index() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Menu.index() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " index " AhkStdlibTkinterTclWord(args[1]))
+        if value = "none"
+            return stdlib.None
+        return Integer(value)
+    }
+
+    invoke(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.invoke() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Menu.invoke() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " invoke " AhkStdlibTkinterTclWord(args[1]))
+    }
+}
+
 class Canvas extends AhkStdlibTkinterWidget
 {
     __New(args*)
@@ -1777,7 +1868,7 @@ AhkStdlibTkinterCanvasCoordList(value)
 AhkStdlibTkinterCgetValue(key, value)
 {
     switch key {
-        case "width", "height", "length":
+        case "width", "height", "length", "tearoff":
             try return Integer(value)
         case "from", "to", "resolution":
             try return Float(value)
