@@ -40,6 +40,12 @@ tkinter_example_generated := stdlib.tkinter.StringVar(tkinter_example_interp, "f
 tkinter_example_generated_name := tkinter_example_generated._name
 tkinter_example_generated_get := tkinter_example_generated.get()
 
+tkinter_example_int := stdlib.tkinter.IntVar(tkinter_example_interp, 7, "custom_int")
+tkinter_example_int_name := tkinter_example_int._name
+tkinter_example_int_get := tkinter_example_int.get()
+tkinter_example_int_set_return := tkinter_example_int.set("3.5")
+tkinter_example_int_after_set := tkinter_example_int.get()
+
 tkinter_example_missing_error := ""
 try {
     tkinter_example_interp.getvar("missing")

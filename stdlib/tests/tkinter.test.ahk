@@ -30,6 +30,28 @@ class StdlibTkinterTest
         AhkTest.AssertRegex(generated._name, "^" Chr(80) Chr(89) "_VAR[0-9]+$")
     }
 
+    static TestIntVarMatchesObservedLocal310Surface()
+    {
+        interp := stdlib.tkinter.Tcl()
+        value := stdlib.tkinter.IntVar(interp, 7, "custom_int")
+
+        AhkTest.AssertEqual(7, value.get())
+        AhkTest.AssertEqual("custom_int", value._name)
+        AhkTest.AssertEqual("7", interp.getvar("custom_int"))
+        AhkTest.AssertEqual(stdlib.None, value.set(42))
+        AhkTest.AssertEqual(42, value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set(stdlib.True))
+        AhkTest.AssertEqual(1, value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set(stdlib.False))
+        AhkTest.AssertEqual(0, value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set("3.5"))
+        AhkTest.AssertEqual(3, value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set("09"))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^expected floating-point number but got " Chr(34) "09" Chr(34) " \(looks like invalid octal number\)$", (*) => value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set("abc"))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^expected floating-point number but got " Chr(34) "abc" Chr(34) "$", (*) => value.get())
+    }
+
     static TestTclUseTkLoadsTkPackageLikeLocal310()
     {
         interp := stdlib.tkinter.Tcl({ useTk: stdlib.True })
@@ -102,6 +124,11 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(TypeError, "^StringVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.StringVar({ master: interp, extra: 1 }))
         AhkTest.RaisesMatch(TypeError, "^StringVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.StringVar(interp, "seed", "custom_name", "extra"))
         AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.StringVar({ master: interp, name: 1 }))
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.IntVar())
+        AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_root'$", (*) => stdlib.tkinter.IntVar({ master: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^IntVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.IntVar({ master: interp, extra: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^IntVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.IntVar(interp, 1, "custom_int", "extra"))
+        AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.IntVar({ master: interp, name: 1 }))
     }
 
     static RuntimeLibDir()

@@ -46,6 +46,11 @@ class AhkStdlibTkinter
     {
         return AhkStdlibTkinterStringVar(args*)
     }
+
+    static IntVar(args*)
+    {
+        return AhkStdlibTkinterIntVar(args*)
+    }
 }
 
 class Tk
@@ -271,6 +276,71 @@ class AhkStdlibTkinterStringVar
     }
 }
 
+class AhkStdlibTkinterIntVar
+{
+    __New(args*)
+    {
+        hasMaster := false
+        master := stdlib.None
+        value := 0
+        hasName := false
+        name := ""
+
+        if args.Length = 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1]) {
+            options := args[1]
+            for key, optionValue in options.OwnProps() {
+                switch key {
+                    case "master":
+                        hasMaster := true
+                        master := optionValue
+                    case "value":
+                        value := optionValue
+                    case "name":
+                        hasName := true
+                        name := optionValue
+                    default:
+                        throw TypeError("IntVar.__init__() got an unexpected keyword argument '" key "'", -1)
+                }
+            }
+        } else {
+            if args.Length > 3
+                throw TypeError("IntVar.__init__() takes from 1 to 4 positional arguments but " args.Length + 1 " were given", -1)
+            if args.Length >= 1 {
+                hasMaster := true
+                master := args[1]
+            }
+            if args.Length >= 2
+                value := args[2]
+            if args.Length >= 3 {
+                hasName := true
+                name := args[3]
+            }
+        }
+
+        if !hasMaster
+            throw RuntimeError("Too early to create variable: no default root window", -1)
+        if !HasMethod(master, "_root")
+            throw AttributeError("'" AhkStdlibPyTypeName(master) "' object has no attribute '_root'", -1)
+
+        this._tk := master._root()
+        this._master := master
+        this._name := hasName ? AhkStdlibTkinterNormalizeVarName(name) : AhkStdlibTkinterNextVarName()
+        this.set(AhkStdlibIsNone(value) ? 0 : value)
+    }
+
+    get()
+    {
+        value := this._tk.getvar(this._name)
+        return AhkStdlibTkinterTruncateFloat(AhkStdlibTkinterGetDouble(this._tk.AhkStdlibInterp, value))
+    }
+
+    set(value)
+    {
+        this._tk.setvar(this._name, AhkStdlibTkinterIntVarValueToString(value))
+        return stdlib.None
+    }
+}
+
 stdlib.tkinter := AhkStdlibTkinter
 
 AhkStdlibTkinterIsPlainKeywordObject(value)
@@ -464,6 +534,30 @@ AhkStdlibTkinterValueToString(value)
     if AhkStdlibIsBool(value)
         return value.Value ? "1" : "0"
     return value ""
+}
+
+AhkStdlibTkinterIntVarValueToString(value)
+{
+    if AhkStdlibIsNone(value)
+        return "None"
+    if AhkStdlibIsBool(value)
+        return value.Value ? "1" : "0"
+    return value ""
+}
+
+AhkStdlibTkinterGetDouble(interp, value)
+{
+    valueBuffer := AhkStdlibTkinterUtf8Buffer(value)
+    doubleBuffer := Buffer(8, 0)
+    result := DllCall("tcl86t\Tcl_GetDouble", "Ptr", interp, "Ptr", valueBuffer.Ptr, "Ptr", doubleBuffer.Ptr, "Int")
+    if result != 0
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
+    return NumGet(doubleBuffer, 0, "Double")
+}
+
+AhkStdlibTkinterTruncateFloat(value)
+{
+    return value < 0 ? Ceil(value) : Floor(value)
 }
 
 AhkStdlibTkinterNextVarName()
