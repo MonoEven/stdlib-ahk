@@ -1009,6 +1009,44 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkAfterIdleCallbacksMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            label := stdlib.tkinter.Label(root, { name: "idle_label", text: "Idle" })
+            rootIdle := StdlibTkinterTest.CommandRecorder(stdlib.None, "idle")
+            argIdle := StdlibTkinterTest.CommandRecorder("ignored", "arg")
+            widgetIdle := StdlibTkinterTest.CommandRecorder(stdlib.None, "widget")
+            cancelledIdle := StdlibTkinterTest.CommandRecorder(stdlib.None, "cancelled")
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.after_idle\(\) missing 1 required positional argument: 'func'$", (*) => root.after_idle())
+            rootIdleId := root.after_idle(rootIdle)
+            argIdleId := root.after_idle(argIdle, "x")
+            widgetIdleId := label.after_idle(widgetIdle)
+            AhkTest.AssertRegex(rootIdleId, "^after#[0-9]+$")
+            AhkTest.AssertRegex(argIdleId, "^after#[0-9]+$")
+            AhkTest.AssertRegex(widgetIdleId, "^after#[0-9]+$")
+            AhkTest.AssertEqual([], rootIdle.Calls)
+            AhkTest.AssertEqual([], argIdle.Calls)
+            AhkTest.AssertEqual([], widgetIdle.Calls)
+
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(["idle"], rootIdle.Calls)
+            AhkTest.AssertEqual(["arg:x"], argIdle.Calls)
+            AhkTest.AssertEqual(["widget"], widgetIdle.Calls)
+
+            cancelId := root.after_idle(cancelledIdle)
+            AhkTest.AssertRegex(cancelId, "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, root.after_cancel(cancelId))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual([], cancelledIdle.Calls)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWindowProtocolCallbacksMatchLocal310()
     {
         root := stdlib.tkinter.Tk()

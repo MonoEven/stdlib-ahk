@@ -25,7 +25,7 @@ window/widget stacking with `lift()` / `tkraise()` / `lower()`, local grab state
 `grab_set()` / `grab_release()` / `grab_current()` / `grab_status()`,
 window lifecycle waits with `wait_window()` / `wait_visibility()`,
 command argument bridging, Canvas drawing/image/window item creation, discovery, and movement, image-backed widget
-options, and a focused `after` / `mainloop` / `quit` event-loop slice.
+options, and a focused `after` / `after_idle` / `mainloop` / `quit` event-loop slice.
 
 It is currently developed and tested with AutoHotkey v2.0.26 and v2.1-alpha.30.
 

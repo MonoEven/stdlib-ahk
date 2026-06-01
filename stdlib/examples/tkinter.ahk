@@ -363,6 +363,7 @@ try {
     tkinter_example_canvas_line_after_move := tkinter_example_canvas.coords(tkinter_example_canvas_line)
     tkinter_example_after_calls := []
     tkinter_example_after_id := tkinter_example_root.after(0, (*) => tkinter_example_after_calls.Push("after"))
+    tkinter_example_after_idle_id := tkinter_example_label.after_idle((*) => tkinter_example_after_calls.Push("idle"))
     tkinter_example_after_update_return := tkinter_example_root.update()
     tkinter_example_after_calls_after_update := tkinter_example_after_calls.Clone()
     tkinter_example_cancel_id := tkinter_example_root.after(1000, (*) => tkinter_example_after_calls.Push("cancelled"))

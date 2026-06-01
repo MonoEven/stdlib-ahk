@@ -504,20 +504,14 @@ class Tk
     {
         if args.Length = 0
             throw TypeError("Misc.after() missing 1 required positional argument: 'ms'", -1)
-        ms := args[1]
-        if args.Length = 1 {
-            this.eval("after " AhkStdlibTkinterTclWord(ms))
-            return stdlib.None
-        }
+        return AhkStdlibTkinterAfter(this, args*)
+    }
 
-        callbackArgs := []
-        index := 3
-        while index <= args.Length {
-            callbackArgs.Push(args[index])
-            index += 1
-        }
-        commandName := AhkStdlibTkinterRegisterCommand(this, args[2], callbackArgs)
-        return this.eval("after " AhkStdlibTkinterTclWord(ms) " " AhkStdlibTkinterTclWord(commandName))
+    after_idle(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.after_idle() missing 1 required positional argument: 'func'", -1)
+        return AhkStdlibTkinterAfter(this, "idle", args*)
     }
 
     after_cancel(args*)
@@ -921,6 +915,13 @@ class AhkStdlibTkinterWidget
         for key in ["x", "relx", "y", "rely", "width", "relwidth", "height", "relheight", "anchor", "bordermode"]
             info[key] := this.AhkStdlibRoot.eval("dict get [place info " this._w "] -" key)
         return info
+    }
+
+    after_idle(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.after_idle() missing 1 required positional argument: 'func'", -1)
+        return AhkStdlibTkinterAfter(this.AhkStdlibRoot, "idle", args*)
     }
 
     bind(args*)
@@ -3123,6 +3124,23 @@ AhkStdlibTkinterCgetValue(key, value)
             try return Float(value)
     }
     return value
+}
+
+AhkStdlibTkinterAfter(root, ms, args*)
+{
+    if args.Length = 0 {
+        root.eval("after " AhkStdlibTkinterTclWord(ms))
+        return stdlib.None
+    }
+
+    callbackArgs := []
+    index := 2
+    while index <= args.Length {
+        callbackArgs.Push(args[index])
+        index += 1
+    }
+    commandName := AhkStdlibTkinterRegisterCommand(root, args[1], callbackArgs)
+    return root.eval("after " AhkStdlibTkinterTclWord(ms) " " AhkStdlibTkinterTclWord(commandName))
 }
 
 AhkStdlibTkinterKeys(root, window, args*)
