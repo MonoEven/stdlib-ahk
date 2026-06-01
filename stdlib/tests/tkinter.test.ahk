@@ -2142,6 +2142,87 @@ class StdlibTkinterTest
         }
     }
 
+    static TestClassicWidgetConstructionSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            menuCalls := []
+            message := stdlib.tkinter.Message(root, { name: "msg_probe", text: "Hello wrap", width: 120, aspect: 200 })
+            menubutton := stdlib.tkinter.Menubutton(root, { name: "mb_probe", text: "Menu", direction: "below", relief: "raised" })
+            menu := stdlib.tkinter.Menu(menubutton, { name: "menu", tearoff: 0 })
+            AhkTest.AssertEqual(stdlib.None, menu.add_command({ label: "Open", command: (*) => (menuCalls.Push("open"), "opened") }))
+            AhkTest.AssertEqual(stdlib.None, menubutton.configure({ menu: menu }))
+            caption := stdlib.tkinter.Label(root, { name: "caption", text: "Caption" })
+            labelframe := stdlib.tkinter.LabelFrame(root, { name: "lf_probe", text: "Group", labelanchor: "n", labelwidget: caption, width: 100, height: 50 })
+            inside := stdlib.tkinter.Label(labelframe, { name: "inside", text: "Inside" })
+
+            AhkTest.AssertEqual(stdlib.None, message.pack())
+            AhkTest.AssertEqual(stdlib.None, menubutton.pack())
+            AhkTest.AssertEqual(stdlib.None, inside.pack())
+            AhkTest.AssertEqual(stdlib.None, labelframe.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual("Message", Type(message))
+            AhkTest.AssertEqual(".msg_probe", String(message))
+            AhkTest.AssertSame(root, message._root())
+            AhkTest.AssertEqual(1, message.winfo_exists())
+            AhkTest.AssertEqual("Message", message.winfo_class())
+            AhkTest.AssertEqual("pack", message.winfo_manager())
+            AhkTest.AssertEqual("Hello wrap", message.cget("text"))
+            AhkTest.AssertEqual(120, message.cget("width"))
+            AhkTest.AssertEqual(200, message.cget("aspect"))
+
+            AhkTest.AssertEqual("Menubutton", Type(menubutton))
+            AhkTest.AssertEqual(".mb_probe", String(menubutton))
+            AhkTest.AssertSame(root, menubutton._root())
+            AhkTest.AssertEqual(1, menubutton.winfo_exists())
+            AhkTest.AssertEqual("Menubutton", menubutton.winfo_class())
+            AhkTest.AssertEqual("pack", menubutton.winfo_manager())
+            AhkTest.AssertEqual("Menu", menubutton.cget("text"))
+            AhkTest.AssertEqual("below", menubutton.cget("direction"))
+            AhkTest.AssertEqual("raised", menubutton.cget("relief"))
+            AhkTest.AssertEqual(".mb_probe.menu", menubutton.cget("menu"))
+            AhkTest.AssertEqual("opened", menu.invoke(0))
+            AhkTest.AssertEqual("open", menuCalls[1])
+
+            AhkTest.AssertEqual("LabelFrame", Type(labelframe))
+            AhkTest.AssertEqual(".lf_probe", String(labelframe))
+            AhkTest.AssertSame(root, labelframe._root())
+            AhkTest.AssertEqual(1, labelframe.winfo_exists())
+            AhkTest.AssertEqual("Labelframe", labelframe.winfo_class())
+            AhkTest.AssertEqual("pack", labelframe.winfo_manager())
+            AhkTest.AssertEqual("Group", labelframe.cget("text"))
+            AhkTest.AssertEqual("n", labelframe.cget("labelanchor"))
+            AhkTest.AssertEqual(".caption", labelframe.cget("labelwidget"))
+            AhkTest.AssertEqual(100, labelframe.cget("width"))
+            AhkTest.AssertEqual(50, labelframe.cget("height"))
+            AhkTest.AssertEqual(".lf_probe", inside.winfo_parent())
+            AhkTest.AssertEqual(".lf_probe.inside", String(inside))
+
+            AhkTest.AssertEqual(stdlib.None, message.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .msg_probe"))
+            AhkTest.AssertEqual(stdlib.None, menubutton.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .mb_probe"))
+            AhkTest.AssertEqual(stdlib.None, labelframe.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .lf_probe"))
+
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Message({ master: 1 }))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Menubutton({ master: 1 }))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.LabelFrame({ master: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Message\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Message(root, {}, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Menubutton\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Menubutton(root, {}, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^LabelFrame\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.LabelFrame(root, {}, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.Message(root, { bad: 1 }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.Menubutton(root, { bad: 1 }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.LabelFrame(root, { bad: 1 }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkClipboardSurfaceMatchesLocal310()
     {
         oldClipboard := A_Clipboard

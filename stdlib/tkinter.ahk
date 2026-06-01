@@ -57,6 +57,11 @@ class AhkStdlibTkinter
         return Label(args*)
     }
 
+    static LabelFrame(args*)
+    {
+        return LabelFrame(args*)
+    }
+
     static Toplevel(args*)
     {
         return Toplevel(args*)
@@ -90,6 +95,16 @@ class AhkStdlibTkinter
     static Menu(args*)
     {
         return Menu(args*)
+    }
+
+    static Menubutton(args*)
+    {
+        return Menubutton(args*)
+    }
+
+    static Message(args*)
+    {
+        return Message(args*)
     }
 
     static Canvas(args*)
@@ -1845,6 +1860,14 @@ class Label extends AhkStdlibTkinterWidget
     }
 }
 
+class LabelFrame extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("LabelFrame", "labelframe", args*)
+    }
+}
+
 class Toplevel extends AhkStdlibTkinterWidget
 {
     __New(args*)
@@ -2514,6 +2537,22 @@ class Menu extends AhkStdlibTkinterWidget
         if args.Length > 1
             throw TypeError("Menu.invoke() takes 2 positional arguments but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval(this._w " invoke " AhkStdlibTkinterTclWord(args[1]))
+    }
+}
+
+class Menubutton extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Menubutton", "menubutton", args*)
+    }
+}
+
+class Message extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Message", "message", args*)
     }
 }
 
@@ -5176,7 +5215,7 @@ AhkStdlibTkinterCanvasCoordList(value)
 AhkStdlibTkinterCgetValue(key, value)
 {
     switch key {
-        case "width", "height", "length", "tearoff":
+        case "width", "height", "length", "tearoff", "aspect":
             try return Integer(value)
         case "from", "to", "resolution":
             try return Float(value)
