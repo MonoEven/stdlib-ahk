@@ -1033,11 +1033,12 @@ class StdlibTkinterTest
         root := stdlib.tkinter.Tk()
         try {
             root.eval("wm withdraw .")
-            imageName := "p" "y" "image1"
             image := stdlib.tkinter.PhotoImage({ master: root, width: 2, height: 2 })
+            imageName := String(image)
+            imageNamePattern := "^p" "y" "image\d+$"
 
             AhkTest.AssertEqual("PhotoImage", Type(image))
-            AhkTest.AssertEqual(imageName, String(image))
+            AhkTest.AssertRegex(imageName, imageNamePattern)
             AhkTest.AssertEqual(2, image.width())
             AhkTest.AssertEqual(2, image.height())
             AhkTest.AssertEqual("photo", image.type())
@@ -1198,6 +1199,49 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => canvas.create_text())
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^wrong # coordinates: expected 2, got 1$", (*) => canvas.create_text(1))
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.create_text("bad", 1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestCanvasImageAndWindowItemSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            canvas := stdlib.tkinter.Canvas(root, { width: 120, height: 80, bg: "white" })
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            image := stdlib.tkinter.PhotoImage({ master: root, width: 2, height: 2 })
+            AhkTest.AssertEqual(stdlib.None, image.put("#ff0000", { to: [0, 0] }))
+            label := stdlib.tkinter.Label(root, { text: "Inside" })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            imageItem := canvas.create_image(10, 11, { image: image, anchor: "nw", tags: "asset media" })
+            windowItem := canvas.create_window(30, 31, { window: label, anchor: "nw", width: 70, height: 20, tags: "embedded media" })
+
+            AhkTest.AssertEqual(stdlib.tuple([imageItem, windowItem]), canvas.find_all())
+            AhkTest.AssertEqual(stdlib.tuple([imageItem, windowItem]), canvas.find_withtag("media"))
+            AhkTest.AssertEqual("image", canvas.type(imageItem))
+            AhkTest.AssertEqual("window", canvas.type(windowItem))
+            AhkTest.AssertEqual([10.0, 11.0], canvas.coords(imageItem))
+            AhkTest.AssertEqual([30.0, 31.0], canvas.coords(windowItem))
+            AhkTest.AssertEqual(String(image), canvas.itemcget(imageItem, "image"))
+            AhkTest.AssertEqual("nw", canvas.itemcget(imageItem, "anchor"))
+            AhkTest.AssertEqual(String(label), canvas.itemcget(windowItem, "window"))
+            AhkTest.AssertEqual("nw", canvas.itemcget(windowItem, "anchor"))
+            AhkTest.AssertEqual("70", canvas.itemcget(windowItem, "width"))
+            AhkTest.AssertEqual("20", canvas.itemcget(windowItem, "height"))
+            AhkTest.AssertEqual(stdlib.tuple([10, 11, 12, 13]), canvas.bbox(imageItem))
+            AhkTest.AssertEqual(stdlib.tuple([30, 31, 100, 51]), canvas.bbox(windowItem))
+
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => canvas.create_image())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^wrong # coordinates: expected 2, got 1$", (*) => canvas.create_image(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.create_image("bad", 1, { image: image }))
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => canvas.create_window())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^wrong # coordinates: expected 2, got 1$", (*) => canvas.create_window(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.create_window("bad", 1, { window: label }))
         } finally {
             try root.update_idletasks()
             try root.destroy()

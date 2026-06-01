@@ -1282,6 +1282,11 @@ class Canvas extends AhkStdlibTkinterWidget
         return AhkStdlibTkinterCanvasCreateItem(this, "line", args*)
     }
 
+    create_image(args*)
+    {
+        return AhkStdlibTkinterCanvasCreateItem(this, "image", args*)
+    }
+
     create_oval(args*)
     {
         return AhkStdlibTkinterCanvasCreateItem(this, "oval", args*)
@@ -1300,6 +1305,11 @@ class Canvas extends AhkStdlibTkinterWidget
     create_text(args*)
     {
         return AhkStdlibTkinterCanvasCreateItem(this, "text", args*)
+    }
+
+    create_window(args*)
+    {
+        return AhkStdlibTkinterCanvasCreateItem(this, "window", args*)
     }
 
     coords(args*)
