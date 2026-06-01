@@ -184,8 +184,10 @@ class StdlibTkinterTest
             AhkTest.AssertEqual("winfo", root.eval("info commands winfo"))
             AhkTest.AssertEqual("8.6.12", root.eval("package require Tk"))
             AhkTest.AssertEqual("1", root.eval("winfo exists ."))
+            try root.update_idletasks()
             AhkTest.AssertEqual(stdlib.None, root.destroy())
         } finally {
+            try root.update_idletasks()
             try root.destroy()
         }
     }
@@ -229,6 +231,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, label.destroy())
             AhkTest.AssertEqual("0", root.eval("winfo exists .!label"))
         } finally {
+            try root.update_idletasks()
             try root.destroy()
         }
     }
@@ -338,6 +341,52 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, entry.destroy())
             AhkTest.AssertEqual("0", root.eval("winfo exists .!entry"))
         } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTextWidgetEditingSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            text := stdlib.tkinter.Text(root, { width: 20, height: 4, wrap: "none" })
+
+            AhkTest.AssertEqual("Text", Type(text))
+            AhkTest.AssertEqual(".!text", String(text))
+            AhkTest.AssertEqual(20, text.cget("width"))
+            AhkTest.AssertEqual(4, text.cget("height"))
+            AhkTest.AssertEqual("none", text.cget("wrap"))
+            AhkTest.AssertEqual("`n", text.get("1.0", "end"))
+            AhkTest.AssertEqual("", text.get("1.0", "end-1c"))
+            AhkTest.AssertEqual(stdlib.None, text.insert("1.0", "hello"))
+            AhkTest.AssertEqual("hello", text.get("1.0", "end-1c"))
+            AhkTest.AssertEqual(stdlib.None, text.insert("end", "`nworld"))
+            AhkTest.AssertEqual("hello`nworld`n", text.get("1.0", "end"))
+            AhkTest.AssertEqual("hello`nworld", text.get("1.0", "end-1c"))
+            AhkTest.AssertEqual("2.5", text.index("insert"))
+            AhkTest.AssertEqual("3.0", text.index("end"))
+            AhkTest.AssertEqual(stdlib.None, text.delete("1.0", "1.5"))
+            AhkTest.AssertEqual("`nworld", text.get("1.0", "end-1c"))
+            AhkTest.AssertEqual(stdlib.None, text.delete("1.0"))
+            AhkTest.AssertEqual("world", text.get("1.0", "end-1c"))
+            AhkTest.AssertEqual(stdlib.None, text.delete("1.0", "end"))
+            AhkTest.AssertEqual(stdlib.None, text.insert("1.0", "fresh"))
+            AhkTest.AssertEqual("fresh", text.get("1.0", "end-1c"))
+            AhkTest.AssertEqual("f", text.get("1.0"))
+            AhkTest.AssertEqual(stdlib.None, text.insert("end", "!", "tag1"))
+            AhkTest.AssertEqual("fresh!", text.get("1.0", "end-1c"))
+            AhkTest.RaisesMatch(TypeError, "^Text\.insert\(\) missing 2 required positional arguments: 'index' and 'chars'$", (*) => text.insert())
+            AhkTest.RaisesMatch(TypeError, "^Text\.insert\(\) missing 1 required positional argument: 'chars'$", (*) => text.insert("1.0"))
+            AhkTest.RaisesMatch(TypeError, "^Text\.get\(\) missing 1 required positional argument: 'index1'$", (*) => text.get())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad text index "bad"$', (*) => text.get("bad", "end"))
+            AhkTest.RaisesMatch(TypeError, "^Text\.delete\(\) missing 1 required positional argument: 'index1'$", (*) => text.delete())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad text index "bad"$', (*) => text.delete("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Text\.index\(\) missing 1 required positional argument: 'index'$", (*) => text.index())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad text index "bad"$', (*) => text.index("bad"))
+        } finally {
+            try root.update_idletasks()
             try root.destroy()
         }
     }
@@ -431,6 +480,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, frame.grid())
             AhkTest.AssertEqual(1, frame.grid_info()["row"])
         } finally {
+            try root.update_idletasks()
             try root.destroy()
         }
     }
@@ -517,6 +567,7 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(TypeError, "^Entry\.delete\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Entry(gui).delete(0, 1, 2))
         AhkTest.RaisesMatch(TypeError, "^Misc\.update\(\) takes 1 positional argument but 2 were given$", (*) => gui.update(1))
         AhkTest.RaisesMatch(TypeError, "^Misc\.update_idletasks\(\) takes 1 positional argument but 2 were given$", (*) => gui.update_idletasks(1))
+        try gui.update_idletasks()
         try gui.destroy()
     }
 

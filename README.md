@@ -27,7 +27,7 @@ The `stdlib.tkinter` slice includes bundled Tcl/Tk runtime DLLs
 source and SHA256 verification report are tracked in
 `stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
 The covered GUI surface currently includes `Tk` roots, `Frame`, `Label`,
-`Button`, `Entry`, and `Canvas` widgets, plus focused `pack`, `grid`, and
+`Button`, `Entry`, `Text`, and `Canvas` widgets, plus focused `pack`, `grid`, and
 `place` layout behavior, `Button` command callbacks through `invoke()`, and a
 focused `after` / `mainloop` / `quit` event-loop slice.
 
@@ -38,7 +38,7 @@ AutoHotkey v2.0.26 与 v2.1-alpha.30。
 校验报告已随 `stdlib\tkinter\lib\README.md` 和
 `stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
 当前已覆盖的 GUI 表面包括 `Tk` 根窗口、`Frame`、`Label`、`Button`、
-`Entry`、`Canvas` 控件，以及聚焦覆盖的 `pack`、`grid`、`place` 布局行为
+`Entry`、`Text`、`Canvas` 控件，以及聚焦覆盖的 `pack`、`grid`、`place` 布局行为
 和通过 `invoke()` 执行的 `Button` command 回调，并包含聚焦覆盖的
 `after` / `mainloop` / `quit` 事件循环切片。
 

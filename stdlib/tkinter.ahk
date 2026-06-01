@@ -72,6 +72,11 @@ class AhkStdlibTkinter
         return Entry(args*)
     }
 
+    static Text(args*)
+    {
+        return Text(args*)
+    }
+
     static StringVar(args*)
     {
         return AhkStdlibTkinterStringVar(args*)
@@ -589,6 +594,64 @@ class Canvas extends AhkStdlibTkinterWidget
             script .= " " AhkStdlibTkinterTclWord(value)
         this.AhkStdlibRoot.eval(script)
         return stdlib.None
+    }
+}
+
+class Text extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Text", "text", args*)
+    }
+
+    insert(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.insert() missing 2 required positional arguments: 'index' and 'chars'", -1)
+        if args.Length = 1
+            throw TypeError("Text.insert() missing 1 required positional argument: 'chars'", -1)
+        script := this._w " insert " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])
+        index := 3
+        while index <= args.Length {
+            script .= " " AhkStdlibTkinterTclWord(args[index])
+            index += 1
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    get(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.get() missing 1 required positional argument: 'index1'", -1)
+        if args.Length > 2
+            throw TypeError("Text.get() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " get " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        return this.AhkStdlibRoot.eval(script)
+    }
+
+    delete(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.delete() missing 1 required positional argument: 'index1'", -1)
+        if args.Length > 2
+            throw TypeError("Text.delete() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " delete " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    index(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.index() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Text.index() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " index " AhkStdlibTkinterTclWord(args[1]))
     }
 }
 
