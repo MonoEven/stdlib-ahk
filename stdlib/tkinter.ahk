@@ -389,6 +389,11 @@ class Tk
         return AhkStdlibTkinterBind(this, this, ".", args*)
     }
 
+    bindtags(args*)
+    {
+        return AhkStdlibTkinterBindTags(this, ".", args*)
+    }
+
     event_generate(args*)
     {
         return AhkStdlibTkinterEventGenerate(this, ".", args*)
@@ -982,6 +987,11 @@ class AhkStdlibTkinterWidget
     bind(args*)
     {
         return AhkStdlibTkinterBind(this.AhkStdlibRoot, this, this._w, args*)
+    }
+
+    bindtags(args*)
+    {
+        return AhkStdlibTkinterBindTags(this.AhkStdlibRoot, this._w, args*)
     }
 
     event_generate(args*)
@@ -2949,6 +2959,26 @@ AhkStdlibTkinterBind(root, widget, window, args*)
     return commandName
 }
 
+AhkStdlibTkinterBindTags(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc.bindtags() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "bindtags " window
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
+        return stdlib.tuple(AhkStdlibTkinterSimpleList(root.eval(script)))
+
+    tagList := args[1]
+    if tagList is Array {
+        if tagList.Length > 0
+            script .= " " AhkStdlibTkinterTclListCommandWord(tagList)
+    } else {
+        script .= " " AhkStdlibTkinterTclWord(tagList)
+    }
+    root.eval(script)
+    return stdlib.None
+}
+
 AhkStdlibTkinterEventGenerate(root, window, args*)
 {
     if args.Length = 0
@@ -3362,6 +3392,14 @@ AhkStdlibTkinterTclScriptWord(value)
     text := AhkStdlibTkinterValueToString(value)
     text := StrReplace(text, "\", "\\")
     return "{" text "}"
+}
+
+AhkStdlibTkinterTclListCommandWord(values)
+{
+    script := "[list"
+    for value in values
+        script .= " " AhkStdlibTkinterTclWord(value)
+    return script "]"
 }
 
 AhkStdlibTkinterIntVarValueToString(value)

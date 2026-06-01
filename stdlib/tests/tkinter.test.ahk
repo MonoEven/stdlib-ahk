@@ -839,6 +839,40 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkBindtagsEventRoutingMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            frame := stdlib.tkinter.Frame(root, { name: "host" })
+            label := stdlib.tkinter.Label(frame, { name: "caption", text: "Tags" })
+            top := stdlib.tkinter.Toplevel(root, { name: "dialog" })
+            top.withdraw()
+
+            AhkTest.AssertEqual(stdlib.tuple([".", "Tk", "all"]), root.bindtags())
+            AhkTest.AssertEqual(stdlib.tuple([".host", "Frame", ".", "all"]), frame.bindtags())
+            AhkTest.AssertEqual(stdlib.tuple([".host.caption", "Label", ".", "all"]), label.bindtags())
+            AhkTest.AssertEqual(stdlib.tuple([".dialog", "Toplevel", "all"]), top.bindtags())
+
+            AhkTest.AssertEqual(stdlib.None, label.bindtags(stdlib.tuple(["Custom", ".host.caption", "all"])))
+            AhkTest.AssertEqual(stdlib.tuple(["Custom", ".host.caption", "all"]), label.bindtags())
+            AhkTest.AssertEqual(stdlib.None, label.bindtags([".host.caption", "Label", ".", "all"]))
+            AhkTest.AssertEqual(stdlib.tuple([".host.caption", "Label", ".", "all"]), label.bindtags())
+            AhkTest.AssertEqual(stdlib.None, label.bindtags(stdlib.tuple([])))
+            AhkTest.AssertEqual(stdlib.tuple([".host.caption", "Label", ".", "all"]), label.bindtags())
+            AhkTest.AssertEqual(stdlib.None, label.bindtags("abc"))
+            AhkTest.AssertEqual(stdlib.tuple(["abc"]), label.bindtags())
+            AhkTest.AssertEqual(stdlib.tuple(["abc"]), label.bindtags(stdlib.None))
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.bindtags\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => label.bindtags(stdlib.tuple([]), stdlib.tuple([])))
+            label.destroy()
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.host\.caption"$', (*) => label.bindtags())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetsSupportVisibleGuiSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()
