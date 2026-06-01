@@ -358,6 +358,40 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWindowTransientRelationshipsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            top := stdlib.tkinter.Toplevel(root, { name: "transient_dialog" })
+            child := stdlib.tkinter.Toplevel(top, { name: "child" })
+            top.withdraw()
+            child.withdraw()
+
+            AhkTest.AssertEqual("", root.transient())
+            AhkTest.AssertEqual("", top.transient())
+            AhkTest.AssertEqual("", top.transient(root))
+            AhkTest.AssertEqual(".", top.wm_transient())
+            AhkTest.AssertEqual(".", top.transient(stdlib.None))
+            AhkTest.AssertEqual(".", top.transient())
+            AhkTest.AssertEqual("", top.transient(""))
+            AhkTest.AssertEqual("", top.transient())
+            AhkTest.AssertEqual("", child.transient(top))
+            AhkTest.AssertEqual(".transient_dialog", child.transient())
+            AhkTest.AssertEqual("", child.wm_transient(""))
+            AhkTest.AssertEqual("", child.transient())
+
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_transient\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => top.transient(root, child))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.missing"$', (*) => top.transient(".missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "1"$', (*) => top.transient(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^setting "\." as master creates a transient/master cycle$', (*) => root.transient(root))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^setting "\.transient_dialog" as master creates a transient/master cycle$', (*) => top.transient(top))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWinfoCoordinateQueriesMatchLocal310()
     {
         root := stdlib.tkinter.Tk()

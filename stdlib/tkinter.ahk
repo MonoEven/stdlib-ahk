@@ -354,6 +354,16 @@ class Tk
         return this.protocol(args*)
     }
 
+    transient(args*)
+    {
+        return AhkStdlibTkinterWmTransient(this, ".", args*)
+    }
+
+    wm_transient(args*)
+    {
+        return this.transient(args*)
+    }
+
     overrideredirect(args*)
     {
         return AhkStdlibTkinterWmOverrideredirect(this, ".", args*)
@@ -1082,6 +1092,16 @@ class Toplevel extends AhkStdlibTkinterWidget
     wm_protocol(args*)
     {
         return this.protocol(args*)
+    }
+
+    transient(args*)
+    {
+        return AhkStdlibTkinterWmTransient(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_transient(args*)
+    {
+        return this.transient(args*)
     }
 
     overrideredirect(args*)
@@ -2672,6 +2692,16 @@ AhkStdlibTkinterWmOverrideredirect(root, window, args*)
     }
     root.eval(script " " AhkStdlibTkinterTclWord(args[1]))
     return stdlib.None
+}
+
+AhkStdlibTkinterWmTransient(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Wm.wm_transient() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    script := "wm transient " window
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
+        return root.eval(script)
+    return root.eval(script " " AhkStdlibTkinterTclWord(args[1]))
 }
 
 AhkStdlibTkinterBind(root, widget, window, args*)
