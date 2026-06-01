@@ -15,7 +15,7 @@ The `stdlib.tkinter` slice includes bundled Tcl/Tk runtime DLLs
 source and SHA256 verification report are tracked in
 `stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
 The covered GUI surface currently includes `Tk` roots with visibility, state,
-and geometry APIs, `Toplevel` windows with geometry APIs,
+geometry, and window sizing APIs, `Toplevel` windows with geometry and sizing APIs,
 `Frame`, `Label`, `Button`, `Checkbutton`, `Radiobutton`, `Scale`, `Scrollbar`, `Menu`, `Entry`, `Listbox`, `Text`, and `Canvas` widgets,
 `PhotoImage` image objects, widget visibility queries, plus focused `pack`, `grid`, and `place` layout
 behavior, `Button` / `Checkbutton` / `Radiobutton` command callbacks through `invoke()`,

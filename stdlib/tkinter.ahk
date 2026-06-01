@@ -299,6 +299,21 @@ class Tk
         return this.eval("wm geometry . " AhkStdlibTkinterTclWord(args[1]))
     }
 
+    resizable(args*)
+    {
+        return AhkStdlibTkinterWmResizable(this, ".", args*)
+    }
+
+    minsize(args*)
+    {
+        return AhkStdlibTkinterWmSize(this, ".", "minsize", args*)
+    }
+
+    maxsize(args*)
+    {
+        return AhkStdlibTkinterWmSize(this, ".", "maxsize", args*)
+    }
+
     state(args*)
     {
         if args.Length > 1
@@ -689,6 +704,21 @@ class Toplevel extends AhkStdlibTkinterWidget
         if args.Length = 0 || AhkStdlibIsNone(args[1])
             return this.AhkStdlibRoot.eval("wm geometry " this._w)
         return this.AhkStdlibRoot.eval("wm geometry " this._w " " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    resizable(args*)
+    {
+        return AhkStdlibTkinterWmResizable(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    minsize(args*)
+    {
+        return AhkStdlibTkinterWmSize(this.AhkStdlibRoot, this._w, "minsize", args*)
+    }
+
+    maxsize(args*)
+    {
+        return AhkStdlibTkinterWmSize(this.AhkStdlibRoot, this._w, "maxsize", args*)
     }
 
     title(args*)
@@ -1866,6 +1896,31 @@ AhkStdlibTkinterWidgetToplevel(widget)
             return widget._root()
         current := current.master
     }
+}
+
+AhkStdlibTkinterWmResizable(root, window, args*)
+{
+    if args.Length > 2
+        throw TypeError("Wm.wm_resizable() takes from 1 to 3 positional arguments but " args.Length + 1 " were given", -1)
+    script := "wm resizable " window
+    if args.Length = 0
+        return AhkStdlibTkinterIntegerTuple(root.eval(script))
+    for value in args
+        script .= " " AhkStdlibTkinterTclWord(value)
+    return root.eval(script)
+}
+
+AhkStdlibTkinterWmSize(root, window, command, args*)
+{
+    if args.Length > 2
+        throw TypeError("Wm.wm_" command "() takes from 1 to 3 positional arguments but " args.Length + 1 " were given", -1)
+    script := "wm " command " " window
+    if args.Length = 0
+        return AhkStdlibTkinterIntegerTuple(root.eval(script))
+    for value in args
+        script .= " " AhkStdlibTkinterTclWord(value)
+    root.eval(script)
+    return stdlib.None
 }
 
 AhkStdlibTkinterOptionsToScript(options, includeName, root := unset)

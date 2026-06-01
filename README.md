@@ -27,7 +27,7 @@ The `stdlib.tkinter` slice includes bundled Tcl/Tk runtime DLLs
 source and SHA256 verification report are tracked in
 `stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
 The covered GUI surface currently includes `Tk` roots with visibility, state,
-and geometry APIs, `Toplevel` windows with geometry APIs,
+geometry, and window sizing APIs, `Toplevel` windows with geometry and sizing APIs,
 `Frame`, `Label`, `Button`, `Checkbutton`, `Radiobutton`, `Scale`, `Scrollbar`, `Menu`, `Entry`, `Listbox`, `Text`, and `Canvas` widgets,
 `PhotoImage` image objects, widget visibility queries, plus focused `pack`, `grid`, and `place` layout
 behavior, `Button` / `Checkbutton` / `Radiobutton` command callbacks through `invoke()`,
@@ -41,7 +41,7 @@ AutoHotkey v2.0.26 与 v2.1-alpha.30。
 （`tcl86t.dll` 与 `tk86t.dll`）。其 CPython 3.10.11 来源与 SHA256
 校验报告已随 `stdlib\tkinter\lib\README.md` 和
 `stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
-当前已覆盖的 GUI 表面包括带可见性、状态与几何尺寸 API 的 `Tk` 根窗口、带几何尺寸 API 的 `Toplevel` 窗口、`Frame`、
+当前已覆盖的 GUI 表面包括带可见性、状态、几何尺寸与窗口尺寸 API 的 `Tk` 根窗口、带几何尺寸与窗口尺寸 API 的 `Toplevel` 窗口、`Frame`、
 `Label`、`Button`、`Checkbutton`、`Radiobutton`、`Scale`、`Scrollbar`、`Menu`、`Entry`、`Listbox`、`Text`、`Canvas` 控件与 `PhotoImage` 图像对象、控件可见性查询，
 以及聚焦覆盖的 `pack`、`grid`、`place` 布局行为、通过 `invoke()` 执行的
 `Button` / `Checkbutton` / `Radiobutton` command 回调、`Scale` 数值状态、`Scrollbar` 范围状态、`Menu` command 条目与 command 参数桥接、图像型控件选项，并包含聚焦覆盖的 `after` /

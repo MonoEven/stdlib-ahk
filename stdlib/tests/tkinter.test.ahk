@@ -278,6 +278,49 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWindowResizableMinMaxSizeMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            AhkTest.AssertEqual("", root.withdraw())
+            top := stdlib.tkinter.Toplevel(root, { name: "dialog" })
+            AhkTest.AssertEqual("", top.withdraw())
+
+            AhkTest.AssertEqual(stdlib.tuple([1, 1]), root.resizable())
+            AhkTest.AssertEqual("", root.resizable(stdlib.False, stdlib.True))
+            AhkTest.AssertEqual(stdlib.tuple([0, 1]), root.resizable())
+            AhkTest.AssertEqual("", root.resizable(1, 0))
+            AhkTest.AssertEqual(stdlib.tuple([1, 0]), root.resizable())
+            AhkTest.AssertEqual(stdlib.tuple([1, 1]), root.minsize())
+            AhkTest.AssertEqual(stdlib.None, root.minsize(120, 80))
+            AhkTest.AssertEqual(stdlib.tuple([120, 80]), root.minsize())
+            AhkTest.AssertEqual(stdlib.None, root.maxsize(500, 400))
+            AhkTest.AssertEqual(stdlib.tuple([500, 400]), root.maxsize())
+
+            AhkTest.AssertEqual(stdlib.tuple([1, 1]), top.resizable())
+            AhkTest.AssertEqual("", top.resizable(stdlib.False, stdlib.False))
+            AhkTest.AssertEqual(stdlib.tuple([0, 0]), top.resizable())
+            AhkTest.AssertEqual(stdlib.None, top.minsize(90, 60))
+            AhkTest.AssertEqual(stdlib.tuple([90, 60]), top.minsize())
+            AhkTest.AssertEqual(stdlib.None, top.maxsize(300, 200))
+            AhkTest.AssertEqual(stdlib.tuple([300, 200]), top.maxsize())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "wm resizable window \?width height\?"$', (*) => root.resizable(stdlib.False))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_resizable\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => root.resizable(stdlib.True, stdlib.True, stdlib.True))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected boolean value but got "maybe"$', (*) => root.resizable("maybe", stdlib.True))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "wm minsize window \?width height\?"$', (*) => root.minsize(1))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_minsize\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => root.minsize(1, 2, 3))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => root.minsize("bad", 2))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "wm maxsize window \?width height\?"$', (*) => root.maxsize(1))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_maxsize\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => root.maxsize(1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_resizable\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => top.resizable(stdlib.True, stdlib.True, stdlib.True))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_minsize\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => top.minsize(1, 2, 3))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetsSupportVisibleGuiSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()
