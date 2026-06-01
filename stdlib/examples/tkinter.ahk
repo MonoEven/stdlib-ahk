@@ -64,6 +64,14 @@ try {
     tkinter_example_place_return := tkinter_example_place_label.place({ x: 5, y: 6, width: 70, height: 20, anchor: "nw" })
     tkinter_example_place_manager := tkinter_example_place_label.winfo_manager()
     tkinter_example_place_info := tkinter_example_place_label.place_info()
+    tkinter_example_after_calls := []
+    tkinter_example_after_id := tkinter_example_root.after(0, (*) => tkinter_example_after_calls.Push("after"))
+    tkinter_example_after_update_return := tkinter_example_root.update()
+    tkinter_example_after_calls_after_update := tkinter_example_after_calls.Clone()
+    tkinter_example_cancel_id := tkinter_example_root.after(1000, (*) => tkinter_example_after_calls.Push("cancelled"))
+    tkinter_example_after_cancel_return := tkinter_example_root.after_cancel(tkinter_example_cancel_id)
+    tkinter_example_mainloop_quit_id := tkinter_example_root.after(0, (*) => tkinter_example_root.quit())
+    tkinter_example_mainloop_return := tkinter_example_root.mainloop()
     tkinter_example_update_return := tkinter_example_root.update()
     tkinter_example_update_idletasks_return := tkinter_example_root.update_idletasks()
 

@@ -16,7 +16,8 @@
 `stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
 当前已覆盖的 GUI 表面包括 `Tk` 根窗口、`Frame`、`Label`、`Button`、
 `Entry` 控件，以及聚焦覆盖的 `pack`、`grid`、`place` 布局行为和
-通过 `invoke()` 执行的 `Button` command 回调。
+通过 `invoke()` 执行的 `Button` command 回调，并包含聚焦覆盖的
+`after` / `mainloop` / `quit` 事件循环切片。
 
 当前开发和测试环境为 AutoHotkey v2.0.26 与 v2.1-alpha.30。
 

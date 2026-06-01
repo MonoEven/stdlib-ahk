@@ -266,6 +266,46 @@ class StdlibTkinterTest
         }
     }
 
+    static TestAfterMainloopAndQuitMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            noneCommand := StdlibTkinterTest.CommandRecorder(stdlib.None, "none")
+            strCommand := StdlibTkinterTest.CommandRecorder("done", "str")
+            quitCommand := StdlibTkinterTest.QuitRecorder(root, "mainloop")
+
+            AhkTest.AssertEqual(stdlib.None, root.quit())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.quit\(\) takes 1 positional argument but 2 were given$", (*) => root.quit(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.after\(\) missing 1 required positional argument: 'ms'$", (*) => root.after())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad argument "bad": must be cancel, idle, info, or an integer$', (*) => root.after("bad"))
+            AhkTest.AssertEqual(stdlib.None, root.after(0))
+
+            noneId := root.after(0, noneCommand)
+            strId := root.after(0, strCommand, "x")
+            AhkTest.AssertRegex(noneId, "^after#[0-9]+$")
+            AhkTest.AssertRegex(strId, "^after#[0-9]+$")
+            AhkTest.AssertEqual([], noneCommand.Calls)
+            AhkTest.AssertEqual([], strCommand.Calls)
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(["none"], noneCommand.Calls)
+            AhkTest.AssertEqual(["str:x"], strCommand.Calls)
+
+            cancelId := root.after(1000, StdlibTkinterTest.CommandRecorder(stdlib.None, "cancelled"))
+            AhkTest.AssertEqual(stdlib.None, root.after_cancel(cancelId))
+            AhkTest.AssertEqual(stdlib.None, root.after_cancel("missing"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.after_cancel\(\) missing 1 required positional argument: 'id'$", (*) => root.after_cancel())
+
+            AhkTest.AssertRegex(root.after(0, quitCommand), "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, root.mainloop())
+            AhkTest.AssertEqual(["mainloop"], quitCommand.Calls)
+            AhkTest.RaisesMatch(TypeError, "^Misc\.mainloop\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => root.mainloop(0, 1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestEntryWidgetSupportsInputSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()
@@ -446,10 +486,30 @@ class StdlibTkinterTest
             this.Calls := []
         }
 
+        Call(args*)
+        {
+            if args.Length
+                this.Calls.Push(this.Label ":" args[1])
+            else
+                this.Calls.Push(this.Label)
+            return this.Result
+        }
+    }
+
+    class QuitRecorder
+    {
+        __New(root, label)
+        {
+            this.Root := root
+            this.Label := label
+            this.Calls := []
+        }
+
         Call()
         {
             this.Calls.Push(this.Label)
-            return this.Result
+            this.Root.quit()
+            return "ignored"
         }
     }
 

@@ -171,6 +171,7 @@ class Tk
         this.AhkStdlibSync := sync
         this.AhkStdlibChildCounters := Map()
         this.AhkStdlibCommandCallbacks := Map()
+        this.AhkStdlibQuitMainLoop := false
         this.tk := this
         if hasUse
             this.AhkStdlibUse := use
@@ -252,6 +253,56 @@ class Tk
         if args.Length != 0
             throw TypeError("Misc.update_idletasks() takes 1 positional argument but " args.Length + 1 " were given", -1)
         this.eval("update idletasks")
+        return stdlib.None
+    }
+
+    after(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.after() missing 1 required positional argument: 'ms'", -1)
+        ms := args[1]
+        if args.Length = 1 {
+            this.eval("after " AhkStdlibTkinterTclWord(ms))
+            return stdlib.None
+        }
+
+        callbackArgs := []
+        index := 3
+        while index <= args.Length {
+            callbackArgs.Push(args[index])
+            index += 1
+        }
+        commandName := AhkStdlibTkinterRegisterCommand(this, args[2], callbackArgs)
+        return this.eval("after " AhkStdlibTkinterTclWord(ms) " " AhkStdlibTkinterTclWord(commandName))
+    }
+
+    after_cancel(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.after_cancel() missing 1 required positional argument: 'id'", -1)
+        if args.Length > 1
+            throw TypeError("Misc.after_cancel() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.eval("after cancel " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    mainloop(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Misc.mainloop() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibQuitMainLoop := false
+        while !this.AhkStdlibQuitMainLoop && this.eval("winfo exists .") = "1" {
+            this.update()
+            Sleep 1
+        }
+        return stdlib.None
+    }
+
+    quit(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.quit() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibQuitMainLoop := true
         return stdlib.None
     }
 
@@ -928,13 +979,22 @@ AhkStdlibTkinterMaybeRegisterCommand(root, value)
     if !IsObject(value) || !HasMethod(value, "Call")
         return value
 
-    id := AhkStdlibTkinterRegisterCommandCallback(value)
+    return AhkStdlibTkinterRegisterCommand(root, value)
+}
+
+AhkStdlibTkinterRegisterCommand(root, callback, callbackArgs := unset)
+{
+    if !IsObject(callback) || !HasMethod(callback, "Call")
+        return callback
+
+    entry := IsSet(callbackArgs) ? { Callback: callback, Args: callbackArgs } : callback
+    id := AhkStdlibTkinterRegisterCommandCallback(entry)
     commandName := "ahkstdlib_tkinter_command_" id
     nameBuffer := AhkStdlibTkinterUtf8Buffer(commandName)
     result := DllCall("tcl86t\Tcl_CreateCommand", "Ptr", root.AhkStdlibInterp, "Ptr", nameBuffer.Ptr, "Ptr", AhkStdlibTkinterCommandProcPtr(), "Ptr", id, "Ptr", 0, "Ptr")
     if !result
         throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp), -1)
-    root.AhkStdlibCommandCallbacks[commandName] := value
+    root.AhkStdlibCommandCallbacks[commandName] := entry
     return commandName
 }
 
@@ -955,8 +1015,8 @@ AhkStdlibTkinterCommandProcPtr()
 AhkStdlibTkinterCommandProc(clientData, interp, argc, argv)
 {
     try {
-        callback := AhkStdlibTkinterCommandCallbackRegistry(clientData)
-        result := callback.Call()
+        entry := AhkStdlibTkinterCommandCallbackRegistry(clientData)
+        result := AhkStdlibTkinterCallCommandCallback(entry)
         AhkStdlibTkinterSetResult(interp, AhkStdlibTkinterValueToString(result))
         return 0
     } catch as err {
@@ -973,6 +1033,13 @@ AhkStdlibTkinterCommandCallbackRegistry(id, callback := unset)
         return callback
     }
     return callbacks[id]
+}
+
+AhkStdlibTkinterCallCommandCallback(entry)
+{
+    if IsObject(entry) && entry.HasOwnProp("Callback")
+        return entry.Callback.Call(entry.Args*)
+    return entry.Call()
 }
 
 AhkStdlibTkinterSetResult(interp, value)
