@@ -20,7 +20,7 @@ geometry, and window sizing APIs, `Toplevel` windows with state, iconify/deiconi
 `PhotoImage` image objects, widget visibility, coordinate/size, and identity-tree queries, plus focused `pack`, `grid`, and `place` layout/info/forget/child-query/geometry
 behavior, window-manager protocol callbacks, `Button` / `Checkbutton` / `Radiobutton` command callbacks through `invoke()`,
 `Scale` numeric state, `Scrollbar` range state, `Menu` command entries,
-`Entry` cursor and selection state, event binding and synthetic event generation,
+`Entry` cursor and selection state, focus management, event binding and synthetic event generation,
 command argument bridging, Canvas drawing/image/window item creation, discovery, and movement, image-backed widget
 options, and a focused `after` / `mainloop` / `quit` event-loop slice.
 

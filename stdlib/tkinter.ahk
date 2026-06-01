@@ -337,6 +337,26 @@ class Tk
         return AhkStdlibTkinterEventGenerate(this, ".", args*)
     }
 
+    focus_set(args*)
+    {
+        return AhkStdlibTkinterFocusSet(this, ".", "focus_set", false, args*)
+    }
+
+    focus_force(args*)
+    {
+        return AhkStdlibTkinterFocusSet(this, ".", "focus_force", true, args*)
+    }
+
+    focus_get(args*)
+    {
+        return AhkStdlibTkinterFocusQuery(this, "focus", "focus_get", args*)
+    }
+
+    focus_displayof(args*)
+    {
+        return AhkStdlibTkinterFocusQuery(this, "focus -displayof .", "focus_displayof", args*)
+    }
+
     state(args*)
     {
         if args.Length > 1
@@ -809,6 +829,26 @@ class AhkStdlibTkinterWidget
     event_generate(args*)
     {
         return AhkStdlibTkinterEventGenerate(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    focus_set(args*)
+    {
+        return AhkStdlibTkinterFocusSet(this.AhkStdlibRoot, this._w, "focus_set", false, args*)
+    }
+
+    focus_force(args*)
+    {
+        return AhkStdlibTkinterFocusSet(this.AhkStdlibRoot, this._w, "focus_force", true, args*)
+    }
+
+    focus_get(args*)
+    {
+        return AhkStdlibTkinterFocusQuery(this.AhkStdlibRoot, "focus", "focus_get", args*)
+    }
+
+    focus_displayof(args*)
+    {
+        return AhkStdlibTkinterFocusQuery(this.AhkStdlibRoot, "focus -displayof " this._w, "focus_displayof", args*)
     }
 
     selection_get(args*)
@@ -2607,6 +2647,24 @@ AhkStdlibTkinterEventGenerate(root, window, args*)
     }
     root.eval(script)
     return stdlib.None
+}
+
+AhkStdlibTkinterFocusSet(root, window, methodName, force, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    root.eval("focus " (force ? "-force " : "") window)
+    return stdlib.None
+}
+
+AhkStdlibTkinterFocusQuery(root, script, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    window := root.eval(script)
+    if window = ""
+        return stdlib.None
+    return AhkStdlibTkinterWidgetFromPath(root, window)
 }
 
 AhkStdlibTkinterEntrySelectionClear(entry, methodName, args*)

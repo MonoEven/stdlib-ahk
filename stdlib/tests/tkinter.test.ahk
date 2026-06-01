@@ -799,6 +799,44 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkFocusQueriesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            AhkTest.AssertEqual("", root.geometry("220x120+40+50"))
+            entry := stdlib.tkinter.Entry(root, { name: "field" })
+            button := stdlib.tkinter.Button(root, { name: "press", text: "Press" })
+            AhkTest.AssertEqual(stdlib.None, entry.pack())
+            AhkTest.AssertEqual(stdlib.None, button.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual(stdlib.None, entry.focus_set())
+            AhkTest.AssertEqual(stdlib.None, entry.focus_force())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertSame(entry, root.focus_get())
+            AhkTest.AssertSame(entry, entry.focus_displayof())
+            AhkTest.AssertEqual(stdlib.None, button.focus_force())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertSame(button, root.focus_get())
+            AhkTest.AssertSame(button, button.focus_displayof())
+            AhkTest.AssertEqual("", root.withdraw())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertSame(stdlib.None, root.focus_get())
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.focus_get\(\) takes 1 positional argument but 2 were given$", (*) => root.focus_get(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.focus_set\(\) takes 1 positional argument but 2 were given$", (*) => entry.focus_set(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.focus_force\(\) takes 1 positional argument but 2 were given$", (*) => button.focus_force(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.focus_displayof\(\) takes 1 positional argument but 2 were given$", (*) => button.focus_displayof(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCheckbuttonVariableAndInvokeSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
