@@ -23,7 +23,7 @@ behavior, window-manager protocol callbacks, `Button` / `Checkbutton` / `Radiobu
 `Entry` cursor and selection state, focus management, event binding and synthetic event generation,
 window/widget stacking with `lift()` / `tkraise()` / `lower()`, local grab state with
 `grab_set()` / `grab_release()` / `grab_current()` / `grab_status()`,
-window lifecycle waits with `wait_window()` / `wait_visibility()`,
+window lifecycle waits with `wait_variable()` / `waitvar()` / `wait_window()` / `wait_visibility()`,
 command argument bridging, Canvas drawing/image/window item creation, discovery, and movement, image-backed widget
 options, and a focused `after` / `after_idle` / `mainloop` / `quit` event-loop slice.
 

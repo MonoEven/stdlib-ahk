@@ -434,6 +434,16 @@ class Tk
         return AhkStdlibTkinterWaitFor(this, ".", "visibility", "wait_visibility", args*)
     }
 
+    wait_variable(args*)
+    {
+        return AhkStdlibTkinterWaitVariable(this, args*)
+    }
+
+    waitvar(args*)
+    {
+        return this.wait_variable(args*)
+    }
+
     focus_set(args*)
     {
         return AhkStdlibTkinterFocusSet(this, ".", "focus_set", false, args*)
@@ -977,6 +987,16 @@ class AhkStdlibTkinterWidget
     wait_visibility(args*)
     {
         return AhkStdlibTkinterWaitFor(this.AhkStdlibRoot, this._w, "visibility", "wait_visibility", args*)
+    }
+
+    wait_variable(args*)
+    {
+        return AhkStdlibTkinterWaitVariable(this.AhkStdlibRoot, args*)
+    }
+
+    waitvar(args*)
+    {
+        return this.wait_variable(args*)
     }
 
     focus_set(args*)
@@ -2903,6 +2923,15 @@ AhkStdlibTkinterWaitTarget(value)
     if IsObject(value) && HasProp(value, "_w")
         return value._w
     throw AttributeError("'" AhkStdlibPyTypeName(value) "' object has no attribute '_w'", -1)
+}
+
+AhkStdlibTkinterWaitVariable(root, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc.wait_variable() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    name := args.Length = 0 ? Chr(80) Chr(89) "_VAR" : AhkStdlibTkinterValueToString(args[1])
+    root.eval("tkwait variable " AhkStdlibTkinterTclWord(name))
+    return stdlib.None
 }
 
 AhkStdlibTkinterFocusSet(root, window, methodName, force, args*)

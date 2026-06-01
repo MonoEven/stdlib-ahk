@@ -513,6 +513,44 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWaitVariableAndAliasMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            value := stdlib.tkinter.StringVar(root, "before", "wait_var")
+            AhkTest.AssertRegex(root.after(0, (*) => value.set("after")), "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, root.wait_variable(value))
+            AhkTest.AssertEqual("after", value.get())
+
+            AhkTest.AssertRegex(root.after(0, (*) => root.setvar("string_wait_var", "done")), "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, root.wait_variable("string_wait_var"))
+            AhkTest.AssertEqual("done", root.getvar("string_wait_var"))
+
+            defaultName := Chr(80) Chr(89) "_VAR"
+            AhkTest.AssertRegex(root.after(0, (*) => root.setvar(defaultName, "default_done")), "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, root.wait_variable())
+            AhkTest.AssertEqual("default_done", root.getvar(defaultName))
+
+            aliasValue := stdlib.tkinter.StringVar(root, "before_alias", "alias_wait_var")
+            AhkTest.AssertRegex(root.after(0, (*) => aliasValue.set("alias_after")), "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, root.waitvar(aliasValue))
+            AhkTest.AssertEqual("alias_after", aliasValue.get())
+
+            label := stdlib.tkinter.Label(root, { name: "wait_label" })
+            widgetValue := stdlib.tkinter.StringVar(root, "widget_before", "widget_wait_var")
+            AhkTest.AssertRegex(root.after(0, (*) => widgetValue.set("widget_after")), "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, label.wait_variable(widgetValue))
+            AhkTest.AssertEqual("widget_after", widgetValue.get())
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.wait_variable\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => root.wait_variable("a", "b"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.wait_variable\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => root.waitvar("a", "b"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWinfoCoordinateQueriesMatchLocal310()
     {
         root := stdlib.tkinter.Tk()
