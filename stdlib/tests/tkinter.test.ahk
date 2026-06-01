@@ -1118,6 +1118,50 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCanvasItemDiscoveryAndMoveSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            canvas := stdlib.tkinter.Canvas(root, { width: 120, height: 80, bg: "white" })
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            lineId := canvas.create_line(0, 1, 10, 20, { fill: "red", width: 2, tags: "path shape" })
+            rectId := canvas.create_rectangle(5, 6, 30, 40, { outline: "blue", fill: "green", tags: "box shape" })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual(stdlib.tuple([lineId, rectId]), canvas.find_all())
+            AhkTest.AssertEqual(stdlib.tuple([lineId]), canvas.find_withtag("path"))
+            AhkTest.AssertEqual(stdlib.tuple([lineId, rectId]), canvas.find_withtag("shape"))
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.find_withtag("missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.!canvas bbox tagOrId \?tagOrId \.\.\.\?"$', (*) => canvas.bbox())
+            AhkTest.AssertEqual(stdlib.tuple([-3, -2, 13, 23]), canvas.bbox(lineId))
+            AhkTest.AssertEqual(stdlib.tuple([-3, -2, 31, 41]), canvas.bbox("shape"))
+            AhkTest.AssertEqual(stdlib.None, canvas.bbox("missing"))
+            AhkTest.AssertEqual("line", canvas.type(lineId))
+            AhkTest.AssertEqual("rectangle", canvas.type(rectId))
+            AhkTest.AssertEqual(stdlib.None, canvas.type(999))
+
+            AhkTest.AssertEqual(stdlib.None, canvas.move(lineId, 2, 3))
+            AhkTest.AssertEqual([2.0, 4.0, 12.0, 23.0], canvas.coords(lineId))
+            AhkTest.AssertEqual(stdlib.tuple([-1, 1, 15, 26]), canvas.bbox(lineId))
+            AhkTest.AssertEqual(stdlib.None, canvas.move("shape", -1, -1))
+            AhkTest.AssertEqual([1.0, 3.0, 11.0, 22.0], canvas.coords(lineId))
+            AhkTest.AssertEqual([4.0, 5.0, 29.0, 39.0], canvas.coords(rectId))
+
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_all\(\) takes 1 positional argument but 2 were given$", (*) => canvas.find_all(1))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_withtag\(\) missing 1 required positional argument: 'tagOrId'$", (*) => canvas.find_withtag())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_withtag\(\) takes 2 positional arguments but 3 were given$", (*) => canvas.find_withtag("shape", "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.!canvas move tagOrId xAmount yAmount"$', (*) => canvas.move(lineId, 1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.move(lineId, "bad", 1))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.type\(\) missing 1 required positional argument: 'tagOrId'$", (*) => canvas.type())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.type\(\) takes 2 positional arguments but 3 were given$", (*) => canvas.type(lineId, "extra"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestGridAndPlaceManagersMatchLocal310()
     {
         root := stdlib.tkinter.Tk()

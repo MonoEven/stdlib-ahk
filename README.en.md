@@ -21,7 +21,7 @@ geometry, and window sizing APIs, `Toplevel` windows with geometry and sizing AP
 behavior, `Button` / `Checkbutton` / `Radiobutton` command callbacks through `invoke()`,
 `Scale` numeric state, `Scrollbar` range state, `Menu` command entries,
 `Entry` cursor and selection state, event binding and synthetic event generation,
-command argument bridging, image-backed widget
+command argument bridging, Canvas item discovery and movement, image-backed widget
 options, and a focused `after` / `mainloop` / `quit` event-loop slice.
 
 It is currently developed and tested with AutoHotkey v2.0.26 and v2.1-alpha.30.

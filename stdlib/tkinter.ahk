@@ -1295,6 +1295,52 @@ class Canvas extends AhkStdlibTkinterWidget
         return AhkStdlibTkinterCanvasCoordList(this.AhkStdlibRoot.eval(script))
     }
 
+    find_all(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Canvas.find_all() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return AhkStdlibTkinterIntegerTuple(this.AhkStdlibRoot.eval(this._w " find all"))
+    }
+
+    find_withtag(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Canvas.find_withtag() missing 1 required positional argument: 'tagOrId'", -1)
+        if args.Length > 1
+            throw TypeError("Canvas.find_withtag() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return AhkStdlibTkinterIntegerTuple(this.AhkStdlibRoot.eval(this._w " find withtag " AhkStdlibTkinterTclWord(args[1])))
+    }
+
+    bbox(args*)
+    {
+        script := this._w " bbox"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        value := this.AhkStdlibRoot.eval(script)
+        if Trim(value) = ""
+            return stdlib.None
+        return AhkStdlibTkinterIntegerTuple(value)
+    }
+
+    move(args*)
+    {
+        script := this._w " move"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    type(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Canvas.type() missing 1 required positional argument: 'tagOrId'", -1)
+        if args.Length > 1
+            throw TypeError("Canvas.type() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " type " AhkStdlibTkinterTclWord(args[1]))
+        return value = "" ? stdlib.None : value
+    }
+
     itemcget(args*)
     {
         if args.Length = 0
