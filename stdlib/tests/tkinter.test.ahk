@@ -323,6 +323,58 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWinfoCoordinateQueriesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            AhkTest.AssertEqual("", root.geometry("260x180+25+35"))
+            frame := stdlib.tkinter.Frame(root, { name: "coord_host", width: 100, height: 60, bg: "white" })
+            label := stdlib.tkinter.Label(frame, { name: "caption", text: "Hello", width: 8 })
+            AhkTest.AssertEqual(stdlib.None, frame.pack({ padx: 11, pady: 13 }))
+            AhkTest.AssertEqual(stdlib.None, label.pack({ padx: 5, pady: 7 }))
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            rootScreenWidth := root.winfo_screenwidth()
+            rootScreenHeight := root.winfo_screenheight()
+            AhkTest.AssertEqual(25, root.winfo_x())
+            AhkTest.AssertEqual(35, root.winfo_y())
+            AhkTest.AssertTrue(root.winfo_rootx() >= root.winfo_x())
+            AhkTest.AssertTrue(root.winfo_rooty() >= root.winfo_y())
+            AhkTest.AssertTrue(rootScreenWidth > 0)
+            AhkTest.AssertTrue(rootScreenHeight > 0)
+            AhkTest.AssertTrue(root.winfo_reqwidth() > 0)
+            AhkTest.AssertTrue(root.winfo_reqheight() > 0)
+
+            AhkTest.AssertTrue(frame.winfo_x() >= 0)
+            AhkTest.AssertTrue(frame.winfo_y() >= 0)
+            AhkTest.AssertTrue(frame.winfo_rootx() >= root.winfo_rootx())
+            AhkTest.AssertTrue(frame.winfo_rooty() >= root.winfo_rooty())
+            AhkTest.AssertEqual(frame.winfo_width(), frame.winfo_reqwidth())
+            AhkTest.AssertEqual(frame.winfo_height(), frame.winfo_reqheight())
+            AhkTest.AssertEqual(rootScreenWidth, frame.winfo_screenwidth())
+            AhkTest.AssertEqual(rootScreenHeight, frame.winfo_screenheight())
+
+            AhkTest.AssertEqual(5, label.winfo_x())
+            AhkTest.AssertEqual(7, label.winfo_y())
+            AhkTest.AssertTrue(label.winfo_rootx() >= frame.winfo_rootx())
+            AhkTest.AssertTrue(label.winfo_rooty() >= frame.winfo_rooty())
+            AhkTest.AssertEqual(label.winfo_width(), label.winfo_reqwidth())
+            AhkTest.AssertEqual(label.winfo_height(), label.winfo_reqheight())
+            AhkTest.AssertEqual(rootScreenWidth, label.winfo_screenwidth())
+            AhkTest.AssertEqual(rootScreenHeight, label.winfo_screenheight())
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_x\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_x(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_y\(\) takes 1 positional argument but 2 were given$", (*) => label.winfo_y(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_rootx\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_rootx(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_screenwidth\(\) takes 1 positional argument but 2 were given$", (*) => label.winfo_screenwidth(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_reqheight\(\) takes 1 positional argument but 2 were given$", (*) => label.winfo_reqheight(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetIdentityTreeSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

@@ -492,6 +492,46 @@ class Tk
         return Integer(this.eval("winfo viewable ."))
     }
 
+    winfo_x(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "x", "winfo_x", args*)
+    }
+
+    winfo_y(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "y", "winfo_y", args*)
+    }
+
+    winfo_rootx(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "rootx", "winfo_rootx", args*)
+    }
+
+    winfo_rooty(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "rooty", "winfo_rooty", args*)
+    }
+
+    winfo_screenwidth(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "screenwidth", "winfo_screenwidth", args*)
+    }
+
+    winfo_screenheight(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "screenheight", "winfo_screenheight", args*)
+    }
+
+    winfo_reqwidth(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "reqwidth", "winfo_reqwidth", args*)
+    }
+
+    winfo_reqheight(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "reqheight", "winfo_reqheight", args*)
+    }
+
     winfo_ismapped(args*)
     {
         if args.Length != 0
@@ -805,6 +845,46 @@ class AhkStdlibTkinterWidget
         if args.Length != 0
             throw TypeError("Misc.winfo_viewable() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return Integer(this.AhkStdlibRoot.eval("winfo viewable " this._w))
+    }
+
+    winfo_x(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "x", "winfo_x", args*)
+    }
+
+    winfo_y(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "y", "winfo_y", args*)
+    }
+
+    winfo_rootx(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "rootx", "winfo_rootx", args*)
+    }
+
+    winfo_rooty(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "rooty", "winfo_rooty", args*)
+    }
+
+    winfo_screenwidth(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "screenwidth", "winfo_screenwidth", args*)
+    }
+
+    winfo_screenheight(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "screenheight", "winfo_screenheight", args*)
+    }
+
+    winfo_reqwidth(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "reqwidth", "winfo_reqwidth", args*)
+    }
+
+    winfo_reqheight(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "reqheight", "winfo_reqheight", args*)
     }
 
     winfo_ismapped(args*)
@@ -2271,6 +2351,13 @@ AhkStdlibTkinterWinfoString(root, window, command, methodName, args*)
     if args.Length != 0
         throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
     return root.eval("winfo " command " " window)
+}
+
+AhkStdlibTkinterWinfoInteger(root, window, command, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return Integer(root.eval("winfo " command " " window))
 }
 
 AhkStdlibTkinterPackSlaves(root, window, args*)
