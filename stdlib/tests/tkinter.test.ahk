@@ -2363,6 +2363,52 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCanvasArcAndBitmapItemCreationSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            canvas := stdlib.tkinter.Canvas(root, { width: 140, height: 100, bg: "white" })
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            arcId := canvas.create_arc(5, 6, 40, 50, { start: 30, extent: 120, style: "arc", outline: "purple", width: 3, tags: "curve shape" })
+            bitmapId := canvas.create_bitmap(60, 20, { bitmap: "questhead", foreground: "red", background: "white", anchor: "nw", tags: "asset shape" })
+
+            AhkTest.AssertEqual(stdlib.tuple([arcId, bitmapId]), canvas.find_all())
+            AhkTest.AssertEqual(stdlib.tuple([arcId, bitmapId]), canvas.find_withtag("shape"))
+            AhkTest.AssertEqual("arc", canvas.type(arcId))
+            AhkTest.AssertEqual("bitmap", canvas.type(bitmapId))
+            AhkTest.AssertEqual([5.0, 6.0, 40.0, 50.0], canvas.coords(arcId))
+            AhkTest.AssertEqual([60.0, 20.0], canvas.coords(bitmapId))
+            AhkTest.AssertEqual("30.0", canvas.itemcget(arcId, "start"))
+            AhkTest.AssertEqual("120.0", canvas.itemcget(arcId, "extent"))
+            AhkTest.AssertEqual("arc", canvas.itemcget(arcId, "style"))
+            AhkTest.AssertEqual("purple", canvas.itemcget(arcId, "outline"))
+            AhkTest.AssertEqual("3.0", canvas.itemcget(arcId, "width"))
+            AhkTest.AssertEqual("questhead", canvas.itemcget(bitmapId, "bitmap"))
+            AhkTest.AssertEqual("red", canvas.itemcget(bitmapId, "foreground"))
+            AhkTest.AssertEqual("white", canvas.itemcget(bitmapId, "background"))
+            AhkTest.AssertEqual("nw", canvas.itemcget(bitmapId, "anchor"))
+            AhkTest.AssertEqual(stdlib.tuple([4, 3, 40, 20]), canvas.bbox(arcId))
+            AhkTest.AssertEqual(stdlib.tuple([60, 20, 80, 42]), canvas.bbox(bitmapId))
+
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => canvas.create_arc())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^wrong # coordinates: expected 4, got 1$", (*) => canvas.create_arc(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.create_arc("bad", 1, 2, 3))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => canvas.create_arc(1, 2, 3, 4, { bad: 1 }))
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => canvas.create_bitmap())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^wrong # coordinates: expected 2, got 1$", (*) => canvas.create_bitmap(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.create_bitmap("bad", 1, { bitmap: "questhead" }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bitmap "missing_bitmap_name" not defined$', (*) => canvas.create_bitmap(1, 2, { bitmap: "missing_bitmap_name" }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => canvas.create_bitmap(1, 2, { bad: 1 }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCanvasImageAndWindowItemSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

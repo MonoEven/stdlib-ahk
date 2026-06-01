@@ -2052,6 +2052,16 @@ class Canvas extends AhkStdlibTkinterWidget
         return this.AhkStdlibRoot.eval(this._w " cget -" args[1])
     }
 
+    create_arc(args*)
+    {
+        return AhkStdlibTkinterCanvasCreateItem(this, "arc", args*)
+    }
+
+    create_bitmap(args*)
+    {
+        return AhkStdlibTkinterCanvasCreateItem(this, "bitmap", args*)
+    }
+
     create_line(args*)
     {
         return AhkStdlibTkinterCanvasCreateItem(this, "line", args*)
