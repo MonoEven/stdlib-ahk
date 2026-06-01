@@ -802,6 +802,82 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkBindClassAllAndUnbindSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            AhkTest.AssertEqual("", root.geometry("240x120+20+30"))
+            label := stdlib.tkinter.Label(root, { name: "caption", text: "Click", width: 10, height: 2 })
+            AhkTest.AssertEqual(stdlib.None, label.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            widgetRecorder := StdlibTkinterTest.EventRecorder(stdlib.None, "widget")
+            classRecorder := StdlibTkinterTest.EventRecorder(stdlib.None, "class")
+            allRecorder := StdlibTkinterTest.EventRecorder(stdlib.None, "all")
+
+            AhkTest.AssertContains("<<PrevWindow>>", root.bind_all())
+            AhkTest.AssertEqual("", root.bind_all("<Button-1>"))
+            AhkTest.AssertEqual(stdlib.tuple([]), root.bind_class("Label"))
+            AhkTest.AssertEqual("", label.bind_class("Label", "<Button-1>"))
+
+            allCommand := root.bind_all("<Button-1>", allRecorder)
+            classCommand := label.bind_class("Label", "<Button-1>", classRecorder)
+            widgetCommand := label.bind("<Button-1>", widgetRecorder)
+            AhkTest.AssertTrue(allCommand != "")
+            AhkTest.AssertTrue(classCommand != "")
+            AhkTest.AssertTrue(widgetCommand != "")
+            AhkTest.AssertTrue(InStr(root.bind_all("<Button-1>"), allCommand) > 0)
+            AhkTest.AssertTrue(InStr(label.bind_class("Label", "<Button-1>"), classCommand) > 0)
+
+            AhkTest.AssertEqual(stdlib.None, label.event_generate("<Button-1>", { x: 7, y: 8 }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(1, widgetRecorder.Calls.Length)
+            AhkTest.AssertEqual(1, classRecorder.Calls.Length)
+            AhkTest.AssertEqual(1, allRecorder.Calls.Length)
+            AhkTest.AssertSame(label, widgetRecorder.Calls[1].widget)
+            AhkTest.AssertSame(label, classRecorder.Calls[1].widget)
+            AhkTest.AssertSame(label, allRecorder.Calls[1].widget)
+
+            AhkTest.AssertEqual(stdlib.None, label.unbind("<Button-1>", widgetCommand))
+            AhkTest.AssertEqual("", label.bind("<Button-1>"))
+            AhkTest.AssertEqual(stdlib.None, label.event_generate("<Button-1>", { x: 9, y: 10 }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(1, widgetRecorder.Calls.Length)
+            AhkTest.AssertEqual(2, classRecorder.Calls.Length)
+            AhkTest.AssertEqual(2, allRecorder.Calls.Length)
+
+            AhkTest.AssertEqual(stdlib.None, label.unbind_class("Label", "<Button-1>"))
+            AhkTest.AssertEqual("", root.bind_class("Label", "<Button-1>"))
+            AhkTest.AssertEqual(stdlib.None, label.event_generate("<Button-1>", { x: 11, y: 12 }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(1, widgetRecorder.Calls.Length)
+            AhkTest.AssertEqual(2, classRecorder.Calls.Length)
+            AhkTest.AssertEqual(3, allRecorder.Calls.Length)
+
+            AhkTest.AssertEqual(stdlib.None, root.unbind_all("<Button-1>"))
+            AhkTest.AssertEqual("", label.bind_all("<Button-1>"))
+            AhkTest.AssertEqual(stdlib.None, label.event_generate("<Button-1>", { x: 13, y: 14 }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(1, widgetRecorder.Calls.Length)
+            AhkTest.AssertEqual(2, classRecorder.Calls.Length)
+            AhkTest.AssertEqual(3, allRecorder.Calls.Length)
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.bind_all\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => root.bind_all("<Button-1>", allRecorder, "+", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.bind_class\(\) missing 1 required positional argument: 'className'$", (*) => root.bind_class())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.bind_class\(\) takes from 2 to 5 positional arguments but 6 were given$", (*) => root.bind_class("Label", "<Button-1>", classRecorder, "+", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.unbind\(\) missing 1 required positional argument: 'sequence'$", (*) => label.unbind())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.unbind\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => label.unbind("<Button-1>", widgetCommand, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.unbind_all\(\) missing 1 required positional argument: 'sequence'$", (*) => label.unbind_all())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.unbind_all\(\) takes 2 positional arguments but 3 were given$", (*) => label.unbind_all("<Button-1>", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.unbind_class\(\) missing 2 required positional arguments: 'className' and 'sequence'$", (*) => label.unbind_class())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.unbind_class\(\) missing 1 required positional argument: 'sequence'$", (*) => label.unbind_class("Label"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.unbind_class\(\) takes 3 positional arguments but 4 were given$", (*) => label.unbind_class("Label", "<Button-1>", classCommand))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkVirtualEventRegistryMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

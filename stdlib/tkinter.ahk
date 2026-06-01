@@ -389,6 +389,31 @@ class Tk
         return AhkStdlibTkinterBind(this, this, ".", args*)
     }
 
+    bind_all(args*)
+    {
+        return AhkStdlibTkinterBindAll(this, this, args*)
+    }
+
+    bind_class(args*)
+    {
+        return AhkStdlibTkinterBindClass(this, this, args*)
+    }
+
+    unbind(args*)
+    {
+        return AhkStdlibTkinterUnbind(this, ".", args*)
+    }
+
+    unbind_all(args*)
+    {
+        return AhkStdlibTkinterUnbindAll(this, args*)
+    }
+
+    unbind_class(args*)
+    {
+        return AhkStdlibTkinterUnbindClass(this, args*)
+    }
+
     bindtags(args*)
     {
         return AhkStdlibTkinterBindTags(this, ".", args*)
@@ -987,6 +1012,31 @@ class AhkStdlibTkinterWidget
     bind(args*)
     {
         return AhkStdlibTkinterBind(this.AhkStdlibRoot, this, this._w, args*)
+    }
+
+    bind_all(args*)
+    {
+        return AhkStdlibTkinterBindAll(this.AhkStdlibRoot, this, args*)
+    }
+
+    bind_class(args*)
+    {
+        return AhkStdlibTkinterBindClass(this.AhkStdlibRoot, this, args*)
+    }
+
+    unbind(args*)
+    {
+        return AhkStdlibTkinterUnbind(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    unbind_all(args*)
+    {
+        return AhkStdlibTkinterUnbindAll(this.AhkStdlibRoot, args*)
+    }
+
+    unbind_class(args*)
+    {
+        return AhkStdlibTkinterUnbindClass(this.AhkStdlibRoot, args*)
     }
 
     bindtags(args*)
@@ -2945,18 +2995,82 @@ AhkStdlibTkinterBind(root, widget, window, args*)
     if args.Length > 3
         throw TypeError("Misc.bind() takes from 1 to 4 positional arguments but " args.Length + 1 " were given", -1)
 
+    return AhkStdlibTkinterBindTarget(root, widget, window, args*)
+}
+
+AhkStdlibTkinterBindAll(root, widget, args*)
+{
+    if args.Length > 3
+        throw TypeError("Misc.bind_all() takes from 1 to 4 positional arguments but " args.Length + 1 " were given", -1)
+
+    return AhkStdlibTkinterBindTarget(root, widget, "all", args*)
+}
+
+AhkStdlibTkinterBindClass(root, widget, args*)
+{
     if args.Length = 0
-        return stdlib.tuple(AhkStdlibTkinterSimpleList(root.eval("bind " window)))
+        throw TypeError("Misc.bind_class() missing 1 required positional argument: 'className'", -1)
+    if args.Length > 4
+        throw TypeError("Misc.bind_class() takes from 2 to 5 positional arguments but " args.Length + 1 " were given", -1)
+
+    bindArgs := []
+    loop args.Length - 1
+        bindArgs.Push(args[A_Index + 1])
+    return AhkStdlibTkinterBindTarget(root, widget, args[1], bindArgs*)
+}
+
+AhkStdlibTkinterBindTarget(root, widget, target, args*)
+{
+    targetWord := AhkStdlibTkinterTclWord(target)
+    if args.Length = 0
+        return stdlib.tuple(AhkStdlibTkinterSimpleList(root.eval("bind " targetWord)))
 
     sequence := args[1]
     if args.Length = 1 || AhkStdlibIsNone(args[2])
-        return root.eval("bind " window " " AhkStdlibTkinterTclWord(sequence))
+        return root.eval("bind " targetWord " " AhkStdlibTkinterTclWord(sequence))
 
     commandName := AhkStdlibTkinterRegisterEventCommand(root, widget, args[2], sequence)
     addPrefix := args.Length >= 3 && args[3] = "+" ? "+" : ""
     script := addPrefix "if {`"[" commandName " %W %T %x %y %b]`" == `"break`"} break"
-    root.eval("bind " window " " AhkStdlibTkinterTclWord(sequence) " " AhkStdlibTkinterTclScriptWord(script))
+    root.eval("bind " targetWord " " AhkStdlibTkinterTclWord(sequence) " " AhkStdlibTkinterTclScriptWord(script))
     return commandName
+}
+
+AhkStdlibTkinterUnbind(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.unbind() missing 1 required positional argument: 'sequence'", -1)
+    if args.Length > 2
+        throw TypeError("Misc.unbind() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    root.eval("bind " AhkStdlibTkinterTclWord(window) " " AhkStdlibTkinterTclWord(args[1]) " {}")
+    if args.Length = 2 && !AhkStdlibIsNone(args[2])
+        AhkStdlibTkinterDeleteCommand(root, args[2])
+    return stdlib.None
+}
+
+AhkStdlibTkinterUnbindAll(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.unbind_all() missing 1 required positional argument: 'sequence'", -1)
+    if args.Length > 1
+        throw TypeError("Misc.unbind_all() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    root.eval("bind all " AhkStdlibTkinterTclWord(args[1]) " {}")
+    return stdlib.None
+}
+
+AhkStdlibTkinterUnbindClass(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.unbind_class() missing 2 required positional arguments: 'className' and 'sequence'", -1)
+    if args.Length = 1
+        throw TypeError("Misc.unbind_class() missing 1 required positional argument: 'sequence'", -1)
+    if args.Length > 2
+        throw TypeError("Misc.unbind_class() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    root.eval("bind " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]) " {}")
+    return stdlib.None
 }
 
 AhkStdlibTkinterBindTags(root, window, args*)
@@ -3203,7 +3317,7 @@ AhkStdlibTkinterRegisterCommand(root, callback, callbackArgs := unset)
 
 AhkStdlibTkinterRegisterEventCommand(root, widget, callback, sequence)
 {
-    entry := { Kind: "EventBind", Callback: callback, Widget: widget, Sequence: sequence }
+    entry := { Kind: "EventBind", Callback: callback, Root: root, Widget: widget, Sequence: sequence }
     id := AhkStdlibTkinterRegisterCommandCallback(entry)
     commandName := "ahkstdlib_tkinter_command_" id
     nameBuffer := AhkStdlibTkinterUtf8Buffer(commandName)
@@ -3212,6 +3326,16 @@ AhkStdlibTkinterRegisterEventCommand(root, widget, callback, sequence)
         throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp), -1)
     root.AhkStdlibCommandCallbacks[commandName] := entry
     return commandName
+}
+
+AhkStdlibTkinterDeleteCommand(root, commandName)
+{
+    commandName := AhkStdlibTkinterValueToString(commandName)
+    if commandName = ""
+        return
+    root.eval("rename " AhkStdlibTkinterTclWord(commandName) " {}")
+    if root.AhkStdlibCommandCallbacks.Has(commandName)
+        root.AhkStdlibCommandCallbacks.Delete(commandName)
 }
 
 AhkStdlibTkinterRegisterCommandCallback(callback)
@@ -3264,8 +3388,13 @@ AhkStdlibTkinterCommandArgs(argc, argv)
 
 AhkStdlibTkinterCallCommandCallback(entry, args)
 {
-    if IsObject(entry) && entry.HasOwnProp("Kind") && entry.Kind = "EventBind"
-        return entry.Callback.Call(Event(entry.Widget, args, entry.Sequence))
+    if IsObject(entry) && entry.HasOwnProp("Kind") && entry.Kind = "EventBind" {
+        eventWidget := entry.Widget
+        if args.Length >= 1 {
+            try eventWidget := AhkStdlibTkinterWidgetFromPath(entry.Root, args[1])
+        }
+        return entry.Callback.Call(Event(eventWidget, args, entry.Sequence))
+    }
     if IsObject(entry) && entry.HasOwnProp("Callback")
         return entry.Callback.Call(entry.Args*)
     return entry.Call(args*)
