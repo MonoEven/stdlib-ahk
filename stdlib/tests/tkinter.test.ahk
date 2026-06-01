@@ -587,6 +587,69 @@ class StdlibTkinterTest
         }
     }
 
+    static TestScrollbarControlSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            calls := []
+            command := (args*) => (calls.Push(args), "done")
+            bar := stdlib.tkinter.Scrollbar(root, { name: "bar", orient: "vertical", command: command, width: 17 })
+
+            AhkTest.AssertEqual("Scrollbar", Type(bar))
+            AhkTest.AssertEqual(".bar", String(bar))
+            AhkTest.AssertSame(root, bar._root())
+            AhkTest.AssertEqual(1, bar.winfo_exists())
+            AhkTest.AssertEqual("vertical", bar.cget("orient"))
+            AhkTest.AssertTrue(bar.cget("command") != "")
+            AhkTest.AssertEqual("17", bar.cget("width"))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 0.0, 0.0, 0.0]), bar.get())
+            AhkTest.AssertEqual(stdlib.None, bar.set(0.25, 0.75))
+            AhkTest.AssertEqual(stdlib.tuple([0.25, 0.75]), bar.get())
+            AhkTest.AssertEqual(stdlib.None, bar.activate())
+            AhkTest.AssertEqual(stdlib.None, bar.activate("arrow1"))
+            AhkTest.AssertEqual("arrow1", bar.activate())
+            AhkTest.AssertEqual(stdlib.None, bar.activate("slider"))
+            AhkTest.AssertEqual("slider", bar.activate())
+            AhkTest.AssertEqual(stdlib.None, bar.activate("bad"))
+            AhkTest.AssertEqual(stdlib.None, bar.activate())
+            AhkTest.AssertTrue(bar.delta(0, 10) is Float)
+            AhkTest.AssertTrue(bar.fraction(0, 10) is Float)
+            AhkTest.AssertEqual("", bar.identify(1, 1))
+            AhkTest.AssertEqual("done", root.eval(bar.cget("command") " moveto 0.5"))
+            AhkTest.AssertEqual("done", root.eval(bar.cget("command") " scroll 1 units"))
+            AhkTest.AssertEqual([["moveto", "0.5"], ["scroll", "1", "units"]], calls)
+            AhkTest.AssertEqual(stdlib.None, bar.pack())
+            AhkTest.AssertEqual("pack", bar.winfo_manager())
+            AhkTest.AssertEqual(stdlib.None, bar.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .bar"))
+
+            AhkTest.AssertEqual(".kw", String(stdlib.tkinter.Scrollbar({ master: root, name: "kw" })))
+            AhkTest.AssertEqual("horizontal", stdlib.tkinter.Scrollbar(root, { name: "cnf", orient: "horizontal" }).cget("orient"))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Scrollbar({ master: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Scrollbar(root, {}, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Scrollbar(root, { extra_kw: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.activate\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => stdlib.tkinter.Scrollbar(root).activate("x", "y"))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.delta\(\) missing 2 required positional arguments: 'deltax' and 'deltay'$", (*) => stdlib.tkinter.Scrollbar(root).delta())
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.delta\(\) missing 1 required positional argument: 'deltay'$", (*) => stdlib.tkinter.Scrollbar(root).delta(1))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.delta\(\) takes 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Scrollbar(root).delta(1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.fraction\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => stdlib.tkinter.Scrollbar(root).fraction())
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.fraction\(\) missing 1 required positional argument: 'y'$", (*) => stdlib.tkinter.Scrollbar(root).fraction(1))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.fraction\(\) takes 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Scrollbar(root).fraction(1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.identify\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => stdlib.tkinter.Scrollbar(root).identify())
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.identify\(\) missing 1 required positional argument: 'y'$", (*) => stdlib.tkinter.Scrollbar(root).identify(1))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.identify\(\) takes 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Scrollbar(root).identify(1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.set\(\) missing 2 required positional arguments: 'first' and 'last'$", (*) => stdlib.tkinter.Scrollbar(root).set())
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.set\(\) missing 1 required positional argument: 'last'$", (*) => stdlib.tkinter.Scrollbar(root).set(0.1))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.set\(\) takes 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Scrollbar(root).set(0.1, 0.2, 0.3))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => stdlib.tkinter.Scrollbar(root).set("bad", 0.2))
+            AhkTest.RaisesMatch(TypeError, "^Scrollbar\.get\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Scrollbar(root).get(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestEntryWidgetSupportsInputSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()

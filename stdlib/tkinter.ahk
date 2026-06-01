@@ -82,6 +82,11 @@ class AhkStdlibTkinter
         return Scale(args*)
     }
 
+    static Scrollbar(args*)
+    {
+        return Scrollbar(args*)
+    }
+
     static Canvas(args*)
     {
         return Canvas(args*)
@@ -868,6 +873,88 @@ class Scale extends AhkStdlibTkinterWidget
         if args.Length > 1
             throw TypeError("Scale.set() takes 2 positional arguments but " args.Length + 1 " were given", -1)
         this.AhkStdlibRoot.eval(this._w " set " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+}
+
+class Scrollbar extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Scrollbar", "scrollbar", args*)
+    }
+
+    activate(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Scrollbar.activate() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " activate"
+        if args.Length = 1 {
+            this.AhkStdlibRoot.eval(script " " AhkStdlibTkinterTclWord(args[1]))
+            return stdlib.None
+        }
+        value := this.AhkStdlibRoot.eval(script)
+        return value = "" ? stdlib.None : value
+    }
+
+    cget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.cget() missing 1 required positional argument: 'key'", -1)
+        if args.Length > 1
+            throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " cget -" args[1])
+    }
+
+    delta(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Scrollbar.delta() missing 2 required positional arguments: 'deltax' and 'deltay'", -1)
+        if args.Length = 1
+            throw TypeError("Scrollbar.delta() missing 1 required positional argument: 'deltay'", -1)
+        if args.Length > 2
+            throw TypeError("Scrollbar.delta() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        return Float(this.AhkStdlibRoot.eval(this._w " delta " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])))
+    }
+
+    fraction(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Scrollbar.fraction() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("Scrollbar.fraction() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("Scrollbar.fraction() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        return Float(this.AhkStdlibRoot.eval(this._w " fraction " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])))
+    }
+
+    get(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Scrollbar.get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return AhkStdlibTkinterFloatTuple(this.AhkStdlibRoot.eval(this._w " get"))
+    }
+
+    identify(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Scrollbar.identify() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("Scrollbar.identify() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("Scrollbar.identify() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " identify " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+    }
+
+    set(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Scrollbar.set() missing 2 required positional arguments: 'first' and 'last'", -1)
+        if args.Length = 1
+            throw TypeError("Scrollbar.set() missing 1 required positional argument: 'last'", -1)
+        if args.Length > 2
+            throw TypeError("Scrollbar.set() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " set " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
         return stdlib.None
     }
 }
@@ -1783,6 +1870,15 @@ AhkStdlibTkinterIntegerTuple(value)
     for part in StrSplit(Trim(value), " ")
         if part != ""
             result.Push(Integer(part))
+    return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterFloatTuple(value)
+{
+    result := []
+    for part in StrSplit(Trim(value), " ")
+        if part != ""
+            result.Push(Float(part))
     return stdlib.tuple(result)
 }
 
