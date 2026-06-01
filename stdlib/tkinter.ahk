@@ -748,6 +748,31 @@ class Tk
         return AhkStdlibTkinterWinfoChildren(this, ".", args*)
     }
 
+    winfo_atom(args*)
+    {
+        return AhkStdlibTkinterWinfoAtom(this, ".", args*)
+    }
+
+    winfo_atomname(args*)
+    {
+        return AhkStdlibTkinterWinfoAtomName(this, ".", args*)
+    }
+
+    winfo_containing(args*)
+    {
+        return AhkStdlibTkinterWinfoContaining(this, ".", args*)
+    }
+
+    winfo_interps(args*)
+    {
+        return AhkStdlibTkinterWinfoInterps(this, ".", args*)
+    }
+
+    winfo_pathname(args*)
+    {
+        return AhkStdlibTkinterWinfoPathName(this, ".", args*)
+    }
+
     winfo_class(args*)
     {
         return AhkStdlibTkinterWinfoString(this, ".", "class", "winfo_class", args*)
@@ -1458,6 +1483,31 @@ class AhkStdlibTkinterWidget
     winfo_children(args*)
     {
         return AhkStdlibTkinterWinfoChildren(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    winfo_atom(args*)
+    {
+        return AhkStdlibTkinterWinfoAtom(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    winfo_atomname(args*)
+    {
+        return AhkStdlibTkinterWinfoAtomName(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    winfo_containing(args*)
+    {
+        return AhkStdlibTkinterWinfoContaining(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    winfo_interps(args*)
+    {
+        return AhkStdlibTkinterWinfoInterps(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    winfo_pathname(args*)
+    {
+        return AhkStdlibTkinterWinfoPathName(this.AhkStdlibRoot, this._w, args*)
     }
 
     winfo_class(args*)
@@ -3575,6 +3625,69 @@ AhkStdlibTkinterWinfoChildren(root, window, args*)
     for path in AhkStdlibTkinterSimpleList(root.eval("winfo children " window))
         result.Push(root.AhkStdlibWidgetsByPath[path])
     return result
+}
+
+AhkStdlibTkinterWinfoAtom(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.winfo_atom() missing 1 required positional argument: 'name'", -1)
+    if args.Length > 2
+        throw TypeError("Misc.winfo_atom() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+    script := "winfo atom" AhkStdlibTkinterWinfoDisplayScript(window, args.Length = 2, args.Length = 2 ? args[2] : 0)
+    if !AhkStdlibIsNone(args[1])
+        script .= " " AhkStdlibTkinterTclWord(args[1])
+    return Integer(root.eval(script))
+}
+
+AhkStdlibTkinterWinfoAtomName(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.winfo_atomname() missing 1 required positional argument: 'id'", -1)
+    if args.Length > 2
+        throw TypeError("Misc.winfo_atomname() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+    return root.eval("winfo atomname" AhkStdlibTkinterWinfoDisplayScript(window, args.Length = 2, args.Length = 2 ? args[2] : 0) " " AhkStdlibTkinterTclWord(args[1]))
+}
+
+AhkStdlibTkinterWinfoContaining(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.winfo_containing() missing 2 required positional arguments: 'rootX' and 'rootY'", -1)
+    if args.Length = 1
+        throw TypeError("Misc.winfo_containing() missing 1 required positional argument: 'rootY'", -1)
+    if args.Length > 3
+        throw TypeError("Misc.winfo_containing() takes from 3 to 4 positional arguments but " args.Length + 1 " were given", -1)
+    path := root.eval("winfo containing" AhkStdlibTkinterWinfoDisplayScript(window, args.Length = 3, args.Length = 3 ? args[3] : 0) " " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+    if path = ""
+        return stdlib.None
+    return AhkStdlibTkinterWidgetFromPath(root, path)
+}
+
+AhkStdlibTkinterWinfoInterps(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc.winfo_interps() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    value := root.eval("winfo interps" AhkStdlibTkinterWinfoDisplayScript(window, args.Length = 1, args.Length = 1 ? args[1] : 0))
+    return stdlib.tuple(AhkStdlibTkinterSplitList(root.AhkStdlibInterp, value))
+}
+
+AhkStdlibTkinterWinfoPathName(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.winfo_pathname() missing 1 required positional argument: 'id'", -1)
+    if args.Length > 2
+        throw TypeError("Misc.winfo_pathname() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+    return root.eval("winfo pathname" AhkStdlibTkinterWinfoDisplayScript(window, args.Length = 2, args.Length = 2 ? args[2] : 0) " " AhkStdlibTkinterTclWord(args[1]))
+}
+
+AhkStdlibTkinterWinfoDisplayScript(window, hasDisplayof, displayof)
+{
+    if !hasDisplayof
+        return ""
+    if AhkStdlibIsNone(displayof)
+        return " -displayof " AhkStdlibTkinterTclWord(window)
+    if AhkStdlibTruthValue(displayof)
+        return " -displayof " AhkStdlibTkinterTclWord(displayof)
+    return ""
 }
 
 AhkStdlibTkinterWinfoString(root, window, command, methodName, args*)

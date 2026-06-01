@@ -878,6 +878,65 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWinfoAtomPathAndContainingQueriesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            AhkTest.AssertEqual("", root.geometry("260x180+25+35"))
+            frame := stdlib.tkinter.Frame(root, { name: "atom_host", width: 160, height: 90, bg: "white" })
+            label := stdlib.tkinter.Label(frame, { name: "caption", text: "AtomPath" })
+            AhkTest.AssertEqual(stdlib.None, frame.pack({ padx: 8, pady: 9 }))
+            AhkTest.AssertEqual(stdlib.None, label.pack({ padx: 6, pady: 7 }))
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            atom := root.winfo_atom("WM_DELETE_WINDOW")
+            customAtom := root.winfo_atom("STDLIB_AHK_TEST_ATOM")
+            AhkTest.AssertTrue(atom is Integer)
+            AhkTest.AssertTrue(customAtom is Integer)
+            AhkTest.AssertEqual("WM_DELETE_WINDOW", root.winfo_atomname(atom))
+            AhkTest.AssertEqual("STDLIB_AHK_TEST_ATOM", frame.winfo_atomname(customAtom))
+            AhkTest.AssertEqual(atom, root.winfo_atom("WM_DELETE_WINDOW", stdlib.None))
+            AhkTest.AssertEqual(atom, label.winfo_atom("WM_DELETE_WINDOW", root))
+            AhkTest.AssertEqual("WM_DELETE_WINDOW", label.winfo_atomname(atom, stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(), root.winfo_interps())
+            AhkTest.AssertEqual(stdlib.tuple(), label.winfo_interps(root))
+
+            rootId := root.eval("winfo id .")
+            frameId := root.eval("winfo id " String(frame))
+            labelId := root.eval("winfo id " String(label))
+            AhkTest.AssertEqual(".", root.winfo_pathname(rootId))
+            AhkTest.AssertEqual(".atom_host", root.winfo_pathname(frameId))
+            AhkTest.AssertEqual(".atom_host.caption", label.winfo_pathname(labelId, root))
+            AhkTest.AssertEqual(".", label.winfo_pathname(rootId, stdlib.None))
+
+            rootHit := root.winfo_containing(root.winfo_rootx() + 2, root.winfo_rooty() + 2)
+            labelHit := root.winfo_containing(label.winfo_rootx() + 1, label.winfo_rooty() + 1)
+            AhkTest.AssertSame(root, rootHit)
+            AhkTest.AssertSame(label, labelHit)
+            AhkTest.AssertSame(label, label.winfo_containing(label.winfo_rootx() + 1, label.winfo_rooty() + 1, stdlib.None))
+            AhkTest.AssertSame(label, label.winfo_containing(label.winfo_rootx() + 1, label.winfo_rooty() + 1, root))
+            AhkTest.AssertSame(stdlib.None, root.winfo_containing(-10000, -10000))
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_atom\(\) missing 1 required positional argument: 'name'$", (*) => root.winfo_atom())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_atom\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => root.winfo_atom("WM_DELETE_WINDOW", root, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_atomname\(\) missing 1 required positional argument: 'id'$", (*) => root.winfo_atomname())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_atomname\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => root.winfo_atomname(atom, root, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_interps\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => root.winfo_interps(root, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_pathname\(\) missing 1 required positional argument: 'id'$", (*) => root.winfo_pathname())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_pathname\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => root.winfo_pathname(rootId, root, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_containing\(\) missing 2 required positional arguments: 'rootX' and 'rootY'$", (*) => root.winfo_containing())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_containing\(\) missing 1 required positional argument: 'rootY'$", (*) => root.winfo_containing(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_containing\(\) takes from 3 to 4 positional arguments but 5 were given$", (*) => root.winfo_containing(1, 2, root, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => root.winfo_atomname("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => root.winfo_pathname("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => root.winfo_containing("bad", 1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetIdentityTreeSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
