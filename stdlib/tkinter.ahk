@@ -102,6 +102,11 @@ class AhkStdlibTkinter
         return Entry(args*)
     }
 
+    static Spinbox(args*)
+    {
+        return Spinbox(args*)
+    }
+
     static Listbox(args*)
     {
         return Listbox(args*)
@@ -3237,6 +3242,151 @@ class Entry extends AhkStdlibTkinterWidget
     selection_to(args*)
     {
         return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_to()", "to", args*)
+    }
+}
+
+class Spinbox extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Spinbox", "spinbox", args*)
+    }
+
+    bbox(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Spinbox.bbox() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Spinbox.bbox() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return AhkStdlibTkinterIntegerTuple(this.AhkStdlibRoot.eval(this._w " bbox " AhkStdlibTkinterTclWord(args[1])))
+    }
+
+    delete(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Spinbox.delete() missing 1 required positional argument: 'first'", -1)
+        if args.Length > 2
+            throw TypeError("Spinbox.delete() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " delete " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    get(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Spinbox.get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " get")
+    }
+
+    icursor(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Spinbox.icursor() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Spinbox.icursor() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " icursor " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    identify(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Spinbox.identify() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("Spinbox.identify() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("Spinbox.identify() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " identify " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+    }
+
+    index(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Spinbox.index() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Spinbox.index() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return Integer(this.AhkStdlibRoot.eval(this._w " index " AhkStdlibTkinterTclWord(args[1])))
+    }
+
+    insert(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Spinbox.insert() missing 2 required positional arguments: 'index' and 's'", -1)
+        if args.Length = 1
+            throw TypeError("Spinbox.insert() missing 1 required positional argument: 's'", -1)
+        if args.Length > 2
+            throw TypeError("Spinbox.insert() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " insert " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    invoke(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Spinbox.invoke() missing 1 required positional argument: 'element'", -1)
+        if args.Length > 1
+            throw TypeError("Spinbox.invoke() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " invoke " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    selection_clear(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionClear(this, "Spinbox.selection_clear()", args*)
+    }
+
+    selection_element(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Spinbox.selection_element() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0
+            return this.AhkStdlibRoot.eval(this._w " selection element")
+        this.AhkStdlibRoot.eval(this._w " selection element " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    selection_present(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionPresent(this, "Spinbox.selection_present()", args*)
+    }
+
+    selection_range(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionRange(this, "Spinbox.selection_range()", args*)
+    }
+
+    xview(args*)
+    {
+        script := this._w " xview"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        value := this.AhkStdlibRoot.eval(script)
+        return args.Length = 0 ? AhkStdlibTkinterFloatTuple(value) : stdlib.None
+    }
+
+    xview_moveto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("XView.xview_moveto() missing 1 required positional argument: 'fraction'", -1)
+        if args.Length > 1
+            throw TypeError("XView.xview_moveto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " xview moveto " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    xview_scroll(args*)
+    {
+        if args.Length = 0
+            throw TypeError("XView.xview_scroll() missing 2 required positional arguments: 'number' and 'what'", -1)
+        if args.Length = 1
+            throw TypeError("XView.xview_scroll() missing 1 required positional argument: 'what'", -1)
+        if args.Length > 2
+            throw TypeError("XView.xview_scroll() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " xview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
     }
 }
 

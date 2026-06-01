@@ -2065,6 +2065,83 @@ class StdlibTkinterTest
         }
     }
 
+    static TestSpinboxWidgetValueSelectionAndInvokeSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            seenValues := []
+            value := stdlib.tkinter.StringVar(root, "2", "spin_var")
+            spin := stdlib.tkinter.Spinbox(root, { from_: 0, to: 5, increment: 1, textvariable: value, width: 6, command: (*) => seenValues.Push(value.get()) })
+            AhkTest.AssertEqual(stdlib.None, spin.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual("Spinbox", Type(spin))
+            AhkTest.AssertEqual(".!spinbox", String(spin))
+            AhkTest.AssertSame(root, spin._root())
+            AhkTest.AssertEqual(1, spin.winfo_exists())
+            AhkTest.AssertEqual("Spinbox", spin.winfo_class())
+            AhkTest.AssertEqual(6, spin.cget("width"))
+            AhkTest.AssertEqual("spin_var", spin.cget("textvariable"))
+            AhkTest.AssertEqual("2", spin.get())
+            AhkTest.AssertEqual("2", value.get())
+
+            AhkTest.AssertEqual(stdlib.None, spin.delete(0, "end"))
+            AhkTest.AssertEqual(stdlib.None, spin.insert(0, "abc"))
+            AhkTest.AssertEqual("abc", spin.get())
+            AhkTest.AssertEqual("abc", value.get())
+            AhkTest.AssertEqual(stdlib.None, spin.icursor(1))
+            AhkTest.AssertEqual(1, spin.index("insert"))
+            AhkTest.AssertEqual(3, spin.index("end"))
+
+            AhkTest.AssertSame(stdlib.False, spin.selection_present())
+            AhkTest.AssertEqual(stdlib.None, spin.selection_range(0, 2))
+            AhkTest.AssertSame(stdlib.True, spin.selection_present())
+            AhkTest.AssertEqual("ab", spin.selection_get())
+            AhkTest.AssertEqual(stdlib.None, spin.selection_clear())
+            AhkTest.AssertSame(stdlib.False, spin.selection_present())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^PRIMARY selection doesn't exist or form `"STRING`" not defined$", (*) => spin.selection_get())
+
+            AhkTest.AssertEqual(stdlib.None, spin.delete(0, "end"))
+            AhkTest.AssertEqual(stdlib.None, spin.insert(0, "2"))
+            AhkTest.AssertEqual(stdlib.None, spin.invoke("buttonup"))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("3", spin.get())
+            AhkTest.AssertEqual("3", seenValues[1])
+            AhkTest.AssertEqual(stdlib.None, spin.invoke("buttondown"))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("2", spin.get())
+            AhkTest.AssertEqual("2", seenValues[2])
+
+            AhkTest.AssertEqual("none", spin.selection_element())
+            AhkTest.AssertEqual(stdlib.None, spin.selection_element("buttonup"))
+            AhkTest.AssertEqual("buttonup", spin.selection_element())
+            AhkTest.AssertEqual(stdlib.None, spin.selection_element("none"))
+            AhkTest.AssertEqual("none", spin.selection_element())
+            AhkTest.AssertEqual(4, spin.bbox(0).Length)
+            AhkTest.AssertEqual("buttondown", spin.identify(1, 1))
+            AhkTest.AssertEqual(2, spin.xview().Length)
+            AhkTest.AssertEqual(stdlib.None, spin.xview_moveto(0.5))
+            AhkTest.AssertEqual(stdlib.None, spin.xview_scroll(1, "units"))
+
+            AhkTest.RaisesMatch(TypeError, "^Spinbox\.get\(\) takes 1 positional argument but 2 were given$", (*) => spin.get(1))
+            AhkTest.RaisesMatch(TypeError, "^Spinbox\.insert\(\) missing 2 required positional arguments: 'index' and 's'$", (*) => spin.insert())
+            AhkTest.RaisesMatch(TypeError, "^Spinbox\.insert\(\) missing 1 required positional argument: 's'$", (*) => spin.insert(0))
+            AhkTest.RaisesMatch(TypeError, "^Spinbox\.delete\(\) missing 1 required positional argument: 'first'$", (*) => spin.delete())
+            AhkTest.RaisesMatch(TypeError, "^Spinbox\.invoke\(\) missing 1 required positional argument: 'element'$", (*) => spin.invoke())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad element "bad": must be none, buttondown, or buttonup$', (*) => spin.invoke("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Spinbox\.selection_range\(\) missing 1 required positional argument: 'end'$", (*) => spin.selection_range(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad spinbox index "bad"$', (*) => spin.selection_range("bad", 2))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad selection element "bad": must be none, buttondown, or buttonup$', (*) => spin.selection_element("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad spinbox index "bad"$', (*) => spin.bbox("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => spin.identify("bad", 1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkClipboardSurfaceMatchesLocal310()
     {
         oldClipboard := A_Clipboard
