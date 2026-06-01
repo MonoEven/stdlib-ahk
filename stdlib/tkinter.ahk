@@ -539,6 +539,16 @@ class Tk
         return stdlib.None
     }
 
+    image_names(args*)
+    {
+        return AhkStdlibTkinterImageNames(this, args*)
+    }
+
+    image_types(args*)
+    {
+        return AhkStdlibTkinterImageTypes(this, args*)
+    }
+
     mainloop(args*)
     {
         if args.Length > 1
@@ -942,6 +952,16 @@ class AhkStdlibTkinterWidget
         if args.Length = 0
             throw TypeError("Misc.after_idle() missing 1 required positional argument: 'func'", -1)
         return AhkStdlibTkinterAfter(this.AhkStdlibRoot, "idle", args*)
+    }
+
+    image_names(args*)
+    {
+        return AhkStdlibTkinterImageNames(this.AhkStdlibRoot, args*)
+    }
+
+    image_types(args*)
+    {
+        return AhkStdlibTkinterImageTypes(this.AhkStdlibRoot, args*)
     }
 
     bind(args*)
@@ -2747,6 +2767,20 @@ AhkStdlibTkinterWidgetListFromPathList(root, value)
     for path in AhkStdlibTkinterSimpleList(value)
         result.Push(AhkStdlibTkinterWidgetFromPath(root, path))
     return result
+}
+
+AhkStdlibTkinterImageNames(root, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.image_names() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return stdlib.tuple(AhkStdlibTkinterSimpleList(root.eval("image names")))
+}
+
+AhkStdlibTkinterImageTypes(root, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.image_types() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return stdlib.tuple(AhkStdlibTkinterSimpleList(root.eval("image types")))
 }
 
 AhkStdlibTkinterPackInfo(widget)

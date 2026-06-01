@@ -1677,6 +1677,37 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkImageRegistryQueriesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            label := stdlib.tkinter.Label(root, { text: "Images" })
+            defaultNames := stdlib.tuple(["::tk::icons::information", "::tk::icons::error", "::tk::icons::warning", "::tk::icons::question"])
+
+            AhkTest.AssertEqual(stdlib.tuple(["photo", "bitmap"]), root.image_types())
+            AhkTest.AssertEqual(stdlib.tuple(["photo", "bitmap"]), label.image_types())
+            AhkTest.AssertEqual(defaultNames, root.image_names())
+            AhkTest.AssertEqual(defaultNames, label.image_names())
+
+            first := stdlib.tkinter.PhotoImage({ master: root, name: "registry_a", width: 1, height: 1 })
+            second := stdlib.tkinter.PhotoImage({ master: root, name: "registry_b", width: 1, height: 1 })
+            AhkTest.AssertEqual(stdlib.tuple(["registry_a", "::tk::icons::information", "::tk::icons::error", "::tk::icons::warning", "registry_b", "::tk::icons::question"]), root.image_names())
+            AhkTest.AssertEqual(root.image_names(), label.image_names())
+
+            root.eval("image delete registry_a")
+            AhkTest.AssertEqual(stdlib.tuple(["::tk::icons::information", "::tk::icons::error", "::tk::icons::warning", "registry_b", "::tk::icons::question"]), root.image_names())
+            root.eval("image delete registry_b")
+            AhkTest.AssertEqual(defaultNames, root.image_names())
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.image_names\(\) takes 1 positional argument but 2 were given$", (*) => root.image_names(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.image_types\(\) takes 1 positional argument but 2 were given$", (*) => label.image_types(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCanvasDrawableSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
