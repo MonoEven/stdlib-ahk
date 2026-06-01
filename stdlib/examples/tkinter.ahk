@@ -476,6 +476,14 @@ tkinter_example_named_after_set := tkinter_example_named.get()
 tkinter_example_named_set_none_return := tkinter_example_named.set(stdlib.None)
 tkinter_example_named_after_none := tkinter_example_named.get()
 
+tkinter_example_trace_calls := []
+tkinter_example_trace_value := stdlib.tkinter.StringVar(tkinter_example_interp, "seed", "trace_var_example")
+tkinter_example_trace_name := tkinter_example_trace_value.trace_add("write", (name, index, mode) => tkinter_example_trace_calls.Push(stdlib.tuple([name, index, mode])))
+tkinter_example_trace_info := tkinter_example_trace_value.trace_info()
+tkinter_example_trace_set_return := tkinter_example_trace_value.set("traced")
+tkinter_example_trace_remove_return := tkinter_example_trace_value.trace_remove("write", tkinter_example_trace_name)
+tkinter_example_trace_info_after_remove := tkinter_example_trace_value.trace_info()
+
 tkinter_example_variable := stdlib.tkinter.Variable(tkinter_example_interp, "seed", "custom_var")
 tkinter_example_variable_name := tkinter_example_variable._name
 tkinter_example_variable_string := String(tkinter_example_variable)

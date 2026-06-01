@@ -164,6 +164,61 @@ class StdlibTkinterTest
         AhkTest.AssertSame(stdlib.False, boolValue.get())
     }
 
+    static TestVariableTraceCallbacksMatchLocal310()
+    {
+        interp := stdlib.tkinter.Tcl()
+        value := stdlib.tkinter.StringVar(interp, "seed", "trace_var")
+        writeRecorder := StdlibTkinterTest.TraceRecorder()
+
+        writeName := value.trace_add("write", writeRecorder)
+        info := value.trace_info()
+        AhkTest.AssertRegex(writeName, "^ahkstdlib_tkinter_command_[0-9]+$")
+        AhkTest.AssertEqual(1, info.Length)
+        AhkTest.AssertEqual(stdlib.tuple(["write"]), info[1][1])
+        AhkTest.AssertEqual(writeName, info[1][2])
+        AhkTest.AssertEqual(stdlib.None, value.set("grown"))
+        AhkTest.AssertEqual(1, writeRecorder.Calls.Length)
+        AhkTest.AssertEqual(stdlib.tuple(["trace_var", "", "write"]), writeRecorder.Calls[1])
+        AhkTest.AssertEqual(stdlib.None, value.trace_remove("write", writeName))
+        AhkTest.AssertEqual(0, value.trace_info().Length)
+        AhkTest.AssertEqual(stdlib.None, value.set("after_remove"))
+        AhkTest.AssertEqual(1, writeRecorder.Calls.Length)
+
+        readWriteRecorder := StdlibTkinterTest.TraceRecorder()
+        readWriteName := value.trace_add(["read", "write"], readWriteRecorder)
+        info := value.trace_info()
+        AhkTest.AssertEqual(1, info.Length)
+        AhkTest.AssertEqual(stdlib.tuple(["read", "write"]), info[1][1])
+        AhkTest.AssertEqual(readWriteName, info[1][2])
+        AhkTest.AssertEqual("after_remove", value.get())
+        AhkTest.AssertEqual(stdlib.None, value.set("tuple_set"))
+        AhkTest.AssertEqual(2, readWriteRecorder.Calls.Length)
+        AhkTest.AssertEqual(stdlib.tuple(["trace_var", "", "read"]), readWriteRecorder.Calls[1])
+        AhkTest.AssertEqual(stdlib.tuple(["trace_var", "", "write"]), readWriteRecorder.Calls[2])
+        AhkTest.AssertEqual(stdlib.None, value.trace_remove(["read", "write"], readWriteName))
+        AhkTest.AssertEqual(0, value.trace_info().Length)
+
+        legacyRecorder := StdlibTkinterTest.TraceRecorder()
+        legacyName := value.trace_variable("w", legacyRecorder)
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.tuple(["w", legacyName])]), value.trace_vinfo())
+        info := value.trace_info()
+        AhkTest.AssertEqual(1, info.Length)
+        AhkTest.AssertEqual(stdlib.tuple(["write"]), info[1][1])
+        AhkTest.AssertEqual(legacyName, info[1][2])
+        AhkTest.AssertEqual(stdlib.None, value.set("legacy_set"))
+        AhkTest.AssertEqual(stdlib.tuple(["trace_var", "", "w"]), legacyRecorder.Calls[1])
+        AhkTest.AssertEqual(stdlib.None, value.trace_vdelete("w", legacyName))
+        AhkTest.AssertEqual(0, value.trace_vinfo().Length)
+
+        unsetRecorder := StdlibTkinterTest.TraceRecorder()
+        unsetValue := stdlib.tkinter.StringVar(interp, "seed", "unset_var")
+        unsetName := unsetValue.trace_add("unset", unsetRecorder)
+        AhkTest.AssertRegex(unsetName, "^ahkstdlib_tkinter_command_[0-9]+$")
+        AhkTest.AssertEqual("", interp.eval("unset unset_var"))
+        AhkTest.AssertEqual(stdlib.tuple(["unset_var", "", "unset"]), unsetRecorder.Calls[1])
+        AhkTest.AssertEqual(0, unsetValue.trace_info().Length)
+    }
+
     static TestTclUseTkLoadsTkPackageLikeLocal310()
     {
         interp := stdlib.tkinter.Tcl({ useTk: stdlib.True })
@@ -2628,6 +2683,23 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(TypeError, "^BooleanVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.BooleanVar({ master: interp, extra: 1 }))
         AhkTest.RaisesMatch(TypeError, "^BooleanVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.BooleanVar(interp, 1, "custom_bool", "extra"))
         AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.BooleanVar({ master: interp, name: 1 }))
+        traceValue := stdlib.tkinter.StringVar(interp, "seed", "trace_error_var")
+        traceRecorder := StdlibTkinterTest.TraceRecorder()
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_add\(\) missing 2 required positional arguments: 'mode' and 'callback'$", (*) => traceValue.trace_add())
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_add\(\) missing 1 required positional argument: 'callback'$", (*) => traceValue.trace_add("write"))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_add\(\) takes 3 positional arguments but 4 were given$", (*) => traceValue.trace_add("write", traceRecorder, "extra"))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_remove\(\) missing 2 required positional arguments: 'mode' and 'cbname'$", (*) => traceValue.trace_remove())
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_remove\(\) missing 1 required positional argument: 'cbname'$", (*) => traceValue.trace_remove("write"))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_remove\(\) takes 3 positional arguments but 4 were given$", (*) => traceValue.trace_remove("write", "name", "extra"))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_info\(\) takes 1 positional argument but 2 were given$", (*) => traceValue.trace_info("extra"))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_variable\(\) missing 2 required positional arguments: 'mode' and 'callback'$", (*) => traceValue.trace_variable())
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_variable\(\) missing 1 required positional argument: 'callback'$", (*) => traceValue.trace_variable("w"))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_variable\(\) takes 3 positional arguments but 4 were given$", (*) => traceValue.trace_variable("w", traceRecorder, "extra"))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_vdelete\(\) missing 2 required positional arguments: 'mode' and 'cbname'$", (*) => traceValue.trace_vdelete())
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_vdelete\(\) missing 1 required positional argument: 'cbname'$", (*) => traceValue.trace_vdelete("w"))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_vdelete\(\) takes 3 positional arguments but 4 were given$", (*) => traceValue.trace_vdelete("w", "name", "extra"))
+        AhkTest.RaisesMatch(TypeError, "^Variable\.trace_vinfo\(\) takes 1 positional argument but 2 were given$", (*) => traceValue.trace_vinfo("extra"))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad operation "bad": must be array, read, unset, or write$', (*) => traceValue.trace_add("bad", traceRecorder))
         AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Label({ master: 1 }))
         AhkTest.RaisesMatch(TypeError, "^Label\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Label(gui, {}, "extra"))
         AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Label(gui, { extra_kw: 1 }))
@@ -2695,6 +2767,20 @@ class StdlibTkinterTest
         {
             this.Calls.Push(event)
             return this.Result
+        }
+    }
+
+    class TraceRecorder
+    {
+        __New()
+        {
+            this.Calls := []
+        }
+
+        Call(args*)
+        {
+            this.Calls.Push(stdlib.tuple(args))
+            return "ignored"
         }
     }
 

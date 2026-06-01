@@ -2530,6 +2530,36 @@ class AhkStdlibTkinterVariable
     {
         return this.set(value)
     }
+
+    trace_add(args*)
+    {
+        return AhkStdlibTkinterVariableTraceAdd(this, args*)
+    }
+
+    trace_remove(args*)
+    {
+        return AhkStdlibTkinterVariableTraceRemove(this, args*)
+    }
+
+    trace_info(args*)
+    {
+        return AhkStdlibTkinterVariableTraceInfo(this, args*)
+    }
+
+    trace_variable(args*)
+    {
+        return AhkStdlibTkinterVariableTraceVariable(this, args*)
+    }
+
+    trace_vdelete(args*)
+    {
+        return AhkStdlibTkinterVariableTraceVdelete(this, args*)
+    }
+
+    trace_vinfo(args*)
+    {
+        return AhkStdlibTkinterVariableTraceVinfo(this, args*)
+    }
 }
 
 class AhkStdlibTkinterPublicVariable extends AhkStdlibTkinterVariable
@@ -2992,6 +3022,110 @@ AhkStdlibTkinterOptionReadFile(root, args*)
         script .= " " AhkStdlibTkinterTclWord(args[2])
     root.eval(script)
     return stdlib.None
+}
+
+AhkStdlibTkinterVariableTraceAdd(variable, args*)
+{
+    if args.Length = 0
+        throw TypeError("Variable.trace_add() missing 2 required positional arguments: 'mode' and 'callback'", -1)
+    if args.Length = 1
+        throw TypeError("Variable.trace_add() missing 1 required positional argument: 'callback'", -1)
+    if args.Length > 2
+        throw TypeError("Variable.trace_add() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    commandName := AhkStdlibTkinterRegisterTraceCommand(variable._tk, args[2])
+    variable._tk.eval("trace add variable " AhkStdlibTkinterTclWord(variable._name) " " AhkStdlibTkinterTraceModeWord(args[1]) " " AhkStdlibTkinterTclWord(commandName))
+    return commandName
+}
+
+AhkStdlibTkinterVariableTraceRemove(variable, args*)
+{
+    if args.Length = 0
+        throw TypeError("Variable.trace_remove() missing 2 required positional arguments: 'mode' and 'cbname'", -1)
+    if args.Length = 1
+        throw TypeError("Variable.trace_remove() missing 1 required positional argument: 'cbname'", -1)
+    if args.Length > 2
+        throw TypeError("Variable.trace_remove() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    cbname := AhkStdlibTkinterValueToString(args[2])
+    variable._tk.eval("trace remove variable " AhkStdlibTkinterTclWord(variable._name) " " AhkStdlibTkinterTraceModeWord(args[1]) " " AhkStdlibTkinterTclWord(cbname))
+    AhkStdlibTkinterDeleteTraceCommandIfUnused(variable, cbname)
+    return stdlib.None
+}
+
+AhkStdlibTkinterVariableTraceInfo(variable, args*)
+{
+    if args.Length != 0
+        throw TypeError("Variable.trace_info() takes 1 positional argument but " args.Length + 1 " were given", -1)
+
+    result := []
+    raw := variable._tk.eval("trace info variable " AhkStdlibTkinterTclWord(variable._name))
+    for entryText in AhkStdlibTkinterSplitList(variable._tk.AhkStdlibInterp, raw) {
+        entry := AhkStdlibTkinterSplitList(variable._tk.AhkStdlibInterp, entryText)
+        modes := entry.Length >= 1 ? AhkStdlibTkinterSplitList(variable._tk.AhkStdlibInterp, entry[1]) : []
+        callback := entry.Length >= 2 ? entry[2] : ""
+        result.Push(stdlib.tuple([stdlib.tuple(modes), callback]))
+    }
+    return result
+}
+
+AhkStdlibTkinterVariableTraceVariable(variable, args*)
+{
+    if args.Length = 0
+        throw TypeError("Variable.trace_variable() missing 2 required positional arguments: 'mode' and 'callback'", -1)
+    if args.Length = 1
+        throw TypeError("Variable.trace_variable() missing 1 required positional argument: 'callback'", -1)
+    if args.Length > 2
+        throw TypeError("Variable.trace_variable() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    commandName := AhkStdlibTkinterRegisterTraceCommand(variable._tk, args[2])
+    variable._tk.eval("trace variable " AhkStdlibTkinterTclWord(variable._name) " " AhkStdlibTkinterTraceModeWord(args[1]) " " AhkStdlibTkinterTclWord(commandName))
+    return commandName
+}
+
+AhkStdlibTkinterVariableTraceVdelete(variable, args*)
+{
+    if args.Length = 0
+        throw TypeError("Variable.trace_vdelete() missing 2 required positional arguments: 'mode' and 'cbname'", -1)
+    if args.Length = 1
+        throw TypeError("Variable.trace_vdelete() missing 1 required positional argument: 'cbname'", -1)
+    if args.Length > 2
+        throw TypeError("Variable.trace_vdelete() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    cbname := AhkStdlibTkinterValueToString(args[2])
+    variable._tk.eval("trace vdelete " AhkStdlibTkinterTclWord(variable._name) " " AhkStdlibTkinterTraceModeWord(args[1]) " " AhkStdlibTkinterTclWord(cbname))
+    splitName := AhkStdlibTkinterSplitList(variable._tk.AhkStdlibInterp, cbname)
+    if splitName.Length > 0
+        cbname := splitName[1]
+    AhkStdlibTkinterDeleteTraceCommandIfUnused(variable, cbname)
+    return stdlib.None
+}
+
+AhkStdlibTkinterVariableTraceVinfo(variable, args*)
+{
+    if args.Length != 0
+        throw TypeError("Variable.trace_vinfo() takes 1 positional argument but " args.Length + 1 " were given", -1)
+
+    result := []
+    raw := variable._tk.eval("trace vinfo " AhkStdlibTkinterTclWord(variable._name))
+    for entryText in AhkStdlibTkinterSplitList(variable._tk.AhkStdlibInterp, raw)
+        result.Push(stdlib.tuple(AhkStdlibTkinterSplitList(variable._tk.AhkStdlibInterp, entryText)))
+    return result
+}
+
+AhkStdlibTkinterTraceModeWord(mode)
+{
+    if mode is Array
+        return AhkStdlibTkinterTclListCommandWord(mode)
+    return AhkStdlibTkinterTclWord(mode)
+}
+
+AhkStdlibTkinterDeleteTraceCommandIfUnused(variable, cbname)
+{
+    for info in variable.trace_info()
+        if info[2] = cbname
+            return
+    AhkStdlibTkinterDeleteCommand(variable._tk, cbname, "can't delete Tcl command")
 }
 
 AhkStdlibTkinterPackSlaves(root, window, args*)
@@ -3677,12 +3811,30 @@ AhkStdlibTkinterRegisterEventCommand(root, widget, callback, sequence)
     return commandName
 }
 
-AhkStdlibTkinterDeleteCommand(root, commandName)
+AhkStdlibTkinterRegisterTraceCommand(root, callback)
+{
+    id := AhkStdlibTkinterRegisterCommandCallback(callback)
+    commandName := "ahkstdlib_tkinter_command_" id
+    nameBuffer := AhkStdlibTkinterUtf8Buffer(commandName)
+    result := DllCall("tcl86t\Tcl_CreateCommand", "Ptr", root.AhkStdlibInterp, "Ptr", nameBuffer.Ptr, "Ptr", AhkStdlibTkinterCommandProcPtr(), "Ptr", id, "Ptr", 0, "Ptr")
+    if !result
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp), -1)
+    root.AhkStdlibCommandCallbacks[commandName] := callback
+    return commandName
+}
+
+AhkStdlibTkinterDeleteCommand(root, commandName, missingMessage := "")
 {
     commandName := AhkStdlibTkinterValueToString(commandName)
     if commandName = ""
         return
-    root.eval("rename " AhkStdlibTkinterTclWord(commandName) " {}")
+    try {
+        root.eval("rename " AhkStdlibTkinterTclWord(commandName) " {}")
+    } catch as err {
+        if missingMessage != "" && err is AhkStdlibTkinter.TclError
+            throw AhkStdlibTkinter.TclError(missingMessage, -1)
+        throw err
+    }
     if root.AhkStdlibCommandCallbacks.Has(commandName)
         root.AhkStdlibCommandCallbacks.Delete(commandName)
 }
@@ -4036,6 +4188,28 @@ AhkStdlibTkinterFloatTuple(value)
         if part != ""
             result.Push(Float(part))
     return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterSplitList(interp, value)
+{
+    argcBuffer := Buffer(4, 0)
+    argvBuffer := Buffer(A_PtrSize, 0)
+    valueBuffer := AhkStdlibTkinterUtf8Buffer(value)
+    resultCode := DllCall("tcl86t\Tcl_SplitList", "Ptr", interp, "Ptr", valueBuffer.Ptr, "Ptr", argcBuffer.Ptr, "Ptr", argvBuffer.Ptr, "Int")
+    if resultCode != 0
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
+
+    count := NumGet(argcBuffer, 0, "Int")
+    argv := NumGet(argvBuffer, 0, "Ptr")
+    result := []
+    try {
+        loop count
+            result.Push(StrGet(NumGet(argv, A_PtrSize * (A_Index - 1), "Ptr"), "UTF-8"))
+    } finally {
+        if argv
+            DllCall("tcl86t\Tcl_Free", "Ptr", argv)
+    }
+    return result
 }
 
 AhkStdlibTkinterEventTypeName(value, sequence)
