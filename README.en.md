@@ -21,6 +21,7 @@ geometry, and window sizing APIs, `Toplevel` windows with state, transient relat
 behavior, window-manager protocol callbacks, `Button` / `Checkbutton` / `Radiobutton` command callbacks through `invoke()`,
 `Scale` numeric state, `Scrollbar` range state, `Menu` command entries,
 `Entry` cursor and selection state, focus management, event binding and synthetic event generation,
+window/widget stacking with `lift()` / `tkraise()` / `lower()`,
 command argument bridging, Canvas drawing/image/window item creation, discovery, and movement, image-backed widget
 options, and a focused `after` / `mainloop` / `quit` event-loop slice.
 

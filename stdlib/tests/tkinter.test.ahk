@@ -392,6 +392,45 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWindowAndWidgetStackingMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            top := stdlib.tkinter.Toplevel(root, { name: "stack_dialog" })
+            frame := stdlib.tkinter.Frame(root, { name: "stack_host" })
+            label := stdlib.tkinter.Label(frame, { name: "front", text: "front" })
+            button := stdlib.tkinter.Button(frame, { name: "back", text: "back" })
+            AhkTest.AssertEqual(stdlib.None, frame.pack())
+            AhkTest.AssertEqual(stdlib.None, label.pack())
+            AhkTest.AssertEqual(stdlib.None, button.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual(stdlib.None, root.lift())
+            AhkTest.AssertEqual(stdlib.None, root.tkraise(top))
+            AhkTest.AssertEqual(stdlib.None, root.lower())
+            AhkTest.AssertEqual(stdlib.None, top.lift(root))
+            AhkTest.AssertEqual(stdlib.None, top.tkraise())
+            AhkTest.AssertEqual(stdlib.None, top.lower(root))
+            AhkTest.AssertEqual(stdlib.None, frame.lift())
+            AhkTest.AssertEqual(stdlib.None, label.lift(button))
+            AhkTest.AssertEqual(stdlib.None, button.tkraise(label))
+            AhkTest.AssertEqual(stdlib.None, label.lower(button))
+            AhkTest.AssertEqual(stdlib.None, label.lift(stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, label.lower(stdlib.None))
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.tkraise\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => label.lift(button, frame))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.lower\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => label.lower(button, frame))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.missing"$', (*) => label.lift(".missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.missing"$', (*) => label.lower(".missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "1"$', (*) => label.lift(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWinfoCoordinateQueriesMatchLocal310()
     {
         root := stdlib.tkinter.Tk()

@@ -384,6 +384,21 @@ class Tk
         return AhkStdlibTkinterEventGenerate(this, ".", args*)
     }
 
+    lift(args*)
+    {
+        return AhkStdlibTkinterStacking(this, ".", "raise", "tkraise", args*)
+    }
+
+    tkraise(args*)
+    {
+        return AhkStdlibTkinterStacking(this, ".", "raise", "tkraise", args*)
+    }
+
+    lower(args*)
+    {
+        return AhkStdlibTkinterStacking(this, ".", "lower", "lower", args*)
+    }
+
     focus_set(args*)
     {
         return AhkStdlibTkinterFocusSet(this, ".", "focus_set", false, args*)
@@ -876,6 +891,21 @@ class AhkStdlibTkinterWidget
     event_generate(args*)
     {
         return AhkStdlibTkinterEventGenerate(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    lift(args*)
+    {
+        return AhkStdlibTkinterStacking(this.AhkStdlibRoot, this._w, "raise", "tkraise", args*)
+    }
+
+    tkraise(args*)
+    {
+        return AhkStdlibTkinterStacking(this.AhkStdlibRoot, this._w, "raise", "tkraise", args*)
+    }
+
+    lower(args*)
+    {
+        return AhkStdlibTkinterStacking(this.AhkStdlibRoot, this._w, "lower", "lower", args*)
     }
 
     focus_set(args*)
@@ -2735,6 +2765,17 @@ AhkStdlibTkinterEventGenerate(root, window, args*)
         for key, value in args[2].OwnProps()
             script .= " -" key " " AhkStdlibTkinterTclWord(value)
     }
+    root.eval(script)
+    return stdlib.None
+}
+
+AhkStdlibTkinterStacking(root, window, command, methodName, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc." methodName "() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    script := command " " window
+    if args.Length = 1 && !AhkStdlibIsNone(args[1])
+        script .= " " AhkStdlibTkinterTclWord(args[1])
     root.eval(script)
     return stdlib.None
 }
