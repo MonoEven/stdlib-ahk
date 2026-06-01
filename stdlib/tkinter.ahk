@@ -653,6 +653,26 @@ class Tk
         return AhkStdlibTkinterGridSlaves(this, ".", args*)
     }
 
+    grid_columnconfigure(args*)
+    {
+        return AhkStdlibTkinterGridAxisConfigure(this, ".", "column", "grid_columnconfigure", args*)
+    }
+
+    columnconfigure(args*)
+    {
+        return this.grid_columnconfigure(args*)
+    }
+
+    grid_rowconfigure(args*)
+    {
+        return AhkStdlibTkinterGridAxisConfigure(this, ".", "row", "grid_rowconfigure", args*)
+    }
+
+    rowconfigure(args*)
+    {
+        return this.grid_rowconfigure(args*)
+    }
+
     grid_size(args*)
     {
         return AhkStdlibTkinterGridSize(this, ".", args*)
@@ -936,6 +956,26 @@ class AhkStdlibTkinterWidget
     grid_slaves(args*)
     {
         return AhkStdlibTkinterGridSlaves(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    grid_columnconfigure(args*)
+    {
+        return AhkStdlibTkinterGridAxisConfigure(this.AhkStdlibRoot, this._w, "column", "grid_columnconfigure", args*)
+    }
+
+    columnconfigure(args*)
+    {
+        return this.grid_columnconfigure(args*)
+    }
+
+    grid_rowconfigure(args*)
+    {
+        return AhkStdlibTkinterGridAxisConfigure(this.AhkStdlibRoot, this._w, "row", "grid_rowconfigure", args*)
+    }
+
+    rowconfigure(args*)
+    {
+        return this.grid_rowconfigure(args*)
     }
 
     grid_size(args*)
@@ -2788,6 +2828,60 @@ AhkStdlibTkinterGridSlaves(root, window, args*)
             script .= " -column " AhkStdlibTkinterTclWord(args[2])
     }
     return AhkStdlibTkinterWidgetListFromPathList(root, root.eval(script))
+}
+
+AhkStdlibTkinterGridAxisConfigure(root, window, axis, methodName, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc." methodName "() missing 1 required positional argument: 'index'", -1)
+    if args.Length > 2
+        throw TypeError("Misc." methodName "() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    baseScript := "grid " axis "configure " window " " AhkStdlibTkinterTclWord(args[1])
+    if args.Length = 1
+        return AhkStdlibTkinterGridAxisInfo(root, baseScript)
+
+    cnf := args[2]
+    if AhkStdlibTkinterIsPlainKeywordObject(cnf) {
+        optionScript := ""
+        optionCount := 0
+        for key, value in cnf.OwnProps() {
+            optionCount += 1
+            optionScript .= " -" key " " AhkStdlibTkinterTclWord(value)
+        }
+        if optionCount = 0
+            return AhkStdlibTkinterGridAxisInfo(root, baseScript)
+        root.eval(baseScript optionScript)
+        return stdlib.None
+    }
+
+    if cnf is String
+        return AhkStdlibTkinterGridAxisOptionValue(root, baseScript, cnf)
+    throw TypeError("object of type '" AhkStdlibPyTypeName(cnf) "' has no len()", -1)
+}
+
+AhkStdlibTkinterGridAxisInfo(root, baseScript)
+{
+    info := Map()
+    info["minsize"] := Integer(root.eval("dict get [" baseScript "] -minsize"))
+    info["pad"] := Integer(root.eval("dict get [" baseScript "] -pad"))
+    uniform := root.eval("dict get [" baseScript "] -uniform")
+    info["uniform"] := uniform = "" ? stdlib.None : uniform
+    info["weight"] := Integer(root.eval("dict get [" baseScript "] -weight"))
+    return info
+}
+
+AhkStdlibTkinterGridAxisOptionValue(root, baseScript, optionName)
+{
+    normalized := SubStr(optionName, 1, 1) = "-" ? SubStr(optionName, 2) : optionName
+    value := root.eval(baseScript " " AhkStdlibTkinterTclWord("-" normalized))
+    switch normalized {
+        case "minsize", "pad", "weight":
+            return Integer(value)
+        case "uniform":
+            return value = "" ? stdlib.None : value
+    }
+    return value
 }
 
 AhkStdlibTkinterGridSize(root, window, args*)

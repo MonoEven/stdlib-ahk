@@ -16,7 +16,7 @@
 `stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
 当前已覆盖的 GUI 表面包括带选项配置、`keys()` 选项自省、可见性、状态、transient 从属关系、overrideredirect、最小化/恢复、几何尺寸与窗口尺寸 API 的 `Tk` 根窗口、带状态、transient 从属关系、overrideredirect、最小化/恢复、几何尺寸与窗口尺寸 API 的 `Toplevel` 窗口、`Frame`、
 `Label`、`Button`、`Checkbutton`、`Radiobutton`、`Scale`、`Scrollbar`、`Menu`、`Entry`、`Listbox`、`Text`、`Canvas` 控件与 `PhotoImage` 图像对象、图像注册表查询、控件选项键自省、可见性、坐标/尺寸、身份树查询与路径反查，
-以及聚焦覆盖的 `pack`、`grid`、`place` 布局、信息查询、移除、子控件查询与网格几何查询行为、窗口管理 protocol 回调、通过 `invoke()` 执行的
+以及聚焦覆盖的 `pack`、`grid`、`place` 布局、信息查询、移除、子控件查询、网格几何查询与行列配置行为、窗口管理 protocol 回调、通过 `invoke()` 执行的
 `Button` / `Checkbutton` / `Radiobutton` command 回调、`Scale` 数值状态、`Scrollbar` 范围状态、`Menu` command 条目、`Entry` 光标与选区状态、焦点管理、`getint()` / `getdouble()` / `getboolean()` 转换、事件绑定、`bind_all()` / `bind_class()` 路由、unbind API、bind-tag 路由、虚拟事件注册表查询与合成事件生成、`lift()` / `tkraise()` / `lower()` 窗口/控件堆叠、`grab_set()` / `grab_release()` / `grab_current()` / `grab_status()` 本地 grab 状态、`wait_variable()` / `waitvar()` / `wait_window()` / `wait_visibility()` 变量与窗口生命周期等待、command 参数桥接、Canvas 绘图/图像/窗口项目创建、查询与移动、图像型控件选项，并包含聚焦覆盖的 `after` /
 `after_idle` / `mainloop` / `quit` 事件循环切片。
 

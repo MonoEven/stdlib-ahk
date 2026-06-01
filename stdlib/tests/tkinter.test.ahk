@@ -2138,6 +2138,75 @@ class StdlibTkinterTest
         }
     }
 
+    static TestGridRowAndColumnConfigureSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            host := stdlib.tkinter.Frame(root, { name: "gridhost", width: 200, height: 120 })
+            label := stdlib.tkinter.Label(host, { text: "A" })
+            AhkTest.AssertEqual(stdlib.None, host.grid())
+            AhkTest.AssertEqual(stdlib.None, label.grid({ row: 0, column: 0 }))
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            initialColumn := host.grid_columnconfigure(0)
+            AhkTest.AssertEqual(0, initialColumn["minsize"])
+            AhkTest.AssertEqual(0, initialColumn["pad"])
+            AhkTest.AssertEqual(stdlib.None, initialColumn["uniform"])
+            AhkTest.AssertEqual(0, initialColumn["weight"])
+            AhkTest.AssertEqual(0, host.grid_columnconfigure(0, "weight"))
+            AhkTest.AssertEqual(0, root.columnconfigure(0, "weight"))
+            AhkTest.AssertEqual(0, label.grid_rowconfigure(0, "weight"))
+
+            AhkTest.AssertEqual(stdlib.None, host.grid_columnconfigure(0, { weight: 2, minsize: 30, pad: 4, uniform: "group" }))
+            columnInfo := host.grid_columnconfigure(0)
+            AhkTest.AssertEqual(30, columnInfo["minsize"])
+            AhkTest.AssertEqual(4, columnInfo["pad"])
+            AhkTest.AssertEqual("group", columnInfo["uniform"])
+            AhkTest.AssertEqual(2, columnInfo["weight"])
+            AhkTest.AssertEqual(2, host.columnconfigure(0, "weight"))
+            AhkTest.AssertEqual(30, host.grid_columnconfigure(0, "minsize"))
+            AhkTest.AssertEqual(4, host.grid_columnconfigure(0, "pad"))
+            AhkTest.AssertEqual("group", host.grid_columnconfigure(0, "uniform"))
+
+            AhkTest.AssertEqual(stdlib.None, host.columnconfigure(1, { weight: 3, minsize: 10 }))
+            columnOneInfo := host.grid_columnconfigure(1)
+            AhkTest.AssertEqual(10, columnOneInfo["minsize"])
+            AhkTest.AssertEqual(0, columnOneInfo["pad"])
+            AhkTest.AssertEqual(stdlib.None, columnOneInfo["uniform"])
+            AhkTest.AssertEqual(3, columnOneInfo["weight"])
+
+            AhkTest.AssertEqual(stdlib.None, host.grid_rowconfigure(0, { weight: 5, minsize: 25, pad: 6, uniform: "rows" }))
+            rowInfo := host.grid_rowconfigure(0)
+            AhkTest.AssertEqual(25, rowInfo["minsize"])
+            AhkTest.AssertEqual(6, rowInfo["pad"])
+            AhkTest.AssertEqual("rows", rowInfo["uniform"])
+            AhkTest.AssertEqual(5, rowInfo["weight"])
+            AhkTest.AssertEqual(5, host.rowconfigure(0, "weight"))
+            AhkTest.AssertEqual(25, host.grid_rowconfigure(0, "minsize"))
+            AhkTest.AssertEqual(6, host.grid_rowconfigure(0, "pad"))
+            AhkTest.AssertEqual("rows", host.grid_rowconfigure(0, "uniform"))
+
+            AhkTest.AssertEqual(stdlib.None, host.rowconfigure(1, { weight: 7, pad: 8 }))
+            rowOneInfo := host.grid_rowconfigure(1)
+            AhkTest.AssertEqual(0, rowOneInfo["minsize"])
+            AhkTest.AssertEqual(8, rowOneInfo["pad"])
+            AhkTest.AssertEqual(stdlib.None, rowOneInfo["uniform"])
+            AhkTest.AssertEqual(7, rowOneInfo["weight"])
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_columnconfigure\(\) missing 1 required positional argument: 'index'$", (*) => host.grid_columnconfigure())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_columnconfigure\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => host.columnconfigure(0, {}, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_rowconfigure\(\) missing 1 required positional argument: 'index'$", (*) => host.grid_rowconfigure())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_rowconfigure\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => host.rowconfigure(0, {}, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad" \(when retrieving options only integer indices are allowed\)$', (*) => host.grid_columnconfigure("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad option "-bad": must be -minsize, -pad, -uniform, or -weight$', (*) => host.grid_columnconfigure(0, { bad: 1 }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => host.grid_rowconfigure(0, { weight: "bad" }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestLayoutInfoForgetAndRemoveSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
