@@ -3503,7 +3503,7 @@ class StdlibBootstrapTest
         value := { Name: "kept" }
         AhkTest.AssertSame(value, stdlib.assert.assert(value))
 
-        err := AhkTest.AssertThrows(AssertionError, (*) => stdlib.assert.assert(false, "stdlib assertion failed"))
+        err := AhkTest.AssertThrows(stdlib.assert.AssertionError, (*) => stdlib.assert.assert(false, "stdlib assertion failed"))
         AhkTest.AssertEqual("stdlib assertion failed", err.Message)
     }
 
@@ -4718,7 +4718,7 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual("Stdlib", roundTrip["title"])
         AhkTest.AssertEqual(["core", "text"], roundTrip["items"])
 
-        doc := Toml().read("name = `"codex`"`nscore = 7")
+        doc := stdlib.toml.Toml().read("name = `"codex`"`nscore = 7")
         AhkTest.AssertEqual("codex", doc.getString("name"))
         AhkTest.AssertEqual(7, doc.getLong("score"))
         AhkTest.AssertThrows(ValueError, (*) => stdlib.toml.loads("missing equals"))

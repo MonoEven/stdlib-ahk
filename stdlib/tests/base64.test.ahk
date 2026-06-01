@@ -23,8 +23,8 @@ class StdlibBase64Test
         AhkTest.RaisesMatch(TypeError, "^a bytes-like object is required, not 'str'$", (*) => stdlib.base64.b64encode("abc"))
         AhkTest.RaisesMatch(TypeError, "^b64decode\(\) missing 1 required positional argument: 's'$", (*) => stdlib.base64.b64decode())
         AhkTest.RaisesMatch(TypeError, "^argument should be a bytes-like object or ASCII string, not 'int'$", (*) => stdlib.base64.b64decode(1))
-        AhkTest.RaisesMatch(AssertionError, "^b'!'$", (*) => stdlib.base64.b64encode(StdlibBase64Test.Bytes("abc"), StdlibBase64Test.Bytes("!")))
-        AhkTest.RaisesMatch(AssertionError, "^b'!'$", (*) => stdlib.base64.b64decode(StdlibBase64Test.Bytes("YWJj"), StdlibBase64Test.Bytes("!")))
+        AhkTest.RaisesMatch(stdlib.assert.AssertionError, "^b'!'$", (*) => stdlib.base64.b64encode(StdlibBase64Test.Bytes("abc"), StdlibBase64Test.Bytes("!")))
+        AhkTest.RaisesMatch(stdlib.assert.AssertionError, "^b'!'$", (*) => stdlib.base64.b64decode(StdlibBase64Test.Bytes("YWJj"), StdlibBase64Test.Bytes("!")))
     }
 
     static Bytes(text)

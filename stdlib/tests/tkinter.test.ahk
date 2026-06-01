@@ -1,6 +1,7 @@
 #Requires AutoHotkey v2.0
 
 #Include <stdlib\ahktest>
+#Include <stdlib\hashlib>
 #Include <stdlib\tkinter>
 
 class StdlibTkinterTest
@@ -29,6 +30,41 @@ class StdlibTkinterTest
         AhkTest.AssertRegex(generated._name, "^" Chr(80) Chr(89) "_VAR[0-9]+$")
     }
 
+    static TestTclUseTkLoadsTkPackageLikeLocal310()
+    {
+        interp := stdlib.tkinter.Tcl({ useTk: stdlib.True })
+
+        AhkTest.AssertEqual("winfo", interp.eval("info commands winfo"))
+        AhkTest.AssertEqual("8.6.12", interp.eval("package require Tk"))
+    }
+
+    static TestBundledTclTkDllsExistForUseTkRuntime()
+    {
+        dllDir := StdlibTkinterTest.RuntimeLibDir()
+
+        AhkTest.AssertTrue(FileExist(dllDir "\tcl86t.dll") != "")
+        AhkTest.AssertTrue(FileExist(dllDir "\tk86t.dll") != "")
+    }
+
+    static TestBundledTclTkDllChecksumsAndSourceAreDocumented()
+    {
+        dllDir := StdlibTkinterTest.RuntimeLibDir()
+        checksums := StdlibTkinterTest.ReadSha256Sums(dllDir "\SHA256SUMS")
+        readme := FileRead(dllDir "\README.md", "UTF-8")
+        sourceRoot := "F:\Python\Python310"
+        releaseUrl := "https://www.python.org/downloads/release/python-31011/"
+
+        AhkTest.AssertEqual("FBFD065F861EC0A90DD513BC209C56BBC23C54D2839964A0EC2DF95848AF7860", checksums["tcl86t.dll"])
+        AhkTest.AssertEqual("CD2F60075064DFC2E65C88B239A970CB4BD07CB3EEC7CC26FB1BF978D4356B08", checksums["tk86t.dll"])
+        AhkTest.AssertEqual(checksums["tcl86t.dll"], StrUpper(stdlib.hashlib.sha256(FileRead(dllDir "\tcl86t.dll", "RAW")).hexdigest()))
+        AhkTest.AssertEqual(checksums["tk86t.dll"], StrUpper(stdlib.hashlib.sha256(FileRead(dllDir "\tk86t.dll", "RAW")).hexdigest()))
+        AhkTest.AssertTrue(InStr(readme, releaseUrl) > 0)
+        AhkTest.AssertTrue(InStr(readme, sourceRoot "\DLLs\tcl86t.dll") > 0)
+        AhkTest.AssertTrue(InStr(readme, sourceRoot "\DLLs\tk86t.dll") > 0)
+        AhkTest.AssertTrue(InStr(readme, checksums["tcl86t.dll"]) > 0)
+        AhkTest.AssertTrue(InStr(readme, checksums["tk86t.dll"]) > 0)
+    }
+
     static TestObservedTkinterArityAndTypeErrorsMatchLocal310()
     {
         interp := stdlib.tkinter.Tcl()
@@ -48,6 +84,25 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(TypeError, "^StringVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.StringVar({ master: interp, extra: 1 }))
         AhkTest.RaisesMatch(TypeError, "^StringVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.StringVar(interp, "seed", "custom_name", "extra"))
         AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.StringVar({ master: interp, name: 1 }))
+    }
+
+    static RuntimeLibDir()
+    {
+        SplitPath A_LineFile, , &testsDir
+        stdlibDir := RegExReplace(testsDir, "\\tests$")
+        return stdlibDir "\tkinter\lib"
+    }
+
+    static ReadSha256Sums(path)
+    {
+        checksums := Map()
+        for line in StrSplit(Trim(FileRead(path, "UTF-8"), "`r`n"), "`n") {
+            line := Trim(line, "`r")
+            if line = ""
+                continue
+            checksums[Trim(SubStr(line, 67))] := SubStr(line, 1, 64)
+        }
+        return checksums
     }
 }
 

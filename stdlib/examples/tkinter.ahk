@@ -15,6 +15,10 @@ tkinter_example_setvar_return := tkinter_example_interp.setvar("x", "hello")
 tkinter_example_getvar := tkinter_example_interp.getvar("x")
 tkinter_example_root_string := String(tkinter_example_interp._root())
 
+tkinter_example_tk_interp := stdlib.tkinter.Tcl({ useTk: stdlib.True })
+tkinter_example_winfo_command := tkinter_example_tk_interp.eval("info commands winfo")
+tkinter_example_tk_package := tkinter_example_tk_interp.eval("package require Tk")
+
 tkinter_example_named := stdlib.tkinter.StringVar(tkinter_example_interp, "seed", "custom_name")
 tkinter_example_named_name := tkinter_example_named._name
 tkinter_example_named_get := tkinter_example_named.get()

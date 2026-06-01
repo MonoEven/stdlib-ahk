@@ -2,10 +2,11 @@
 
 #Include <stdlib\assert>
 
-assert_example_value := assert("ready", "example should keep truthy values")
+assert_example_value := stdlib.assert.assert("ready", "example should keep truthy values")
 
 try {
-    assert(false, "example failure")
-} catch AssertionError as err {
-    assert_example_message := err.Message
+    stdlib.assert.assert(false, "example failure")
+} catch Error as err {
+    if err is stdlib.assert.AssertionError
+        assert_example_message := err.Message
 }

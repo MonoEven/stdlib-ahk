@@ -10,6 +10,10 @@ each promoted module.
 
 `stdlib` requires AutoHotkey v2.0.5 or later because several modules depend on
 `unset`-related language features.
+The `stdlib.tkinter` slice includes bundled Tcl/Tk runtime DLLs
+(`tcl86t.dll` and `tk86t.dll`) for `useTk` support. Their CPython 3.10.11
+source and SHA256 verification report are tracked in
+`stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
 
 It is currently developed and tested with AutoHotkey v2.0.26 and v2.1-alpha.30.
 
@@ -43,6 +47,7 @@ stdlib.bisect.insort_right(bisect_example_values, 2)
 ## Design Rules
 
 - Public includes use `#Include <stdlib\module>`.
+- Public calls use `stdlib.module.func(...)` or `stdlib.module.Class(...)`.
 - Module paths mirror Python 3.10 `Lib` module paths where practical.
 - `stdlib\init.ahk` is a lightweight namespace root, not a dynamic import loader.
 - Promoted modules must have behavior coverage under `stdlib\tests`.

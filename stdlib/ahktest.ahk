@@ -1051,6 +1051,8 @@ class AhkTestSuite
         this.WarningFilters := []
         this.AhkRunDefaults := {}
         this.OutputFile := ""
+        this.OutputHandle := ""
+        this.BufferedOutput := false
     }
 
     Test(name, callback, options := unset)
@@ -1842,6 +1844,7 @@ class AhkTestSuite
 
     SetOutputFile(path)
     {
+        this.CloseOutputFile()
         this.OutputFile := path
         if path != "" && FileExist(path)
             FileDelete path
@@ -1849,6 +1852,7 @@ class AhkTestSuite
 
     Run(options := unset)
     {
+        this.BufferedOutput := this.OutputFile != ""
         filter := ""
         filterExpr := ""
         nodeFilter := ""
@@ -2240,6 +2244,7 @@ class AhkTestSuite
             if warningSummary || (hasSummary && InStr(summary "", "w"))
                 this.WriteWarningSummary(result)
         }
+        this.CloseOutputFile()
         return result
     }
 
@@ -3135,10 +3140,26 @@ class AhkTestSuite
 
     WriteLine(text := "")
     {
-        if this.OutputFile != ""
-            FileAppend(text "`n", this.OutputFile, "UTF-8")
-        else
+        if this.OutputFile != "" {
+            if this.BufferedOutput {
+                if this.OutputHandle = ""
+                    this.OutputHandle := FileOpen(this.OutputFile, "a", "UTF-8")
+                this.OutputHandle.Write(text "`n")
+            } else {
+                FileAppend(text "`n", this.OutputFile, "UTF-8")
+            }
+        } else {
             FileAppend(text "`n", "**", "UTF-8")
+        }
+    }
+
+    CloseOutputFile()
+    {
+        if this.OutputHandle != "" {
+            this.OutputHandle.Close()
+            this.OutputHandle := ""
+        }
+        this.BufferedOutput := false
     }
 
     WriteError(err, traceback := "short")

@@ -86,10 +86,12 @@ class Tk
             throw TypeError("create() argument 3 must be str, not " AhkStdlibPyTypeName(className), -1)
 
         useTk := AhkStdlibTkinterNormalizeBool(useTk)
-        AhkStdlibTkinterEnsureTclRuntime()
+        AhkStdlibTkinterEnsureTclRuntime(useTk)
         this.AhkStdlibInterp := AhkStdlibTkinterCreateInterp()
         try {
             AhkStdlibTkinterInitInterp(this.AhkStdlibInterp)
+            if useTk
+                AhkStdlibTkinterInitTk(this.AhkStdlibInterp)
         } catch as err {
             try AhkStdlibTkinterDeleteInterp(this.AhkStdlibInterp)
             this.AhkStdlibInterp := 0
@@ -245,33 +247,75 @@ AhkStdlibTkinterNormalizeBool(value)
     throw TypeError("'" AhkStdlibPyTypeName(value) "' object cannot be interpreted as an integer", -1)
 }
 
-AhkStdlibTkinterEnsureTclRuntime()
+AhkStdlibTkinterEnsureTclRuntime(loadTk := false)
 {
-    static initialized := false
-    static startupError := ""
-    if initialized {
-        if startupError != ""
-            throw RuntimeError(startupError, -1)
+    static tclInitialized := false
+    static tclStartupError := ""
+    static tkInitialized := false
+    static tkStartupError := ""
+
+    if tclInitialized {
+        if tclStartupError != ""
+            throw RuntimeError(tclStartupError, -1)
+    } else {
+        tclInitialized := true
+        try {
+            tclDll := AhkStdlibTkinterFindBundledRuntimeFile("tcl86t.dll")
+            if tclDll = ""
+                tclDll := AhkStdlibTkinterFindPyRuntimeFile("DLLs\tcl86t.dll")
+            if tclDll = ""
+                tclDll := AhkStdlibTkinterFindLegacyTkinterRuntimeFile("tkinter\lib\tcl86t.dll")
+            if tclDll = ""
+                throw Error("Unable to locate tcl86t.dll")
+            DllCall("LoadLibrary", "Str", tclDll, "Ptr")
+
+            tclLibrary := AhkStdlibTkinterFindPyRuntimeFile("tcl\tcl8.6")
+            if tclLibrary = ""
+                throw Error("Unable to locate Tcl script library")
+            EnvSet("TCL_LIBRARY", tclLibrary)
+        } catch as err {
+            tclStartupError := err.Message
+            throw RuntimeError(tclStartupError, -1)
+        }
+    }
+
+    if !loadTk
+        return
+
+    if tkInitialized {
+        if tkStartupError != ""
+            throw RuntimeError(tkStartupError, -1)
         return
     }
 
-    initialized := true
+    tkInitialized := true
     try {
-        tclDll := AhkStdlibTkinterFindPyRuntimeFile("DLLs\tcl86t.dll")
-        if tclDll = ""
-            tclDll := AhkStdlibTkinterFindLegacyTkinterRuntimeFile("tkinter\lib\tcl86t.dll")
-        if tclDll = ""
-            throw Error("Unable to locate tcl86t.dll")
-        DllCall("LoadLibrary", "Str", tclDll, "Ptr")
+        tkDll := AhkStdlibTkinterFindBundledRuntimeFile("tk86t.dll")
+        if tkDll = ""
+            tkDll := AhkStdlibTkinterFindPyRuntimeFile("DLLs\tk86t.dll")
+        if tkDll = ""
+            tkDll := AhkStdlibTkinterFindLegacyTkinterRuntimeFile("tkinter\lib\tk86t.dll")
+        if tkDll = ""
+            throw Error("Unable to locate tk86t.dll")
+        DllCall("LoadLibrary", "Str", tkDll, "Ptr")
 
-        tclLibrary := AhkStdlibTkinterFindPyRuntimeFile("tcl\tcl8.6")
-        if tclLibrary = ""
-            throw Error("Unable to locate Tcl script library")
-        EnvSet("TCL_LIBRARY", tclLibrary)
+        tkLibrary := AhkStdlibTkinterFindPyRuntimeFile("tcl\tk8.6")
+        if tkLibrary = ""
+            throw Error("Unable to locate Tk script library")
+        EnvSet("TK_LIBRARY", tkLibrary)
     } catch as err {
-        startupError := err.Message
-        throw RuntimeError(startupError, -1)
+        tkStartupError := err.Message
+        throw RuntimeError(tkStartupError, -1)
     }
+}
+
+AhkStdlibTkinterFindBundledRuntimeFile(fileName)
+{
+    SplitPath A_LineFile, , &moduleDir
+    candidate := moduleDir "\tkinter\lib\" fileName
+    if FileExist(candidate)
+        return candidate
+    return ""
 }
 
 AhkStdlibTkinterFindPyRuntimeFile(relativePath)
@@ -326,6 +370,13 @@ AhkStdlibTkinterDeleteInterp(interp)
 AhkStdlibTkinterInitInterp(interp)
 {
     result := DllCall("tcl86t\Tcl_Init", "Ptr", interp, "Int")
+    if result != 0
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
+}
+
+AhkStdlibTkinterInitTk(interp)
+{
+    result := DllCall("tk86t\Tk_Init", "Ptr", interp, "Int")
     if result != 0
         throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
 }

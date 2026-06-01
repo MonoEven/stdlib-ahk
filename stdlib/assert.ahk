@@ -4,9 +4,19 @@
 
 class AhkStdlibCoreAssert
 {
+    static AssertionError
+    {
+        get => AssertionError
+    }
+
+    static AssertionError(args*)
+    {
+        return AssertionError(args*)
+    }
+
     static assert(value, message := "")
     {
-        return assert(value, message)
+        return AhkStdlibAssert(value, message)
     }
 }
 
@@ -18,7 +28,7 @@ class AssertionError extends Error
     }
 }
 
-assert(value, message := "")
+AhkStdlibAssert(value, message := "")
 {
     if !value
         throw AssertionError(message != "" ? message : "AssertionError", -1)

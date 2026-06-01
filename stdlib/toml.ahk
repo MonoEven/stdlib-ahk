@@ -24,9 +24,14 @@ class AhkStdlibTextToml
         return toml_dumps(value)
     }
 
-    static document(defaults?)
+    static Toml(defaults?)
     {
         return IsSet(defaults) ? Toml(defaults) : Toml()
+    }
+
+    static document(defaults?)
+    {
+        return this.Toml(defaults?)
     }
 }
 

@@ -22,9 +22,17 @@ modules include focused behavior tests and examples.
 
 `stdlib` requires AutoHotkey v2.0.5 or later. It is currently developed and
 tested with AutoHotkey v2.0.26 and v2.1-alpha.30.
+The `stdlib.tkinter` slice includes bundled Tcl/Tk runtime DLLs
+(`tcl86t.dll` and `tk86t.dll`) for `useTk` support. Their CPython 3.10.11
+source and SHA256 verification report are tracked in
+`stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
 
 `stdlib` 需要 AutoHotkey v2.0.5 或更高版本。当前开发和测试环境为
 AutoHotkey v2.0.26 与 v2.1-alpha.30。
+`stdlib.tkinter` 切片包含用于 `useTk` 支持的 Tcl/Tk 运行时 DLL
+（`tcl86t.dll` 与 `tk86t.dll`）。其 CPython 3.10.11 来源与 SHA256
+校验报告已随 `stdlib\tkinter\lib\README.md` 和
+`stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
 
 ## Current Scope
 
@@ -35,6 +43,12 @@ AutoHotkey v2.0.26 与 v2.1-alpha.30。
 - `os`, `pathlib`, `shutil`, `tempfile`, `io`
 - `logging`, `queue`
 - `ahktest`, `assert`, `base`, `types`, `warnings`, `operator`
+
+Public calls use `stdlib.module.func(...)` or `stdlib.module.Class(...)`; the
+stable include surface remains `#Include <stdlib\module>`.
+
+对外调用使用 `stdlib.module.func(...)` 或 `stdlib.module.Class(...)`；稳定
+引入面保持为 `#Include <stdlib\module>`。
 
 ## Friendly Links
 

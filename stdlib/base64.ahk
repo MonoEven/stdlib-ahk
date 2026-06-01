@@ -73,7 +73,7 @@ AhkStdlibBase64AssertAltChars(value)
 {
     bytes := AhkStdlibBase64RequireBytesLike(value)
     if bytes.Size != 2
-        throw AssertionError("b'" StrGet(bytes, bytes.Size, "UTF-8") "'", -1)
+        throw stdlib.assert.AssertionError("b'" StrGet(bytes, bytes.Size, "UTF-8") "'", -1)
     return bytes
 }
 

@@ -10,6 +10,10 @@
 
 `stdlib` 需要 AutoHotkey v2.0.5 或更高版本，主要因为部分模块依赖
 `unset` 相关语言特性。
+`stdlib.tkinter` 切片包含用于 `useTk` 支持的 Tcl/Tk 运行时 DLL
+（`tcl86t.dll` 与 `tk86t.dll`）。其 CPython 3.10.11 来源与 SHA256
+校验报告已随 `stdlib\tkinter\lib\README.md` 和
+`stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
 
 当前开发和测试环境为 AutoHotkey v2.0.26 与 v2.1-alpha.30。
 
@@ -43,6 +47,7 @@ stdlib.bisect.insort_right(bisect_example_values, 2)
 ## 设计规则
 
 - 对外公开引入路径使用 `#Include <stdlib\module>`。
+- 对外调用使用 `stdlib.module.func(...)` 或 `stdlib.module.Class(...)`。
 - 模块路径尽量对齐 Python 3.10 `Lib` 标准库路径。
 - `stdlib\init.ahk` 是轻量级命名空间根，不承担动态导入加载器职责。
 - 提升为正式模块的内容必须在 `stdlib\tests` 下有行为覆盖。
