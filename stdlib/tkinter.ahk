@@ -290,6 +290,38 @@ class Tk
         return this.eval("wm title . " AhkStdlibTkinterTclWord(args[1]))
     }
 
+    geometry(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_geometry() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.eval("wm geometry .")
+        return this.eval("wm geometry . " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    state(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_state() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.eval("wm state .")
+        return this.eval("wm state . " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    withdraw(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Wm.wm_withdraw() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.eval("wm withdraw .")
+    }
+
+    deiconify(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Wm.wm_deiconify() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.eval("wm deiconify .")
+    }
+
     update(args*)
     {
         if args.Length != 0
@@ -354,6 +386,55 @@ class Tk
             throw TypeError("Misc.quit() takes 1 positional argument but " args.Length + 1 " were given", -1)
         this.AhkStdlibQuitMainLoop := true
         return stdlib.None
+    }
+
+    winfo_exists(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_exists() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.eval("winfo exists ."))
+    }
+
+    winfo_manager(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_manager() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.eval("winfo manager .")
+    }
+
+    winfo_viewable(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_viewable() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.eval("winfo viewable ."))
+    }
+
+    winfo_ismapped(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_ismapped() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.eval("winfo ismapped ."))
+    }
+
+    winfo_width(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_width() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.eval("winfo width ."))
+    }
+
+    winfo_height(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_height() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.eval("winfo height ."))
+    }
+
+    winfo_toplevel(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_toplevel() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this
     }
 
     destroy()

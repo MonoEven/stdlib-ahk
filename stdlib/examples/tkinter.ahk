@@ -23,7 +23,16 @@ tkinter_example_tk_package := tkinter_example_tk_interp.eval("package require Tk
 
 tkinter_example_root := stdlib.tkinter.Tk()
 try {
-    tkinter_example_root.eval("wm withdraw .")
+    tkinter_example_root_manager := tkinter_example_root.winfo_manager()
+    tkinter_example_root_state_before := tkinter_example_root.state()
+    tkinter_example_root_withdraw_return := tkinter_example_root.withdraw()
+    tkinter_example_root_state_after_withdraw := tkinter_example_root.state()
+    tkinter_example_root_viewable_after_withdraw := tkinter_example_root.winfo_viewable()
+    tkinter_example_root_geometry_return := tkinter_example_root.geometry("240x120+20+30")
+    tkinter_example_root_geometry_after := tkinter_example_root.geometry()
+    tkinter_example_root_width := tkinter_example_root.winfo_width()
+    tkinter_example_root_height := tkinter_example_root.winfo_height()
+    tkinter_example_root_toplevel := tkinter_example_root.winfo_toplevel()
     tkinter_example_root_title_before := tkinter_example_root.title()
     tkinter_example_root_title_return := tkinter_example_root.title("Stdlib Example")
     tkinter_example_root_title_after := tkinter_example_root.title()

@@ -192,6 +192,44 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkRootWindowVisibilityAndGeometryMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            AhkTest.AssertEqual(".", String(root))
+            AhkTest.AssertEqual("wm", root.winfo_manager())
+            AhkTest.AssertEqual(1, root.winfo_exists())
+            AhkTest.AssertEqual("normal", root.state())
+            AhkTest.AssertEqual("", root.withdraw())
+            AhkTest.AssertEqual("withdrawn", root.state())
+            AhkTest.AssertEqual(0, root.winfo_viewable())
+            AhkTest.AssertEqual("", root.deiconify())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("normal", root.state())
+            AhkTest.AssertEqual(1, root.winfo_viewable())
+            AhkTest.AssertEqual(1, root.winfo_ismapped())
+            AhkTest.AssertEqual("", root.geometry("240x120+20+30"))
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("240x120+20+30", root.geometry())
+            AhkTest.AssertEqual(240, root.winfo_width())
+            AhkTest.AssertEqual(120, root.winfo_height())
+            AhkTest.AssertSame(root, root.winfo_toplevel())
+
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_geometry\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => root.geometry("1x1", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_state\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => root.state("normal", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_withdraw\(\) takes 1 positional argument but 2 were given$", (*) => root.withdraw(1))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_deiconify\(\) takes 1 positional argument but 2 were given$", (*) => root.deiconify(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_viewable\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_viewable(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_width\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_width(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad geometry specifier "bad"$', (*) => root.geometry("bad"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetsSupportVisibleGuiSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()
