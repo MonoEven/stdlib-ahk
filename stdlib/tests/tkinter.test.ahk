@@ -1162,6 +1162,48 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCanvasAdditionalItemCreationSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            canvas := stdlib.tkinter.Canvas(root, { width: 140, height: 90, bg: "white" })
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            ovalId := canvas.create_oval(1, 2, 20, 30, { outline: "blue", fill: "yellow", width: 2, tags: "round shape" })
+            polygonId := canvas.create_polygon(0, 0, 10, 0, 5, 8, { fill: "green", outline: "black", tags: "poly shape" })
+            textId := canvas.create_text(40, 20, { text: "Hello", anchor: "nw", fill: "red", tags: "caption shape" })
+
+            AhkTest.AssertEqual(stdlib.tuple([ovalId, polygonId, textId]), canvas.find_all())
+            AhkTest.AssertEqual(stdlib.tuple([ovalId, polygonId, textId]), canvas.find_withtag("shape"))
+            AhkTest.AssertEqual("oval", canvas.type(ovalId))
+            AhkTest.AssertEqual("polygon", canvas.type(polygonId))
+            AhkTest.AssertEqual("text", canvas.type(textId))
+            AhkTest.AssertEqual([1.0, 2.0, 20.0, 30.0], canvas.coords(ovalId))
+            AhkTest.AssertEqual([0.0, 0.0, 10.0, 0.0, 5.0, 8.0], canvas.coords(polygonId))
+            AhkTest.AssertEqual([40.0, 20.0], canvas.coords(textId))
+            AhkTest.AssertEqual("yellow", canvas.itemcget(ovalId, "fill"))
+            AhkTest.AssertEqual("2.0", canvas.itemcget(ovalId, "width"))
+            AhkTest.AssertEqual("black", canvas.itemcget(polygonId, "outline"))
+            AhkTest.AssertEqual("Hello", canvas.itemcget(textId, "text"))
+            AhkTest.AssertEqual("nw", canvas.itemcget(textId, "anchor"))
+
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => canvas.create_oval())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^wrong # coordinates: expected 0 or 4, got 1$", (*) => canvas.create_oval(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.create_oval("bad", 1, 2, 3))
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => canvas.create_polygon())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^wrong # coordinates: expected an even number, got 1$", (*) => canvas.create_polygon(1))
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => canvas.create_text())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^wrong # coordinates: expected 2, got 1$", (*) => canvas.create_text(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.create_text("bad", 1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestGridAndPlaceManagersMatchLocal310()
     {
         root := stdlib.tkinter.Tk()

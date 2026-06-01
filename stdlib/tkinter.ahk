@@ -1282,9 +1282,24 @@ class Canvas extends AhkStdlibTkinterWidget
         return AhkStdlibTkinterCanvasCreateItem(this, "line", args*)
     }
 
+    create_oval(args*)
+    {
+        return AhkStdlibTkinterCanvasCreateItem(this, "oval", args*)
+    }
+
+    create_polygon(args*)
+    {
+        return AhkStdlibTkinterCanvasCreateItem(this, "polygon", args*)
+    }
+
     create_rectangle(args*)
     {
         return AhkStdlibTkinterCanvasCreateItem(this, "rectangle", args*)
+    }
+
+    create_text(args*)
+    {
+        return AhkStdlibTkinterCanvasCreateItem(this, "text", args*)
     }
 
     coords(args*)
