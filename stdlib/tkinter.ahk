@@ -220,6 +220,7 @@ class Tk
         this.AhkStdlibUseTk := useTk
         this.AhkStdlibSync := sync
         this.AhkStdlibChildCounters := Map()
+        this.AhkStdlibWidgetsByPath := Map(".", this)
         this.AhkStdlibCommandCallbacks := Map()
         this.AhkStdlibQuitMainLoop := false
         this.tk := this
@@ -427,6 +428,26 @@ class Tk
         return this.eval("winfo manager .")
     }
 
+    winfo_children(args*)
+    {
+        return AhkStdlibTkinterWinfoChildren(this, ".", args*)
+    }
+
+    winfo_class(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this, ".", "class", "winfo_class", args*)
+    }
+
+    winfo_name(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this, ".", "name", "winfo_name", args*)
+    }
+
+    winfo_parent(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this, ".", "parent", "winfo_parent", args*)
+    }
+
     winfo_viewable(args*)
     {
         if args.Length != 0
@@ -518,6 +539,7 @@ class AhkStdlibTkinterWidget
 
         script := tkCommand " " this._w AhkStdlibTkinterOptionsToScript(options, false, this.AhkStdlibRoot)
         this.AhkStdlibRoot.eval(script)
+        this.AhkStdlibRoot.AhkStdlibWidgetsByPath[this._w] := this
     }
 
     _root()
@@ -650,6 +672,26 @@ class AhkStdlibTkinterWidget
         if args.Length != 0
             throw TypeError("Misc.winfo_manager() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval("winfo manager " this._w)
+    }
+
+    winfo_children(args*)
+    {
+        return AhkStdlibTkinterWinfoChildren(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    winfo_class(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "class", "winfo_class", args*)
+    }
+
+    winfo_name(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "name", "winfo_name", args*)
+    }
+
+    winfo_parent(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "parent", "winfo_parent", args*)
     }
 
     winfo_viewable(args*)
@@ -2098,6 +2140,24 @@ AhkStdlibTkinterWidgetToplevel(widget)
             return widget._root()
         current := current.master
     }
+}
+
+AhkStdlibTkinterWinfoChildren(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.winfo_children() takes 1 positional argument but " args.Length + 1 " were given", -1)
+
+    result := []
+    for path in AhkStdlibTkinterSimpleList(root.eval("winfo children " window))
+        result.Push(root.AhkStdlibWidgetsByPath[path])
+    return result
+}
+
+AhkStdlibTkinterWinfoString(root, window, command, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return root.eval("winfo " command " " window)
 }
 
 AhkStdlibTkinterWmResizable(root, window, args*)

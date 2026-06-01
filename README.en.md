@@ -17,7 +17,7 @@ source and SHA256 verification report are tracked in
 The covered GUI surface currently includes `Tk` roots with visibility, state,
 geometry, and window sizing APIs, `Toplevel` windows with geometry and sizing APIs,
 `Frame`, `Label`, `Button`, `Checkbutton`, `Radiobutton`, `Scale`, `Scrollbar`, `Menu`, `Entry`, `Listbox`, `Text`, and `Canvas` widgets,
-`PhotoImage` image objects, widget visibility queries, plus focused `pack`, `grid`, and `place` layout
+`PhotoImage` image objects, widget visibility and identity-tree queries, plus focused `pack`, `grid`, and `place` layout
 behavior, `Button` / `Checkbutton` / `Radiobutton` command callbacks through `invoke()`,
 `Scale` numeric state, `Scrollbar` range state, `Menu` command entries,
 `Entry` cursor and selection state, event binding and synthetic event generation,

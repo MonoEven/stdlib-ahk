@@ -278,6 +278,73 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWidgetIdentityTreeSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            frame := stdlib.tkinter.Frame(root, { name: "host" })
+            label := stdlib.tkinter.Label(root, { text: "Hello" })
+            button := stdlib.tkinter.Button(frame, { name: "press", text: "Press" })
+            top := stdlib.tkinter.Toplevel(root, { name: "dialog" })
+            child := stdlib.tkinter.Label(top, { name: "inner", text: "Inside" })
+            AhkTest.AssertEqual(stdlib.None, frame.pack())
+            AhkTest.AssertEqual(stdlib.None, label.pack())
+            AhkTest.AssertEqual(stdlib.None, button.pack())
+            AhkTest.AssertEqual(stdlib.None, child.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual("Tk", root.winfo_class())
+            AhkTest.AssertEqual("tk", root.winfo_name())
+            AhkTest.AssertEqual("", root.winfo_parent())
+            AhkTest.AssertEqual("Frame", frame.winfo_class())
+            AhkTest.AssertEqual("host", frame.winfo_name())
+            AhkTest.AssertEqual(".", frame.winfo_parent())
+            AhkTest.AssertEqual("Label", label.winfo_class())
+            AhkTest.AssertEqual("!label", label.winfo_name())
+            AhkTest.AssertEqual(".", label.winfo_parent())
+            AhkTest.AssertEqual("Button", button.winfo_class())
+            AhkTest.AssertEqual("press", button.winfo_name())
+            AhkTest.AssertEqual(".host", button.winfo_parent())
+            AhkTest.AssertEqual("Toplevel", top.winfo_class())
+            AhkTest.AssertEqual("dialog", top.winfo_name())
+            AhkTest.AssertEqual(".", top.winfo_parent())
+            AhkTest.AssertEqual("Label", child.winfo_class())
+            AhkTest.AssertEqual("inner", child.winfo_name())
+            AhkTest.AssertEqual(".dialog", child.winfo_parent())
+
+            rootChildren := root.winfo_children()
+            AhkTest.AssertEqual(3, rootChildren.Length)
+            AhkTest.AssertSame(frame, rootChildren[1])
+            AhkTest.AssertSame(label, rootChildren[2])
+            AhkTest.AssertSame(top, rootChildren[3])
+            frameChildren := frame.winfo_children()
+            AhkTest.AssertEqual(1, frameChildren.Length)
+            AhkTest.AssertSame(button, frameChildren[1])
+            AhkTest.AssertEqual([], label.winfo_children())
+            topChildren := top.winfo_children()
+            AhkTest.AssertEqual(1, topChildren.Length)
+            AhkTest.AssertSame(child, topChildren[1])
+
+            AhkTest.AssertEqual(stdlib.None, label.destroy())
+            rootChildrenAfterDestroy := root.winfo_children()
+            AhkTest.AssertEqual(2, rootChildrenAfterDestroy.Length)
+            AhkTest.AssertSame(frame, rootChildrenAfterDestroy[1])
+            AhkTest.AssertSame(top, rootChildrenAfterDestroy[2])
+            AhkTest.AssertEqual(0, label.winfo_exists())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.!label"$', (*) => label.winfo_class())
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_children\(\) takes 1 positional argument but 2 were given$", (*) => frame.winfo_children(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_class\(\) takes 1 positional argument but 2 were given$", (*) => frame.winfo_class(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_name\(\) takes 1 positional argument but 2 were given$", (*) => frame.winfo_name(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_parent\(\) takes 1 positional argument but 2 were given$", (*) => frame.winfo_parent(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWindowResizableMinMaxSizeMatchLocal310()
     {
         root := stdlib.tkinter.Tk()
