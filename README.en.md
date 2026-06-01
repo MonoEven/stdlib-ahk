@@ -18,7 +18,7 @@ The covered GUI surface currently includes `Tk` roots with visibility, state, ic
 geometry, and window sizing APIs, `Toplevel` windows with state, iconify/deiconify, geometry, and sizing APIs,
 `Frame`, `Label`, `Button`, `Checkbutton`, `Radiobutton`, `Scale`, `Scrollbar`, `Menu`, `Entry`, `Listbox`, `Text`, and `Canvas` widgets,
 `PhotoImage` image objects, widget visibility, coordinate/size, and identity-tree queries, plus focused `pack`, `grid`, and `place` layout/info/forget/child-query/geometry
-behavior, `Button` / `Checkbutton` / `Radiobutton` command callbacks through `invoke()`,
+behavior, window-manager protocol callbacks, `Button` / `Checkbutton` / `Radiobutton` command callbacks through `invoke()`,
 `Scale` numeric state, `Scrollbar` range state, `Menu` command entries,
 `Entry` cursor and selection state, event binding and synthetic event generation,
 command argument bridging, Canvas drawing/image/window item creation, discovery, and movement, image-backed widget

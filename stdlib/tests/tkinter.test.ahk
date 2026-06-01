@@ -760,6 +760,45 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWindowProtocolCallbacksMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            rootCommand := StdlibTkinterTest.CommandRecorder("root-result", "root-protocol")
+            topCommand := StdlibTkinterTest.CommandRecorder(stdlib.None, "top-protocol")
+
+            AhkTest.AssertEqual(stdlib.tuple(["WM_DELETE_WINDOW"]), root.protocol())
+            AhkTest.AssertTrue(root.protocol("WM_DELETE_WINDOW") != "")
+            AhkTest.AssertEqual("", root.protocol("WM_DELETE_WINDOW", rootCommand))
+            rootProtocolCommand := root.protocol("WM_DELETE_WINDOW")
+            AhkTest.AssertTrue(rootProtocolCommand != "")
+            AhkTest.AssertEqual("root-result", root.eval(rootProtocolCommand))
+            AhkTest.AssertEqual(["root-protocol"], rootCommand.Calls)
+            AhkTest.AssertEqual("", root.wm_protocol("WM_DELETE_WINDOW", ""))
+            AhkTest.AssertEqual("", root.protocol("WM_DELETE_WINDOW"))
+
+            top := stdlib.tkinter.Toplevel(root, { name: "protocol_dialog" })
+            AhkTest.AssertEqual(stdlib.tuple(["WM_DELETE_WINDOW"]), top.protocol())
+            AhkTest.AssertTrue(top.protocol("WM_DELETE_WINDOW") != "")
+            AhkTest.AssertEqual("", top.protocol("WM_DELETE_WINDOW", topCommand))
+            topProtocolCommand := top.wm_protocol("WM_DELETE_WINDOW")
+            AhkTest.AssertTrue(topProtocolCommand != "")
+            AhkTest.AssertEqual("None", root.eval(topProtocolCommand))
+            AhkTest.AssertEqual(["top-protocol"], topCommand.Calls)
+            AhkTest.AssertEqual("", top.protocol("WM_TAKE_FOCUS"))
+            AhkTest.AssertEqual("", top.protocol("WM_DELETE_WINDOW", 1))
+            AhkTest.AssertEqual("1", top.protocol("WM_DELETE_WINDOW"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^invalid command name " Chr(34) "1" Chr(34) "$", (*) => root.eval(top.protocol("WM_DELETE_WINDOW")))
+
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_protocol\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => root.protocol("WM_DELETE_WINDOW", rootCommand, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_protocol\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => top.wm_protocol("WM_DELETE_WINDOW", topCommand, "extra"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCheckbuttonVariableAndInvokeSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

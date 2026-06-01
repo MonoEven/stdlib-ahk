@@ -224,6 +224,8 @@ class Tk
         this.AhkStdlibCommandCallbacks := Map()
         this.AhkStdlibQuitMainLoop := false
         this.tk := this
+        if useTk
+            this.eval("wm protocol . WM_DELETE_WINDOW " AhkStdlibTkinterTclWord("destroy ."))
         if hasUse
             this.AhkStdlibUse := use
     }
@@ -313,6 +315,16 @@ class Tk
     maxsize(args*)
     {
         return AhkStdlibTkinterWmSize(this, ".", "maxsize", args*)
+    }
+
+    protocol(args*)
+    {
+        return AhkStdlibTkinterWmProtocol(this, ".", args*)
+    }
+
+    wm_protocol(args*)
+    {
+        return this.protocol(args*)
     }
 
     bind(args*)
@@ -983,6 +995,16 @@ class Toplevel extends AhkStdlibTkinterWidget
         if args.Length = 0
             return this.AhkStdlibRoot.eval("wm title " this._w)
         return this.AhkStdlibRoot.eval("wm title " this._w " " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    protocol(args*)
+    {
+        return AhkStdlibTkinterWmProtocol(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_protocol(args*)
+    {
+        return this.protocol(args*)
     }
 
     state(args*)
@@ -2532,6 +2554,24 @@ AhkStdlibTkinterWmSize(root, window, command, args*)
         script .= " " AhkStdlibTkinterTclWord(value)
     root.eval(script)
     return stdlib.None
+}
+
+AhkStdlibTkinterWmProtocol(root, window, args*)
+{
+    if args.Length > 2
+        throw TypeError("Wm.wm_protocol() takes from 1 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "wm protocol " window
+    if args.Length = 0
+        return stdlib.tuple(AhkStdlibTkinterSimpleList(root.eval(script)))
+
+    name := args[1]
+    script .= " " AhkStdlibTkinterTclWord(name)
+    if args.Length = 1 || AhkStdlibIsNone(args[2])
+        return root.eval(script)
+
+    command := AhkStdlibTkinterMaybeRegisterCommand(root, args[2])
+    return root.eval(script " " AhkStdlibTkinterTclWord(command))
 }
 
 AhkStdlibTkinterBind(root, widget, window, args*)
