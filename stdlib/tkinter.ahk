@@ -170,6 +170,7 @@ class Tk
         this.AhkStdlibUseTk := useTk
         this.AhkStdlibSync := sync
         this.AhkStdlibChildCounters := Map()
+        this.AhkStdlibCommandCallbacks := Map()
         this.tk := this
         if hasUse
             this.AhkStdlibUse := use
@@ -308,7 +309,7 @@ class AhkStdlibTkinterWidget
         this.AhkStdlibTkCommand := tkCommand
         this._w := AhkStdlibTkinterResolveWidgetPath(this.AhkStdlibRoot, String(master), tkCommand, options)
 
-        script := tkCommand " " this._w AhkStdlibTkinterOptionsToScript(options, false)
+        script := tkCommand " " this._w AhkStdlibTkinterOptionsToScript(options, false, this.AhkStdlibRoot)
         this.AhkStdlibRoot.eval(script)
     }
 
@@ -335,7 +336,7 @@ class AhkStdlibTkinterWidget
             return stdlib.None
         if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
             throw TypeError("cnf must be a dictionary", -1)
-        this.AhkStdlibRoot.eval(this._w " configure" AhkStdlibTkinterOptionsToScript(args[1], false))
+        this.AhkStdlibRoot.eval(this._w " configure" AhkStdlibTkinterOptionsToScript(args[1], false, this.AhkStdlibRoot))
         return stdlib.None
     }
 
@@ -456,6 +457,13 @@ class Button extends AhkStdlibTkinterWidget
     __New(args*)
     {
         super.__New("Button", "button", args*)
+    }
+
+    invoke(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Button.invoke() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " invoke")
     }
 }
 
@@ -900,7 +908,7 @@ AhkStdlibTkinterJoinWidgetPath(parentPath, name)
     return parentPath "." name
 }
 
-AhkStdlibTkinterOptionsToScript(options, includeName)
+AhkStdlibTkinterOptionsToScript(options, includeName, root := unset)
 {
     script := ""
     for key, value in options.OwnProps() {
@@ -908,9 +916,69 @@ AhkStdlibTkinterOptionsToScript(options, includeName)
             continue
         if key = "name" && !includeName
             continue
+        if key = "command" && IsSet(root)
+            value := AhkStdlibTkinterMaybeRegisterCommand(root, value)
         script .= " -" key " " AhkStdlibTkinterTclWord(value)
     }
     return script
+}
+
+AhkStdlibTkinterMaybeRegisterCommand(root, value)
+{
+    if !IsObject(value) || !HasMethod(value, "Call")
+        return value
+
+    id := AhkStdlibTkinterRegisterCommandCallback(value)
+    commandName := "ahkstdlib_tkinter_command_" id
+    nameBuffer := AhkStdlibTkinterUtf8Buffer(commandName)
+    result := DllCall("tcl86t\Tcl_CreateCommand", "Ptr", root.AhkStdlibInterp, "Ptr", nameBuffer.Ptr, "Ptr", AhkStdlibTkinterCommandProcPtr(), "Ptr", id, "Ptr", 0, "Ptr")
+    if !result
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp), -1)
+    root.AhkStdlibCommandCallbacks[commandName] := value
+    return commandName
+}
+
+AhkStdlibTkinterRegisterCommandCallback(callback)
+{
+    static nextId := 0
+    nextId += 1
+    AhkStdlibTkinterCommandCallbackRegistry(nextId, callback)
+    return nextId
+}
+
+AhkStdlibTkinterCommandProcPtr()
+{
+    static proc := CallbackCreate(AhkStdlibTkinterCommandProc, "", 4)
+    return proc
+}
+
+AhkStdlibTkinterCommandProc(clientData, interp, argc, argv)
+{
+    try {
+        callback := AhkStdlibTkinterCommandCallbackRegistry(clientData)
+        result := callback.Call()
+        AhkStdlibTkinterSetResult(interp, AhkStdlibTkinterValueToString(result))
+        return 0
+    } catch as err {
+        AhkStdlibTkinterSetResult(interp, err.Message)
+        return 1
+    }
+}
+
+AhkStdlibTkinterCommandCallbackRegistry(id, callback := unset)
+{
+    static callbacks := Map()
+    if IsSet(callback) {
+        callbacks[id] := callback
+        return callback
+    }
+    return callbacks[id]
+}
+
+AhkStdlibTkinterSetResult(interp, value)
+{
+    valueBuffer := AhkStdlibTkinterUtf8Buffer(value)
+    DllCall("tcl86t\Tcl_SetResult", "Ptr", interp, "Ptr", valueBuffer.Ptr, "Ptr", 1)
 }
 
 AhkStdlibTkinterCgetValue(key, value)

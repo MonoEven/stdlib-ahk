@@ -233,6 +233,39 @@ class StdlibTkinterTest
         }
     }
 
+    static TestButtonCommandInvokeMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            noneCommand := StdlibTkinterTest.CommandRecorder(stdlib.None, "none")
+            strCommand := StdlibTkinterTest.CommandRecorder("done", "str")
+            noCommandButton := stdlib.tkinter.Button(root, { text: "No command" })
+            noneButton := stdlib.tkinter.Button(root, { text: "None command", command: noneCommand })
+            strButton := stdlib.tkinter.Button(root, { text: "String command", command: strCommand })
+
+            AhkTest.AssertEqual("", noCommandButton.cget("command"))
+            AhkTest.AssertTrue(noneButton.cget("command") != "")
+            AhkTest.AssertTrue(strButton.cget("command") != "")
+            AhkTest.AssertEqual("", noCommandButton.invoke())
+            AhkTest.AssertEqual([], noneCommand.Calls)
+            AhkTest.AssertEqual("None", noneButton.invoke())
+            AhkTest.AssertEqual(["none"], noneCommand.Calls)
+            AhkTest.AssertEqual("done", strButton.invoke())
+            AhkTest.AssertEqual(["str"], strCommand.Calls)
+            AhkTest.AssertEqual(stdlib.None, noCommandButton.configure({ command: strCommand }))
+            AhkTest.AssertEqual("done", noCommandButton.invoke())
+            AhkTest.AssertEqual(["str", "str"], strCommand.Calls)
+
+            badButton := stdlib.tkinter.Button(root, { command: 1 })
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^invalid command name " Chr(34) "1" Chr(34) "$", (*) => badButton.invoke())
+            AhkTest.RaisesMatch(TypeError, "^Button\.invoke\(\) takes 1 positional argument but 2 were given$", (*) => strButton.invoke(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestEntryWidgetSupportsInputSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()
@@ -402,6 +435,22 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(TypeError, "^Misc\.update\(\) takes 1 positional argument but 2 were given$", (*) => gui.update(1))
         AhkTest.RaisesMatch(TypeError, "^Misc\.update_idletasks\(\) takes 1 positional argument but 2 were given$", (*) => gui.update_idletasks(1))
         try gui.destroy()
+    }
+
+    class CommandRecorder
+    {
+        __New(result, label)
+        {
+            this.Result := result
+            this.Label := label
+            this.Calls := []
+        }
+
+        Call()
+        {
+            this.Calls.Push(this.Label)
+            return this.Result
+        }
     }
 
     static RuntimeLibDir()

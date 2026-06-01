@@ -33,10 +33,13 @@ try {
 
     tkinter_example_frame := stdlib.tkinter.Frame(tkinter_example_root, { name: "host" })
     tkinter_example_label := stdlib.tkinter.Label(tkinter_example_root, { text: "Hello" })
-    tkinter_example_button := stdlib.tkinter.Button(tkinter_example_frame, { text: "Press" })
+    tkinter_example_button_command := (*) => "clicked"
+    tkinter_example_button := stdlib.tkinter.Button(tkinter_example_frame, { text: "Press", command: tkinter_example_button_command })
     tkinter_example_label_text := tkinter_example_label.cget("text")
     tkinter_example_label_configure_return := tkinter_example_label.configure({ text: "Changed" })
     tkinter_example_label_after_configure := tkinter_example_label.cget("text")
+    tkinter_example_button_command_name := tkinter_example_button.cget("command")
+    tkinter_example_button_invoke_return := tkinter_example_button.invoke()
     tkinter_example_frame_pack_return := tkinter_example_frame.pack()
     tkinter_example_label_pack_return := tkinter_example_label.pack()
     tkinter_example_button_pack_return := tkinter_example_button.pack()
