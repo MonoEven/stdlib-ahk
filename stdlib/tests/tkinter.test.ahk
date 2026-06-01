@@ -269,6 +269,56 @@ class StdlibTkinterTest
         }
     }
 
+    static TestGridAndPlaceManagersMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            frame := stdlib.tkinter.Frame(root, { name: "host", width: 100, height: 80 })
+            label := stdlib.tkinter.Label(frame, { text: "Hello" })
+            entry := stdlib.tkinter.Entry(root, { width: 12 })
+
+            AhkTest.AssertEqual(stdlib.None, frame.grid({ row: 1, column: 2, padx: 3, pady: 4, sticky: "nsew" }))
+            AhkTest.AssertEqual("grid", frame.winfo_manager())
+            gridInfo := frame.grid_info()
+            AhkTest.AssertTrue(gridInfo is Map)
+            AhkTest.AssertSame(root, gridInfo["in"])
+            AhkTest.AssertEqual(2, gridInfo["column"])
+            AhkTest.AssertEqual(1, gridInfo["row"])
+            AhkTest.AssertEqual(1, gridInfo["columnspan"])
+            AhkTest.AssertEqual(1, gridInfo["rowspan"])
+            AhkTest.AssertEqual(0, gridInfo["ipadx"])
+            AhkTest.AssertEqual(0, gridInfo["ipady"])
+            AhkTest.AssertEqual(3, gridInfo["padx"])
+            AhkTest.AssertEqual(4, gridInfo["pady"])
+            AhkTest.AssertEqual("nesw", gridInfo["sticky"])
+
+            AhkTest.AssertEqual(stdlib.None, label.place({ x: 5, y: 6, width: 70, height: 20, anchor: "nw" }))
+            AhkTest.AssertEqual("place", label.winfo_manager())
+            placeInfo := label.place_info()
+            AhkTest.AssertTrue(placeInfo is Map)
+            AhkTest.AssertSame(frame, placeInfo["in"])
+            AhkTest.AssertEqual("5", placeInfo["x"])
+            AhkTest.AssertEqual("0", placeInfo["relx"])
+            AhkTest.AssertEqual("6", placeInfo["y"])
+            AhkTest.AssertEqual("0", placeInfo["rely"])
+            AhkTest.AssertEqual("70", placeInfo["width"])
+            AhkTest.AssertEqual("", placeInfo["relwidth"])
+            AhkTest.AssertEqual("20", placeInfo["height"])
+            AhkTest.AssertEqual("", placeInfo["relheight"])
+            AhkTest.AssertEqual("nw", placeInfo["anchor"])
+            AhkTest.AssertEqual("inside", placeInfo["bordermode"])
+
+            AhkTest.AssertEqual(stdlib.None, entry.place())
+            AhkTest.AssertEqual("", entry.winfo_manager())
+            AhkTest.AssertEqual(0, entry.place_info().Count)
+            AhkTest.AssertEqual(stdlib.None, frame.grid())
+            AhkTest.AssertEqual(1, frame.grid_info()["row"])
+        } finally {
+            try root.destroy()
+        }
+    }
+
     static TestBundledTclTkDllsExistForUseTkRuntime()
     {
         dllDir := StdlibTkinterTest.RuntimeLibDir()

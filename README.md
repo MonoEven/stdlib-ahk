@@ -26,6 +26,9 @@ The `stdlib.tkinter` slice includes bundled Tcl/Tk runtime DLLs
 (`tcl86t.dll` and `tk86t.dll`) for `useTk` support. Their CPython 3.10.11
 source and SHA256 verification report are tracked in
 `stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
+The covered GUI surface currently includes `Tk` roots, `Frame`, `Label`,
+`Button`, and `Entry` widgets, plus focused `pack`, `grid`, and `place` layout
+behavior.
 
 `stdlib` 需要 AutoHotkey v2.0.5 或更高版本。当前开发和测试环境为
 AutoHotkey v2.0.26 与 v2.1-alpha.30。
@@ -33,6 +36,8 @@ AutoHotkey v2.0.26 与 v2.1-alpha.30。
 （`tcl86t.dll` 与 `tk86t.dll`）。其 CPython 3.10.11 来源与 SHA256
 校验报告已随 `stdlib\tkinter\lib\README.md` 和
 `stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
+当前已覆盖的 GUI 表面包括 `Tk` 根窗口、`Frame`、`Label`、`Button`、
+`Entry` 控件，以及聚焦覆盖的 `pack`、`grid`、`place` 布局行为。
 
 ## Current Scope
 

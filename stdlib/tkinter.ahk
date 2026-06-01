@@ -358,6 +358,61 @@ class AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    grid(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Grid.grid_configure() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        script := "grid " this._w
+        if args.Length = 1 {
+            if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+                throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
+            script .= AhkStdlibTkinterOptionsToScript(args[1], true)
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    grid_info(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Grid.grid_info() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        if this.winfo_manager() != "grid"
+            return Map()
+
+        info := Map("in", this.master)
+        for key in ["column", "row", "columnspan", "rowspan", "ipadx", "ipady", "padx", "pady"]
+            info[key] := Integer(this.AhkStdlibRoot.eval("dict get [grid info " this._w "] -" key))
+        info["sticky"] := this.AhkStdlibRoot.eval("dict get [grid info " this._w "] -sticky")
+        return info
+    }
+
+    place(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Place.place_configure() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        script := "place configure " this._w
+        if args.Length = 1 {
+            if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+                throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
+            script .= AhkStdlibTkinterOptionsToScript(args[1], true)
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    place_info(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Place.place_info() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        if this.winfo_manager() != "place"
+            return Map()
+
+        info := Map("in", this.master)
+        for key in ["x", "relx", "y", "rely", "width", "relwidth", "height", "relheight", "anchor", "bordermode"]
+            info[key] := this.AhkStdlibRoot.eval("dict get [place info " this._w "] -" key)
+        return info
+    }
+
     winfo_exists()
     {
         return Integer(this.AhkStdlibRoot.eval("winfo exists " this._w))

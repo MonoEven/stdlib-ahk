@@ -14,6 +14,9 @@ The `stdlib.tkinter` slice includes bundled Tcl/Tk runtime DLLs
 (`tcl86t.dll` and `tk86t.dll`) for `useTk` support. Their CPython 3.10.11
 source and SHA256 verification report are tracked in
 `stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
+The covered GUI surface currently includes `Tk` roots, `Frame`, `Label`,
+`Button`, and `Entry` widgets, plus focused `pack`, `grid`, and `place` layout
+behavior.
 
 It is currently developed and tested with AutoHotkey v2.0.26 and v2.1-alpha.30.
 
