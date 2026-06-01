@@ -14,10 +14,10 @@ The `stdlib.tkinter` slice includes bundled Tcl/Tk runtime DLLs
 (`tcl86t.dll` and `tk86t.dll`) for `useTk` support. Their CPython 3.10.11
 source and SHA256 verification report are tracked in
 `stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
-The covered GUI surface currently includes `Tk` roots with option configuration, visibility, state, transient relationships, overrideredirect, iconify/deiconify,
+The covered GUI surface currently includes `Tk` roots with option configuration and `keys()` option introspection, visibility, state, transient relationships, overrideredirect, iconify/deiconify,
 geometry, and window sizing APIs, `Toplevel` windows with state, transient relationships, overrideredirect, iconify/deiconify, geometry, and sizing APIs,
 `Frame`, `Label`, `Button`, `Checkbutton`, `Radiobutton`, `Scale`, `Scrollbar`, `Menu`, `Entry`, `Listbox`, `Text`, and `Canvas` widgets,
-`PhotoImage` image objects, widget visibility, coordinate/size, and identity-tree queries, plus focused `pack`, `grid`, and `place` layout/info/forget/child-query/geometry
+`PhotoImage` image objects, widget option-key introspection, visibility, coordinate/size, and identity-tree queries, plus focused `pack`, `grid`, and `place` layout/info/forget/child-query/geometry
 behavior, window-manager protocol callbacks, `Button` / `Checkbutton` / `Radiobutton` command callbacks through `invoke()`,
 `Scale` numeric state, `Scrollbar` range state, `Menu` command entries,
 `Entry` cursor and selection state, focus management, event binding and synthetic event generation,

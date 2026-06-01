@@ -294,6 +294,11 @@ class Tk
         return AhkStdlibTkinterCgetValue(args[1], value)
     }
 
+    keys(args*)
+    {
+        return AhkStdlibTkinterKeys(this, ".", args*)
+    }
+
     configure(args*)
     {
         if args.Length > 1
@@ -756,6 +761,11 @@ class AhkStdlibTkinterWidget
             throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
         value := this.AhkStdlibRoot.eval(this._w " cget -" args[1])
         return AhkStdlibTkinterCgetValue(args[1], value)
+    }
+
+    keys(args*)
+    {
+        return AhkStdlibTkinterKeys(this.AhkStdlibRoot, this._w, args*)
     }
 
     configure(args*)
@@ -3113,6 +3123,20 @@ AhkStdlibTkinterCgetValue(key, value)
             try return Float(value)
     }
     return value
+}
+
+AhkStdlibTkinterKeys(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.keys() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    script := "set __stdlib_ahk_keys {}; foreach __stdlib_ahk_config [" window " configure] {lappend __stdlib_ahk_keys [string range [lindex $__stdlib_ahk_config 0] 1 end]}; join $__stdlib_ahk_keys \n"
+    value := root.eval(script)
+    if value = ""
+        return []
+    result := []
+    for part in StrSplit(value, "`n")
+        result.Push(part)
+    return result
 }
 
 AhkStdlibTkinterValueToString(value)

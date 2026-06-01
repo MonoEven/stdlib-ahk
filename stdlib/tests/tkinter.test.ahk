@@ -796,6 +796,42 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWidgetOptionKeysMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            top := stdlib.tkinter.Toplevel(root, { name: "keys_top" })
+            frame := stdlib.tkinter.Frame(root, { name: "keys_frame" })
+            label := stdlib.tkinter.Label(root, { name: "keys_label", text: "Hi" })
+            entry := stdlib.tkinter.Entry(root, { name: "keys_entry" })
+            canvas := stdlib.tkinter.Canvas(root, { name: "keys_canvas" })
+            menu := stdlib.tkinter.Menu(root, { name: "keys_menu", tearoff: 0 })
+
+            rootKeys := ["bd", "borderwidth", "class", "menu", "relief", "screen", "use", "background", "bg", "colormap", "container", "cursor", "height", "highlightbackground", "highlightcolor", "highlightthickness", "padx", "pady", "takefocus", "visual", "width"]
+            frameKeys := ["bd", "borderwidth", "class", "relief", "background", "bg", "colormap", "container", "cursor", "height", "highlightbackground", "highlightcolor", "highlightthickness", "padx", "pady", "takefocus", "visual", "width"]
+            labelKeys := ["activebackground", "activeforeground", "anchor", "background", "bd", "bg", "bitmap", "borderwidth", "compound", "cursor", "disabledforeground", "fg", "font", "foreground", "height", "highlightbackground", "highlightcolor", "highlightthickness", "image", "justify", "padx", "pady", "relief", "state", "takefocus", "text", "textvariable", "underline", "width", "wraplength"]
+            entryKeys := ["background", "bd", "bg", "borderwidth", "cursor", "disabledbackground", "disabledforeground", "exportselection", "fg", "font", "foreground", "highlightbackground", "highlightcolor", "highlightthickness", "insertbackground", "insertborderwidth", "insertofftime", "insertontime", "insertwidth", "invalidcommand", "invcmd", "justify", "readonlybackground", "relief", "selectbackground", "selectborderwidth", "selectforeground", "show", "state", "takefocus", "textvariable", "validate", "validatecommand", "vcmd", "width", "xscrollcommand"]
+            canvasKeys := ["background", "bd", "bg", "borderwidth", "closeenough", "confine", "cursor", "height", "highlightbackground", "highlightcolor", "highlightthickness", "insertbackground", "insertborderwidth", "insertofftime", "insertontime", "insertwidth", "offset", "relief", "scrollregion", "selectbackground", "selectborderwidth", "selectforeground", "state", "takefocus", "width", "xscrollcommand", "xscrollincrement", "yscrollcommand", "yscrollincrement"]
+            menuKeys := ["activebackground", "activeborderwidth", "activeforeground", "background", "bd", "bg", "borderwidth", "cursor", "disabledforeground", "fg", "font", "foreground", "postcommand", "relief", "selectcolor", "takefocus", "tearoff", "tearoffcommand", "title", "type"]
+
+            AhkTest.AssertEqual(rootKeys, root.keys())
+            AhkTest.AssertEqual(rootKeys, top.keys())
+            AhkTest.AssertEqual(frameKeys, frame.keys())
+            AhkTest.AssertEqual(labelKeys, label.keys())
+            AhkTest.AssertEqual(entryKeys, entry.keys())
+            AhkTest.AssertEqual(canvasKeys, canvas.keys())
+            AhkTest.AssertEqual(menuKeys, menu.keys())
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.keys\(\) takes 1 positional argument but 2 were given$", (*) => root.keys(1))
+            AhkTest.AssertEqual(stdlib.None, label.destroy())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^invalid command name "\.keys_label"$', (*) => label.keys())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestToplevelWindowSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
