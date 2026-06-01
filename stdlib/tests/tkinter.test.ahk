@@ -413,6 +413,64 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCheckbuttonVariableAndInvokeSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            calls := []
+            command := (*) => (calls.Push("cmd"), "done")
+            value := stdlib.tkinter.StringVar(root, "off", "check_var")
+            check := stdlib.tkinter.Checkbutton(root, { name: "agree", text: "Agree", variable: value, onvalue: "yes", offvalue: "no", command: command })
+
+            AhkTest.AssertEqual("Checkbutton", Type(check))
+            AhkTest.AssertEqual(".agree", String(check))
+            AhkTest.AssertSame(root, check._root())
+            AhkTest.AssertEqual(1, check.winfo_exists())
+            AhkTest.AssertEqual("Agree", check.cget("text"))
+            AhkTest.AssertEqual("check_var", check.cget("variable"))
+            AhkTest.AssertEqual("yes", check.cget("onvalue"))
+            AhkTest.AssertEqual("no", check.cget("offvalue"))
+            AhkTest.AssertTrue(check.cget("command") != "")
+            AhkTest.AssertEqual("off", value.get())
+            AhkTest.AssertEqual(stdlib.None, check.select())
+            AhkTest.AssertEqual("yes", value.get())
+            AhkTest.AssertEqual(stdlib.None, check.deselect())
+            AhkTest.AssertEqual("no", value.get())
+            AhkTest.AssertEqual(stdlib.None, check.toggle())
+            AhkTest.AssertEqual("yes", value.get())
+            AhkTest.AssertEqual("done", check.invoke())
+            AhkTest.AssertEqual("no", value.get())
+            AhkTest.AssertEqual(["cmd"], calls)
+            AhkTest.AssertEqual(stdlib.None, check.pack())
+            AhkTest.AssertEqual("pack", check.winfo_manager())
+            AhkTest.AssertEqual(stdlib.None, check.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .agree"))
+
+            noCommand := stdlib.tkinter.Checkbutton(root)
+            AhkTest.AssertEqual("", noCommand.invoke())
+            AhkTest.AssertEqual("", noCommand.invoke())
+            noneButton := stdlib.tkinter.Checkbutton(root, { command: (*) => stdlib.None })
+            AhkTest.AssertEqual("None", noneButton.invoke())
+            strButton := stdlib.tkinter.Checkbutton(root, { command: (*) => "value" })
+            AhkTest.AssertEqual("value", strButton.invoke())
+            badButton := stdlib.tkinter.Checkbutton(root, { command: 1 })
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^invalid command name " Chr(34) "1" Chr(34) "$", (*) => badButton.invoke())
+            AhkTest.AssertEqual(".kw", String(stdlib.tkinter.Checkbutton({ master: root, name: "kw" })))
+            AhkTest.AssertEqual("CNF", stdlib.tkinter.Checkbutton(root, { name: "cnf", text: "CNF" }).cget("text"))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Checkbutton({ master: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Checkbutton\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Checkbutton(root, {}, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Checkbutton(root, { extra_kw: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Checkbutton\.invoke\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Checkbutton(root).invoke(1))
+            AhkTest.RaisesMatch(TypeError, "^Checkbutton\.select\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Checkbutton(root).select(1))
+            AhkTest.RaisesMatch(TypeError, "^Checkbutton\.deselect\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Checkbutton(root).deselect(1))
+            AhkTest.RaisesMatch(TypeError, "^Checkbutton\.toggle\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Checkbutton(root).toggle(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestEntryWidgetSupportsInputSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()

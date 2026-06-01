@@ -67,6 +67,11 @@ class AhkStdlibTkinter
         return Button(args*)
     }
 
+    static Checkbutton(args*)
+    {
+        return Checkbutton(args*)
+    }
+
     static Canvas(args*)
     {
         return Canvas(args*)
@@ -730,6 +735,45 @@ class Button extends AhkStdlibTkinterWidget
         if args.Length != 0
             throw TypeError("Button.invoke() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval(this._w " invoke")
+    }
+}
+
+class Checkbutton extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Checkbutton", "checkbutton", args*)
+    }
+
+    deselect(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Checkbutton.deselect() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " deselect")
+        return stdlib.None
+    }
+
+    invoke(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Checkbutton.invoke() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " invoke")
+    }
+
+    select(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Checkbutton.select() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " select")
+        return stdlib.None
+    }
+
+    toggle(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Checkbutton.toggle() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " toggle")
+        return stdlib.None
     }
 }
 
