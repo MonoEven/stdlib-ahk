@@ -473,6 +473,46 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWaitWindowAndVisibilityMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            visibleTop := stdlib.tkinter.Toplevel(root, { name: "visible_wait" })
+            AhkTest.AssertEqual(stdlib.None, visibleTop.wait_visibility())
+
+            visibleTop2 := stdlib.tkinter.Toplevel(root, { name: "visible_wait2" })
+            AhkTest.AssertEqual(stdlib.None, root.wait_visibility(visibleTop2))
+
+            closeTop := stdlib.tkinter.Toplevel(root, { name: "close_wait" })
+            AhkTest.AssertRegex(root.after(0, (*) => closeTop.destroy()), "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, root.wait_window(closeTop))
+            AhkTest.AssertEqual("0", root.eval("winfo exists .close_wait"))
+
+            selfCloseTop := stdlib.tkinter.Toplevel(root, { name: "self_close_wait" })
+            AhkTest.AssertRegex(root.after(0, (*) => selfCloseTop.destroy()), "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, selfCloseTop.wait_window())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .self_close_wait"))
+
+            noneCloseTop := stdlib.tkinter.Toplevel(root, { name: "none_close_wait" })
+            AhkTest.AssertRegex(root.after(0, (*) => noneCloseTop.destroy()), "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, noneCloseTop.wait_window(stdlib.None))
+            AhkTest.AssertEqual("0", root.eval("winfo exists .none_close_wait"))
+
+            noneVisibleTop := stdlib.tkinter.Toplevel(root, { name: "none_visible_wait" })
+            AhkTest.AssertEqual(stdlib.None, noneVisibleTop.wait_visibility(stdlib.None))
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.wait_window\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => root.wait_window(root, visibleTop))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.wait_visibility\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => root.wait_visibility(root, visibleTop))
+            AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute '_w'$", (*) => root.wait_window(".missing"))
+            AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute '_w'$", (*) => root.wait_visibility(".missing"))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_w'$", (*) => root.wait_window(1))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_w'$", (*) => root.wait_visibility(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWinfoCoordinateQueriesMatchLocal310()
     {
         root := stdlib.tkinter.Tk()

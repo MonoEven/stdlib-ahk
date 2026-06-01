@@ -419,6 +419,16 @@ class Tk
         return AhkStdlibTkinterGrabStatus(this, ".", args*)
     }
 
+    wait_window(args*)
+    {
+        return AhkStdlibTkinterWaitFor(this, ".", "window", "wait_window", args*)
+    }
+
+    wait_visibility(args*)
+    {
+        return AhkStdlibTkinterWaitFor(this, ".", "visibility", "wait_visibility", args*)
+    }
+
     focus_set(args*)
     {
         return AhkStdlibTkinterFocusSet(this, ".", "focus_set", false, args*)
@@ -946,6 +956,16 @@ class AhkStdlibTkinterWidget
     grab_status(args*)
     {
         return AhkStdlibTkinterGrabStatus(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wait_window(args*)
+    {
+        return AhkStdlibTkinterWaitFor(this.AhkStdlibRoot, this._w, "window", "wait_window", args*)
+    }
+
+    wait_visibility(args*)
+    {
+        return AhkStdlibTkinterWaitFor(this.AhkStdlibRoot, this._w, "visibility", "wait_visibility", args*)
     }
 
     focus_set(args*)
@@ -2854,6 +2874,26 @@ AhkStdlibTkinterGrabStatus(root, window, args*)
     return status = "" || status = "none" ? stdlib.None : status
 }
 
+AhkStdlibTkinterWaitFor(root, window, command, methodName, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc." methodName "() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    target := window
+    if args.Length = 1 && !AhkStdlibIsNone(args[1])
+        target := AhkStdlibTkinterWaitTarget(args[1])
+    root.eval("tkwait " command " " AhkStdlibTkinterTclWord(target))
+    return stdlib.None
+}
+
+AhkStdlibTkinterWaitTarget(value)
+{
+    if value is Tk
+        return "."
+    if IsObject(value) && HasProp(value, "_w")
+        return value._w
+    throw AttributeError("'" AhkStdlibPyTypeName(value) "' object has no attribute '_w'", -1)
+}
+
 AhkStdlibTkinterFocusSet(root, window, methodName, force, args*)
 {
     if args.Length != 0
@@ -2868,6 +2908,8 @@ AhkStdlibTkinterFocusQuery(root, script, methodName, args*)
         throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
     window := root.eval(script)
     if window = ""
+        return stdlib.None
+    if root.eval("winfo viewable " window) = "0"
         return stdlib.None
     return AhkStdlibTkinterWidgetFromPath(root, window)
 }
