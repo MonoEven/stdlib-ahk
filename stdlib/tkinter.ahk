@@ -314,6 +314,16 @@ class Tk
         return AhkStdlibTkinterWmSize(this, ".", "maxsize", args*)
     }
 
+    bind(args*)
+    {
+        return AhkStdlibTkinterBind(this, this, ".", args*)
+    }
+
+    event_generate(args*)
+    {
+        return AhkStdlibTkinterEventGenerate(this, ".", args*)
+    }
+
     state(args*)
     {
         if args.Length > 1
@@ -611,6 +621,16 @@ class AhkStdlibTkinterWidget
         return info
     }
 
+    bind(args*)
+    {
+        return AhkStdlibTkinterBind(this.AhkStdlibRoot, this, this._w, args*)
+    }
+
+    event_generate(args*)
+    {
+        return AhkStdlibTkinterEventGenerate(this.AhkStdlibRoot, this._w, args*)
+    }
+
     winfo_exists(args*)
     {
         if args.Length != 0
@@ -751,6 +771,31 @@ class Toplevel extends AhkStdlibTkinterWidget
         if args.Length != 0
             throw TypeError("Wm.wm_deiconify() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval("wm deiconify " this._w)
+    }
+}
+
+class Event
+{
+    __New(widget, rawArgs, sequence := "")
+    {
+        this.widget := widget
+        this.type := EventType(AhkStdlibTkinterEventTypeName(rawArgs.Length >= 2 ? rawArgs[2] : "", sequence))
+        this.x := AhkStdlibTkinterEventInteger(rawArgs.Length >= 3 ? rawArgs[3] : "0")
+        this.y := AhkStdlibTkinterEventInteger(rawArgs.Length >= 4 ? rawArgs[4] : "0")
+        this.num := AhkStdlibTkinterEventInteger(rawArgs.Length >= 5 ? rawArgs[5] : "0")
+    }
+}
+
+class EventType
+{
+    __New(name)
+    {
+        this.name := name
+    }
+
+    ToString()
+    {
+        return this.name
     }
 }
 
@@ -1923,6 +1968,41 @@ AhkStdlibTkinterWmSize(root, window, command, args*)
     return stdlib.None
 }
 
+AhkStdlibTkinterBind(root, widget, window, args*)
+{
+    if args.Length > 3
+        throw TypeError("Misc.bind() takes from 1 to 4 positional arguments but " args.Length + 1 " were given", -1)
+
+    if args.Length = 0
+        return stdlib.tuple(AhkStdlibTkinterSimpleList(root.eval("bind " window)))
+
+    sequence := args[1]
+    if args.Length = 1 || AhkStdlibIsNone(args[2])
+        return root.eval("bind " window " " AhkStdlibTkinterTclWord(sequence))
+
+    commandName := AhkStdlibTkinterRegisterEventCommand(root, widget, args[2], sequence)
+    addPrefix := args.Length >= 3 && args[3] = "+" ? "+" : ""
+    script := addPrefix "if {`"[" commandName " %W %T %x %y %b]`" == `"break`"} break"
+    root.eval("bind " window " " AhkStdlibTkinterTclWord(sequence) " " AhkStdlibTkinterTclScriptWord(script))
+    return commandName
+}
+
+AhkStdlibTkinterEventGenerate(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.event_generate() missing 1 required positional argument: 'sequence'", -1)
+    if args.Length > 2 || (args.Length = 2 && !AhkStdlibTkinterIsPlainKeywordObject(args[2]))
+        throw TypeError("Misc.event_generate() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "event generate " window " " AhkStdlibTkinterTclWord(args[1])
+    if args.Length = 2 {
+        for key, value in args[2].OwnProps()
+            script .= " -" key " " AhkStdlibTkinterTclWord(value)
+    }
+    root.eval(script)
+    return stdlib.None
+}
+
 AhkStdlibTkinterOptionsToScript(options, includeName, root := unset)
 {
     script := ""
@@ -1953,6 +2033,19 @@ AhkStdlibTkinterRegisterCommand(root, callback, callbackArgs := unset)
         return callback
 
     entry := IsSet(callbackArgs) ? { Callback: callback, Args: callbackArgs } : callback
+    id := AhkStdlibTkinterRegisterCommandCallback(entry)
+    commandName := "ahkstdlib_tkinter_command_" id
+    nameBuffer := AhkStdlibTkinterUtf8Buffer(commandName)
+    result := DllCall("tcl86t\Tcl_CreateCommand", "Ptr", root.AhkStdlibInterp, "Ptr", nameBuffer.Ptr, "Ptr", AhkStdlibTkinterCommandProcPtr(), "Ptr", id, "Ptr", 0, "Ptr")
+    if !result
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp), -1)
+    root.AhkStdlibCommandCallbacks[commandName] := entry
+    return commandName
+}
+
+AhkStdlibTkinterRegisterEventCommand(root, widget, callback, sequence)
+{
+    entry := { Kind: "EventBind", Callback: callback, Widget: widget, Sequence: sequence }
     id := AhkStdlibTkinterRegisterCommandCallback(entry)
     commandName := "ahkstdlib_tkinter_command_" id
     nameBuffer := AhkStdlibTkinterUtf8Buffer(commandName)
@@ -2013,6 +2106,8 @@ AhkStdlibTkinterCommandArgs(argc, argv)
 
 AhkStdlibTkinterCallCommandCallback(entry, args)
 {
+    if IsObject(entry) && entry.HasOwnProp("Kind") && entry.Kind = "EventBind"
+        return entry.Callback.Call(Event(entry.Widget, args, entry.Sequence))
     if IsObject(entry) && entry.HasOwnProp("Callback")
         return entry.Callback.Call(entry.Args*)
     return entry.Call(args*)
@@ -2103,6 +2198,13 @@ AhkStdlibTkinterTclQuotedWord(value)
     return Chr(34) text Chr(34)
 }
 
+AhkStdlibTkinterTclScriptWord(value)
+{
+    text := AhkStdlibTkinterValueToString(value)
+    text := StrReplace(text, "\", "\\")
+    return "{" text "}"
+}
+
 AhkStdlibTkinterIntVarValueToString(value)
 {
     if AhkStdlibIsNone(value)
@@ -2167,6 +2269,34 @@ AhkStdlibTkinterFloatTuple(value)
         if part != ""
             result.Push(Float(part))
     return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterEventTypeName(value, sequence)
+{
+    switch value {
+        case "4":
+            return "ButtonPress"
+        case "5":
+            return "ButtonRelease"
+        case "2":
+            return "KeyPress"
+        case "3":
+            return "KeyRelease"
+    }
+    if value != "" && value != "??"
+        return value
+    if InStr(sequence, "Button")
+        return "ButtonPress"
+    if InStr(sequence, "Key")
+        return "KeyPress"
+    return value
+}
+
+AhkStdlibTkinterEventInteger(value)
+{
+    if value = "" || value = "??"
+        return 0
+    return Integer(value)
 }
 
 AhkStdlibTkinterSimpleList(value)

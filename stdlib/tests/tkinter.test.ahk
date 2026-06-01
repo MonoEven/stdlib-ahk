@@ -321,6 +321,60 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWidgetBindAndEventGenerateMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            AhkTest.AssertEqual("", root.geometry("240x120+20+30"))
+            label := stdlib.tkinter.Label(root, { name: "caption", text: "Click" })
+            AhkTest.AssertEqual(stdlib.None, label.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            recorder := StdlibTkinterTest.EventRecorder("handled")
+            extra := StdlibTkinterTest.EventRecorder(stdlib.None, "extra")
+
+            commandName := label.bind("<Button-1>", recorder)
+            AhkTest.AssertTrue(commandName != "")
+            AhkTest.AssertTrue(InStr(label.bind("<Button-1>"), commandName) > 0)
+            AhkTest.AssertEqual(stdlib.tuple(["<Button-1>"]), label.bind())
+            AhkTest.AssertEqual("", label.bind("<Key>"))
+            AhkTest.AssertEqual(stdlib.None, label.event_generate("<Button-1>", { x: 7, y: 8 }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(1, recorder.Calls.Length)
+            event := recorder.Calls[1]
+            AhkTest.AssertEqual("Event", Type(event))
+            AhkTest.AssertSame(label, event.widget)
+            AhkTest.AssertEqual("ButtonPress", event.type.name)
+            AhkTest.AssertEqual(7, event.x)
+            AhkTest.AssertEqual(8, event.y)
+            AhkTest.AssertEqual(1, event.num)
+
+            extraCommand := label.bind("<Button-1>", extra, "+")
+            AhkTest.AssertTrue(extraCommand != "")
+            AhkTest.AssertEqual(stdlib.None, label.event_generate("<Button-1>", { x: 9, y: 10 }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(2, recorder.Calls.Length)
+            AhkTest.AssertEqual(1, extra.Calls.Length)
+            AhkTest.AssertEqual(9, recorder.Calls[2].x)
+            AhkTest.AssertEqual(10, extra.Calls[1].y)
+            AhkTest.AssertTrue(InStr(label.bind("<Button-1>"), extraCommand) > 0)
+            AhkTest.AssertTrue(InStr(label.bind("<Button-1>", stdlib.None), commandName) > 0)
+            AhkTest.AssertEqual(stdlib.None, label.event_generate("<Button-1>"))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(0, recorder.Calls[3].x)
+            AhkTest.AssertEqual(0, extra.Calls[2].y)
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.bind\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => label.bind("<Button-1>", recorder, "+", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.event_generate\(\) missing 1 required positional argument: 'sequence'$", (*) => label.event_generate())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.event_generate\(\) takes 2 positional arguments but 3 were given$", (*) => label.event_generate("<Button-1>", "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad option "-bad": must be -when, -above, -borderwidth, -button, -count, -data, -delta, -detail, -focus, -height, -keycode, -keysym, -mode, -override, -place, -root, -rootx, -rooty, -sendevent, -serial, -state, -subwindow, -time, -warp, -width, -window, -x, or -y$', (*) => label.event_generate("<Button-1>", { bad: 1 }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^only one event specification allowed$", (*) => label.event_generate("bad"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetsSupportVisibleGuiSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()
@@ -1185,6 +1239,22 @@ class StdlibTkinterTest
             this.Calls.Push(this.Label)
             this.Root.quit()
             return "ignored"
+        }
+    }
+
+    class EventRecorder
+    {
+        __New(result, label := "")
+        {
+            this.Result := result
+            this.Label := label
+            this.Calls := []
+        }
+
+        Call(event)
+        {
+            this.Calls.Push(event)
+            return this.Result
         }
     }
 

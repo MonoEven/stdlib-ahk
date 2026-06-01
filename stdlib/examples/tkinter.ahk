@@ -133,6 +133,13 @@ try {
     tkinter_example_label_toplevel := tkinter_example_label.winfo_toplevel()
     tkinter_example_label_manager := tkinter_example_label.winfo_manager()
     tkinter_example_button_exists := tkinter_example_button.winfo_exists()
+    tkinter_example_event_calls := []
+    tkinter_example_event_handler := (event) => (tkinter_example_event_calls.Push([Type(event), String(event.widget), event.type.name, event.x, event.y, event.num]), "handled")
+    tkinter_example_event_command := tkinter_example_label.bind("<Button-1>", tkinter_example_event_handler)
+    tkinter_example_event_bind_query := tkinter_example_label.bind("<Button-1>")
+    tkinter_example_event_sequences := tkinter_example_label.bind()
+    tkinter_example_event_generate_return := tkinter_example_label.event_generate("<Button-1>", { x: 7, y: 8 })
+    tkinter_example_event_update_return := tkinter_example_root.update()
     tkinter_example_toplevel := stdlib.tkinter.Toplevel(tkinter_example_root, { name: "dialog", width: 120, height: 80, bg: "white" })
     tkinter_example_toplevel_string := String(tkinter_example_toplevel)
     tkinter_example_toplevel_manager := tkinter_example_toplevel.winfo_manager()
