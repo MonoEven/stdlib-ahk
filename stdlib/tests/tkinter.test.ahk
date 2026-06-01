@@ -236,6 +236,50 @@ class StdlibTkinterTest
         }
     }
 
+    static TestToplevelWindowSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            top := stdlib.tkinter.Toplevel(root, { name: "dialog", width: 120, height: 80, bg: "white" })
+
+            AhkTest.AssertEqual("Toplevel", Type(top))
+            AhkTest.AssertEqual(".dialog", String(top))
+            AhkTest.AssertSame(root, top._root())
+            AhkTest.AssertEqual(1, top.winfo_exists())
+            AhkTest.AssertEqual("wm", top.winfo_manager())
+            AhkTest.AssertEqual(120, top.cget("width"))
+            AhkTest.AssertEqual(80, top.cget("height"))
+            AhkTest.AssertEqual("white", top.cget("bg"))
+            AhkTest.AssertEqual("tk", top.title())
+            AhkTest.AssertEqual("", top.title("Dialog Title"))
+            AhkTest.AssertEqual("Dialog Title", top.title())
+            AhkTest.AssertEqual("normal", top.state())
+            AhkTest.AssertEqual("", top.withdraw())
+            AhkTest.AssertEqual("withdrawn", top.state())
+            AhkTest.AssertEqual("", top.deiconify())
+            AhkTest.AssertEqual("normal", top.state())
+            child := stdlib.tkinter.Label(top, { text: "Inside" })
+            AhkTest.AssertEqual(".dialog.!label", String(child))
+            AhkTest.AssertSame(root, child._root())
+            AhkTest.AssertEqual("Inside", child.cget("text"))
+            AhkTest.AssertEqual(stdlib.None, top.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .dialog"))
+
+            AhkTest.AssertEqual(".kw", String(stdlib.tkinter.Toplevel({ master: root, name: "kw" })))
+            AhkTest.AssertEqual(50, stdlib.tkinter.Toplevel(root, { name: "cnf", width: 50 }).cget("width"))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Toplevel({ master: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Toplevel\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Toplevel(root, {}, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Toplevel(root, { extra_kw: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_title\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => stdlib.tkinter.Toplevel(root).title("a", "b"))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_state\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => stdlib.tkinter.Toplevel(root).state("normal", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_withdraw\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Toplevel(root).withdraw(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestButtonCommandInvokeMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

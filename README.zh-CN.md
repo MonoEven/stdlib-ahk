@@ -14,11 +14,11 @@
 （`tcl86t.dll` 与 `tk86t.dll`）。其 CPython 3.10.11 来源与 SHA256
 校验报告已随 `stdlib\tkinter\lib\README.md` 和
 `stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
-当前已覆盖的 GUI 表面包括 `Tk` 根窗口、`Frame`、`Label`、`Button`、
-`Entry`、`Text`、`Canvas` 控件与 `PhotoImage` 图像对象，以及聚焦覆盖的
-`pack`、`grid`、`place` 布局行为、通过 `invoke()` 执行的 `Button`
-command 回调、图像型控件选项，并包含聚焦覆盖的 `after` / `mainloop` /
-`quit` 事件循环切片。
+当前已覆盖的 GUI 表面包括 `Tk` 根窗口、`Toplevel` 窗口、`Frame`、
+`Label`、`Button`、`Entry`、`Text`、`Canvas` 控件与 `PhotoImage` 图像对象，
+以及聚焦覆盖的 `pack`、`grid`、`place` 布局行为、通过 `invoke()` 执行的
+`Button` command 回调、图像型控件选项，并包含聚焦覆盖的 `after` /
+`mainloop` / `quit` 事件循环切片。
 
 当前开发和测试环境为 AutoHotkey v2.0.26 与 v2.1-alpha.30。
 

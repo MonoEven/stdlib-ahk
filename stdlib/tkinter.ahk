@@ -57,6 +57,11 @@ class AhkStdlibTkinter
         return Label(args*)
     }
 
+    static Toplevel(args*)
+    {
+        return Toplevel(args*)
+    }
+
     static Button(args*)
     {
         return Button(args*)
@@ -515,6 +520,48 @@ class Label extends AhkStdlibTkinterWidget
     __New(args*)
     {
         super.__New("Label", "label", args*)
+    }
+}
+
+class Toplevel extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Toplevel", "toplevel", args*)
+        this.title(this.AhkStdlibRoot.title())
+        this.AhkStdlibRoot.eval("wm protocol " this._w " WM_DELETE_WINDOW " AhkStdlibTkinterTclWord("destroy " this._w))
+    }
+
+    title(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_title() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0
+            return this.AhkStdlibRoot.eval("wm title " this._w)
+        return this.AhkStdlibRoot.eval("wm title " this._w " " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    state(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_state() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.AhkStdlibRoot.eval("wm state " this._w)
+        return this.AhkStdlibRoot.eval("wm state " this._w " " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    withdraw(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Wm.wm_withdraw() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval("wm withdraw " this._w)
+    }
+
+    deiconify(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Wm.wm_deiconify() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval("wm deiconify " this._w)
     }
 }
 
