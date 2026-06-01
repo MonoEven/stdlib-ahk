@@ -845,6 +845,46 @@ class Tk
         return AhkStdlibTkinterWinfoInteger(this, ".", "screencells", "winfo_screencells", args*)
     }
 
+    winfo_cells(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "cells", "winfo_cells", args*)
+    }
+
+    winfo_colormapfull(args*)
+    {
+        return AhkStdlibTkinterWinfoBoolean(this, ".", "colormapfull", "winfo_colormapfull", args*)
+    }
+
+    winfo_depth(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "depth", "winfo_depth", args*)
+    }
+
+    winfo_geometry(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this, ".", "geometry", "winfo_geometry", args*)
+    }
+
+    winfo_id(args*)
+    {
+        return AhkStdlibTkinterWinfoIntegerBase0(this, ".", "id", "winfo_id", args*)
+    }
+
+    winfo_pointerx(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "pointerx", "winfo_pointerx", args*)
+    }
+
+    winfo_pointerxy(args*)
+    {
+        return AhkStdlibTkinterWinfoIntegerTuple(this, ".", "pointerxy", "winfo_pointerxy", args*)
+    }
+
+    winfo_pointery(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "pointery", "winfo_pointery", args*)
+    }
+
     winfo_screenvisual(args*)
     {
         return AhkStdlibTkinterWinfoString(this, ".", "screenvisual", "winfo_screenvisual", args*)
@@ -853,6 +893,21 @@ class Tk
     winfo_server(args*)
     {
         return AhkStdlibTkinterWinfoString(this, ".", "server", "winfo_server", args*)
+    }
+
+    winfo_visual(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this, ".", "visual", "winfo_visual", args*)
+    }
+
+    winfo_visualid(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this, ".", "visualid", "winfo_visualid", args*)
+    }
+
+    winfo_visualsavailable(args*)
+    {
+        return AhkStdlibTkinterWinfoVisualsAvailable(this, ".", args*)
     }
 
     winfo_reqwidth(args*)
@@ -1502,6 +1557,46 @@ class AhkStdlibTkinterWidget
         return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "screencells", "winfo_screencells", args*)
     }
 
+    winfo_cells(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "cells", "winfo_cells", args*)
+    }
+
+    winfo_colormapfull(args*)
+    {
+        return AhkStdlibTkinterWinfoBoolean(this.AhkStdlibRoot, this._w, "colormapfull", "winfo_colormapfull", args*)
+    }
+
+    winfo_depth(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "depth", "winfo_depth", args*)
+    }
+
+    winfo_geometry(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "geometry", "winfo_geometry", args*)
+    }
+
+    winfo_id(args*)
+    {
+        return AhkStdlibTkinterWinfoIntegerBase0(this.AhkStdlibRoot, this._w, "id", "winfo_id", args*)
+    }
+
+    winfo_pointerx(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "pointerx", "winfo_pointerx", args*)
+    }
+
+    winfo_pointerxy(args*)
+    {
+        return AhkStdlibTkinterWinfoIntegerTuple(this.AhkStdlibRoot, this._w, "pointerxy", "winfo_pointerxy", args*)
+    }
+
+    winfo_pointery(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "pointery", "winfo_pointery", args*)
+    }
+
     winfo_screenvisual(args*)
     {
         return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "screenvisual", "winfo_screenvisual", args*)
@@ -1510,6 +1605,21 @@ class AhkStdlibTkinterWidget
     winfo_server(args*)
     {
         return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "server", "winfo_server", args*)
+    }
+
+    winfo_visual(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "visual", "winfo_visual", args*)
+    }
+
+    winfo_visualid(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "visualid", "winfo_visualid", args*)
+    }
+
+    winfo_visualsavailable(args*)
+    {
+        return AhkStdlibTkinterWinfoVisualsAvailable(this.AhkStdlibRoot, this._w, args*)
     }
 
     winfo_reqwidth(args*)
@@ -3479,6 +3589,49 @@ AhkStdlibTkinterWinfoInteger(root, window, command, methodName, args*)
     if args.Length != 0
         throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
     return Integer(root.eval("winfo " command " " window))
+}
+
+AhkStdlibTkinterWinfoIntegerBase0(root, window, command, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return Integer(root.eval("winfo " command " " window))
+}
+
+AhkStdlibTkinterWinfoBoolean(root, window, command, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return root.eval("winfo " command " " window) = "1" ? stdlib.True : stdlib.False
+}
+
+AhkStdlibTkinterWinfoIntegerTuple(root, window, command, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return AhkStdlibTkinterIntegerTuple(root.eval("winfo " command " " window))
+}
+
+AhkStdlibTkinterWinfoVisualsAvailable(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc.winfo_visualsavailable() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "winfo visualsavailable " window
+    if args.Length = 1 && AhkStdlibTruthValue(args[1])
+        script .= " includeids"
+
+    result := []
+    for entryText in AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval(script)) {
+        parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, entryText)
+        item := []
+        if parts.Length >= 1
+            item.Push(parts[1])
+        loop parts.Length - 1
+            item.Push(Integer(parts[A_Index + 1]))
+        result.Push(stdlib.tuple(item))
+    }
+    return result
 }
 
 AhkStdlibTkinterWinfoLogicalScreenInteger(root, window, command, methodName, args*)

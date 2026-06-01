@@ -827,6 +827,57 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWinfoVisualColormapAndPointerQueriesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            frame := stdlib.tkinter.Frame(root, { name: "visual_host" })
+            label := stdlib.tkinter.Label(frame, { name: "caption", text: "Visual" })
+            AhkTest.AssertEqual(stdlib.None, frame.pack())
+            AhkTest.AssertEqual(stdlib.None, label.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            for widget in [root, frame, label] {
+                AhkTest.AssertEqual(256, widget.winfo_cells())
+                AhkTest.AssertSame(stdlib.False, widget.winfo_colormapfull())
+                AhkTest.AssertEqual(32, widget.winfo_depth())
+                AhkTest.AssertEqual("truecolor", widget.winfo_visual())
+                AhkTest.AssertEqual("0x0", widget.winfo_visualid())
+                AhkTest.AssertEqual([stdlib.tuple(["truecolor", 32])], widget.winfo_visualsavailable())
+                AhkTest.AssertEqual([stdlib.tuple(["truecolor", 32, 0])], widget.winfo_visualsavailable(stdlib.True))
+                AhkTest.AssertEqual([stdlib.tuple(["truecolor", 32])], widget.winfo_visualsavailable(stdlib.False))
+                AhkTest.AssertEqual([stdlib.tuple(["truecolor", 32])], widget.winfo_visualsavailable(stdlib.None))
+                AhkTest.AssertTrue(widget.winfo_geometry() ~= "^\d+x\d+\+\d+\+\d+$")
+                AhkTest.AssertTrue(widget.winfo_id() is Integer)
+                AhkTest.AssertTrue(widget.winfo_id() >= 0)
+                pointer := widget.winfo_pointerxy()
+                AhkTest.AssertTrue(pointer is Array)
+                AhkTest.AssertEqual(2, pointer.Length)
+                AhkTest.AssertTrue(pointer[1] is Integer)
+                AhkTest.AssertTrue(pointer[2] is Integer)
+                AhkTest.AssertEqual(pointer[1], widget.winfo_pointerx())
+                AhkTest.AssertEqual(pointer[2], widget.winfo_pointery())
+            }
+
+            label.destroy()
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.visual_host\.caption"$', (*) => label.winfo_cells())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.visual_host\.caption"$', (*) => label.winfo_visualsavailable())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_cells\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_cells(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_colormapfull\(\) takes 1 positional argument but 2 were given$", (*) => frame.winfo_colormapfull(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_depth\(\) takes 1 positional argument but 2 were given$", (*) => label.winfo_depth(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_geometry\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_geometry(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_id\(\) takes 1 positional argument but 2 were given$", (*) => frame.winfo_id(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_pointerxy\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_pointerxy(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_visual\(\) takes 1 positional argument but 2 were given$", (*) => frame.winfo_visual(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_visualid\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_visualid(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_visualsavailable\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => root.winfo_visualsavailable(stdlib.True, "extra"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetIdentityTreeSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
