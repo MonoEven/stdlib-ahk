@@ -55,6 +55,9 @@ try {
     tkinter_example_root_reqheight := tkinter_example_root.winfo_reqheight()
     tkinter_example_root_screenwidth := tkinter_example_root.winfo_screenwidth()
     tkinter_example_root_screenheight := tkinter_example_root.winfo_screenheight()
+    tkinter_example_root_pixels := tkinter_example_root.winfo_pixels("1i")
+    tkinter_example_root_fpixels := tkinter_example_root.winfo_fpixels("1i")
+    tkinter_example_root_rgb := tkinter_example_root.winfo_rgb("#112233")
     tkinter_example_root_toplevel := tkinter_example_root.winfo_toplevel()
     tkinter_example_root_title_before := tkinter_example_root.title()
     tkinter_example_root_title_return := tkinter_example_root.title("Stdlib Example")
@@ -88,6 +91,8 @@ try {
 
     tkinter_example_frame := stdlib.tkinter.Frame(tkinter_example_root, { name: "host" })
     tkinter_example_label := stdlib.tkinter.Label(tkinter_example_root, { text: "Hello" })
+    tkinter_example_label_pixels := tkinter_example_label.winfo_pixels("2c")
+    tkinter_example_label_rgb := tkinter_example_label.winfo_rgb("red")
     tkinter_example_button_command := (*) => "clicked"
     tkinter_example_button := stdlib.tkinter.Button(tkinter_example_frame, { text: "Press", command: tkinter_example_button_command })
     tkinter_example_check_value := stdlib.tkinter.StringVar(tkinter_example_root, "off", "check_var")

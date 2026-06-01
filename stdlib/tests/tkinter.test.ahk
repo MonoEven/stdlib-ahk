@@ -718,6 +718,49 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWinfoPixelsAndRgbQueriesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            frame := stdlib.tkinter.Frame(root, { name: "pixels_host" })
+            label := stdlib.tkinter.Label(frame, { name: "caption", text: "Hello" })
+            canvas := stdlib.tkinter.Canvas(root, { width: 80, height: 40 })
+            AhkTest.AssertEqual(stdlib.None, frame.pack())
+            AhkTest.AssertEqual(stdlib.None, label.pack())
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual(10, root.winfo_pixels("10"))
+            AhkTest.AssertEqual(96, root.winfo_pixels("1i"))
+            AhkTest.AssertEqual(48, frame.winfo_pixels("0.5i"))
+            AhkTest.AssertEqual(76, label.winfo_pixels("2c"))
+            AhkTest.AssertEqual(16, canvas.winfo_pixels("12p"))
+            AhkTest.AssertEqual(10.0, root.winfo_fpixels("10"))
+            AhkTest.AssertTrue(Abs(root.winfo_fpixels("1i") - 95.92433628318584) < 0.000001)
+            AhkTest.AssertTrue(Abs(frame.winfo_fpixels("2c") - 75.53097345132744) < 0.000001)
+            AhkTest.AssertTrue(Abs(label.winfo_fpixels("3m") - 11.329646017699115) < 0.000001)
+            AhkTest.AssertEqual(stdlib.tuple([65535, 0, 0]), root.winfo_rgb("red"))
+            AhkTest.AssertEqual(stdlib.tuple([0, 0, 0]), frame.winfo_rgb("black"))
+            AhkTest.AssertEqual(stdlib.tuple([4369, 8738, 13107]), label.winfo_rgb("#112233"))
+            AhkTest.AssertEqual(stdlib.tuple([43690, 48059, 52428]), canvas.winfo_rgb("#abc"))
+
+            label.destroy()
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.pixels_host\.caption"$', (*) => label.winfo_pixels("1i"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.pixels_host\.caption"$', (*) => label.winfo_rgb("red"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_pixels\(\) missing 1 required positional argument: 'number'$", (*) => root.winfo_pixels())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_pixels\(\) takes 2 positional arguments but 3 were given$", (*) => root.winfo_pixels("1i", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_fpixels\(\) missing 1 required positional argument: 'number'$", (*) => frame.winfo_fpixels())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => frame.winfo_fpixels("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_rgb\(\) missing 1 required positional argument: 'color'$", (*) => canvas.winfo_rgb())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_rgb\(\) takes 2 positional arguments but 3 were given$", (*) => canvas.winfo_rgb("red", "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown color name "notacolor"$', (*) => canvas.winfo_rgb("notacolor"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetIdentityTreeSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

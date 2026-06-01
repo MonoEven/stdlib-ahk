@@ -810,6 +810,21 @@ class Tk
         return AhkStdlibTkinterWinfoInteger(this, ".", "reqheight", "winfo_reqheight", args*)
     }
 
+    winfo_pixels(args*)
+    {
+        return AhkStdlibTkinterWinfoPixels(this, ".", "pixels", "winfo_pixels", args*)
+    }
+
+    winfo_fpixels(args*)
+    {
+        return AhkStdlibTkinterWinfoPixels(this, ".", "fpixels", "winfo_fpixels", args*)
+    }
+
+    winfo_rgb(args*)
+    {
+        return AhkStdlibTkinterWinfoRgb(this, ".", args*)
+    }
+
     winfo_ismapped(args*)
     {
         if args.Length != 0
@@ -1395,6 +1410,21 @@ class AhkStdlibTkinterWidget
     winfo_reqheight(args*)
     {
         return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "reqheight", "winfo_reqheight", args*)
+    }
+
+    winfo_pixels(args*)
+    {
+        return AhkStdlibTkinterWinfoPixels(this.AhkStdlibRoot, this._w, "pixels", "winfo_pixels", args*)
+    }
+
+    winfo_fpixels(args*)
+    {
+        return AhkStdlibTkinterWinfoPixels(this.AhkStdlibRoot, this._w, "fpixels", "winfo_fpixels", args*)
+    }
+
+    winfo_rgb(args*)
+    {
+        return AhkStdlibTkinterWinfoRgb(this.AhkStdlibRoot, this._w, args*)
     }
 
     winfo_ismapped(args*)
@@ -3339,6 +3369,49 @@ AhkStdlibTkinterWinfoInteger(root, window, command, methodName, args*)
     if args.Length != 0
         throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
     return Integer(root.eval("winfo " command " " window))
+}
+
+AhkStdlibTkinterWinfoPixels(root, window, command, methodName, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc." methodName "() missing 1 required positional argument: 'number'", -1)
+    if args.Length > 1
+        throw TypeError("Misc." methodName "() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+    result := AhkStdlibTkinterPythonLikeFpixels(root, window, args[1])
+    return command = "fpixels" ? result : Round(result)
+}
+
+AhkStdlibTkinterWinfoRgb(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.winfo_rgb() missing 1 required positional argument: 'color'", -1)
+    if args.Length > 1
+        throw TypeError("Misc.winfo_rgb() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+    return AhkStdlibTkinterRgbTuple(root.eval("winfo rgb " window " " AhkStdlibTkinterTclWord(args[1])))
+}
+
+AhkStdlibTkinterPythonLikeFpixels(root, window, number)
+{
+    raw := Float(root.eval("winfo fpixels " window " " AhkStdlibTkinterTclWord(number)))
+    text := number is String ? number : number ""
+    if !RegExMatch(text, "[cimp]$")
+        return raw
+
+    dpi := A_ScreenDPI + 0
+    if dpi <= 0
+        return raw
+
+    screenMmWidth := Integer(root.eval("winfo screenmmwidth " window))
+    if screenMmWidth <= 0
+        return raw
+
+    rawOneInch := Float(root.eval("winfo fpixels " window " 1i"))
+    if rawOneInch = 0
+        return raw
+
+    logicalScreenWidth := Round(A_ScreenWidth * 96 / dpi)
+    targetOneInch := logicalScreenWidth * 25.4 / screenMmWidth
+    return raw * targetOneInch / rawOneInch
 }
 
 AhkStdlibTkinterClipboardClear(root, window, args*)
