@@ -1,0 +1,19 @@
+﻿#Requires AutoHotkey v2.0
+
+#Include <stdlib\init>
+#Include <stdlib\toml>
+
+init_example_data := stdlib.toml.loads("name = `"stdlib`"`n[features]`nnamespace = true")
+init_example_name := init_example_data["name"]
+init_example_text := stdlib.toml.dumps(Map("name", init_example_name, "items", ["init", "toml"]))
+init_example_none := stdlib.None
+init_example_notimplemented := stdlib.NotImplemented
+init_example_notimplemented_error := stdlib.NotImplementedError("todo")
+init_example_runtime_error := stdlib.RuntimeError("boom")
+init_example_stop_iteration := stdlib.StopIteration("done")
+init_example_system_error := stdlib.SystemError("internal")
+init_example_key_error := stdlib.KeyError("missing")
+init_example_true := stdlib.True
+init_example_false := stdlib.False
+init_example_tuple := stdlib.tuple("ab")
+init_example_empty_tuple := stdlib.tuple()

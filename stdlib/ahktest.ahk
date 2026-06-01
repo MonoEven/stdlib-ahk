@@ -1,5 +1,7 @@
 #Requires AutoHotkey v2.0
 #ErrorStdOut "UTF-8"
+#Include <stdlib\init>
+#Include <stdlib\json>
 
 class AhkTestFailure extends Error
 {
@@ -734,6 +736,12 @@ class AhkTestResult
 
     ExitCode {
         get {
+            if this.Errors > 0 {
+                for entry in this.Entries {
+                    if entry.Status = "error" && HasProp(entry, "Error") && Type(entry.Error) = "AhkTestCollectionError"
+                        return 2
+                }
+            }
             return (this.Failed = 0 && this.Errors = 0) ? 0 : 1
         }
     }
@@ -1124,10 +1132,63 @@ class AhkTestSuite
         return this
     }
 
+    ConfigureManifest(path, sectionName := "AhkTest")
+    {
+        manifest := stdlib.json.load(path)
+        config := this.ManifestConfigSection(manifest, sectionName)
+        return this.Configure(this.NormalizeManifestConfigValue(config))
+    }
+
+    ManifestConfigSection(manifest, sectionName)
+    {
+        if sectionName = ""
+            return manifest
+        if manifest is Map {
+            if manifest.Has(sectionName)
+                return manifest[sectionName]
+        } else if IsObject(manifest) && HasProp(manifest, sectionName) {
+            return manifest.%sectionName%
+        }
+        throw ValueError("config manifest is missing section: " sectionName, -1)
+    }
+
+    NormalizeManifestConfigValue(value)
+    {
+        if AhkStdlibIsBool(value)
+            return value.Value ? true : false
+        if AhkStdlibJsonIsNull(value)
+            return stdlib.None
+        if value is Array {
+            normalized := []
+            for item in value
+                normalized.Push(this.NormalizeManifestConfigValue(item))
+            return normalized
+        }
+        if value is Map {
+            normalized := {}
+            for key, item in value
+                normalized.%key% := this.NormalizeManifestConfigValue(item)
+            return normalized
+        }
+        if IsObject(value) && Type(value) = "Object" {
+            normalized := {}
+            for key, item in value.OwnProps()
+                normalized.%key% := this.NormalizeManifestConfigValue(item)
+            return normalized
+        }
+        return value
+    }
+
     ConfigureMarks(marks)
     {
         if marks is Map {
             for name, description in marks
+                this.RegisterMark(name, description)
+            return
+        }
+
+        if IsObject(marks) && Type(marks) = "Object" {
+            for name, description in marks.OwnProps()
                 this.RegisterMark(name, description)
             return
         }
@@ -1860,8 +1921,8 @@ class AhkTestSuite
 
         stats := { Name: this.Name, Total: 0, Passed: 0, Failed: 0, Errors: 0, Skipped: 0, Deselected: 0, ExpectedFailures: 0, UnexpectedPasses: 0, Duration: 0 }
         entries := []
-        failedNames := Map()
-        executedNodeIds := Map()
+        failedKeys := Map()
+        executedRerunKeys := Map()
         fixtureContext := { SuiteValues: Map(), SuiteCleanups: [], Captures: [] }
         suiteStart := A_TickCount
         items := this.ExpandFixtureParamItems(this.Tests)
@@ -1880,8 +1941,8 @@ class AhkTestSuite
         filterToCachedFailures := false
         if lastFailed && lastFailedCache != ""
             filterToCachedFailures := this.HasRunnableCachedFailures(items, cacheFailedIds)
-        lastFailedNodeFilterOverride := lastFailed && lastFailedCache != "" && !IsObject(nodeFilter) && nodeFilter != "" && !cacheFailedIds.Has(nodeFilter) && this.HasCollectedNodeId(items, nodeFilter)
-        if lastFailedNodeFilterOverride
+        lastFailedSelectionOverride := lastFailed && lastFailedCache != "" && this.ShouldOverrideLastFailedSelection(items, nodeFilter, filter, filterExpr, markFilter, markExpr, cacheFailedIds)
+        if lastFailedSelectionOverride
             filterToCachedFailures := false
         stepwiseNodeId := ""
         if stepwise {
@@ -1910,19 +1971,20 @@ class AhkTestSuite
 
         for test in items {
             nodeId := this.NodeId(test)
+            rerunKey := this.RerunKey(test)
             if !this.IsSelectedBeforeStepwise(test, nodeId, filterToCachedFailures, cacheFailedIds, lastFailed, lastFailedCache, nodeFilter, filter, filterExpr, markFilter, markExpr) {
                 stats.Deselected += 1
                 continue
             }
             if stepwise && !stepwiseStarted {
-                if nodeId != stepwiseNodeId {
+                if rerunKey != stepwiseNodeId {
                     stats.Deselected += 1
                     continue
                 }
                 stepwiseStarted := true
             }
 
-            executedNodeIds[nodeId] := true
+            executedRerunKeys[rerunKey] := true
 
             if listOnly {
                 this.WriteLine(test.Name)
@@ -1942,14 +2004,14 @@ class AhkTestSuite
                     this.AttachSource(entry, test)
                     this.AttachCaptured(entry, fixtureContext)
                     entries.Push(entry)
-                    failedNames[test.Name] := true
+                    failedKeys[rerunKey] := true
                     this.RunFinishHooks(entry, stats, disabledHookIds)
                     if !quiet {
                         this.WriteLine("ERROR " test.Name " (" duration "ms)")
                         this.WriteError(markerError, traceback)
                     }
                     if stepwise {
-                        stepwiseFailureNodeId := nodeId
+                        stepwiseFailureNodeId := rerunKey
                         break
                     }
                     if this.ShouldStopAfterFailure(stats, maxFail)
@@ -2003,12 +2065,12 @@ class AhkTestSuite
                     this.AttachWarnings(entry, testWarnings, warningFilters, warningFilterState)
                     entries.Push(entry)
                     if strict
-                        failedNames[test.Name] := true
+                        failedKeys[rerunKey] := true
                     this.RunFinishHooks(entry, stats, disabledHookIds)
                     if !quiet
                         this.WriteLine("XPASS " test.Name this.FormatReason(HasProp(test, "Reason") ? test.Reason : ""))
                     if strict && stepwise {
-                        stepwiseFailureNodeId := nodeId
+                        stepwiseFailureNodeId := rerunKey
                         break
                     }
                     if this.ShouldStopAfterFailure(stats, maxFail)
@@ -2023,7 +2085,7 @@ class AhkTestSuite
                     entry.Status := "error"
                     entry.Error := warningResult.Error
                     stats.Errors += 1
-                    failedNames[test.Name] := true
+                    failedKeys[rerunKey] := true
                 } else {
                     stats.Passed += 1
                 }
@@ -2068,7 +2130,7 @@ class AhkTestSuite
                 this.AttachCaptured(entry, fixtureContext)
                 this.AttachWarnings(entry, testWarnings, warningFilters, warningFilterState)
                 entries.Push(entry)
-                failedNames[test.Name] := true
+                failedKeys[rerunKey] := true
                 this.RunFinishHooks(entry, stats, disabledHookIds)
                 if !quiet {
                     this.WriteLine("FAIL " test.Name " (" duration "ms)")
@@ -2076,7 +2138,7 @@ class AhkTestSuite
                     this.WriteCaptured(entry, captureReport)
                 }
                 if stepwise {
-                    stepwiseFailureNodeId := nodeId
+                    stepwiseFailureNodeId := rerunKey
                     break
                 }
                 if this.ShouldStopAfterFailure(stats, maxFail)
@@ -2101,7 +2163,7 @@ class AhkTestSuite
                 this.AttachCaptured(entry, fixtureContext)
                 this.AttachWarnings(entry, testWarnings, warningFilters, warningFilterState)
                 entries.Push(entry)
-                failedNames[test.Name] := true
+                failedKeys[rerunKey] := true
                 this.RunFinishHooks(entry, stats, disabledHookIds)
                 if !quiet {
                     this.WriteLine("ERROR " test.Name " (" duration "ms)")
@@ -2109,7 +2171,7 @@ class AhkTestSuite
                     this.WriteCaptured(entry, captureReport)
                 }
                 if stepwise {
-                    stepwiseFailureNodeId := nodeId
+                    stepwiseFailureNodeId := rerunKey
                     break
                 }
                 if this.ShouldStopAfterFailure(stats, maxFail)
@@ -2118,16 +2180,12 @@ class AhkTestSuite
         }
 
         this.RunSuiteCleanups(stats, entries, fixtureContext.SuiteCleanups, quiet, traceback)
-        for entry in entries {
-            if entry.Status = "error" || entry.Status = "fail" || (entry.Status = "xpass" && HasProp(entry, "Strict") && entry.Strict)
-                failedNames[entry.Name] := true
-        }
-        this.LastFailedNames := failedNames
+        this.LastFailedNames := failedKeys
         if lastFailedCache != ""
-            if lastFailedNodeFilterOverride
-                this.SaveLastFailedCacheNodeIds(lastFailedCache, this.MergeLastFailedNodeIds(cacheFailedIds, executedNodeIds, entries))
+            if lastFailedSelectionOverride
+                this.SaveLastFailedCacheNodeIds(lastFailedCache, this.MergeLastFailedNodeIds(cacheFailedIds, executedRerunKeys, failedKeys))
             else
-                this.SaveLastFailedCache(lastFailedCache, failedNames, items)
+                this.SaveLastFailedCache(lastFailedCache, failedKeys)
         if stepwise {
             if stepwiseFailureNodeId != ""
                 this.StepwiseNodeId := stepwiseFailureNodeId
@@ -2190,7 +2248,7 @@ class AhkTestSuite
         if cacheFailedIds.Count = 0
             return false
         for test in items {
-            if cacheFailedIds.Has(this.NodeId(test))
+            if cacheFailedIds.Has(this.RerunKey(test))
                 return true
         }
         return false
@@ -2201,10 +2259,41 @@ class AhkTestSuite
         if nodeId = ""
             return false
         for test in items {
-            if this.NodeId(test) = nodeId
+            if this.RerunKey(test) = nodeId
                 return true
         }
         return false
+    }
+
+    ShouldOverrideLastFailedSelection(items, nodeFilter, filter, filterExpr, markFilter, markExpr, cacheFailedIds)
+    {
+        selectedRerunKeys := this.SelectedRerunKeysForExplicitRunSelection(items, nodeFilter, filter, filterExpr, markFilter, markExpr)
+        if selectedRerunKeys.Length = 0
+            return false
+        for rerunKey in selectedRerunKeys {
+            if cacheFailedIds.Has(rerunKey)
+                return false
+        }
+        return true
+    }
+
+    SelectedRerunKeysForExplicitRunSelection(items, nodeFilter, filter, filterExpr, markFilter, markExpr)
+    {
+        selectedRerunKeys := []
+        seen := Map()
+        for test in items {
+            nodeId := this.NodeId(test)
+            rerunKey := this.RerunKey(test)
+            if !this.ShouldSelectNodeId(nodeId, nodeFilter)
+                continue
+            if !this.ShouldSelectTest(test, filter, filterExpr, markFilter, markExpr)
+                continue
+            if seen.Has(rerunKey)
+                continue
+            seen[rerunKey] := true
+            selectedRerunKeys.Push(rerunKey)
+        }
+        return selectedRerunKeys
     }
 
     HasSelectedNodeId(items, nodeId, filterToCachedFailures, cacheFailedIds, lastFailed, lastFailedCache, nodeFilter, filter, filterExpr, markFilter, markExpr)
@@ -2212,9 +2301,10 @@ class AhkTestSuite
         if nodeId = ""
             return false
         for test in items {
-            currentNodeId := this.NodeId(test)
-            if currentNodeId != nodeId
+            currentRerunKey := this.RerunKey(test)
+            if currentRerunKey != nodeId
                 continue
+            currentNodeId := this.NodeId(test)
             if this.IsSelectedBeforeStepwise(test, currentNodeId, filterToCachedFailures, cacheFailedIds, lastFailed, lastFailedCache, nodeFilter, filter, filterExpr, markFilter, markExpr)
                 return true
         }
@@ -2223,9 +2313,9 @@ class AhkTestSuite
 
     IsSelectedBeforeStepwise(test, nodeId, filterToCachedFailures, cacheFailedIds, lastFailed, lastFailedCache, nodeFilter, filter, filterExpr, markFilter, markExpr)
     {
-        if filterToCachedFailures && !cacheFailedIds.Has(nodeId)
+        if filterToCachedFailures && !cacheFailedIds.Has(this.RerunKey(test))
             return false
-        if lastFailed && lastFailedCache = "" && !this.LastFailedNames.Has(test.Name)
+        if lastFailed && lastFailedCache = "" && !this.LastFailedNames.Has(this.RerunKey(test))
             return false
         if !this.ShouldSelectNodeId(nodeId, nodeFilter)
             return false
@@ -2288,16 +2378,9 @@ class AhkTestSuite
         parent := this.ParentDir(path)
         if parent != "" && !DirExist(parent)
             DirCreate parent
-        sourceTests := IsSet(tests) ? tests : this.Tests
         lines := []
-        for name, _ in failedNames {
-            for test in sourceTests {
-                if test.Name = name {
-                    lines.Push(this.NodeId(test))
-                    break
-                }
-            }
-        }
+        for rerunKey, _ in failedNames
+            lines.Push(rerunKey)
         text := AhkTest.Join(AhkTest.SortValues(lines), "`n")
         if FileExist(path)
             FileDelete path
@@ -2324,7 +2407,7 @@ class AhkTestSuite
             FileAppend "", path, "UTF-8"
     }
 
-    MergeLastFailedNodeIds(existingNodeIds, executedNodeIds, entries)
+    MergeLastFailedNodeIds(existingNodeIds, executedNodeIds, failedNodeIds)
     {
         merged := Map()
         for nodeId, _ in existingNodeIds
@@ -2333,10 +2416,8 @@ class AhkTestSuite
             if merged.Has(nodeId)
                 merged.Delete(nodeId)
         }
-        for entry in entries {
-            if entry.Status = "error" || entry.Status = "fail" || (entry.Status = "xpass" && HasProp(entry, "Strict") && entry.Strict)
-                merged[entry.NodeId] := true
-        }
+        for nodeId, _ in failedNodeIds
+            merged[nodeId] := true
         return merged
     }
 
@@ -2351,6 +2432,14 @@ class AhkTestSuite
         nodeId := (this.Name != "" ? this.Name : "default") "::" test.Name
         if HasProp(test, "ParamId") && test.ParamId != ""
             nodeId .= "[" test.ParamId "]"
+        return nodeId
+    }
+
+    RerunKey(test)
+    {
+        nodeId := this.NodeId(test)
+        if HasProp(test, "Source") && IsObject(test.Source) && HasProp(test.Source, "File") && test.Source.File != ""
+            return test.Source.File "::" nodeId
         return nodeId
     }
 
@@ -3195,6 +3284,11 @@ class AhkTest
         return this.DefaultSuite.Configure(config)
     }
 
+    static ConfigureManifest(path, sectionName := "AhkTest")
+    {
+        return this.DefaultSuite.ConfigureManifest(path, sectionName)
+    }
+
     static On(eventName, callback, options := unset)
     {
         return this.DefaultSuite.On(eventName, callback, options?)
@@ -3706,8 +3800,18 @@ class AhkTestPath
 
 class AhkTestTempDir
 {
-    __New(prefix := "ahktest")
+    __New(prefix := "ahktest", path := unset)
     {
+        if IsSet(path) {
+            this.Path := path
+            parent := this.ParentDir(this.Path)
+            if parent != "" && !DirExist(parent)
+                DirCreate parent
+            if !DirExist(this.Path)
+                DirCreate this.Path
+            return
+        }
+
         safePrefix := RegExReplace(prefix, "[^\w.-]", "-")
         this.Path := A_Temp "\" safePrefix "-" A_NowUTC "-" A_TickCount
         DirCreate this.Path
@@ -3725,8 +3829,14 @@ class AhkTestTempDir
 
     Cleanup()
     {
-        if DirExist(this.Path)
-            DirDelete this.Path, true
+        if !DirExist(this.Path)
+            return
+        try {
+            DirDelete this.Path
+        } catch {
+            if DirExist(this.Path)
+                DirDelete this.Path, true
+        }
     }
 
     PathJoin(parts*)
@@ -3760,24 +3870,19 @@ class AhkTestTempPathFactory
     {
         this.Prefix := prefix
         this.Counter := 0
-        this.Paths := []
+        this.Root := AhkTestTempDir(prefix)
     }
 
     MakeTemp(prefix := "tmp")
     {
         this.Counter += 1
-        temp := AhkTestTempDir(this.Prefix "-" prefix "-" this.Counter)
-        this.Paths.Push(temp)
-        return temp
+        path := this.Root.PathJoin(prefix "-" this.Counter)
+        return AhkTestTempDir("", path)
     }
 
     Cleanup()
     {
-        index := this.Paths.Length
-        while index >= 1 {
-            this.Paths[index].Cleanup()
-            index -= 1
-        }
+        this.Root.Cleanup()
     }
 }
 

@@ -1,0 +1,7 @@
+/*
+!/.gitignore
+!/README.md
+!/stdlib/
+!/stdlib/**
+
+/stdlib/STDLIB_FRAMEWORK.json

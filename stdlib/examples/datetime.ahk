@@ -1,0 +1,50 @@
+#Requires AutoHotkey v2.0
+
+#Include <stdlib\datetime>
+#Include <stdlib\operator>
+
+datetime_example_span := stdlib.datetime.timedelta({ days: 1, seconds: 90000, microseconds: 1000001 })
+datetime_example_day := stdlib.datetime.timedelta({ days: 1 })
+datetime_example_two_seconds := stdlib.datetime.timedelta({ seconds: 2 })
+datetime_example_leap_day := stdlib.datetime.date(2024, 2, 29)
+datetime_example_sum := stdlib.operator.add(datetime_example_day, datetime_example_two_seconds)
+datetime_example_difference := stdlib.operator.sub(datetime_example_day, datetime_example_two_seconds)
+datetime_example_negative := stdlib.operator.neg(stdlib.datetime.timedelta({ hours: 5 }))
+datetime_example_tripled := stdlib.operator.mul(stdlib.datetime.timedelta({ seconds: 2 }), 3)
+datetime_example_total_seconds := datetime_example_span.total_seconds()
+datetime_example_iso := datetime_example_leap_day.isoformat()
+datetime_example_weekday := datetime_example_leap_day.weekday()
+datetime_example_next_day := stdlib.operator.add(datetime_example_leap_day, stdlib.datetime.timedelta({ days: 1 }))
+datetime_example_days_between := stdlib.operator.sub(datetime_example_leap_day, stdlib.datetime.date(2024, 2, 1))
+datetime_example_from_iso_date := stdlib.datetime.date.fromisoformat("2024-02-29")
+datetime_example_from_timestamp := stdlib.datetime.date.fromtimestamp(0)
+datetime_example_ctime := datetime_example_leap_day.ctime()
+datetime_example_iso_calendar := datetime_example_leap_day.isocalendar()
+datetime_example_today := stdlib.datetime.date.today()
+datetime_example_min_date := stdlib.datetime.date.min
+datetime_example_max_date := stdlib.datetime.date.max
+datetime_example_date_resolution := stdlib.datetime.date.resolution
+datetime_example_moment := stdlib.datetime.datetime(2024, 2, 29, 1, 2, 3, 456789)
+datetime_example_clock := stdlib.datetime.time(1, 2, 3, 456789)
+datetime_example_clock_from_iso := stdlib.datetime.time.fromisoformat("01:02:03.456789")
+datetime_example_clock_replaced := datetime_example_clock.replace({ hour: 4, minute: 5, second: 6, microsecond: 7 })
+datetime_example_clock_iso_millis := datetime_example_clock.isoformat("milliseconds")
+datetime_example_time_min := stdlib.datetime.time.min
+datetime_example_time_max := stdlib.datetime.time.max
+datetime_example_time_resolution := stdlib.datetime.time.resolution
+datetime_example_moment_iso := datetime_example_moment.isoformat()
+datetime_example_moment_iso_millis := datetime_example_moment.isoformat("T", "milliseconds")
+datetime_example_moment_date := datetime_example_moment.date()
+datetime_example_moment_time := datetime_example_moment.time()
+datetime_example_moment_combined := stdlib.datetime.datetime.combine(datetime_example_leap_day, datetime_example_clock)
+datetime_example_moment_ctime := datetime_example_moment.ctime()
+datetime_example_moment_strftime := datetime_example_moment.strftime("%Y-%m-%dT%H:%M:%S.%f")
+datetime_example_moment_plus_delta := stdlib.operator.add(datetime_example_moment, stdlib.datetime.timedelta({ days: 1, seconds: 2 }))
+datetime_example_moment_minus_delta := stdlib.operator.sub(datetime_example_moment, stdlib.datetime.timedelta({ hours: 2 }))
+datetime_example_moment_difference := stdlib.operator.sub(datetime_example_moment, stdlib.datetime.datetime(2024, 2, 28, 23, 2, 3, 456789))
+datetime_example_moment_from_iso := stdlib.datetime.datetime.fromisoformat("2024-02-29T01:02:03.456789")
+datetime_example_moment_from_timestamp := stdlib.datetime.datetime.fromtimestamp(0)
+datetime_example_moment_utc_from_timestamp := stdlib.datetime.datetime.utcfromtimestamp(0)
+datetime_example_moment_now := stdlib.datetime.datetime.now()
+datetime_example_moment_utc_now := stdlib.datetime.datetime.utcnow()
+datetime_example_moment_today := stdlib.datetime.datetime.today()

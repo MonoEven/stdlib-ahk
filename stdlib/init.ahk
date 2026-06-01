@@ -47,6 +47,16 @@ class stdlib
         return KeyError(args*)
     }
 
+    static AttributeError
+    {
+        get => AttributeError
+    }
+
+    static AttributeError(args*)
+    {
+        return AttributeError(args*)
+    }
+
     static SystemError
     {
         get => SystemError
@@ -55,6 +65,16 @@ class stdlib
     static SystemError(args*)
     {
         return SystemError(args*)
+    }
+
+    static ModuleNotFoundError
+    {
+        get => ModuleNotFoundError
+    }
+
+    static ModuleNotFoundError(args*)
+    {
+        return ModuleNotFoundError(args*)
     }
 
     static tuple(iterable := unset)
@@ -81,7 +101,15 @@ class KeyError extends Error
 {
 }
 
+class AttributeError extends Error
+{
+}
+
 class SystemError extends Error
+{
+}
+
+class ModuleNotFoundError extends Error
 {
 }
 
