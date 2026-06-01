@@ -391,6 +391,53 @@ class StdlibTkinterTest
         }
     }
 
+    static TestPhotoImagePixelAndWidgetImageSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            imageName := "p" "y" "image1"
+            image := stdlib.tkinter.PhotoImage({ master: root, width: 2, height: 2 })
+
+            AhkTest.AssertEqual("PhotoImage", Type(image))
+            AhkTest.AssertEqual(imageName, String(image))
+            AhkTest.AssertEqual(2, image.width())
+            AhkTest.AssertEqual(2, image.height())
+            AhkTest.AssertEqual("photo", image.type())
+            AhkTest.AssertEqual("2", image.cget("width"))
+            AhkTest.AssertEqual("2", image.cget("height"))
+            AhkTest.AssertEqual("", image.cget("format"))
+            AhkTest.AssertEqual(stdlib.tuple([0, 0, 0]), image.get(0, 0))
+            AhkTest.AssertEqual(stdlib.None, image.put("#ff0000", { to: [0, 0] }))
+            AhkTest.AssertEqual(stdlib.tuple([255, 0, 0]), image.get(0, 0))
+            AhkTest.AssertEqual(stdlib.None, image.put("{#ff0000 #00ff00} {#0000ff #ffffff}", { to: [0, 0, 2, 2] }))
+            AhkTest.AssertEqual(stdlib.tuple([0, 255, 0]), image.get(1, 0))
+            AhkTest.AssertEqual(stdlib.tuple([0, 0, 255]), image.get(0, 1))
+            AhkTest.AssertEqual(stdlib.tuple([255, 255, 255]), image.get(1, 1))
+            label := stdlib.tkinter.Label(root, { image: image })
+            AhkTest.AssertEqual(imageName, label.cget("image"))
+            AhkTest.AssertEqual(stdlib.None, label.configure({ image: image }))
+            AhkTest.AssertEqual(imageName, label.cget("image"))
+            AhkTest.AssertEqual(stdlib.None, image.config({ width: 3, height: 1 }))
+            AhkTest.AssertEqual(3, image.width())
+            AhkTest.AssertEqual(1, image.height())
+            AhkTest.AssertEqual("3", image.cget("width"))
+            AhkTest.AssertEqual(stdlib.None, image.blank())
+            AhkTest.AssertEqual(stdlib.tuple([0, 0, 0]), image.get(0, 0))
+
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.cget\(\) missing 1 required positional argument: 'option'$", (*) => image.cget())
+            AhkTest.RaisesMatch(TypeError, "^Image\.width\(\) takes 1 positional argument but 2 were given$", (*) => image.width(1))
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.get\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => image.get())
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.get\(\) missing 1 required positional argument: 'y'$", (*) => image.get(0))
+            AhkTest.RaisesMatch(TypeError, "^PhotoImage\.put\(\) missing 1 required positional argument: 'data'$", (*) => image.put())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => image.get("bad", 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^the "-to" option requires one to four integer values$', (*) => image.put("#ff0000", { to: "bad" }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCanvasDrawableSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

@@ -77,6 +77,11 @@ class AhkStdlibTkinter
         return Text(args*)
     }
 
+    static PhotoImage(args*)
+    {
+        return PhotoImage(args*)
+    }
+
     static StringVar(args*)
     {
         return AhkStdlibTkinterStringVar(args*)
@@ -510,6 +515,154 @@ class Label extends AhkStdlibTkinterWidget
     __New(args*)
     {
         super.__New("Label", "label", args*)
+    }
+}
+
+class AhkStdlibTkinterImage
+{
+    __New(className, imageType, args*)
+    {
+        if args.Length > 3
+            throw TypeError(className ".__init__() takes from 1 to 4 positional arguments but " args.Length + 1 " were given", -1)
+
+        name := stdlib.None
+        options := {}
+        master := stdlib.None
+        if args.Length = 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1]) {
+            options := args[1]
+        } else {
+            if args.Length >= 1
+                name := args[1]
+            if args.Length >= 2 {
+                if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+                    throw AttributeError("'" AhkStdlibPyTypeName(args[2]) "' object has no attribute 'items'", -1)
+                options := args[2]
+            }
+            if args.Length >= 3
+                master := args[3]
+        }
+
+        if options.HasOwnProp("name")
+            name := options.name
+        if options.HasOwnProp("master")
+            master := options.master
+        if AhkStdlibIsNone(master)
+            throw RuntimeError("Too early to create image: no default root window", -1)
+
+        tk := IsObject(master) && HasProp(master, "tk") ? master.tk : master
+        if !IsObject(tk) || !HasMethod(tk, "eval")
+            throw AttributeError("'" AhkStdlibPyTypeName(master) "' object has no attribute 'call'", -1)
+
+        if AhkStdlibIsNone(name) || name = ""
+            name := AhkStdlibTkinterDefaultImageName()
+        this.name := name
+        this.tk := tk
+        this.AhkStdlibRoot := tk._root()
+        this.AhkStdlibImageType := imageType
+        this.tk.eval("image create " imageType " " AhkStdlibTkinterTclWord(name) AhkStdlibTkinterOptionsToScript(options, false, this.AhkStdlibRoot))
+    }
+
+    configure(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Image.configure() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        if args.Length = 0
+            return stdlib.None
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            throw TypeError("cnf must be a dictionary", -1)
+        this.tk.eval(this.name " config" AhkStdlibTkinterOptionsToScript(args[1], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    config(args*)
+    {
+        return this.configure(args*)
+    }
+
+    height(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Image.height() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.tk.eval("image height " AhkStdlibTkinterTclWord(this.name)))
+    }
+
+    type(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Image.type() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.tk.eval("image type " AhkStdlibTkinterTclWord(this.name))
+    }
+
+    width(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Image.width() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.tk.eval("image width " AhkStdlibTkinterTclWord(this.name)))
+    }
+
+    ToString()
+    {
+        return this.name
+    }
+
+    __Delete()
+    {
+        try {
+            if this.HasOwnProp("name") && this.name != ""
+                this.tk.eval("image delete " AhkStdlibTkinterTclWord(this.name))
+        }
+    }
+}
+
+class PhotoImage extends AhkStdlibTkinterImage
+{
+    __New(args*)
+    {
+        super.__New("PhotoImage", "photo", args*)
+    }
+
+    blank(args*)
+    {
+        if args.Length != 0
+            throw TypeError("PhotoImage.blank() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.tk.eval(this.name " blank")
+        return stdlib.None
+    }
+
+    cget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("PhotoImage.cget() missing 1 required positional argument: 'option'", -1)
+        if args.Length > 1
+            throw TypeError("PhotoImage.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.tk.eval(this.name " cget -" args[1])
+    }
+
+    get(args*)
+    {
+        if args.Length = 0
+            throw TypeError("PhotoImage.get() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("PhotoImage.get() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("PhotoImage.get() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        return AhkStdlibTkinterRgbTuple(this.tk.eval(this.name " get " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])))
+    }
+
+    put(args*)
+    {
+        if args.Length = 0
+            throw TypeError("PhotoImage.put() missing 1 required positional argument: 'data'", -1)
+        if args.Length > 2
+            throw TypeError("PhotoImage.put() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this.name " put " AhkStdlibTkinterTclQuotedWord(args[1])
+        if args.Length = 2 {
+            to := AhkStdlibTkinterPhotoImageToOption(args[2])
+            if AhkStdlibTruthValue(to)
+                script := AhkStdlibTkinterAppendToOption(script, to)
+        }
+        this.tk.eval(script)
+        return stdlib.None
     }
 }
 
@@ -1251,6 +1404,17 @@ AhkStdlibTkinterTclWord(value)
     return "{" text "}"
 }
 
+AhkStdlibTkinterTclQuotedWord(value)
+{
+    text := AhkStdlibTkinterValueToString(value)
+    text := StrReplace(text, "\", "\\")
+    text := StrReplace(text, Chr(34), "\" Chr(34))
+    text := StrReplace(text, "$", "\$")
+    text := StrReplace(text, "[", "\[")
+    text := StrReplace(text, "]", "\]")
+    return Chr(34) text Chr(34)
+}
+
 AhkStdlibTkinterIntVarValueToString(value)
 {
     if AhkStdlibIsNone(value)
@@ -1290,6 +1454,38 @@ AhkStdlibTkinterTruncateFloat(value)
     return value < 0 ? Ceil(value) : Floor(value)
 }
 
+AhkStdlibTkinterRgbTuple(value)
+{
+    result := []
+    for part in StrSplit(Trim(value), " ")
+        if part != ""
+            result.Push(Integer(part))
+    return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterPhotoImageToOption(value)
+{
+    if AhkStdlibTkinterIsPlainKeywordObject(value) && value.HasOwnProp("to")
+        return value.to
+    return value
+}
+
+AhkStdlibTkinterAppendToOption(script, to)
+{
+    script .= " -to"
+    if to is Array {
+        index := 1
+        if to.Length > 0 && to[1] = "-to"
+            index := 2
+        while index <= to.Length {
+            script .= " " AhkStdlibTkinterTclWord(to[index])
+            index += 1
+        }
+        return script
+    }
+    return script " " AhkStdlibTkinterTclWord(to)
+}
+
 AhkStdlibTkinterNextVarName()
 {
     static counter := 0
@@ -1307,6 +1503,13 @@ AhkStdlibTkinterMissingValue()
 AhkStdlibTkinterDefaultVarName()
 {
     return Chr(80) Chr(89) "_VAR"
+}
+
+AhkStdlibTkinterDefaultImageName()
+{
+    static counter := 0
+    counter += 1
+    return Chr(112) Chr(121) "image" counter
 }
 
 AhkStdlibTkinterPyWord()
