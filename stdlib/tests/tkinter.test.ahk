@@ -934,6 +934,55 @@ class StdlibTkinterTest
         }
     }
 
+    static TestEntryCursorAndSelectionSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            entry := stdlib.tkinter.Entry(root, { width: 12 })
+            AhkTest.AssertEqual(stdlib.None, entry.insert(0, "abcdef"))
+            AhkTest.AssertEqual(stdlib.None, entry.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual(6, entry.index("end"))
+            AhkTest.AssertEqual(6, entry.index("insert"))
+            AhkTest.AssertEqual(stdlib.None, entry.icursor(2))
+            AhkTest.AssertEqual(2, entry.index("insert"))
+            AhkTest.AssertSame(stdlib.False, entry.select_present())
+            AhkTest.AssertSame(stdlib.False, entry.selection_present())
+
+            AhkTest.AssertEqual(stdlib.None, entry.select_range(1, 4))
+            AhkTest.AssertSame(stdlib.True, entry.select_present())
+            AhkTest.AssertSame(stdlib.True, entry.selection_present())
+            AhkTest.AssertEqual("bcd", entry.selection_get())
+            AhkTest.AssertEqual(stdlib.None, entry.select_clear())
+            AhkTest.AssertSame(stdlib.False, entry.selection_present())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^PRIMARY selection doesn't exist or form `"STRING`" not defined$", (*) => entry.selection_get())
+
+            AhkTest.AssertEqual(stdlib.None, entry.selection_range(2, 5))
+            AhkTest.AssertEqual("cde", entry.selection_get())
+            AhkTest.AssertEqual(stdlib.None, entry.selection_clear())
+            AhkTest.AssertSame(stdlib.False, entry.selection_present())
+            AhkTest.AssertEqual(stdlib.None, entry.select_from(1))
+            AhkTest.AssertEqual(stdlib.None, entry.select_to(3))
+            AhkTest.AssertEqual("bc", entry.selection_get())
+            AhkTest.AssertEqual(stdlib.None, entry.select_adjust(4))
+            AhkTest.AssertEqual("bcd", entry.selection_get())
+
+            AhkTest.RaisesMatch(TypeError, "^Entry\.icursor\(\) missing 1 required positional argument: 'index'$", (*) => entry.icursor())
+            AhkTest.RaisesMatch(TypeError, "^Entry\.selection_range\(\) missing 1 required positional argument: 'end'$", (*) => entry.selection_range(1))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.selection_present\(\) takes 1 positional argument but 2 were given$", (*) => entry.selection_present(1))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.selection_clear\(\) takes 1 positional argument but 2 were given$", (*) => entry.selection_clear(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "bad"$', (*) => entry.index("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "bad"$', (*) => entry.icursor("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "bad"$', (*) => entry.select_range("bad", 2))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTextWidgetEditingSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

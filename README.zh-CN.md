@@ -17,7 +17,7 @@
 当前已覆盖的 GUI 表面包括带可见性、状态、几何尺寸与窗口尺寸 API 的 `Tk` 根窗口、带几何尺寸与窗口尺寸 API 的 `Toplevel` 窗口、`Frame`、
 `Label`、`Button`、`Checkbutton`、`Radiobutton`、`Scale`、`Scrollbar`、`Menu`、`Entry`、`Listbox`、`Text`、`Canvas` 控件与 `PhotoImage` 图像对象、控件可见性查询，
 以及聚焦覆盖的 `pack`、`grid`、`place` 布局行为、通过 `invoke()` 执行的
-`Button` / `Checkbutton` / `Radiobutton` command 回调、`Scale` 数值状态、`Scrollbar` 范围状态、`Menu` command 条目、事件绑定与合成事件生成、command 参数桥接、图像型控件选项，并包含聚焦覆盖的 `after` /
+`Button` / `Checkbutton` / `Radiobutton` command 回调、`Scale` 数值状态、`Scrollbar` 范围状态、`Menu` command 条目、`Entry` 光标与选区状态、事件绑定与合成事件生成、command 参数桥接、图像型控件选项，并包含聚焦覆盖的 `after` /
 `mainloop` / `quit` 事件循环切片。
 
 当前开发和测试环境为 AutoHotkey v2.0.26 与 v2.1-alpha.30。

@@ -631,6 +631,13 @@ class AhkStdlibTkinterWidget
         return AhkStdlibTkinterEventGenerate(this.AhkStdlibRoot, this._w, args*)
     }
 
+    selection_get(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.selection_get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval("selection get")
+    }
+
     winfo_exists(args*)
     {
         if args.Length != 0
@@ -1419,6 +1426,85 @@ class Entry extends AhkStdlibTkinterWidget
         this.AhkStdlibRoot.eval(script)
         return stdlib.None
     }
+
+    icursor(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Entry.icursor() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Entry.icursor() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " icursor " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    index(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Entry.index() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Entry.index() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return Integer(this.AhkStdlibRoot.eval(this._w " index " AhkStdlibTkinterTclWord(args[1])))
+    }
+
+    select_adjust(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_adjust()", "adjust", args*)
+    }
+
+    select_clear(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionClear(this, "Entry.selection_clear()", args*)
+    }
+
+    select_from(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_from()", "from", args*)
+    }
+
+    select_present(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionPresent(this, "Entry.selection_present()", args*)
+    }
+
+    select_range(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionRange(this, "Entry.selection_range()", args*)
+    }
+
+    select_to(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_to()", "to", args*)
+    }
+
+    selection_adjust(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_adjust()", "adjust", args*)
+    }
+
+    selection_clear(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionClear(this, "Entry.selection_clear()", args*)
+    }
+
+    selection_from(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_from()", "from", args*)
+    }
+
+    selection_present(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionPresent(this, "Entry.selection_present()", args*)
+    }
+
+    selection_range(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionRange(this, "Entry.selection_range()", args*)
+    }
+
+    selection_to(args*)
+    {
+        return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_to()", "to", args*)
+    }
 }
 
 class Listbox extends AhkStdlibTkinterWidget
@@ -2000,6 +2086,43 @@ AhkStdlibTkinterEventGenerate(root, window, args*)
             script .= " -" key " " AhkStdlibTkinterTclWord(value)
     }
     root.eval(script)
+    return stdlib.None
+}
+
+AhkStdlibTkinterEntrySelectionClear(entry, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError(methodName " takes 1 positional argument but " args.Length + 1 " were given", -1)
+    entry.AhkStdlibRoot.eval(entry._w " selection clear")
+    return stdlib.None
+}
+
+AhkStdlibTkinterEntrySelectionIndex(entry, methodName, command, args*)
+{
+    if args.Length = 0
+        throw TypeError(methodName " missing 1 required positional argument: 'index'", -1)
+    if args.Length > 1
+        throw TypeError(methodName " takes 2 positional arguments but " args.Length + 1 " were given", -1)
+    entry.AhkStdlibRoot.eval(entry._w " selection " command " " AhkStdlibTkinterTclWord(args[1]))
+    return stdlib.None
+}
+
+AhkStdlibTkinterEntrySelectionPresent(entry, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError(methodName " takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return entry.AhkStdlibRoot.eval(entry._w " selection present") = "1" ? stdlib.True : stdlib.False
+}
+
+AhkStdlibTkinterEntrySelectionRange(entry, methodName, args*)
+{
+    if args.Length = 0
+        throw TypeError(methodName " missing 2 required positional arguments: 'start' and 'end'", -1)
+    if args.Length = 1
+        throw TypeError(methodName " missing 1 required positional argument: 'end'", -1)
+    if args.Length > 2
+        throw TypeError(methodName " takes 3 positional arguments but " args.Length + 1 " were given", -1)
+    entry.AhkStdlibRoot.eval(entry._w " selection range " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
     return stdlib.None
 }
 
