@@ -2385,6 +2385,30 @@ class Canvas extends AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    scale(args*)
+    {
+        script := this._w " scale"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    scan_mark(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.scan_mark", args.Length, 2, 2, ["x", "y"])
+        this.AhkStdlibRoot.eval(this._w " scan mark " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    scan_dragto(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.scan_dragto", args.Length, 2, 3, ["x", "y"])
+        gain := args.Length = 3 ? args[3] : 10
+        this.AhkStdlibRoot.eval(this._w " scan dragto " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]) " " AhkStdlibTkinterTclWord(gain))
+        return stdlib.None
+    }
+
     canvasx(args*)
     {
         if args.Length = 0

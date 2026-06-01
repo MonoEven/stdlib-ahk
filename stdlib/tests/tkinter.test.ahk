@@ -2321,6 +2321,61 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCanvasScanAndScaleSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.geometry("240x180+0+0")
+            canvas := stdlib.tkinter.Canvas(root, { width: 100, height: 80, scrollregion: "0 0 500 400", xscrollincrement: 10, yscrollincrement: 20 })
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            lineId := canvas.create_line(10, 20, 30, 40, { tags: "shape" })
+            rectId := canvas.create_rectangle(40, 50, 70, 90, { tags: "shape" })
+            textId := canvas.create_text(10, 10, { text: "Text", anchor: "nw", tags: "label" })
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual([10.0, 20.0, 30.0, 40.0], canvas.coords(lineId))
+            AhkTest.AssertEqual([40.0, 50.0, 70.0, 90.0], canvas.coords(rectId))
+            AhkTest.AssertEqual([10.0, 10.0], canvas.coords(textId))
+            AhkTest.AssertEqual(stdlib.None, canvas.scale(lineId, 0, 0, 2, 3))
+            AhkTest.AssertEqual([20.0, 60.0, 60.0, 120.0], canvas.coords(lineId))
+            AhkTest.AssertEqual(stdlib.None, canvas.scale("shape", 10, 10, 0.5, 0.25))
+            AhkTest.AssertEqual([15.0, 22.5, 35.0, 37.5], canvas.coords(lineId))
+            AhkTest.AssertEqual([25.0, 20.0, 40.0, 30.0], canvas.coords(rectId))
+            AhkTest.AssertEqual(stdlib.None, canvas.scale("missing", 0, 0, 2, 2))
+
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 0.2]), canvas.xview())
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 0.2]), canvas.yview())
+            AhkTest.AssertEqual(stdlib.None, canvas.scan_mark(10, 10))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 0.2]), canvas.xview())
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 0.2]), canvas.yview())
+            AhkTest.AssertEqual(stdlib.None, canvas.scan_dragto(0, 0))
+            AhkTest.AssertEqual(stdlib.tuple([0.2, 0.4]), canvas.xview())
+            AhkTest.AssertEqual(stdlib.tuple([0.25, 0.45]), canvas.yview())
+            AhkTest.AssertEqual(stdlib.None, canvas.scan_mark(50, 50))
+            AhkTest.AssertEqual(stdlib.None, canvas.scan_dragto(40, 40, 1))
+            AhkTest.AssertEqual(stdlib.tuple([0.22, 0.42]), canvas.xview())
+            AhkTest.AssertEqual(stdlib.tuple([0.3, 0.5]), canvas.yview())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.!canvas scale tagOrId xOrigin yOrigin xScale yScale"$', (*) => canvas.scale())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.!canvas scale tagOrId xOrigin yOrigin xScale yScale"$', (*) => canvas.scale(lineId, 0, 0, 2))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.!canvas scale tagOrId xOrigin yOrigin xScale yScale"$', (*) => canvas.scale(lineId, 0, 0, 2, 3, 4))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.scale(lineId, "bad", 0, 2, 3))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => canvas.scale(lineId, 0, 0, "bad", 3))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.scan_mark\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => canvas.scan_mark())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.scan_mark\(\) missing 1 required positional argument: 'y'$", (*) => canvas.scan_mark(1))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.scan_mark\(\) takes 3 positional arguments but 4 were given$", (*) => canvas.scan_mark(1, 2, 3))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => canvas.scan_mark("bad", 2))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.scan_dragto\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => canvas.scan_dragto())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.scan_dragto\(\) missing 1 required positional argument: 'y'$", (*) => canvas.scan_dragto(1))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.scan_dragto\(\) takes from 3 to 4 positional arguments but 5 were given$", (*) => canvas.scan_dragto(1, 2, 3, 4))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => canvas.scan_dragto("bad", 2))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => canvas.scan_dragto(1, 2, "bad"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCanvasAdditionalItemCreationSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
