@@ -323,6 +323,41 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWindowOverrideredirectMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            top := stdlib.tkinter.Toplevel(root, { name: "dialog" })
+            top.withdraw()
+
+            AhkTest.AssertEqual(stdlib.None, root.overrideredirect())
+            AhkTest.AssertEqual(stdlib.None, root.overrideredirect(stdlib.True))
+            AhkTest.AssertSame(stdlib.True, root.overrideredirect())
+            AhkTest.AssertEqual(stdlib.None, root.wm_overrideredirect(stdlib.False))
+            AhkTest.AssertEqual(stdlib.None, root.overrideredirect())
+            AhkTest.AssertEqual(stdlib.None, root.overrideredirect(1))
+            AhkTest.AssertSame(stdlib.True, root.overrideredirect())
+            AhkTest.AssertEqual(stdlib.None, root.overrideredirect(0))
+            AhkTest.AssertEqual(stdlib.None, root.overrideredirect())
+            AhkTest.AssertEqual(stdlib.None, root.overrideredirect(stdlib.None))
+
+            AhkTest.AssertEqual(stdlib.None, top.overrideredirect())
+            AhkTest.AssertEqual(stdlib.None, top.overrideredirect(stdlib.True))
+            AhkTest.AssertSame(stdlib.True, top.overrideredirect())
+            AhkTest.AssertEqual(stdlib.None, top.wm_overrideredirect(stdlib.False))
+            AhkTest.AssertEqual(stdlib.None, top.overrideredirect())
+
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_overrideredirect\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => root.overrideredirect(stdlib.True, stdlib.False))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected boolean value but got "bad"$', (*) => root.overrideredirect("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_overrideredirect\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => top.overrideredirect(stdlib.True, stdlib.False))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected boolean value but got "bad"$', (*) => top.overrideredirect("bad"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWinfoCoordinateQueriesMatchLocal310()
     {
         root := stdlib.tkinter.Tk()

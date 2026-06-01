@@ -354,6 +354,16 @@ class Tk
         return this.protocol(args*)
     }
 
+    overrideredirect(args*)
+    {
+        return AhkStdlibTkinterWmOverrideredirect(this, ".", args*)
+    }
+
+    wm_overrideredirect(args*)
+    {
+        return this.overrideredirect(args*)
+    }
+
     bind(args*)
     {
         return AhkStdlibTkinterBind(this, this, ".", args*)
@@ -1072,6 +1082,16 @@ class Toplevel extends AhkStdlibTkinterWidget
     wm_protocol(args*)
     {
         return this.protocol(args*)
+    }
+
+    overrideredirect(args*)
+    {
+        return AhkStdlibTkinterWmOverrideredirect(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_overrideredirect(args*)
+    {
+        return this.overrideredirect(args*)
     }
 
     state(args*)
@@ -2639,6 +2659,19 @@ AhkStdlibTkinterWmProtocol(root, window, args*)
 
     command := AhkStdlibTkinterMaybeRegisterCommand(root, args[2])
     return root.eval(script " " AhkStdlibTkinterTclWord(command))
+}
+
+AhkStdlibTkinterWmOverrideredirect(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Wm.wm_overrideredirect() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    script := "wm overrideredirect " window
+    if args.Length = 0 || AhkStdlibIsNone(args[1]) {
+        result := root.eval(script)
+        return result = "1" ? stdlib.True : stdlib.None
+    }
+    root.eval(script " " AhkStdlibTkinterTclWord(args[1]))
+    return stdlib.None
 }
 
 AhkStdlibTkinterBind(root, widget, window, args*)
