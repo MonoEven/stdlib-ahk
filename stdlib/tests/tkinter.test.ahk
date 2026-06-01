@@ -1828,6 +1828,56 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkOptionDatabaseSurfaceMatchesLocal310()
+    {
+        optionPath := A_Temp "\stdlib-tk-options-" A_TickCount "-" Random(100000, 999999) ".txt"
+        badOptionPath := A_Temp "\stdlib-tk-options-bad-" A_TickCount "-" Random(100000, 999999) ".txt"
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+
+            AhkTest.AssertEqual("", root.option_get("foreground", "Foreground"))
+            AhkTest.AssertEqual(stdlib.None, root.option_add("*Label.foreground", "red"))
+            AhkTest.AssertEqual("", root.option_get("foreground", "Foreground"))
+            label := stdlib.tkinter.Label(root, { name: "optionlabel" })
+            AhkTest.AssertEqual("red", label.cget("foreground"))
+            AhkTest.AssertEqual("red", label.option_get("foreground", "Foreground"))
+
+            AhkTest.AssertEqual(stdlib.None, root.option_add("*Label.background", "yellow", 80))
+            labelWithBackground := stdlib.tkinter.Label(root, { name: "optionlabel2" })
+            AhkTest.AssertEqual("yellow", labelWithBackground.cget("background"))
+            AhkTest.AssertEqual(stdlib.None, root.option_clear())
+            AhkTest.AssertEqual("", label.option_get("foreground", "Foreground"))
+
+            FileAppend "*Label.foreground: blue`n*Button.text: FromOptions`n", optionPath, "UTF-8-RAW"
+            AhkTest.AssertEqual(stdlib.None, root.option_readfile(optionPath))
+            fileLabel := stdlib.tkinter.Label(root, { name: "fileoptionlabel" })
+            fileButton := stdlib.tkinter.Button(root, { name: "fileoptionbutton" })
+            AhkTest.AssertEqual("blue", fileLabel.cget("foreground"))
+            AhkTest.AssertEqual("FromOptions", fileButton.cget("text"))
+            AhkTest.AssertEqual(stdlib.None, fileLabel.option_readfile(optionPath, 80))
+
+            FileAppend "*Label.foreground blue`n", badOptionPath, "UTF-8-RAW"
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^missing colon on line 1$", (*) => root.option_readfile(badOptionPath))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^couldn't open " Chr(34) "missing-options-file" Chr(34) ": no such file or directory$", (*) => root.option_readfile("missing-options-file"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.option_add\(\) missing 2 required positional arguments: 'pattern' and 'value'$", (*) => root.option_add())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.option_add\(\) missing 1 required positional argument: 'value'$", (*) => root.option_add("*Label.foreground"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.option_add\(\) takes from 3 to 4 positional arguments but 5 were given$", (*) => root.option_add("*Label.foreground", "red", 80, 90))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad priority level "bad": must be widgetDefault, startupFile, userDefault, interactive, or a number between 0 and 100$', (*) => root.option_add("*Label.foreground", "red", "bad"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.option_clear\(\) takes 1 positional argument but 2 were given$", (*) => root.option_clear(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.option_get\(\) missing 2 required positional arguments: 'name' and 'className'$", (*) => root.option_get())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.option_get\(\) missing 1 required positional argument: 'className'$", (*) => root.option_get("foreground"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.option_get\(\) takes 3 positional arguments but 4 were given$", (*) => root.option_get("foreground", "Foreground", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.option_readfile\(\) missing 1 required positional argument: 'fileName'$", (*) => root.option_readfile())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.option_readfile\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => root.option_readfile(optionPath, 80, 90))
+        } finally {
+            try FileDelete optionPath
+            try FileDelete badOptionPath
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTextWidgetEditingSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

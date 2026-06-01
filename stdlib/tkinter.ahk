@@ -544,6 +544,26 @@ class Tk
         return AhkStdlibTkinterClipboardGet(this, ".", args*)
     }
 
+    option_add(args*)
+    {
+        return AhkStdlibTkinterOptionAdd(this, args*)
+    }
+
+    option_clear(args*)
+    {
+        return AhkStdlibTkinterOptionClear(this, args*)
+    }
+
+    option_get(args*)
+    {
+        return AhkStdlibTkinterOptionGet(this, ".", args*)
+    }
+
+    option_readfile(args*)
+    {
+        return AhkStdlibTkinterOptionReadFile(this, args*)
+    }
+
     state(args*)
     {
         if args.Length > 1
@@ -1252,6 +1272,26 @@ class AhkStdlibTkinterWidget
     clipboard_get(args*)
     {
         return AhkStdlibTkinterClipboardGet(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    option_add(args*)
+    {
+        return AhkStdlibTkinterOptionAdd(this.AhkStdlibRoot, args*)
+    }
+
+    option_clear(args*)
+    {
+        return AhkStdlibTkinterOptionClear(this.AhkStdlibRoot, args*)
+    }
+
+    option_get(args*)
+    {
+        return AhkStdlibTkinterOptionGet(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    option_readfile(args*)
+    {
+        return AhkStdlibTkinterOptionReadFile(this.AhkStdlibRoot, args*)
     }
 
     selection_get(args*)
@@ -2903,6 +2943,55 @@ AhkStdlibTkinterClipboardOptionsToScript(options, window, includeDefaultDisplayo
     if includeDefaultDisplayof && !hasDisplayof
         script .= " -displayof " AhkStdlibTkinterTclWord(window)
     return script
+}
+
+AhkStdlibTkinterOptionAdd(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.option_add() missing 2 required positional arguments: 'pattern' and 'value'", -1)
+    if args.Length = 1
+        throw TypeError("Misc.option_add() missing 1 required positional argument: 'value'", -1)
+    if args.Length > 3
+        throw TypeError("Misc.option_add() takes from 3 to 4 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "option add " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])
+    if args.Length = 3 && !AhkStdlibIsNone(args[3])
+        script .= " " AhkStdlibTkinterTclWord(args[3])
+    root.eval(script)
+    return stdlib.None
+}
+
+AhkStdlibTkinterOptionClear(root, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.option_clear() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    root.eval("option clear")
+    return stdlib.None
+}
+
+AhkStdlibTkinterOptionGet(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.option_get() missing 2 required positional arguments: 'name' and 'className'", -1)
+    if args.Length = 1
+        throw TypeError("Misc.option_get() missing 1 required positional argument: 'className'", -1)
+    if args.Length > 2
+        throw TypeError("Misc.option_get() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+    return root.eval("option get " window " " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+}
+
+AhkStdlibTkinterOptionReadFile(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.option_readfile() missing 1 required positional argument: 'fileName'", -1)
+    if args.Length > 2
+        throw TypeError("Misc.option_readfile() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "option readfile " AhkStdlibTkinterTclWord(args[1])
+    if args.Length = 2 && !AhkStdlibIsNone(args[2])
+        script .= " " AhkStdlibTkinterTclWord(args[2])
+    root.eval(script)
+    return stdlib.None
 }
 
 AhkStdlibTkinterPackSlaves(root, window, args*)

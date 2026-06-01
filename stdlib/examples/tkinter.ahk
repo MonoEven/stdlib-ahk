@@ -26,6 +26,7 @@ tkinter_example_tk_package := tkinter_example_tk_interp.eval("package require Tk
 
 tkinter_example_root := stdlib.tkinter.Tk()
 tkinter_example_saved_clipboard := A_Clipboard
+tkinter_example_option_file := A_Temp "\stdlib-tkinter-example-options-" A_TickCount "-" Random(100000, 999999) ".txt"
 try {
     tkinter_example_root_manager := tkinter_example_root.winfo_manager()
     tkinter_example_root_state_before := tkinter_example_root.state()
@@ -125,6 +126,16 @@ try {
     tkinter_example_frame_clipboard_clear_return := tkinter_example_frame.clipboard_clear()
     tkinter_example_frame_clipboard_append_return := tkinter_example_frame.clipboard_append("widget")
     tkinter_example_frame_clipboard_text := tkinter_example_frame.clipboard_get({ displayof: tkinter_example_root })
+    tkinter_example_option_get_before := tkinter_example_root.option_get("foreground", "Foreground")
+    tkinter_example_option_add_return := tkinter_example_root.option_add("*Label.foreground", "red")
+    tkinter_example_option_label := stdlib.tkinter.Label(tkinter_example_root, { name: "option_label" })
+    tkinter_example_option_label_foreground := tkinter_example_option_label.cget("foreground")
+    tkinter_example_option_label_get := tkinter_example_option_label.option_get("foreground", "Foreground")
+    tkinter_example_option_clear_return := tkinter_example_root.option_clear()
+    FileAppend "*Button.text: FromOptions`n", tkinter_example_option_file, "UTF-8-RAW"
+    tkinter_example_option_readfile_return := tkinter_example_root.option_readfile(tkinter_example_option_file)
+    tkinter_example_option_button := stdlib.tkinter.Button(tkinter_example_root, { name: "option_button" })
+    tkinter_example_option_button_text := tkinter_example_option_button.cget("text")
     tkinter_example_checkbutton_text := tkinter_example_checkbutton.cget("text")
     tkinter_example_checkbutton_variable := tkinter_example_checkbutton.cget("variable")
     tkinter_example_checkbutton_select_return := tkinter_example_checkbutton.select()
@@ -452,6 +463,7 @@ try {
     tkinter_example_root_destroy_return := tkinter_example_root.destroy()
 } finally {
     try tkinter_example_root.destroy()
+    try FileDelete tkinter_example_option_file
     A_Clipboard := tkinter_example_saved_clipboard
 }
 
