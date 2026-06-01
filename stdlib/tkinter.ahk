@@ -32,7 +32,14 @@ class AhkStdlibTkinter
     {
         if args.Length > 4
             throw TypeError("Tcl() takes from 0 to 4 positional arguments but " args.Length " were given", -1)
-        return Tk(args*)
+        return Tk(false, "Tcl", args*)
+    }
+
+    static Tk(args*)
+    {
+        if args.Length > 6
+            throw TypeError("Tk.__init__() takes from 1 to 7 positional arguments but " args.Length + 1 " were given", -1)
+        return Tk(true, "Tk", args*)
     }
 
     static StringVar(args*)
@@ -43,13 +50,15 @@ class AhkStdlibTkinter
 
 class Tk
 {
-    __New(args*)
+    __New(defaultUseTk, callName, args*)
     {
         this.AhkStdlibInterp := 0
         screenName := stdlib.None
         baseName := ""
         className := "Tk"
-        useTk := false
+        useTk := defaultUseTk
+        sync := false
+        hasUse := false
 
         if args.Length = 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1]) {
             options := args[1]
@@ -63,8 +72,19 @@ class Tk
                         className := value
                     case "useTk":
                         useTk := value
+                    case "sync":
+                        if callName != "Tk"
+                            throw TypeError(callName "() got an unexpected keyword argument '" key "'", -1)
+                        sync := value
+                    case "use":
+                        if callName != "Tk"
+                            throw TypeError(callName "() got an unexpected keyword argument '" key "'", -1)
+                        use := value
+                        hasUse := true
                     default:
-                        throw TypeError("Tcl() got an unexpected keyword argument '" key "'", -1)
+                        if callName = "Tk"
+                            throw TypeError("Tk.__init__() got an unexpected keyword argument '" key "'", -1)
+                        throw TypeError(callName "() got an unexpected keyword argument '" key "'", -1)
                 }
             }
         } else {
@@ -76,6 +96,12 @@ class Tk
                 className := args[3]
             if args.Length >= 4
                 useTk := args[4]
+            if args.Length >= 5
+                sync := args[5]
+            if args.Length >= 6 {
+                use := args[6]
+                hasUse := true
+            }
         }
 
         if !(AhkStdlibIsNone(screenName)) && !(screenName is String)
@@ -86,6 +112,7 @@ class Tk
             throw TypeError("create() argument 3 must be str, not " AhkStdlibPyTypeName(className), -1)
 
         useTk := AhkStdlibTkinterNormalizeBool(useTk)
+        sync := AhkStdlibTkinterNormalizeBool(sync)
         AhkStdlibTkinterEnsureTclRuntime(useTk)
         this.AhkStdlibInterp := AhkStdlibTkinterCreateInterp()
         try {
@@ -101,6 +128,9 @@ class Tk
         this.AhkStdlibBaseName := baseName
         this.AhkStdlibClassName := className
         this.AhkStdlibUseTk := useTk
+        this.AhkStdlibSync := sync
+        if hasUse
+            this.AhkStdlibUse := use
     }
 
     eval(args*)
@@ -155,6 +185,14 @@ class Tk
     _root()
     {
         return this
+    }
+
+    destroy()
+    {
+        resultCode := DllCall("tcl86t\Tcl_Eval", "Ptr", this.AhkStdlibInterp, "Ptr", AhkStdlibTkinterUtf8Buffer("destroy .").Ptr, "Int")
+        if resultCode != 0
+            throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(this.AhkStdlibInterp), -1)
+        return stdlib.None
     }
 
     ToString()

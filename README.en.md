@@ -28,7 +28,7 @@ Current direct modules under testing:
 - `math`, `random`, `statistics`, `decimal`, `fractions`
 - `json`, `csv`, `configparser`, `re`, `toml`
 - `os`, `pathlib`, `shutil`, `tempfile`, `io`
-- `logging`, `queue`
+- `logging`, `queue`, `tkinter`
 - `ahktest`, `assert`, `base`, `types`, `warnings`, `operator`
 
 ## Quick Start

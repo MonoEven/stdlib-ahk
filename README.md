@@ -41,7 +41,7 @@ AutoHotkey v2.0.26 与 v2.1-alpha.30。
 - `math`, `random`, `statistics`, `decimal`, `fractions`
 - `json`, `csv`, `configparser`, `re`, `toml`
 - `os`, `pathlib`, `shutil`, `tempfile`, `io`
-- `logging`, `queue`
+- `logging`, `queue`, `tkinter`
 - `ahktest`, `assert`, `base`, `types`, `warnings`, `operator`
 
 Public calls use `stdlib.module.func(...)` or `stdlib.module.Class(...)`; the

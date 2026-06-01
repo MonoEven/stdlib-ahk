@@ -38,6 +38,24 @@ class StdlibTkinterTest
         AhkTest.AssertEqual("8.6.12", interp.eval("package require Tk"))
     }
 
+    static TestTkPublicConstructorLoadsTkRootLikeLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+
+            AhkTest.AssertEqual("Tk", Type(root))
+            AhkTest.AssertEqual(".", String(root))
+            AhkTest.AssertSame(root, root._root())
+            AhkTest.AssertEqual("winfo", root.eval("info commands winfo"))
+            AhkTest.AssertEqual("8.6.12", root.eval("package require Tk"))
+            AhkTest.AssertEqual("1", root.eval("winfo exists ."))
+            AhkTest.AssertEqual(stdlib.None, root.destroy())
+        } finally {
+            try root.destroy()
+        }
+    }
+
     static TestBundledTclTkDllsExistForUseTkRuntime()
     {
         dllDir := StdlibTkinterTest.RuntimeLibDir()
