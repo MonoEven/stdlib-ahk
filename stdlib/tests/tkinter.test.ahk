@@ -233,6 +233,42 @@ class StdlibTkinterTest
         }
     }
 
+    static TestEntryWidgetSupportsInputSurfaceLikeLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            text := stdlib.tkinter.StringVar(root, "seed", "entry_var")
+            entry := stdlib.tkinter.Entry(root, { textvariable: text, width: 12 })
+
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual("Entry", Type(entry))
+            AhkTest.AssertEqual(".!entry", String(entry))
+            AhkTest.AssertSame(root, entry._root())
+            AhkTest.AssertEqual(1, entry.winfo_exists())
+            AhkTest.AssertEqual(12, entry.cget("width"))
+            AhkTest.AssertEqual("entry_var", entry.cget("textvariable"))
+            AhkTest.AssertEqual("seed", entry.get())
+            AhkTest.AssertEqual("seed", text.get())
+            AhkTest.AssertEqual(stdlib.None, entry.delete(0, "end"))
+            AhkTest.AssertEqual(stdlib.None, entry.insert(0, "abc"))
+            AhkTest.AssertEqual("abc", entry.get())
+            AhkTest.AssertEqual("abc", text.get())
+            AhkTest.AssertEqual(stdlib.None, entry.insert("end", "XYZ"))
+            AhkTest.AssertEqual("abcXYZ", entry.get())
+            AhkTest.AssertEqual(stdlib.None, entry.delete(1, 3))
+            AhkTest.AssertEqual("aXYZ", entry.get())
+            AhkTest.AssertEqual("aXYZ", text.get())
+            AhkTest.AssertEqual(stdlib.None, entry.pack())
+            AhkTest.AssertEqual("pack", entry.winfo_manager())
+            AhkTest.AssertEqual(stdlib.None, entry.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .!entry"))
+        } finally {
+            try root.destroy()
+        }
+    }
+
     static TestBundledTclTkDllsExistForUseTkRuntime()
     {
         dllDir := StdlibTkinterTest.RuntimeLibDir()
@@ -304,6 +340,17 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Label({ master: 1 }))
         AhkTest.RaisesMatch(TypeError, "^Label\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Label(gui, {}, "extra"))
         AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Label(gui, { extra_kw: 1 }))
+        AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Entry({ master: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^Entry\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Entry(gui, {}, "extra"))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Entry(gui, { extra_kw: 1 }))
+        AhkTest.RaisesMatch(TypeError, "^Entry\.get\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Entry(gui).get(1))
+        AhkTest.RaisesMatch(TypeError, "^Entry\.insert\(\) missing 2 required positional arguments: 'index' and 'string'$", (*) => stdlib.tkinter.Entry(gui).insert())
+        AhkTest.RaisesMatch(TypeError, "^Entry\.insert\(\) missing 1 required positional argument: 'string'$", (*) => stdlib.tkinter.Entry(gui).insert(0))
+        AhkTest.RaisesMatch(TypeError, "^Entry\.insert\(\) takes 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Entry(gui).insert(0, "a", "b"))
+        AhkTest.RaisesMatch(TypeError, "^Entry\.delete\(\) missing 1 required positional argument: 'first'$", (*) => stdlib.tkinter.Entry(gui).delete())
+        AhkTest.RaisesMatch(TypeError, "^Entry\.delete\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Entry(gui).delete(0, 1, 2))
+        AhkTest.RaisesMatch(TypeError, "^Misc\.update\(\) takes 1 positional argument but 2 were given$", (*) => gui.update(1))
+        AhkTest.RaisesMatch(TypeError, "^Misc\.update_idletasks\(\) takes 1 positional argument but 2 were given$", (*) => gui.update_idletasks(1))
         try gui.destroy()
     }
 

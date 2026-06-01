@@ -62,6 +62,11 @@ class AhkStdlibTkinter
         return Button(args*)
     }
 
+    static Entry(args*)
+    {
+        return Entry(args*)
+    }
+
     static StringVar(args*)
     {
         return AhkStdlibTkinterStringVar(args*)
@@ -233,6 +238,22 @@ class Tk
         return this.eval("wm title . " AhkStdlibTkinterTclWord(args[1]))
     }
 
+    update(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.update() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.eval("update")
+        return stdlib.None
+    }
+
+    update_idletasks(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.update_idletasks() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.eval("update idletasks")
+        return stdlib.None
+    }
+
     destroy()
     {
         resultCode := DllCall("tcl86t\Tcl_Eval", "Ptr", this.AhkStdlibInterp, "Ptr", AhkStdlibTkinterUtf8Buffer("destroy .").Ptr, "Int")
@@ -302,7 +323,8 @@ class AhkStdlibTkinterWidget
             throw TypeError("Misc.cget() missing 1 required positional argument: 'key'", -1)
         if args.Length > 1
             throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
-        return this.AhkStdlibRoot.eval(this._w " cget -" args[1])
+        value := this.AhkStdlibRoot.eval(this._w " cget -" args[1])
+        return AhkStdlibTkinterCgetValue(args[1], value)
     }
 
     configure(args*)
@@ -379,6 +401,46 @@ class Button extends AhkStdlibTkinterWidget
     __New(args*)
     {
         super.__New("Button", "button", args*)
+    }
+}
+
+class Entry extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Entry", "entry", args*)
+    }
+
+    get(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Entry.get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " get")
+    }
+
+    insert(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Entry.insert() missing 2 required positional arguments: 'index' and 'string'", -1)
+        if args.Length = 1
+            throw TypeError("Entry.insert() missing 1 required positional argument: 'string'", -1)
+        if args.Length > 2
+            throw TypeError("Entry.insert() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " insert " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    delete(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Entry.delete() missing 1 required positional argument: 'first'", -1)
+        if args.Length > 2
+            throw TypeError("Entry.delete() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " delete " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
     }
 }
 
@@ -796,12 +858,23 @@ AhkStdlibTkinterOptionsToScript(options, includeName)
     return script
 }
 
+AhkStdlibTkinterCgetValue(key, value)
+{
+    switch key {
+        case "width", "height":
+            try return Integer(value)
+    }
+    return value
+}
+
 AhkStdlibTkinterValueToString(value)
 {
     if AhkStdlibIsNone(value)
         return "None"
     if AhkStdlibIsBool(value)
         return value.Value ? "1" : "0"
+    if IsObject(value) && HasMethod(value, "ToString")
+        return String(value)
     return value ""
 }
 

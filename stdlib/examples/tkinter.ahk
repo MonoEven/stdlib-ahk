@@ -43,6 +43,17 @@ try {
     tkinter_example_label_manager := tkinter_example_label.winfo_manager()
     tkinter_example_button_exists := tkinter_example_button.winfo_exists()
 
+    tkinter_example_entry_text := stdlib.tkinter.StringVar(tkinter_example_root, "seed", "entry_var")
+    tkinter_example_entry := stdlib.tkinter.Entry(tkinter_example_root, { textvariable: tkinter_example_entry_text, width: 12 })
+    tkinter_example_entry_width := tkinter_example_entry.cget("width")
+    tkinter_example_entry_textvariable := tkinter_example_entry.cget("textvariable")
+    tkinter_example_entry_get := tkinter_example_entry.get()
+    tkinter_example_entry_delete_return := tkinter_example_entry.delete(0, "end")
+    tkinter_example_entry_insert_return := tkinter_example_entry.insert(0, "abc")
+    tkinter_example_entry_after_insert := tkinter_example_entry.get()
+    tkinter_example_update_return := tkinter_example_root.update()
+    tkinter_example_update_idletasks_return := tkinter_example_root.update_idletasks()
+
     tkinter_example_root_destroy_return := tkinter_example_root.destroy()
 } finally {
     try tkinter_example_root.destroy()
