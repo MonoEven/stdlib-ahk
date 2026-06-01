@@ -24,7 +24,7 @@ behavior, window-manager protocol callbacks, `Button` / `Checkbutton` / `Radiobu
 window/widget stacking with `lift()` / `tkraise()` / `lower()`, local grab state with
 `grab_set()` / `grab_release()` / `grab_current()` / `grab_status()`,
 window lifecycle waits with `wait_variable()` / `waitvar()` / `wait_window()` / `wait_visibility()`,
-command argument bridging, Canvas line/rectangle/oval/polygon/text/arc/bitmap/image/window item creation, raw and convenience find queries, discovery, tag management, movement, coordinate conversion, and scrolling view control, image-backed widget
+command argument bridging, Canvas line/rectangle/oval/polygon/text/arc/bitmap/image/window item creation, text item editing and selection, raw and convenience find queries, discovery, tag management, movement, coordinate conversion, and scrolling view control, image-backed widget
 options, and a focused `after` / `after_idle` / `mainloop` / `quit` event-loop slice.
 
 It is currently developed and tested with AutoHotkey v2.0.26 and v2.1-alpha.30.

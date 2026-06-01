@@ -2097,6 +2097,52 @@ class Canvas extends AhkStdlibTkinterWidget
         return AhkStdlibTkinterCanvasCreateItem(this, "window", args*)
     }
 
+    dchars(args*)
+    {
+        script := this._w " dchars"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    focus(args*)
+    {
+        script := this._w " focus"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        value := this.AhkStdlibRoot.eval(script)
+        if args.Length = 0 && value != ""
+            return Integer(value)
+        return value
+    }
+
+    icursor(args*)
+    {
+        script := this._w " icursor"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    index(args*)
+    {
+        script := this._w " index"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        return Integer(this.AhkStdlibRoot.eval(script))
+    }
+
+    insert(args*)
+    {
+        script := this._w " insert"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
     coords(args*)
     {
         script := this._w " coords"
@@ -2300,6 +2346,43 @@ class Canvas extends AhkStdlibTkinterWidget
         for value in args
             script .= " " AhkStdlibTkinterTclWord(value)
         return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(script)))
+    }
+
+    select_adjust(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.select_adjust", args.Length, 2, 2, ["tagOrId", "index"])
+        this.AhkStdlibRoot.eval(this._w " select adjust " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    select_clear(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Canvas.select_clear() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " select clear")
+        return stdlib.None
+    }
+
+    select_from(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.select_from", args.Length, 2, 2, ["tagOrId", "index"])
+        this.AhkStdlibRoot.eval(this._w " select from " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    select_item(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Canvas.select_item() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " select item")
+        return value = "" ? stdlib.None : Integer(value)
+    }
+
+    select_to(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.select_to", args.Length, 2, 2, ["tagOrId", "index"])
+        this.AhkStdlibRoot.eval(this._w " select to " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
     }
 
     canvasx(args*)
