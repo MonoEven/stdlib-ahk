@@ -284,6 +284,11 @@ class Tk
         return this
     }
 
+    nametowidget(args*)
+    {
+        return AhkStdlibTkinterNameToWidget(this, ".", args*)
+    }
+
     cget(args*)
     {
         if args.Length = 0
@@ -755,6 +760,11 @@ class AhkStdlibTkinterWidget
     _root()
     {
         return this.AhkStdlibRoot
+    }
+
+    nametowidget(args*)
+    {
+        return AhkStdlibTkinterNameToWidget(this.AhkStdlibRoot, this._w, args*)
     }
 
     cget(args*)
@@ -2757,6 +2767,37 @@ AhkStdlibTkinterPackInfo(widget)
 AhkStdlibTkinterWidgetFromPath(root, path)
 {
     return root.AhkStdlibWidgetsByPath[path]
+}
+
+AhkStdlibTkinterNameToWidget(root, basePath, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.nametowidget() missing 1 required positional argument: 'name'", -1)
+    if args.Length > 1
+        throw TypeError("Misc.nametowidget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    name := AhkStdlibTkinterValueToString(args[1])
+    if SubStr(name, 1, 1) = "."
+        path := name
+    else if basePath = "."
+        path := "." name
+    else
+        path := basePath "." name
+
+    if path = "."
+        return root
+    if root.eval("winfo exists " AhkStdlibTkinterTclWord(path)) != "1" || !root.AhkStdlibWidgetsByPath.Has(path)
+        throw KeyError("'" AhkStdlibTkinterLastPathPart(path) "'", -1)
+    return root.AhkStdlibWidgetsByPath[path]
+}
+
+AhkStdlibTkinterLastPathPart(path)
+{
+    last := ""
+    for part in StrSplit(path, ".")
+        if part != ""
+            last := part
+    return last
 }
 
 AhkStdlibTkinterWmResizable(root, window, args*)

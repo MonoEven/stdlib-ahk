@@ -670,6 +670,41 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkNameToWidgetMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            frame := stdlib.tkinter.Frame(root, { name: "host" })
+            label := stdlib.tkinter.Label(root, { name: "named_label" })
+            button := stdlib.tkinter.Button(frame, { name: "press" })
+            top := stdlib.tkinter.Toplevel(root, { name: "dialog" })
+            child := stdlib.tkinter.Label(top, { name: "inner" })
+
+            AhkTest.AssertSame(root, root.nametowidget("."))
+            AhkTest.AssertSame(frame, root.nametowidget("host"))
+            AhkTest.AssertSame(frame, root.nametowidget(".host"))
+            AhkTest.AssertSame(button, root.nametowidget(".host.press"))
+            AhkTest.AssertSame(button, frame.nametowidget("press"))
+            AhkTest.AssertSame(button, frame.nametowidget(".host.press"))
+            AhkTest.AssertSame(child, top.nametowidget("inner"))
+            AhkTest.AssertSame(child, root.nametowidget(".dialog.inner"))
+            AhkTest.AssertSame(root, label.nametowidget("."))
+
+            AhkTest.RaisesMatch(KeyError, "^'missing'$", (*) => root.nametowidget(".missing"))
+            AhkTest.RaisesMatch(KeyError, "^'missing'$", (*) => root.nametowidget(".host.missing"))
+            AhkTest.RaisesMatch(KeyError, "^'missing'$", (*) => frame.nametowidget("missing"))
+            AhkTest.RaisesMatch(KeyError, "^'1'$", (*) => root.nametowidget(1))
+            AhkTest.AssertEqual(stdlib.None, label.destroy())
+            AhkTest.RaisesMatch(KeyError, "^'named_label'$", (*) => root.nametowidget(".named_label"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.nametowidget\(\) missing 1 required positional argument: 'name'$", (*) => root.nametowidget())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.nametowidget\(\) takes 2 positional arguments but 3 were given$", (*) => root.nametowidget(".", "extra"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWindowResizableMinMaxSizeMatchLocal310()
     {
         root := stdlib.tkinter.Tk()
