@@ -2230,6 +2230,18 @@ class Canvas extends AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    moveto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Canvas.moveto() missing 1 required positional argument: 'tagOrId'", -1)
+        if args.Length > 3
+            throw TypeError("Canvas.moveto() takes from 2 to 4 positional arguments but " args.Length + 1 " were given", -1)
+        x := args.Length >= 2 ? args[2] : ""
+        y := args.Length >= 3 ? args[3] : ""
+        this.AhkStdlibRoot.eval(this._w " moveto " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(x) " " AhkStdlibTkinterTclWord(y))
+        return stdlib.None
+    }
+
     type(args*)
     {
         if args.Length = 0
@@ -2263,6 +2275,11 @@ class Canvas extends AhkStdlibTkinterWidget
             throw TypeError("cnf must be a dictionary", -1)
         this.AhkStdlibRoot.eval(this._w " itemconfigure " AhkStdlibTkinterTclWord(args[1]) AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot))
         return stdlib.None
+    }
+
+    itemconfig(args*)
+    {
+        return this.itemconfigure(args*)
     }
 
     delete(args*)
@@ -2329,6 +2346,24 @@ class Canvas extends AhkStdlibTkinterWidget
     {
         AhkStdlibTkinterCanvasRequireArgs("Canvas.addtag_withtag", args.Length, 2, 2, ["newtag", "tagOrId"])
         return this.addtag(args[1], "withtag", args[2])
+    }
+
+    tag_raise(args*)
+    {
+        script := this._w " raise"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    tag_lower(args*)
+    {
+        script := this._w " lower"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
     }
 
     dtag(args*)
