@@ -648,9 +648,24 @@ class Tk
         return AhkStdlibTkinterPackSlaves(this, ".", args*)
     }
 
+    pack_propagate(args*)
+    {
+        return AhkStdlibTkinterPropagate(this, ".", "pack", "pack_propagate", args*)
+    }
+
     grid_slaves(args*)
     {
         return AhkStdlibTkinterGridSlaves(this, ".", args*)
+    }
+
+    grid_propagate(args*)
+    {
+        return AhkStdlibTkinterPropagate(this, ".", "grid", "grid_propagate", args*)
+    }
+
+    grid_anchor(args*)
+    {
+        return AhkStdlibTkinterGridAnchor(this, ".", args*)
     }
 
     grid_columnconfigure(args*)
@@ -923,6 +938,11 @@ class AhkStdlibTkinterWidget
         return AhkStdlibTkinterPackSlaves(this.AhkStdlibRoot, this._w, args*)
     }
 
+    pack_propagate(args*)
+    {
+        return AhkStdlibTkinterPropagate(this.AhkStdlibRoot, this._w, "pack", "pack_propagate", args*)
+    }
+
     grid(args*)
     {
         if args.Length > 1
@@ -956,6 +976,16 @@ class AhkStdlibTkinterWidget
     grid_slaves(args*)
     {
         return AhkStdlibTkinterGridSlaves(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    grid_propagate(args*)
+    {
+        return AhkStdlibTkinterPropagate(this.AhkStdlibRoot, this._w, "grid", "grid_propagate", args*)
+    }
+
+    grid_anchor(args*)
+    {
+        return AhkStdlibTkinterGridAnchor(this.AhkStdlibRoot, this._w, args*)
     }
 
     grid_columnconfigure(args*)
@@ -2807,6 +2837,24 @@ AhkStdlibTkinterPackSlaves(root, window, args*)
     return AhkStdlibTkinterWidgetListFromPathList(root, root.eval("pack slaves " window))
 }
 
+AhkStdlibTkinterPropagate(root, window, manager, methodName, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc." methodName "() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := manager " propagate " window
+    if args.Length = 0
+        return root.eval(script) = "1" ? stdlib.True : stdlib.None
+
+    if AhkStdlibIsNone(args[1]) {
+        root.eval(script)
+        return stdlib.None
+    }
+
+    root.eval(script " " AhkStdlibTkinterTclWord(args[1]))
+    return stdlib.None
+}
+
 AhkStdlibTkinterGridSlaves(root, window, args*)
 {
     if args.Length > 2
@@ -2828,6 +2876,19 @@ AhkStdlibTkinterGridSlaves(root, window, args*)
             script .= " -column " AhkStdlibTkinterTclWord(args[2])
     }
     return AhkStdlibTkinterWidgetListFromPathList(root, root.eval(script))
+}
+
+AhkStdlibTkinterGridAnchor(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc.grid_anchor() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "grid anchor " window
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
+        root.eval(script)
+    else
+        root.eval(script " " AhkStdlibTkinterTclWord(args[1]))
+    return stdlib.None
 }
 
 AhkStdlibTkinterGridAxisConfigure(root, window, axis, methodName, args*)

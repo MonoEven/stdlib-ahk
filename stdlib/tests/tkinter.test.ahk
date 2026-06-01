@@ -2207,6 +2207,54 @@ class StdlibTkinterTest
         }
     }
 
+    static TestLayoutPropagationAndGridAnchorSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            packHost := stdlib.tkinter.Frame(root, { name: "packhost", width: 120, height: 90 })
+            AhkTest.AssertEqual(stdlib.None, packHost.pack())
+            gridShell := stdlib.tkinter.Toplevel(root, { name: "gridshell" })
+            AhkTest.AssertEqual("", gridShell.withdraw())
+            gridHost := stdlib.tkinter.Frame(gridShell, { name: "gridhost", width: 120, height: 90 })
+            AhkTest.AssertEqual(stdlib.None, gridHost.grid())
+
+            for owner in [root, packHost, gridShell, gridHost] {
+                AhkTest.AssertSame(stdlib.True, owner.pack_propagate())
+                AhkTest.AssertEqual(stdlib.None, owner.pack_propagate(stdlib.False))
+                AhkTest.AssertEqual(stdlib.None, owner.pack_propagate())
+                AhkTest.AssertEqual(stdlib.None, owner.pack_propagate(stdlib.True))
+                AhkTest.AssertSame(stdlib.True, owner.pack_propagate())
+                AhkTest.AssertEqual(stdlib.None, owner.pack_propagate(stdlib.None))
+                AhkTest.AssertSame(stdlib.True, owner.pack_propagate())
+                AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected boolean value but got "bad"$', ObjBindMethod(owner, "pack_propagate", "bad"))
+                AhkTest.RaisesMatch(TypeError, "^Misc\.pack_propagate\(\) takes from 1 to 2 positional arguments but 3 were given$", ObjBindMethod(owner, "pack_propagate", stdlib.True, stdlib.False))
+
+                AhkTest.AssertSame(stdlib.True, owner.grid_propagate())
+                AhkTest.AssertEqual(stdlib.None, owner.grid_propagate(stdlib.False))
+                AhkTest.AssertEqual(stdlib.None, owner.grid_propagate())
+                AhkTest.AssertEqual(stdlib.None, owner.grid_propagate(stdlib.True))
+                AhkTest.AssertSame(stdlib.True, owner.grid_propagate())
+                AhkTest.AssertEqual(stdlib.None, owner.grid_propagate(stdlib.None))
+                AhkTest.AssertSame(stdlib.True, owner.grid_propagate())
+                AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected boolean value but got "bad"$', ObjBindMethod(owner, "grid_propagate", "bad"))
+                AhkTest.RaisesMatch(TypeError, "^Misc\.grid_propagate\(\) takes from 1 to 2 positional arguments but 3 were given$", ObjBindMethod(owner, "grid_propagate", stdlib.True, stdlib.False))
+
+                AhkTest.AssertEqual(stdlib.None, owner.grid_anchor())
+                AhkTest.AssertEqual(stdlib.None, owner.grid_anchor("center"))
+                AhkTest.AssertEqual(stdlib.None, owner.grid_anchor())
+                AhkTest.AssertEqual(stdlib.None, owner.grid_anchor("n"))
+                AhkTest.AssertEqual(stdlib.None, owner.grid_anchor())
+                AhkTest.AssertEqual(stdlib.None, owner.grid_anchor(stdlib.None))
+                AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad anchor "bad": must be n, ne, e, se, s, sw, w, nw, or center$', ObjBindMethod(owner, "grid_anchor", "bad"))
+                AhkTest.RaisesMatch(TypeError, "^Misc\.grid_anchor\(\) takes from 1 to 2 positional arguments but 3 were given$", ObjBindMethod(owner, "grid_anchor", "n", "s"))
+            }
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestLayoutInfoForgetAndRemoveSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
