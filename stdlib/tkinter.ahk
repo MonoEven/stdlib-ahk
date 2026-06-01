@@ -2366,6 +2366,43 @@ class Canvas extends AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    tag_bind(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Canvas.tag_bind() missing 1 required positional argument: 'tagOrId'", -1)
+        if args.Length > 4
+            throw TypeError("Canvas.tag_bind() takes from 2 to 5 positional arguments but " args.Length + 1 " were given", -1)
+
+        tagWord := AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 1 || AhkStdlibIsNone(args[2])
+            return stdlib.tuple(AhkStdlibTkinterSimpleList(this.AhkStdlibRoot.eval(this._w " bind " tagWord)))
+
+        sequence := args[2]
+        if args.Length = 2 || AhkStdlibIsNone(args[3])
+            return this.AhkStdlibRoot.eval(this._w " bind " tagWord " " AhkStdlibTkinterTclWord(sequence))
+
+        commandName := AhkStdlibTkinterRegisterEventCommand(this.AhkStdlibRoot, this, args[3], sequence)
+        addPrefix := args.Length >= 4 && args[4] = "+" ? "+" : ""
+        script := addPrefix "if {`"[" commandName " %W %T %x %y %b]`" == `"break`"} break"
+        this.AhkStdlibRoot.eval(this._w " bind " tagWord " " AhkStdlibTkinterTclWord(sequence) " " AhkStdlibTkinterTclScriptWord(script))
+        return commandName
+    }
+
+    tag_unbind(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Canvas.tag_unbind() missing 2 required positional arguments: 'tagOrId' and 'sequence'", -1)
+        if args.Length = 1
+            throw TypeError("Canvas.tag_unbind() missing 1 required positional argument: 'sequence'", -1)
+        if args.Length > 3
+            throw TypeError("Canvas.tag_unbind() takes from 3 to 4 positional arguments but " args.Length + 1 " were given", -1)
+
+        this.AhkStdlibRoot.eval(this._w " bind " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]) " {}")
+        if args.Length = 3 && !AhkStdlibIsNone(args[3])
+            AhkStdlibTkinterDeleteCommand(this.AhkStdlibRoot, args[3], "can't delete Tcl command")
+        return stdlib.None
+    }
+
     dtag(args*)
     {
         script := this._w " dtag"

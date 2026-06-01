@@ -2201,6 +2201,72 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCanvasTagBindAndUnbindSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.geometry("200x160+0+0")
+            canvas := stdlib.tkinter.Canvas(root, { width: 120, height: 80, bg: "white" })
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            lineId := canvas.create_line(10, 10, 60, 60, { tags: "shape path", width: 4 })
+            rectId := canvas.create_rectangle(70, 10, 110, 50, { tags: "shape box" })
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            recorder := StdlibTkinterTest.EventRecorder(stdlib.None, "tag")
+            breaker := StdlibTkinterTest.EventRecorder("break", "breaker")
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.tag_bind("shape"))
+            AhkTest.AssertEqual("", canvas.tag_bind("shape", "<Button-1>"))
+            commandName := canvas.tag_bind("shape", "<Button-1>", recorder)
+            AhkTest.AssertTrue(commandName != "")
+            AhkTest.AssertEqual(stdlib.tuple(["<Button-1>"]), canvas.tag_bind("shape"))
+            AhkTest.AssertTrue(InStr(canvas.tag_bind("shape", "<Button-1>"), commandName) > 0)
+            AhkTest.AssertTrue(InStr(canvas.tag_bind("shape", "<Button-1>", stdlib.None), commandName) > 0)
+
+            AhkTest.AssertEqual(stdlib.None, canvas.event_generate("<Button-1>", { x: 20, y: 20 }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(1, recorder.Calls.Length)
+            AhkTest.AssertSame(canvas, recorder.Calls[1].widget)
+            AhkTest.AssertEqual("ButtonPress", recorder.Calls[1].type.name)
+            AhkTest.AssertEqual(20, recorder.Calls[1].x)
+            AhkTest.AssertEqual(20, recorder.Calls[1].y)
+
+            extraCommand := canvas.tag_bind("shape", "<Button-1>", breaker, "+")
+            AhkTest.AssertTrue(extraCommand != "")
+            AhkTest.AssertTrue(InStr(canvas.tag_bind("shape", "<Button-1>"), extraCommand) > 0)
+            AhkTest.AssertEqual(stdlib.None, canvas.event_generate("<Button-1>", { x: 25, y: 26 }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(2, recorder.Calls.Length)
+            AhkTest.AssertEqual(1, breaker.Calls.Length)
+            AhkTest.AssertEqual(25, recorder.Calls[2].x)
+            AhkTest.AssertEqual(26, breaker.Calls[1].y)
+
+            AhkTest.AssertEqual(stdlib.None, canvas.tag_unbind("shape", "<Button-1>", commandName))
+            AhkTest.AssertEqual("", canvas.tag_bind("shape", "<Button-1>"))
+            AhkTest.AssertEqual(stdlib.None, canvas.event_generate("<Button-1>", { x: 30, y: 31 }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(2, recorder.Calls.Length)
+            AhkTest.AssertEqual(1, breaker.Calls.Length)
+            AhkTest.AssertEqual(stdlib.None, canvas.tag_unbind("shape", "<Button-1>"))
+            AhkTest.AssertEqual("", canvas.tag_bind("shape", "<Button-1>"))
+
+            missingCommand := canvas.tag_bind("missing", "<Button-1>", recorder)
+            AhkTest.AssertTrue(missingCommand != "")
+            AhkTest.AssertEqual(stdlib.tuple(["<Button-1>"]), canvas.tag_bind("missing"))
+            AhkTest.AssertTrue(InStr(canvas.tag_bind("missing", "<Button-1>"), missingCommand) > 0)
+            AhkTest.AssertEqual(stdlib.None, canvas.tag_unbind("missing", "<Button-1>", missingCommand))
+
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.tag_bind\(\) missing 1 required positional argument: 'tagOrId'$", (*) => canvas.tag_bind())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.tag_bind\(\) takes from 2 to 5 positional arguments but 6 were given$", (*) => canvas.tag_bind("shape", "<Button-1>", recorder, "+", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.tag_unbind\(\) missing 2 required positional arguments: 'tagOrId' and 'sequence'$", (*) => canvas.tag_unbind())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.tag_unbind\(\) missing 1 required positional argument: 'sequence'$", (*) => canvas.tag_unbind("shape"))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.tag_unbind\(\) takes from 3 to 4 positional arguments but 5 were given$", (*) => canvas.tag_unbind("shape", "<Button-1>", extraCommand, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't delete Tcl command$", (*) => canvas.tag_unbind("shape", "<Button-1>", "missingCommand"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCanvasFindQuerySurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
