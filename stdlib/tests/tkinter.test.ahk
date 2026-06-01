@@ -2144,6 +2144,67 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCanvasTagManagementSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            canvas := stdlib.tkinter.Canvas(root, { width: 160, height: 120, bg: "white" })
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            lineId := canvas.create_line(0, 0, 10, 10, { tags: "path shape" })
+            rectId := canvas.create_rectangle(20, 20, 50, 50, { tags: "box shape" })
+            ovalId := canvas.create_oval(60, 60, 90, 90, { tags: "round" })
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual(stdlib.tuple(["path", "shape"]), canvas.gettags(lineId))
+            AhkTest.AssertEqual(stdlib.tuple(["path", "shape"]), canvas.gettags("shape"))
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_withtag("selected", "shape"))
+            AhkTest.AssertEqual(stdlib.tuple(["path", "shape", "selected"]), canvas.gettags(lineId))
+            AhkTest.AssertEqual(stdlib.tuple(["box", "shape", "selected"]), canvas.gettags(rectId))
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_all("everything"))
+            AhkTest.AssertEqual(stdlib.tuple(["round", "everything"]), canvas.gettags(ovalId))
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_above("above_line", lineId))
+            AhkTest.AssertEqual(stdlib.tuple(["box", "shape", "selected", "everything", "above_line"]), canvas.gettags(rectId))
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_below("below_oval", ovalId))
+            AhkTest.AssertEqual(stdlib.tuple(["box", "shape", "selected", "everything", "above_line", "below_oval"]), canvas.gettags(rectId))
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_closest("near_line", 2, 2))
+            AhkTest.AssertEqual(stdlib.tuple(["path", "shape", "selected", "everything", "near_line"]), canvas.gettags(lineId))
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_closest("near_rect", 62, 62, 100, ovalId))
+            AhkTest.AssertEqual(stdlib.tuple(["box", "shape", "selected", "everything", "above_line", "below_oval", "near_rect"]), canvas.gettags(rectId))
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_enclosed("inside_rect", 15, 15, 55, 55))
+            AhkTest.AssertEqual(stdlib.tuple(["box", "shape", "selected", "everything", "above_line", "below_oval", "near_rect", "inside_rect"]), canvas.gettags(rectId))
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_overlapping("overlap_left", 0, 0, 25, 25))
+            AhkTest.AssertEqual(stdlib.tuple(["path", "shape", "selected", "everything", "near_line", "overlap_left"]), canvas.gettags(lineId))
+            AhkTest.AssertEqual(stdlib.tuple(["box", "shape", "selected", "everything", "above_line", "below_oval", "near_rect", "inside_rect", "overlap_left"]), canvas.gettags(rectId))
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag("rawtag", "withtag", lineId))
+            AhkTest.AssertEqual(stdlib.tuple(["path", "shape", "selected", "everything", "near_line", "overlap_left", "rawtag"]), canvas.gettags(lineId))
+            AhkTest.AssertEqual(stdlib.None, canvas.dtag("shape", "selected"))
+            AhkTest.AssertEqual(stdlib.tuple(["path", "shape", "everything", "near_line", "overlap_left", "rawtag"]), canvas.gettags(lineId))
+            AhkTest.AssertEqual(stdlib.tuple(["box", "shape", "everything", "above_line", "below_oval", "near_rect", "inside_rect", "overlap_left"]), canvas.gettags(rectId))
+            AhkTest.AssertEqual(stdlib.None, canvas.dtag(lineId))
+            AhkTest.AssertEqual(stdlib.tuple(["path", "shape", "everything", "near_line", "overlap_left", "rawtag"]), canvas.gettags(lineId))
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.gettags("missing"))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.!canvas gettags tagOrId"$', (*) => canvas.gettags())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.!canvas gettags tagOrId"$', (*) => canvas.gettags(lineId, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.addtag_all\(\) missing 1 required positional argument: 'newtag'$", (*) => canvas.addtag_all())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.addtag_withtag\(\) missing 2 required positional arguments: 'newtag' and 'tagOrId'$", (*) => canvas.addtag_withtag())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.addtag_withtag\(\) missing 1 required positional argument: 'tagOrId'$", (*) => canvas.addtag_withtag("tag"))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.addtag_closest\(\) missing 3 required positional arguments: 'newtag', 'x', and 'y'$", (*) => canvas.addtag_closest())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.addtag_closest\(\) takes from 4 to 6 positional arguments but 7 were given$", (*) => canvas.addtag_closest("tag", 1, 2, 3, 4, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.addtag_closest("tag", "bad", 2))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.addtag_enclosed\(\) missing 5 required positional arguments: 'newtag', 'x1', 'y1', 'x2', and 'y2'$", (*) => canvas.addtag_enclosed())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.addtag_enclosed\(\) takes 6 positional arguments but 7 were given$", (*) => canvas.addtag_enclosed("tag", 1, 2, 3, 4, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.addtag_enclosed("tag", 1, 2, 3, "bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.!canvas addtag tag searchCommand \?arg \.\.\.\?"$', (*) => canvas.addtag())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad search command "badsearch": must be above, all, below, closest, enclosed, overlapping, or withtag$', (*) => canvas.addtag("tag", "badsearch"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.!canvas dtag tagOrId \?tagToDelete\?"$', (*) => canvas.dtag())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCanvasViewAndCoordinateSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

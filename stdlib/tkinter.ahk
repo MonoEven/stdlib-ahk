@@ -2175,6 +2175,80 @@ class Canvas extends AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    addtag(args*)
+    {
+        script := this._w " addtag"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    addtag_above(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.addtag_above", args.Length, 2, 2, ["newtag", "tagOrId"])
+        return this.addtag(args[1], "above", args[2])
+    }
+
+    addtag_all(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.addtag_all", args.Length, 1, 1, ["newtag"])
+        return this.addtag(args[1], "all")
+    }
+
+    addtag_below(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.addtag_below", args.Length, 2, 2, ["newtag", "tagOrId"])
+        return this.addtag(args[1], "below", args[2])
+    }
+
+    addtag_closest(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.addtag_closest", args.Length, 3, 5, ["newtag", "x", "y"])
+        script := this._w " addtag " AhkStdlibTkinterTclWord(args[1]) " closest " AhkStdlibTkinterTclWord(args[2]) " " AhkStdlibTkinterTclWord(args[3])
+        if args.Length >= 4 && !AhkStdlibIsNone(args[4])
+            script .= " " AhkStdlibTkinterTclWord(args[4])
+        if args.Length >= 5 && !AhkStdlibIsNone(args[5])
+            script .= " " AhkStdlibTkinterTclWord(args[5])
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    addtag_enclosed(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.addtag_enclosed", args.Length, 5, 5, ["newtag", "x1", "y1", "x2", "y2"])
+        return this.addtag(args[1], "enclosed", args[2], args[3], args[4], args[5])
+    }
+
+    addtag_overlapping(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.addtag_overlapping", args.Length, 5, 5, ["newtag", "x1", "y1", "x2", "y2"])
+        return this.addtag(args[1], "overlapping", args[2], args[3], args[4], args[5])
+    }
+
+    addtag_withtag(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.addtag_withtag", args.Length, 2, 2, ["newtag", "tagOrId"])
+        return this.addtag(args[1], "withtag", args[2])
+    }
+
+    dtag(args*)
+    {
+        script := this._w " dtag"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    gettags(args*)
+    {
+        script := this._w " gettags"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(script)))
+    }
+
     canvasx(args*)
     {
         if args.Length = 0
@@ -3997,6 +4071,39 @@ AhkStdlibTkinterSetResult(interp, value)
 {
     valueBuffer := AhkStdlibTkinterUtf8Buffer(value)
     DllCall("tcl86t\Tcl_SetResult", "Ptr", interp, "Ptr", valueBuffer.Ptr, "Ptr", 1)
+}
+
+AhkStdlibTkinterCanvasRequireArgs(methodName, actual, minimum, maximum, requiredNames)
+{
+    if actual < minimum {
+        missing := []
+        index := actual + 1
+        while index <= minimum {
+            missing.Push(requiredNames[index])
+            index += 1
+        }
+        throw TypeError(methodName "() missing " missing.Length " required positional argument" (missing.Length = 1 ? "" : "s") ": " AhkStdlibTkinterRequiredArgList(missing), -1)
+    }
+    if actual > maximum {
+        if minimum = maximum
+            throw TypeError(methodName "() takes " minimum + 1 " positional arguments but " actual + 1 " were given", -1)
+        throw TypeError(methodName "() takes from " minimum + 1 " to " maximum + 1 " positional arguments but " actual + 1 " were given", -1)
+    }
+}
+
+AhkStdlibTkinterRequiredArgList(names)
+{
+    if names.Length = 1
+        return "'" names[1] "'"
+    if names.Length = 2
+        return "'" names[1] "' and '" names[2] "'"
+    result := ""
+    loop names.Length {
+        if A_Index > 1
+            result .= A_Index = names.Length ? ", and " : ", "
+        result .= "'" names[A_Index] "'"
+    }
+    return result
 }
 
 AhkStdlibTkinterCanvasCreateItem(canvas, itemType, args*)
