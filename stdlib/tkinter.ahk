@@ -2174,6 +2174,98 @@ class Canvas extends AhkStdlibTkinterWidget
         this.AhkStdlibRoot.eval(script)
         return stdlib.None
     }
+
+    canvasx(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Canvas.canvasx() missing 1 required positional argument: 'screenx'", -1)
+        if args.Length > 2
+            throw TypeError("Canvas.canvasx() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        script := this._w " canvasx " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2 && !AhkStdlibIsNone(args[2])
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        return AhkStdlibTkinterGetDouble(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(script))
+    }
+
+    canvasy(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Canvas.canvasy() missing 1 required positional argument: 'screeny'", -1)
+        if args.Length > 2
+            throw TypeError("Canvas.canvasy() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        script := this._w " canvasy " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2 && !AhkStdlibIsNone(args[2])
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        return AhkStdlibTkinterGetDouble(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(script))
+    }
+
+    xview(args*)
+    {
+        script := this._w " xview"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        value := this.AhkStdlibRoot.eval(script)
+        return args.Length = 0 ? AhkStdlibTkinterFloatTuple(value) : stdlib.None
+    }
+
+    xview_moveto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("XView.xview_moveto() missing 1 required positional argument: 'fraction'", -1)
+        if args.Length > 1
+            throw TypeError("XView.xview_moveto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+        this.AhkStdlibRoot.eval(this._w " xview moveto " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    xview_scroll(args*)
+    {
+        if args.Length = 0
+            throw TypeError("XView.xview_scroll() missing 2 required positional arguments: 'number' and 'what'", -1)
+        if args.Length = 1
+            throw TypeError("XView.xview_scroll() missing 1 required positional argument: 'what'", -1)
+        if args.Length > 2
+            throw TypeError("XView.xview_scroll() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        this.AhkStdlibRoot.eval(this._w " xview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    yview(args*)
+    {
+        script := this._w " yview"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        value := this.AhkStdlibRoot.eval(script)
+        return args.Length = 0 ? AhkStdlibTkinterFloatTuple(value) : stdlib.None
+    }
+
+    yview_moveto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("YView.yview_moveto() missing 1 required positional argument: 'fraction'", -1)
+        if args.Length > 1
+            throw TypeError("YView.yview_moveto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+        this.AhkStdlibRoot.eval(this._w " yview moveto " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    yview_scroll(args*)
+    {
+        if args.Length = 0
+            throw TypeError("YView.yview_scroll() missing 2 required positional arguments: 'number' and 'what'", -1)
+        if args.Length = 1
+            throw TypeError("YView.yview_scroll() missing 1 required positional argument: 'what'", -1)
+        if args.Length > 2
+            throw TypeError("YView.yview_scroll() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        this.AhkStdlibRoot.eval(this._w " yview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
 }
 
 class Text extends AhkStdlibTkinterWidget

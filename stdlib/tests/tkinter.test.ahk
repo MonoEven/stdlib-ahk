@@ -2144,6 +2144,61 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCanvasViewAndCoordinateSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.geometry("220x180+0+0")
+            canvas := stdlib.tkinter.Canvas(root, { width: 100, height: 80, scrollregion: "0 0 500 400", xscrollincrement: 10, yscrollincrement: 20 })
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 0.2]), canvas.xview())
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 0.2]), canvas.yview())
+            AhkTest.AssertEqual(-2.0, canvas.canvasx(0))
+            AhkTest.AssertEqual(-2.0, canvas.canvasy(0))
+            AhkTest.AssertEqual(10.0, canvas.canvasx(13, 10))
+            AhkTest.AssertEqual(40.0, canvas.canvasy(33, 20))
+            AhkTest.AssertEqual(11.0, canvas.canvasx(13, stdlib.None))
+            AhkTest.AssertEqual(31.0, canvas.canvasy(33, stdlib.None))
+
+            AhkTest.AssertEqual(stdlib.None, canvas.xview_moveto(0.5))
+            AhkTest.AssertEqual(stdlib.tuple([0.5, 0.7]), canvas.xview())
+            AhkTest.AssertEqual(248.0, canvas.canvasx(0))
+            AhkTest.AssertEqual(stdlib.None, canvas.xview_scroll(2, "units"))
+            AhkTest.AssertEqual(stdlib.tuple([0.54, 0.74]), canvas.xview())
+
+            AhkTest.AssertEqual(stdlib.None, canvas.yview("moveto", 0.25))
+            AhkTest.AssertEqual(stdlib.tuple([0.25, 0.45]), canvas.yview())
+            AhkTest.AssertEqual(98.0, canvas.canvasy(0))
+            AhkTest.AssertEqual(stdlib.None, canvas.yview("scroll", 1, "units"))
+            AhkTest.AssertEqual(stdlib.tuple([0.3, 0.5]), canvas.yview())
+
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.canvasx\(\) missing 1 required positional argument: 'screenx'$", (*) => canvas.canvasx())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.canvasx\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => canvas.canvasx(1, 2, 3))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.canvasx("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.canvasx(1, "bad"))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.canvasy\(\) missing 1 required positional argument: 'screeny'$", (*) => canvas.canvasy())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.canvasy\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => canvas.canvasy(1, 2, 3))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.canvasy("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "bad": must be moveto or scroll$', (*) => canvas.xview("bad"))
+            AhkTest.RaisesMatch(TypeError, "^XView\.xview_moveto\(\) missing 1 required positional argument: 'fraction'$", (*) => canvas.xview_moveto())
+            AhkTest.RaisesMatch(TypeError, "^XView\.xview_moveto\(\) takes 2 positional arguments but 3 were given$", (*) => canvas.xview_moveto(0.1, 0.2))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => canvas.xview_moveto("bad"))
+            AhkTest.RaisesMatch(TypeError, "^XView\.xview_scroll\(\) missing 2 required positional arguments: 'number' and 'what'$", (*) => canvas.xview_scroll())
+            AhkTest.RaisesMatch(TypeError, "^XView\.xview_scroll\(\) missing 1 required positional argument: 'what'$", (*) => canvas.xview_scroll(1))
+            AhkTest.RaisesMatch(TypeError, "^XView\.xview_scroll\(\) takes 3 positional arguments but 4 were given$", (*) => canvas.xview_scroll(1, "units", "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => canvas.xview_scroll("bad", "units"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad argument "bad": must be units or pages$', (*) => canvas.xview_scroll(1, "bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "bad": must be moveto or scroll$', (*) => canvas.yview("bad"))
+            AhkTest.RaisesMatch(TypeError, "^YView\.yview_moveto\(\) missing 1 required positional argument: 'fraction'$", (*) => canvas.yview_moveto())
+            AhkTest.RaisesMatch(TypeError, "^YView\.yview_scroll\(\) missing 1 required positional argument: 'what'$", (*) => canvas.yview_scroll(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCanvasAdditionalItemCreationSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
