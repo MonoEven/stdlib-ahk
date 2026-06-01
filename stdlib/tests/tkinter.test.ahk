@@ -230,6 +230,54 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWidgetVisibilityAndToplevelGeometryMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            AhkTest.AssertEqual("", root.geometry("260x180+10+20"))
+            frame := stdlib.tkinter.Frame(root, { name: "host", width: 90, height: 40, bg: "white" })
+            label := stdlib.tkinter.Label(frame, { name: "caption", text: "Hello" })
+            AhkTest.AssertEqual(stdlib.None, frame.pack())
+            AhkTest.AssertEqual(stdlib.None, label.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual(1, frame.winfo_viewable())
+            AhkTest.AssertEqual(1, frame.winfo_ismapped())
+            AhkTest.AssertTrue(frame.winfo_width() > 0)
+            AhkTest.AssertTrue(frame.winfo_height() > 0)
+            AhkTest.AssertEqual(1, label.winfo_viewable())
+            AhkTest.AssertEqual(1, label.winfo_ismapped())
+            AhkTest.AssertTrue(label.winfo_width() > 0)
+            AhkTest.AssertTrue(label.winfo_height() > 0)
+            AhkTest.AssertSame(root, label.winfo_toplevel())
+
+            top := stdlib.tkinter.Toplevel(root, { name: "dialog" })
+            AhkTest.AssertEqual("", top.geometry("180x90+30+40"))
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual("180x90+30+40", top.geometry())
+            AhkTest.AssertEqual(180, top.winfo_width())
+            AhkTest.AssertEqual(90, top.winfo_height())
+            AhkTest.AssertEqual(1, top.winfo_viewable())
+            AhkTest.AssertEqual(1, top.winfo_ismapped())
+            AhkTest.AssertSame(top, top.winfo_toplevel())
+            child := stdlib.tkinter.Label(top, { name: "inner", text: "Inside" })
+            AhkTest.AssertEqual(stdlib.None, child.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertSame(top, child.winfo_toplevel())
+
+            AhkTest.RaisesMatch(TypeError, "^Wm\.wm_geometry\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => top.geometry("1x1", "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad geometry specifier "bad"$', (*) => top.geometry("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_height\(\) takes 1 positional argument but 2 were given$", (*) => label.winfo_height(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_toplevel\(\) takes 1 positional argument but 2 were given$", (*) => label.winfo_toplevel(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetsSupportVisibleGuiSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()

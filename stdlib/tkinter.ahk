@@ -596,14 +596,53 @@ class AhkStdlibTkinterWidget
         return info
     }
 
-    winfo_exists()
+    winfo_exists(args*)
     {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_exists() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return Integer(this.AhkStdlibRoot.eval("winfo exists " this._w))
     }
 
-    winfo_manager()
+    winfo_manager(args*)
     {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_manager() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval("winfo manager " this._w)
+    }
+
+    winfo_viewable(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_viewable() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.AhkStdlibRoot.eval("winfo viewable " this._w))
+    }
+
+    winfo_ismapped(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_ismapped() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.AhkStdlibRoot.eval("winfo ismapped " this._w))
+    }
+
+    winfo_width(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_width() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.AhkStdlibRoot.eval("winfo width " this._w))
+    }
+
+    winfo_height(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_height() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Integer(this.AhkStdlibRoot.eval("winfo height " this._w))
+    }
+
+    winfo_toplevel(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.winfo_toplevel() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return AhkStdlibTkinterWidgetToplevel(this)
     }
 
     destroy()
@@ -641,6 +680,15 @@ class Toplevel extends AhkStdlibTkinterWidget
         super.__New("Toplevel", "toplevel", args*)
         this.title(this.AhkStdlibRoot.title())
         this.AhkStdlibRoot.eval("wm protocol " this._w " WM_DELETE_WINDOW " AhkStdlibTkinterTclWord("destroy " this._w))
+    }
+
+    geometry(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_geometry() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.AhkStdlibRoot.eval("wm geometry " this._w)
+        return this.AhkStdlibRoot.eval("wm geometry " this._w " " AhkStdlibTkinterTclWord(args[1]))
     }
 
     title(args*)
@@ -1806,6 +1854,18 @@ AhkStdlibTkinterJoinWidgetPath(parentPath, name)
     if parentPath = "."
         return "." name
     return parentPath "." name
+}
+
+AhkStdlibTkinterWidgetToplevel(widget)
+{
+    current := widget
+    loop {
+        if current is Tk || current is Toplevel
+            return current
+        if !HasProp(current, "master")
+            return widget._root()
+        current := current.master
+    }
 }
 
 AhkStdlibTkinterOptionsToScript(options, includeName, root := unset)
