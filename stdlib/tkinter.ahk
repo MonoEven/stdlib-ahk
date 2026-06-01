@@ -529,6 +529,21 @@ class Tk
         return AhkStdlibTkinterFocusQuery(this, "focus -displayof .", "focus_displayof", args*)
     }
 
+    clipboard_clear(args*)
+    {
+        return AhkStdlibTkinterClipboardClear(this, ".", args*)
+    }
+
+    clipboard_append(args*)
+    {
+        return AhkStdlibTkinterClipboardAppend(this, ".", args*)
+    }
+
+    clipboard_get(args*)
+    {
+        return AhkStdlibTkinterClipboardGet(this, ".", args*)
+    }
+
     state(args*)
     {
         if args.Length > 1
@@ -1222,6 +1237,21 @@ class AhkStdlibTkinterWidget
     focus_displayof(args*)
     {
         return AhkStdlibTkinterFocusQuery(this.AhkStdlibRoot, "focus -displayof " this._w, "focus_displayof", args*)
+    }
+
+    clipboard_clear(args*)
+    {
+        return AhkStdlibTkinterClipboardClear(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    clipboard_append(args*)
+    {
+        return AhkStdlibTkinterClipboardAppend(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    clipboard_get(args*)
+    {
+        return AhkStdlibTkinterClipboardGet(this.AhkStdlibRoot, this._w, args*)
     }
 
     selection_get(args*)
@@ -2828,6 +2858,51 @@ AhkStdlibTkinterWinfoInteger(root, window, command, methodName, args*)
     if args.Length != 0
         throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
     return Integer(root.eval("winfo " command " " window))
+}
+
+AhkStdlibTkinterClipboardClear(root, window, args*)
+{
+    if args.Length > 1 || (args.Length = 1 && !AhkStdlibTkinterIsPlainKeywordObject(args[1]))
+        throw TypeError("Misc.clipboard_clear() takes 1 positional argument but " args.Length + 1 " were given", -1)
+
+    options := args.Length = 1 ? args[1] : {}
+    root.eval("clipboard clear" AhkStdlibTkinterClipboardOptionsToScript(options, window, true))
+    return stdlib.None
+}
+
+AhkStdlibTkinterClipboardAppend(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.clipboard_append() missing 1 required positional argument: 'string'", -1)
+    if args.Length > 2 || (args.Length = 2 && !AhkStdlibTkinterIsPlainKeywordObject(args[2]))
+        throw TypeError("Misc.clipboard_append() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    options := args.Length = 2 ? args[2] : {}
+    root.eval("clipboard append" AhkStdlibTkinterClipboardOptionsToScript(options, window, true) " -- " AhkStdlibTkinterTclWord(args[1]))
+    return stdlib.None
+}
+
+AhkStdlibTkinterClipboardGet(root, window, args*)
+{
+    if args.Length > 1 || (args.Length = 1 && !AhkStdlibTkinterIsPlainKeywordObject(args[1]))
+        throw TypeError("Misc.clipboard_get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+
+    options := args.Length = 1 ? args[1] : {}
+    return root.eval("clipboard get" AhkStdlibTkinterClipboardOptionsToScript(options, window, false))
+}
+
+AhkStdlibTkinterClipboardOptionsToScript(options, window, includeDefaultDisplayof)
+{
+    script := ""
+    hasDisplayof := false
+    for key, value in options.OwnProps() {
+        if key = "displayof"
+            hasDisplayof := true
+        script .= " -" key " " AhkStdlibTkinterTclWord(value)
+    }
+    if includeDefaultDisplayof && !hasDisplayof
+        script .= " -displayof " AhkStdlibTkinterTclWord(window)
+    return script
 }
 
 AhkStdlibTkinterPackSlaves(root, window, args*)

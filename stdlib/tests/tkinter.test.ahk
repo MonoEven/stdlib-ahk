@@ -1791,6 +1791,43 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkClipboardSurfaceMatchesLocal310()
+    {
+        oldClipboard := A_Clipboard
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            frame := stdlib.tkinter.Frame(root, { name: "cliphost" })
+            AhkTest.AssertEqual(stdlib.None, frame.pack())
+
+            AhkTest.AssertEqual(stdlib.None, root.clipboard_clear())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^CLIPBOARD selection doesn't exist or form " Chr(34) "STRING" Chr(34) " not defined$", (*) => root.clipboard_get())
+            AhkTest.AssertEqual(stdlib.None, root.clipboard_append("alpha"))
+            AhkTest.AssertEqual("alpha", root.clipboard_get())
+            AhkTest.AssertEqual(stdlib.None, root.clipboard_append("beta"))
+            AhkTest.AssertEqual("alphabeta", root.clipboard_get({ type: "STRING" }))
+
+            AhkTest.AssertEqual(stdlib.None, frame.clipboard_clear())
+            AhkTest.AssertEqual(stdlib.None, frame.clipboard_append("widget"))
+            AhkTest.AssertEqual("widget", frame.clipboard_get())
+            AhkTest.AssertEqual(stdlib.None, frame.clipboard_append(7))
+            AhkTest.AssertEqual("widget7", frame.clipboard_get({ displayof: root }))
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.clipboard_clear\(\) takes 1 positional argument but 2 were given$", (*) => root.clipboard_clear(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.clipboard_append\(\) missing 1 required positional argument: 'string'$", (*) => root.clipboard_append())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.clipboard_append\(\) takes 2 positional arguments but 3 were given$", (*) => root.clipboard_append("a", "b"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.clipboard_get\(\) takes 1 positional argument but 2 were given$", (*) => root.clipboard_get(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^CLIPBOARD selection doesn't exist or form " Chr(34) "BAD_TYPE" Chr(34) " not defined$", (*) => root.clipboard_get({ type: "BAD_TYPE" }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad option "-bad": must be -displayof, -format, or -type$', (*) => root.clipboard_append("x", { bad: 1 }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad option "-bad": must be -displayof or -type$', (*) => root.clipboard_get({ bad: 1 }))
+        } finally {
+            try root.clipboard_clear()
+            try root.update_idletasks()
+            try root.destroy()
+            A_Clipboard := oldClipboard
+        }
+    }
+
     static TestTextWidgetEditingSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

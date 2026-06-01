@@ -25,6 +25,7 @@ tkinter_example_winfo_command := tkinter_example_tk_interp.eval("info commands w
 tkinter_example_tk_package := tkinter_example_tk_interp.eval("package require Tk")
 
 tkinter_example_root := stdlib.tkinter.Tk()
+tkinter_example_saved_clipboard := A_Clipboard
 try {
     tkinter_example_root_manager := tkinter_example_root.winfo_manager()
     tkinter_example_root_state_before := tkinter_example_root.state()
@@ -116,6 +117,14 @@ try {
     tkinter_example_label_name := tkinter_example_label.winfo_name()
     tkinter_example_label_parent := tkinter_example_label.winfo_parent()
     tkinter_example_button_parent := tkinter_example_button.winfo_parent()
+    tkinter_example_clipboard_clear_return := tkinter_example_root.clipboard_clear()
+    tkinter_example_clipboard_append_return := tkinter_example_root.clipboard_append("alpha")
+    tkinter_example_clipboard_append_more_return := tkinter_example_root.clipboard_append("beta")
+    tkinter_example_clipboard_text := tkinter_example_root.clipboard_get()
+    tkinter_example_clipboard_string := tkinter_example_root.clipboard_get({ type: "STRING" })
+    tkinter_example_frame_clipboard_clear_return := tkinter_example_frame.clipboard_clear()
+    tkinter_example_frame_clipboard_append_return := tkinter_example_frame.clipboard_append("widget")
+    tkinter_example_frame_clipboard_text := tkinter_example_frame.clipboard_get({ displayof: tkinter_example_root })
     tkinter_example_checkbutton_text := tkinter_example_checkbutton.cget("text")
     tkinter_example_checkbutton_variable := tkinter_example_checkbutton.cget("variable")
     tkinter_example_checkbutton_select_return := tkinter_example_checkbutton.select()
@@ -443,6 +452,7 @@ try {
     tkinter_example_root_destroy_return := tkinter_example_root.destroy()
 } finally {
     try tkinter_example_root.destroy()
+    A_Clipboard := tkinter_example_saved_clipboard
 }
 
 tkinter_example_named := stdlib.tkinter.StringVar(tkinter_example_interp, "seed", "custom_name")
