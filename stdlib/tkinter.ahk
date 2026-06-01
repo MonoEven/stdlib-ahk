@@ -800,6 +800,41 @@ class Tk
         return AhkStdlibTkinterWinfoInteger(this, ".", "screenheight", "winfo_screenheight", args*)
     }
 
+    winfo_screen(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this, ".", "screen", "winfo_screen", args*)
+    }
+
+    winfo_screenmmwidth(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "screenmmwidth", "winfo_screenmmwidth", args*)
+    }
+
+    winfo_screenmmheight(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "screenmmheight", "winfo_screenmmheight", args*)
+    }
+
+    winfo_screendepth(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "screendepth", "winfo_screendepth", args*)
+    }
+
+    winfo_screencells(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this, ".", "screencells", "winfo_screencells", args*)
+    }
+
+    winfo_screenvisual(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this, ".", "screenvisual", "winfo_screenvisual", args*)
+    }
+
+    winfo_server(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this, ".", "server", "winfo_server", args*)
+    }
+
     winfo_reqwidth(args*)
     {
         return AhkStdlibTkinterWinfoInteger(this, ".", "reqwidth", "winfo_reqwidth", args*)
@@ -1400,6 +1435,41 @@ class AhkStdlibTkinterWidget
     winfo_screenheight(args*)
     {
         return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "screenheight", "winfo_screenheight", args*)
+    }
+
+    winfo_screen(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "screen", "winfo_screen", args*)
+    }
+
+    winfo_screenmmwidth(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "screenmmwidth", "winfo_screenmmwidth", args*)
+    }
+
+    winfo_screenmmheight(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "screenmmheight", "winfo_screenmmheight", args*)
+    }
+
+    winfo_screendepth(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "screendepth", "winfo_screendepth", args*)
+    }
+
+    winfo_screencells(args*)
+    {
+        return AhkStdlibTkinterWinfoInteger(this.AhkStdlibRoot, this._w, "screencells", "winfo_screencells", args*)
+    }
+
+    winfo_screenvisual(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "screenvisual", "winfo_screenvisual", args*)
+    }
+
+    winfo_server(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "server", "winfo_server", args*)
     }
 
     winfo_reqwidth(args*)

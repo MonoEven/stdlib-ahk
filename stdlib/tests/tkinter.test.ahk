@@ -761,6 +761,40 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkWinfoScreenMetadataQueriesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            frame := stdlib.tkinter.Frame(root, { name: "screen_host" })
+            label := stdlib.tkinter.Label(frame, { name: "caption", text: "Hello" })
+            AhkTest.AssertEqual(stdlib.None, frame.pack())
+            AhkTest.AssertEqual(stdlib.None, label.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            for widget in [root, frame, label] {
+                AhkTest.AssertEqual(":0.0", widget.winfo_screen())
+                AhkTest.AssertEqual(452, widget.winfo_screenmmwidth())
+                AhkTest.AssertEqual(282, widget.winfo_screenmmheight())
+                AhkTest.AssertEqual(32, widget.winfo_screendepth())
+                AhkTest.AssertEqual(256, widget.winfo_screencells())
+                AhkTest.AssertEqual("truecolor", widget.winfo_screenvisual())
+                AhkTest.AssertEqual("Windows 10.0 29599 Win64", widget.winfo_server())
+            }
+
+            label.destroy()
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.screen_host\.caption"$', (*) => label.winfo_screen())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name "\.screen_host\.caption"$', (*) => label.winfo_server())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_screen\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_screen(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_screenmmwidth\(\) takes 1 positional argument but 2 were given$", (*) => frame.winfo_screenmmwidth(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_screendepth\(\) takes 1 positional argument but 2 were given$", (*) => frame.winfo_screendepth(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.winfo_server\(\) takes 1 positional argument but 2 were given$", (*) => root.winfo_server(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkWidgetIdentityTreeSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
