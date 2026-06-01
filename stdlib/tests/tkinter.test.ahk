@@ -2303,6 +2303,53 @@ class StdlibTkinterTest
         }
     }
 
+    static TestBitmapImageDataFileAndWidgetSurfaceMatchesLocal310()
+    {
+        bitmapPath := A_Temp "\stdlib-tkinter-bitmap-" A_TickCount "-" Random(100000, 999999) ".xbm"
+        bitmapData := "#define stdlib_width 2`n#define stdlib_height 2`nstatic unsigned char stdlib_bits[] = { 0x01, 0x02 };`n"
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            image := stdlib.tkinter.BitmapImage({ master: root, name: "bitmap_probe", data: bitmapData, foreground: "red", background: "white" })
+
+            AhkTest.AssertEqual("BitmapImage", Type(image))
+            AhkTest.AssertEqual("bitmap_probe", String(image))
+            AhkTest.AssertEqual(2, image.width())
+            AhkTest.AssertEqual(2, image.height())
+            AhkTest.AssertEqual("bitmap", image.type())
+            AhkTest.AssertEqual(stdlib.None, image.configure({ foreground: "blue" }))
+            AhkTest.AssertEqual(2, image.width())
+            AhkTest.AssertEqual(2, image.height())
+
+            label := stdlib.tkinter.Label(root, { image: image })
+            AhkTest.AssertEqual("bitmap_probe", label.cget("image"))
+            AhkTest.AssertContains("bitmap_probe", root.image_names())
+
+            try FileDelete bitmapPath
+            FileAppend bitmapData, bitmapPath, "UTF-8-RAW"
+            fileImage := stdlib.tkinter.BitmapImage({ master: root, name: "bitmap_file_probe", file: bitmapPath })
+            AhkTest.AssertEqual("BitmapImage", Type(fileImage))
+            AhkTest.AssertEqual(2, fileImage.width())
+            AhkTest.AssertEqual(2, fileImage.height())
+            AhkTest.AssertEqual("bitmap", fileImage.type())
+            AhkTest.AssertContains("bitmap_file_probe", root.image_names())
+
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'call'$", (*) => stdlib.tkinter.BitmapImage({ master: 1, data: bitmapData }))
+            AhkTest.RaisesMatch(TypeError, "^BitmapImage\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.BitmapImage("a", {}, root, "extra"))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'items'$", (*) => stdlib.tkinter.BitmapImage("a", 1, root))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.BitmapImage({ master: root, bad: 1 }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^format error in bitmap data$", (*) => stdlib.tkinter.BitmapImage({ master: root, data: "bad" }))
+            AhkTest.RaisesMatch(TypeError, "^Image\.width\(\) takes 1 positional argument but 2 were given$", (*) => image.width(1))
+            AhkTest.RaisesMatch(TypeError, "^Image\.height\(\) takes 1 positional argument but 2 were given$", (*) => image.height(1))
+            AhkTest.RaisesMatch(TypeError, "^Image\.type\(\) takes 1 positional argument but 2 were given$", (*) => image.type(1))
+            AhkTest.RaisesMatch(TypeError, "^Image\.configure\(\) takes 1 positional argument but 3 were given$", (*) => image.configure({}, {}))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+            try FileDelete bitmapPath
+        }
+    }
+
     static TestTkImageRegistryQueriesMatchLocal310()
     {
         root := stdlib.tkinter.Tk()

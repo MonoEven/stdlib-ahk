@@ -112,6 +112,11 @@ class AhkStdlibTkinter
         return Text(args*)
     }
 
+    static BitmapImage(args*)
+    {
+        return BitmapImage(args*)
+    }
+
     static PhotoImage(args*)
     {
         return PhotoImage(args*)
@@ -2189,6 +2194,14 @@ class PhotoImage extends AhkStdlibTkinterImage
         destImage := PhotoImage({ master: this.tk })
         this.tk.eval(AhkStdlibTkinterTclWord(destImage.name) " copy " AhkStdlibTkinterTclWord(this.name) " -zoom " AhkStdlibTkinterTclWord(x) " " AhkStdlibTkinterTclWord(y))
         return destImage
+    }
+}
+
+class BitmapImage extends AhkStdlibTkinterImage
+{
+    __New(args*)
+    {
+        super.__New("BitmapImage", "bitmap", args*)
     }
 }
 
@@ -4801,7 +4814,8 @@ AhkStdlibTkinterOptionsToScript(options, includeName, root := unset)
         optionName := key = "from_" ? "from" : key
         if key = "command" && IsSet(root)
             value := AhkStdlibTkinterMaybeRegisterCommand(root, value)
-        script .= " -" optionName " " AhkStdlibTkinterTclWord(value)
+        optionValue := (optionName = "data" || optionName = "maskdata") ? AhkStdlibTkinterTclQuotedWord(value) : AhkStdlibTkinterTclWord(value)
+        script .= " -" optionName " " optionValue
     }
     return script
 }

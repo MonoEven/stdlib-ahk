@@ -27,6 +27,7 @@ tkinter_example_tk_package := tkinter_example_tk_interp.eval("package require Tk
 tkinter_example_root := stdlib.tkinter.Tk()
 tkinter_example_saved_clipboard := A_Clipboard
 tkinter_example_option_file := A_Temp "\stdlib-tkinter-example-options-" A_TickCount "-" Random(100000, 999999) ".txt"
+tkinter_example_bitmap_file := A_Temp "\stdlib-tkinter-example-bitmap-" A_TickCount "-" Random(100000, 999999) ".xbm"
 tkinter_example_photo_file := A_Temp "\stdlib-tkinter-example-photo-" A_TickCount "-" Random(100000, 999999) ".png"
 tkinter_example_postscript_file := A_Temp "\stdlib-tkinter-example-canvas-" A_TickCount "-" Random(100000, 999999) ".ps"
 try {
@@ -431,6 +432,18 @@ try {
     tkinter_example_photo_label_image_types := tkinter_example_photo_label.image_types()
     tkinter_example_photo_label_image_names := tkinter_example_photo_label.image_names()
     tkinter_example_photo_blank_return := tkinter_example_photo.blank()
+    tkinter_example_bitmap_data := "#define stdlib_width 2`n#define stdlib_height 2`nstatic unsigned char stdlib_bits[] = { 0x01, 0x02 };`n"
+    tkinter_example_bitmap := stdlib.tkinter.BitmapImage({ master: tkinter_example_root, name: "bitmap_example", data: tkinter_example_bitmap_data, foreground: "black", background: "white" })
+    tkinter_example_bitmap_width := tkinter_example_bitmap.width()
+    tkinter_example_bitmap_height := tkinter_example_bitmap.height()
+    tkinter_example_bitmap_type := tkinter_example_bitmap.type()
+    tkinter_example_bitmap_configure_return := tkinter_example_bitmap.configure({ foreground: "blue" })
+    tkinter_example_bitmap_label := stdlib.tkinter.Label(tkinter_example_root, { image: tkinter_example_bitmap })
+    tkinter_example_bitmap_label_image := tkinter_example_bitmap_label.cget("image")
+    try FileDelete tkinter_example_bitmap_file
+    FileAppend tkinter_example_bitmap_data, tkinter_example_bitmap_file, "UTF-8-RAW"
+    tkinter_example_bitmap_file_image := stdlib.tkinter.BitmapImage({ master: tkinter_example_root, name: "bitmap_file_example", file: tkinter_example_bitmap_file })
+    tkinter_example_bitmap_file_size := stdlib.tuple([tkinter_example_bitmap_file_image.width(), tkinter_example_bitmap_file_image.height()])
     tkinter_example_grid_frame := stdlib.tkinter.Frame(tkinter_example_root, { name: "grid_host", width: 100, height: 80 })
     tkinter_example_grid_frame_pack_return := tkinter_example_grid_frame.pack()
     tkinter_example_grid_pack_propagate_initial := tkinter_example_grid_frame.pack_propagate()
@@ -599,6 +612,7 @@ try {
 } finally {
     try tkinter_example_root.destroy()
     try FileDelete tkinter_example_option_file
+    try FileDelete tkinter_example_bitmap_file
     try FileDelete tkinter_example_photo_file
     try FileDelete tkinter_example_postscript_file
     A_Clipboard := tkinter_example_saved_clipboard
