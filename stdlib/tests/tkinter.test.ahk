@@ -526,6 +526,67 @@ class StdlibTkinterTest
         }
     }
 
+    static TestScaleNumericControlSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            calls := []
+            command := (current) => (calls.Push([current, Type(current)]), "done")
+            value := stdlib.tkinter.DoubleVar(root, 2.0, "scale_var")
+            scale := stdlib.tkinter.Scale(root, { name: "volume", from_: 0, to: 10, orient: "horizontal", resolution: 0.5, variable: value, command: command, length: 120, label: "Volume" })
+
+            AhkTest.AssertEqual("Scale", Type(scale))
+            AhkTest.AssertEqual(".volume", String(scale))
+            AhkTest.AssertSame(root, scale._root())
+            AhkTest.AssertEqual(1, scale.winfo_exists())
+            AhkTest.AssertEqual(0.0, scale.cget("from"))
+            AhkTest.AssertEqual(10.0, scale.cget("to"))
+            AhkTest.AssertEqual("horizontal", scale.cget("orient"))
+            AhkTest.AssertEqual(0.5, scale.cget("resolution"))
+            AhkTest.AssertEqual("scale_var", scale.cget("variable"))
+            AhkTest.AssertTrue(scale.cget("command") != "")
+            AhkTest.AssertEqual(120, scale.cget("length"))
+            AhkTest.AssertEqual("Volume", scale.cget("label"))
+            AhkTest.AssertEqual(2.0, scale.get())
+            AhkTest.AssertEqual(2.0, value.get())
+            AhkTest.AssertEqual(stdlib.None, scale.set(4.5))
+            AhkTest.AssertEqual(4.5, scale.get())
+            AhkTest.AssertEqual(4.5, value.get())
+            AhkTest.AssertEqual([], calls)
+            AhkTest.AssertEqual("done", root.eval(scale.cget("command") " 7.5"))
+            AhkTest.AssertEqual([["7.5", "String"]], calls)
+            coords := scale.coords()
+            AhkTest.AssertEqual(2, coords.Length)
+            AhkTest.AssertTrue(coords[1] is Integer)
+            AhkTest.AssertTrue(coords[2] is Integer)
+            AhkTest.AssertEqual(coords, scale.coords(5))
+            AhkTest.AssertEqual("", scale.identify(10, 10))
+            AhkTest.AssertEqual(stdlib.None, scale.pack())
+            AhkTest.AssertEqual("pack", scale.winfo_manager())
+            AhkTest.AssertEqual(stdlib.None, scale.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .volume"))
+
+            AhkTest.AssertEqual(".kw", String(stdlib.tkinter.Scale({ master: root, name: "kw" })))
+            AhkTest.AssertEqual(1.0, stdlib.tkinter.Scale(root, { name: "cnf", from_: 1, to: 3 }).cget("from"))
+            AhkTest.AssertEqual(3.0, stdlib.tkinter.Scale(root, { name: "cnf2", from_: 1, to: 3 }).cget("to"))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.Scale({ master: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Scale\.__init__\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Scale(root, {}, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-extra_kw"$', (*) => stdlib.tkinter.Scale(root, { extra_kw: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Scale\.get\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Scale(root).get(1))
+            AhkTest.RaisesMatch(TypeError, "^Scale\.set\(\) missing 1 required positional argument: 'value'$", (*) => stdlib.tkinter.Scale(root).set())
+            AhkTest.RaisesMatch(TypeError, "^Scale\.set\(\) takes 2 positional arguments but 3 were given$", (*) => stdlib.tkinter.Scale(root).set(1, 2))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => stdlib.tkinter.Scale(root).set("bad"))
+            AhkTest.RaisesMatch(TypeError, "^Scale\.coords\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => stdlib.tkinter.Scale(root).coords(1, 2))
+            AhkTest.RaisesMatch(TypeError, "^Scale\.identify\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => stdlib.tkinter.Scale(root).identify())
+            AhkTest.RaisesMatch(TypeError, "^Scale\.identify\(\) missing 1 required positional argument: 'y'$", (*) => stdlib.tkinter.Scale(root).identify(1))
+            AhkTest.RaisesMatch(TypeError, "^Scale\.identify\(\) takes 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Scale(root).identify(1, 2, 3))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestEntryWidgetSupportsInputSurfaceLikeLocal310()
     {
         root := stdlib.tkinter.Tk()

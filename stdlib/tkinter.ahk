@@ -77,6 +77,11 @@ class AhkStdlibTkinter
         return Radiobutton(args*)
     }
 
+    static Scale(args*)
+    {
+        return Scale(args*)
+    }
+
     static Canvas(args*)
     {
         return Canvas(args*)
@@ -821,6 +826,52 @@ class Radiobutton extends AhkStdlibTkinterWidget
     }
 }
 
+class Scale extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        super.__New("Scale", "scale", args*)
+    }
+
+    coords(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Scale.coords() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " coords"
+        if args.Length = 1
+            script .= " " AhkStdlibTkinterTclWord(args[1])
+        return AhkStdlibTkinterIntegerTuple(this.AhkStdlibRoot.eval(script))
+    }
+
+    get(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Scale.get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return Float(this.AhkStdlibRoot.eval(this._w " get"))
+    }
+
+    identify(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Scale.identify() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("Scale.identify() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("Scale.identify() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " identify " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+    }
+
+    set(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Scale.set() missing 1 required positional argument: 'value'", -1)
+        if args.Length > 1
+            throw TypeError("Scale.set() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " set " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+}
+
 class Canvas extends AhkStdlibTkinterWidget
 {
     __New(args*)
@@ -1506,9 +1557,10 @@ AhkStdlibTkinterOptionsToScript(options, includeName, root := unset)
             continue
         if key = "name" && !includeName
             continue
+        optionName := key = "from_" ? "from" : key
         if key = "command" && IsSet(root)
             value := AhkStdlibTkinterMaybeRegisterCommand(root, value)
-        script .= " -" key " " AhkStdlibTkinterTclWord(value)
+        script .= " -" optionName " " AhkStdlibTkinterTclWord(value)
     }
     return script
 }
@@ -1555,7 +1607,7 @@ AhkStdlibTkinterCommandProc(clientData, interp, argc, argv)
 {
     try {
         entry := AhkStdlibTkinterCommandCallbackRegistry(clientData)
-        result := AhkStdlibTkinterCallCommandCallback(entry)
+        result := AhkStdlibTkinterCallCommandCallback(entry, AhkStdlibTkinterCommandArgs(argc, argv))
         AhkStdlibTkinterSetResult(interp, AhkStdlibTkinterValueToString(result))
         return 0
     } catch as err {
@@ -1574,11 +1626,22 @@ AhkStdlibTkinterCommandCallbackRegistry(id, callback := unset)
     return callbacks[id]
 }
 
-AhkStdlibTkinterCallCommandCallback(entry)
+AhkStdlibTkinterCommandArgs(argc, argv)
+{
+    args := []
+    index := 1
+    while index < argc {
+        args.Push(StrGet(NumGet(argv, A_PtrSize * index, "Ptr"), "UTF-8"))
+        index += 1
+    }
+    return args
+}
+
+AhkStdlibTkinterCallCommandCallback(entry, args)
 {
     if IsObject(entry) && entry.HasOwnProp("Callback")
         return entry.Callback.Call(entry.Args*)
-    return entry.Call()
+    return entry.Call(args*)
 }
 
 AhkStdlibTkinterSetResult(interp, value)
@@ -1627,8 +1690,10 @@ AhkStdlibTkinterCanvasCoordList(value)
 AhkStdlibTkinterCgetValue(key, value)
 {
     switch key {
-        case "width", "height":
+        case "width", "height", "length":
             try return Integer(value)
+        case "from", "to", "resolution":
+            try return Float(value)
     }
     return value
 }
