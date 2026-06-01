@@ -438,6 +438,21 @@ class Tk
         return AhkStdlibTkinterGridSlaves(this, ".", args*)
     }
 
+    grid_size(args*)
+    {
+        return AhkStdlibTkinterGridSize(this, ".", args*)
+    }
+
+    grid_bbox(args*)
+    {
+        return AhkStdlibTkinterGridBbox(this, ".", args*)
+    }
+
+    grid_location(args*)
+    {
+        return AhkStdlibTkinterGridLocation(this, ".", args*)
+    }
+
     place_slaves(args*)
     {
         return AhkStdlibTkinterPlaceSlaves(this, ".", args*)
@@ -656,6 +671,21 @@ class AhkStdlibTkinterWidget
     grid_slaves(args*)
     {
         return AhkStdlibTkinterGridSlaves(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    grid_size(args*)
+    {
+        return AhkStdlibTkinterGridSize(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    grid_bbox(args*)
+    {
+        return AhkStdlibTkinterGridBbox(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    grid_location(args*)
+    {
+        return AhkStdlibTkinterGridLocation(this.AhkStdlibRoot, this._w, args*)
     }
 
     grid_info(args*)
@@ -2257,6 +2287,90 @@ AhkStdlibTkinterGridSlaves(root, window, args*)
             script .= " -column " AhkStdlibTkinterTclWord(args[2])
     }
     return AhkStdlibTkinterWidgetListFromPathList(root, root.eval(script))
+}
+
+AhkStdlibTkinterGridSize(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.grid_size() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    return AhkStdlibTkinterIntegerTuple(root.eval("grid size " window))
+}
+
+AhkStdlibTkinterGridBbox(root, window, args*)
+{
+    if args.Length > 4
+        throw TypeError("Misc.grid_bbox() takes from 1 to 5 positional arguments but " args.Length + 1 " were given", -1)
+
+    column := stdlib.None
+    row := stdlib.None
+    col2 := stdlib.None
+    row2 := stdlib.None
+    if args.Length = 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1]) {
+        options := args[1]
+        for key, value in options.OwnProps() {
+            switch key {
+                case "column":
+                    column := value
+                case "row":
+                    row := value
+                case "col2":
+                    col2 := value
+                case "row2":
+                    row2 := value
+                default:
+                    throw TypeError("Misc.grid_bbox() got an unexpected keyword argument '" key "'", -1)
+            }
+        }
+    } else {
+        if args.Length >= 1
+            column := args[1]
+        if args.Length >= 2
+            row := args[2]
+        if args.Length >= 3
+            col2 := args[3]
+        if args.Length >= 4
+            row2 := args[4]
+    }
+
+    script := "grid bbox " window
+    if !AhkStdlibIsNone(column) && !AhkStdlibIsNone(row)
+        script .= " " AhkStdlibTkinterTclWord(column) " " AhkStdlibTkinterTclWord(row)
+    if !AhkStdlibIsNone(col2) && !AhkStdlibIsNone(row2)
+        script .= " " AhkStdlibTkinterTclWord(col2) " " AhkStdlibTkinterTclWord(row2)
+    return AhkStdlibTkinterIntegerTuple(root.eval(script))
+}
+
+AhkStdlibTkinterGridLocation(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.grid_location() missing 2 required positional arguments: 'x' and 'y'", -1)
+    if args.Length = 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1]) {
+        options := args[1]
+        x := unset
+        y := unset
+        for key, value in options.OwnProps() {
+            switch key {
+                case "x":
+                    x := value
+                case "y":
+                    y := value
+                default:
+                    throw TypeError("Misc.grid_location() got an unexpected keyword argument '" key "'", -1)
+            }
+        }
+        if !IsSet(x)
+            throw TypeError("Misc.grid_location() missing 1 required positional argument: 'x'", -1)
+        if !IsSet(y)
+            throw TypeError("Misc.grid_location() missing 1 required positional argument: 'y'", -1)
+    } else {
+        if args.Length = 1
+            throw TypeError("Misc.grid_location() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("Misc.grid_location() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        x := args[1]
+        y := args[2]
+    }
+    return AhkStdlibTkinterIntegerTuple(root.eval("grid location " window " " AhkStdlibTkinterTclWord(x) " " AhkStdlibTkinterTclWord(y)))
 }
 
 AhkStdlibTkinterPlaceSlaves(root, window, args*)

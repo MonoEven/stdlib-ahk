@@ -140,7 +140,7 @@ try {
     tkinter_example_button_pack_info_after_forget_error := ""
     try tkinter_example_button.pack_info()
     catch as tkinter_example_button_pack_info_after_forget_error
-    tkinter_example_button_pack_info_after_forget_message := tkinter_example_button_pack_info_after_forget_error.Message
+        tkinter_example_button_pack_info_after_forget_message := tkinter_example_button_pack_info_after_forget_error.Message
     tkinter_example_button_pack_restore_return := tkinter_example_button.pack()
     tkinter_example_root_pack_slaves := tkinter_example_root.pack_slaves()
     tkinter_example_frame_pack_slaves := tkinter_example_frame.pack_slaves()
@@ -249,6 +249,11 @@ try {
     tkinter_example_grid_slaves := tkinter_example_grid_frame.grid_slaves()
     tkinter_example_grid_row_slaves := tkinter_example_grid_frame.grid_slaves(1)
     tkinter_example_grid_column_slaves := tkinter_example_grid_frame.grid_slaves({ column: 2 })
+    tkinter_example_grid_size := tkinter_example_grid_frame.grid_size()
+    tkinter_example_grid_bbox := tkinter_example_grid_frame.grid_bbox()
+    tkinter_example_grid_cell_bbox := tkinter_example_grid_frame.grid_bbox(2, 1)
+    tkinter_example_grid_location := tkinter_example_grid_frame.grid_location(0, 0)
+    tkinter_example_grid_cell_location := tkinter_example_grid_frame.grid_location(tkinter_example_grid_cell_bbox[1], tkinter_example_grid_cell_bbox[2])
     tkinter_example_place_label := stdlib.tkinter.Label(tkinter_example_grid_frame, { text: "Placed" })
     tkinter_example_place_return := tkinter_example_place_label.place({ x: 5, y: 6, width: 70, height: 20, anchor: "nw" })
     tkinter_example_place_manager := tkinter_example_place_label.winfo_manager()

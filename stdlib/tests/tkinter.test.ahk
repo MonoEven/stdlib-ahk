@@ -1530,6 +1530,60 @@ class StdlibTkinterTest
         }
     }
 
+    static TestGridGeometryQuerySurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            host := stdlib.tkinter.Frame(root, { name: "gridhost", width: 200, height: 120, bg: "white" })
+            AhkTest.AssertEqual(stdlib.None, host.pack())
+            labelOrigin := stdlib.tkinter.Label(host, { name: "a", text: "A", width: 4 })
+            labelWide := stdlib.tkinter.Label(host, { name: "b", text: "B", width: 6 })
+            labelBottom := stdlib.tkinter.Label(host, { name: "c", text: "C", width: 3 })
+            AhkTest.AssertEqual(stdlib.None, labelOrigin.grid({ row: 0, column: 0, ipadx: 2, ipady: 1, padx: 3, pady: 4 }))
+            AhkTest.AssertEqual(stdlib.None, labelWide.grid({ row: 1, column: 2, columnspan: 2, ipadx: 1, ipady: 2, padx: 5, pady: 6 }))
+            AhkTest.AssertEqual(stdlib.None, labelBottom.grid({ row: 2, column: 1, sticky: "nsew" }))
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual(stdlib.tuple([0, 0]), root.grid_size())
+            AhkTest.AssertEqual(stdlib.tuple([4, 3]), host.grid_size())
+            AhkTest.AssertEqual(stdlib.tuple([0, 0]), labelOrigin.grid_size())
+            wholeBox := host.grid_bbox()
+            originBox := host.grid_bbox(0, 0)
+            rowCellBox := host.grid_bbox(2, 1)
+            spannedBox := host.grid_bbox(2, 1, 3, 1)
+            AhkTest.AssertEqual(4, wholeBox.Length)
+            AhkTest.AssertEqual(4, originBox.Length)
+            AhkTest.AssertEqual(4, rowCellBox.Length)
+            AhkTest.AssertTrue(wholeBox[3] > originBox[3])
+            AhkTest.AssertTrue(wholeBox[4] > originBox[4])
+            AhkTest.AssertTrue(spannedBox[3] >= rowCellBox[3])
+            AhkTest.AssertEqual(wholeBox, host.grid_bbox("bad"))
+            AhkTest.AssertEqual(wholeBox, host.grid_bbox({ column: 2 }))
+            AhkTest.AssertEqual(rowCellBox, host.grid_bbox({ column: 2, row: 1 }))
+            AhkTest.AssertEqual(rowCellBox, host.grid_bbox({ col2: 2, row2: 1 }))
+            AhkTest.AssertEqual(stdlib.tuple([0, 0]), host.grid_location(0, 0))
+            AhkTest.AssertEqual(stdlib.tuple([4, 3]), host.grid_location(999, 999))
+            AhkTest.AssertEqual(stdlib.tuple([0, 0]), host.grid_location(originBox[1] + Floor(originBox[3] / 2), originBox[2] + Floor(originBox[4] / 2)))
+            AhkTest.AssertEqual(stdlib.tuple([2, 1]), host.grid_location(rowCellBox[1] + Floor(rowCellBox[3] / 2), rowCellBox[2] + Floor(rowCellBox[4] / 2)))
+            AhkTest.AssertEqual(stdlib.tuple([0, 0]), host.grid_location({ x: 0, y: 0 }))
+
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_size\(\) takes 1 positional argument but 2 were given$", (*) => host.grid_size(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_bbox\(\) takes from 1 to 5 positional arguments but 6 were given$", (*) => host.grid_bbox(1, 2, 3, 4, 5))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_bbox\(\) got an unexpected keyword argument 'bad'$", (*) => host.grid_bbox({ bad: 1 }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => host.grid_bbox("bad", 1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_location\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => host.grid_location())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_location\(\) missing 1 required positional argument: 'y'$", (*) => host.grid_location(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_location\(\) takes 3 positional arguments but 4 were given$", (*) => host.grid_location(1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.grid_location\(\) got an unexpected keyword argument 'bad'$", (*) => host.grid_location({ bad: 1 }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => host.grid_location("bad", 1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestBundledTclTkDllsExistForUseTkRuntime()
     {
         dllDir := StdlibTkinterTest.RuntimeLibDir()
