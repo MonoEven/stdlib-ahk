@@ -2144,6 +2144,67 @@ class StdlibTkinterTest
         }
     }
 
+    static TestCanvasFindQuerySurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            canvas := stdlib.tkinter.Canvas(root, { width: 120, height: 120, bg: "white" })
+            AhkTest.AssertEqual(stdlib.None, canvas.pack())
+            lineId := canvas.create_line(0, 0, 10, 10, { tags: "path shape" })
+            rectId := canvas.create_rectangle(20, 20, 50, 50, { tags: "box shape" })
+            ovalId := canvas.create_oval(60, 60, 90, 90, { tags: "round shape" })
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertEqual(stdlib.tuple([lineId, rectId, ovalId]), canvas.find_all())
+            AhkTest.AssertEqual(stdlib.tuple([lineId, rectId, ovalId]), canvas.find("all"))
+            AhkTest.AssertEqual(stdlib.tuple([lineId, rectId, ovalId]), canvas.find("withtag", "shape"))
+            AhkTest.AssertEqual(stdlib.tuple([lineId, rectId, ovalId]), canvas.find_withtag("shape"))
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.find_withtag("missing"))
+            AhkTest.AssertEqual(stdlib.tuple([rectId]), canvas.find_above(lineId))
+            AhkTest.AssertEqual(stdlib.tuple([ovalId]), canvas.find_above(rectId))
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.find_above(ovalId))
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.find_above("missing"))
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.find_below(lineId))
+            AhkTest.AssertEqual(stdlib.tuple([lineId]), canvas.find_below(rectId))
+            AhkTest.AssertEqual(stdlib.tuple([rectId]), canvas.find_below(ovalId))
+            AhkTest.AssertEqual(stdlib.tuple([lineId]), canvas.find_closest(2, 2))
+            AhkTest.AssertEqual(stdlib.tuple([rectId]), canvas.find_closest(30, 30))
+            AhkTest.AssertEqual(stdlib.tuple([ovalId]), canvas.find_closest(65, 65))
+            AhkTest.AssertEqual(stdlib.tuple([rectId]), canvas.find_closest(65, 65, 100, ovalId))
+            AhkTest.AssertEqual(stdlib.tuple([lineId]), canvas.find_closest(2, 2, stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple([lineId]), canvas.find_closest(2, 2, stdlib.None, stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple([rectId]), canvas.find_enclosed(15, 15, 55, 55))
+            AhkTest.AssertEqual(stdlib.tuple([rectId, ovalId]), canvas.find_enclosed(0, 0, 100, 100))
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.find_enclosed(100, 100, 110, 110))
+            AhkTest.AssertEqual(stdlib.tuple([lineId, rectId]), canvas.find_overlapping(0, 0, 25, 25))
+            AhkTest.AssertEqual(stdlib.tuple([ovalId]), canvas.find_overlapping(55, 55, 65, 65))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.!canvas find searchCommand \?arg \.\.\.\?"$', (*) => canvas.find())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad search command "badsearch": must be above, all, below, closest, enclosed, overlapping, or withtag$', (*) => canvas.find("badsearch"))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_above\(\) missing 1 required positional argument: 'tagOrId'$", (*) => canvas.find_above())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_above\(\) takes 2 positional arguments but 3 were given$", (*) => canvas.find_above(lineId, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_below\(\) missing 1 required positional argument: 'tagOrId'$", (*) => canvas.find_below())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_below\(\) takes 2 positional arguments but 3 were given$", (*) => canvas.find_below(lineId, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_closest\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => canvas.find_closest())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_closest\(\) missing 1 required positional argument: 'y'$", (*) => canvas.find_closest(1))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_closest\(\) takes from 3 to 5 positional arguments but 6 were given$", (*) => canvas.find_closest(1, 2, 3, 4, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.find_closest("bad", 2))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.find_closest(1, "bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.find_closest(1, 2, "bad"))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_enclosed\(\) missing 4 required positional arguments: 'x1', 'y1', 'x2', and 'y2'$", (*) => canvas.find_enclosed())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_enclosed\(\) missing 2 required positional arguments: 'x2' and 'y2'$", (*) => canvas.find_enclosed(1, 2))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_enclosed\(\) takes 5 positional arguments but 6 were given$", (*) => canvas.find_enclosed(1, 2, 3, 4, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.find_enclosed("bad", 1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_overlapping\(\) missing 4 required positional arguments: 'x1', 'y1', 'x2', and 'y2'$", (*) => canvas.find_overlapping())
+            AhkTest.RaisesMatch(TypeError, "^Canvas\.find_overlapping\(\) takes 5 positional arguments but 6 were given$", (*) => canvas.find_overlapping(1, 2, 3, 4, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad screen distance "bad"$', (*) => canvas.find_overlapping(1, "bad", 2, 3))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestCanvasTagManagementSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()

@@ -2095,11 +2095,54 @@ class Canvas extends AhkStdlibTkinterWidget
         return AhkStdlibTkinterCanvasCoordList(this.AhkStdlibRoot.eval(script))
     }
 
+    find(args*)
+    {
+        script := this._w " find"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        return AhkStdlibTkinterIntegerTuple(this.AhkStdlibRoot.eval(script))
+    }
+
     find_all(args*)
     {
         if args.Length != 0
             throw TypeError("Canvas.find_all() takes 1 positional argument but " args.Length + 1 " were given", -1)
-        return AhkStdlibTkinterIntegerTuple(this.AhkStdlibRoot.eval(this._w " find all"))
+        return this.find("all")
+    }
+
+    find_above(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.find_above", args.Length, 1, 1, ["tagOrId"])
+        return this.find("above", args[1])
+    }
+
+    find_below(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.find_below", args.Length, 1, 1, ["tagOrId"])
+        return this.find("below", args[1])
+    }
+
+    find_closest(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.find_closest", args.Length, 2, 4, ["x", "y"])
+        script := this._w " find closest " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])
+        if args.Length >= 3 && !AhkStdlibIsNone(args[3])
+            script .= " " AhkStdlibTkinterTclWord(args[3])
+        if args.Length >= 4 && !AhkStdlibIsNone(args[4])
+            script .= " " AhkStdlibTkinterTclWord(args[4])
+        return AhkStdlibTkinterIntegerTuple(this.AhkStdlibRoot.eval(script))
+    }
+
+    find_enclosed(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.find_enclosed", args.Length, 4, 4, ["x1", "y1", "x2", "y2"])
+        return this.find("enclosed", args[1], args[2], args[3], args[4])
+    }
+
+    find_overlapping(args*)
+    {
+        AhkStdlibTkinterCanvasRequireArgs("Canvas.find_overlapping", args.Length, 4, 4, ["x1", "y1", "x2", "y2"])
+        return this.find("overlapping", args[1], args[2], args[3], args[4])
     }
 
     find_withtag(args*)
@@ -2108,7 +2151,7 @@ class Canvas extends AhkStdlibTkinterWidget
             throw TypeError("Canvas.find_withtag() missing 1 required positional argument: 'tagOrId'", -1)
         if args.Length > 1
             throw TypeError("Canvas.find_withtag() takes 2 positional arguments but " args.Length + 1 " were given", -1)
-        return AhkStdlibTkinterIntegerTuple(this.AhkStdlibRoot.eval(this._w " find withtag " AhkStdlibTkinterTclWord(args[1])))
+        return this.find("withtag", args[1])
     }
 
     bbox(args*)
