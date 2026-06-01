@@ -588,6 +588,21 @@ class AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    pack_info(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Pack.pack_info() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return AhkStdlibTkinterPackInfo(this)
+    }
+
+    pack_forget(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Pack.pack_forget() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval("pack forget " this._w)
+        return stdlib.None
+    }
+
     grid(args*)
     {
         if args.Length > 1
@@ -599,6 +614,22 @@ class AhkStdlibTkinterWidget
             script .= AhkStdlibTkinterOptionsToScript(args[1], true)
         }
         this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    grid_forget(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Grid.grid_forget() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval("grid forget " this._w)
+        return stdlib.None
+    }
+
+    grid_remove(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Grid.grid_remove() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval("grid remove " this._w)
         return stdlib.None
     }
 
@@ -627,6 +658,14 @@ class AhkStdlibTkinterWidget
             script .= AhkStdlibTkinterOptionsToScript(args[1], true)
         }
         this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    place_forget(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Place.place_forget() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval("place forget " this._w)
         return stdlib.None
     }
 
@@ -2158,6 +2197,26 @@ AhkStdlibTkinterWinfoString(root, window, command, methodName, args*)
     if args.Length != 0
         throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
     return root.eval("winfo " command " " window)
+}
+
+AhkStdlibTkinterPackInfo(widget)
+{
+    root := widget.AhkStdlibRoot
+    info := Map()
+    inPath := root.eval("dict get [pack info " widget._w "] -in")
+    info["in"] := AhkStdlibTkinterWidgetFromPath(root, inPath)
+    info["anchor"] := root.eval("dict get [pack info " widget._w "] -anchor")
+    info["expand"] := Integer(root.eval("dict get [pack info " widget._w "] -expand"))
+    info["fill"] := root.eval("dict get [pack info " widget._w "] -fill")
+    for key in ["ipadx", "ipady", "padx", "pady"]
+        info[key] := Integer(root.eval("dict get [pack info " widget._w "] -" key))
+    info["side"] := root.eval("dict get [pack info " widget._w "] -side")
+    return info
+}
+
+AhkStdlibTkinterWidgetFromPath(root, path)
+{
+    return root.AhkStdlibWidgetsByPath[path]
 }
 
 AhkStdlibTkinterWmResizable(root, window, args*)
