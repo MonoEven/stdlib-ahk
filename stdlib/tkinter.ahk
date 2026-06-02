@@ -3508,6 +3508,98 @@ class Text extends AhkStdlibTkinterWidget
         return values[1]
     }
 
+    search(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.search() missing 2 required positional arguments: 'pattern' and 'index'", -1)
+        if args.Length = 1
+            throw TypeError("Text.search() missing 1 required positional argument: 'index'", -1)
+
+        positionalLength := args.Length
+        keywordOptions := unset
+        if args.Length >= 3 && AhkStdlibTkinterIsPlainKeywordObject(args[args.Length]) {
+            keywordOptions := args[args.Length]
+            positionalLength -= 1
+        }
+        if positionalLength > 10
+            throw TypeError("Text.search() takes from 3 to 11 positional arguments but " positionalLength + 1 " were given", -1)
+
+        stopindex := positionalLength >= 3 ? args[3] : stdlib.None
+        forwards := positionalLength >= 4 ? args[4] : stdlib.None
+        backwards := positionalLength >= 5 ? args[5] : stdlib.None
+        exact := positionalLength >= 6 ? args[6] : stdlib.None
+        regexp := positionalLength >= 7 ? args[7] : stdlib.None
+        nocase := positionalLength >= 8 ? args[8] : stdlib.None
+        count := positionalLength >= 9 ? args[9] : stdlib.None
+        elide := positionalLength >= 10 ? args[10] : stdlib.None
+
+        if IsSet(keywordOptions) {
+            for key, value in keywordOptions.OwnProps() {
+                switch key {
+                    case "stopindex":
+                        if positionalLength >= 3
+                            throw TypeError("Text.search() got multiple values for argument 'stopindex'", -1)
+                        stopindex := value
+                    case "forwards":
+                        if positionalLength >= 4
+                            throw TypeError("Text.search() got multiple values for argument 'forwards'", -1)
+                        forwards := value
+                    case "backwards":
+                        if positionalLength >= 5
+                            throw TypeError("Text.search() got multiple values for argument 'backwards'", -1)
+                        backwards := value
+                    case "exact":
+                        if positionalLength >= 6
+                            throw TypeError("Text.search() got multiple values for argument 'exact'", -1)
+                        exact := value
+                    case "regexp":
+                        if positionalLength >= 7
+                            throw TypeError("Text.search() got multiple values for argument 'regexp'", -1)
+                        regexp := value
+                    case "nocase":
+                        if positionalLength >= 8
+                            throw TypeError("Text.search() got multiple values for argument 'nocase'", -1)
+                        nocase := value
+                    case "count":
+                        if positionalLength >= 9
+                            throw TypeError("Text.search() got multiple values for argument 'count'", -1)
+                        count := value
+                    case "elide":
+                        if positionalLength >= 10
+                            throw TypeError("Text.search() got multiple values for argument 'elide'", -1)
+                        elide := value
+                    default:
+                        throw TypeError("Text.search() got an unexpected keyword argument '" key "'", -1)
+                }
+            }
+        }
+
+        script := this._w " search"
+        if AhkStdlibTruthValue(forwards)
+            script .= " -forwards"
+        if AhkStdlibTruthValue(backwards)
+            script .= " -backwards"
+        if AhkStdlibTruthValue(exact)
+            script .= " -exact"
+        if AhkStdlibTruthValue(regexp)
+            script .= " -regexp"
+        if AhkStdlibTruthValue(nocase)
+            script .= " -nocase"
+        if AhkStdlibTruthValue(elide)
+            script .= " -elide"
+        if AhkStdlibTruthValue(count)
+            script .= " -count " AhkStdlibTkinterTclWord(count)
+
+        pattern := args[1]
+        patternText := AhkStdlibTkinterValueToString(pattern)
+        if AhkStdlibTruthValue(pattern) && SubStr(patternText, 1, 1) = "-"
+            script .= " --"
+        script .= " " AhkStdlibTkinterTclWord(pattern) " " AhkStdlibTkinterTclWord(args[2])
+        if AhkStdlibTruthValue(stopindex)
+            script .= " " AhkStdlibTkinterTclWord(stopindex)
+        return this.AhkStdlibRoot.eval(script)
+    }
+
     mark_set(args*)
     {
         if args.Length = 0
