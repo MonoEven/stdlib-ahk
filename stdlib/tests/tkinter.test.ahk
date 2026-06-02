@@ -1512,6 +1512,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(["none"], noneCommand.Calls)
             AhkTest.AssertEqual("done", strButton.invoke())
             AhkTest.AssertEqual(["str"], strCommand.Calls)
+            AhkTest.AssertEqual(stdlib.None, noCommandButton.flash())
             AhkTest.AssertEqual(stdlib.None, noCommandButton.configure({ command: strCommand }))
             AhkTest.AssertEqual("done", noCommandButton.invoke())
             AhkTest.AssertEqual(["str", "str"], strCommand.Calls)
@@ -1519,6 +1520,7 @@ class StdlibTkinterTest
             badButton := stdlib.tkinter.Button(root, { command: 1 })
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^invalid command name " Chr(34) "1" Chr(34) "$", (*) => badButton.invoke())
             AhkTest.RaisesMatch(TypeError, "^Button\.invoke\(\) takes 1 positional argument but 2 were given$", (*) => strButton.invoke(1))
+            AhkTest.RaisesMatch(TypeError, "^Button\.flash\(\) takes 1 positional argument but 2 were given$", (*) => strButton.flash(1))
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -1778,6 +1780,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual("no", value.get())
             AhkTest.AssertEqual(stdlib.None, check.toggle())
             AhkTest.AssertEqual("yes", value.get())
+            AhkTest.AssertEqual(stdlib.None, check.flash())
             AhkTest.AssertEqual("done", check.invoke())
             AhkTest.AssertEqual("no", value.get())
             AhkTest.AssertEqual(["cmd"], calls)
@@ -1804,6 +1807,7 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(TypeError, "^Checkbutton\.select\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Checkbutton(root).select(1))
             AhkTest.RaisesMatch(TypeError, "^Checkbutton\.deselect\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Checkbutton(root).deselect(1))
             AhkTest.RaisesMatch(TypeError, "^Checkbutton\.toggle\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Checkbutton(root).toggle(1))
+            AhkTest.RaisesMatch(TypeError, "^Checkbutton\.flash\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Checkbutton(root).flash(1))
         } finally {
             try root.update_idletasks()
             try root.destroy()

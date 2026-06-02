@@ -2292,6 +2292,14 @@ class Button extends AhkStdlibTkinterWidget
             throw TypeError("Button.invoke() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval(this._w " invoke")
     }
+
+    flash(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Button.flash() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " flash")
+        return stdlib.None
+    }
 }
 
 class Checkbutton extends AhkStdlibTkinterWidget
@@ -2314,6 +2322,14 @@ class Checkbutton extends AhkStdlibTkinterWidget
         if args.Length != 0
             throw TypeError("Checkbutton.invoke() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval(this._w " invoke")
+    }
+
+    flash(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Checkbutton.flash() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " flash")
+        return stdlib.None
     }
 
     select(args*)
