@@ -3470,6 +3470,122 @@ class Text extends AhkStdlibTkinterWidget
             throw TypeError("Text.index() takes 2 positional arguments but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval(this._w " index " AhkStdlibTkinterTclWord(args[1]))
     }
+
+    bbox(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.bbox() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Text.bbox() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " bbox " AhkStdlibTkinterTclWord(args[1]))
+        return value = "" ? stdlib.None : AhkStdlibTkinterIntegerTuple(value)
+    }
+
+    dlineinfo(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.dlineinfo() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Text.dlineinfo() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " dlineinfo " AhkStdlibTkinterTclWord(args[1]))
+        return value = "" ? stdlib.None : AhkStdlibTkinterIntegerTuple(value)
+    }
+
+    see(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.see() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Text.see() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " see " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    scan_mark(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.scan_mark() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("Text.scan_mark() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("Text.scan_mark() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " scan mark " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    scan_dragto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.scan_dragto() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("Text.scan_dragto() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("Text.scan_dragto() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " scan dragto " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    xview(args*)
+    {
+        script := this._w " xview"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        value := this.AhkStdlibRoot.eval(script)
+        return args.Length = 0 ? AhkStdlibTkinterFloatTuple(value) : stdlib.None
+    }
+
+    xview_moveto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("XView.xview_moveto() missing 1 required positional argument: 'fraction'", -1)
+        if args.Length > 1
+            throw TypeError("XView.xview_moveto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " xview moveto " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    xview_scroll(args*)
+    {
+        if args.Length = 0
+            throw TypeError("XView.xview_scroll() missing 2 required positional arguments: 'number' and 'what'", -1)
+        if args.Length = 1
+            throw TypeError("XView.xview_scroll() missing 1 required positional argument: 'what'", -1)
+        if args.Length > 2
+            throw TypeError("XView.xview_scroll() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " xview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    yview(args*)
+    {
+        script := this._w " yview"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        value := this.AhkStdlibRoot.eval(script)
+        return args.Length = 0 ? AhkStdlibTkinterFloatTuple(value) : stdlib.None
+    }
+
+    yview_moveto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("YView.yview_moveto() missing 1 required positional argument: 'fraction'", -1)
+        if args.Length > 1
+            throw TypeError("YView.yview_moveto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " yview moveto " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    yview_scroll(args*)
+    {
+        if args.Length = 0
+            throw TypeError("YView.yview_scroll() missing 2 required positional arguments: 'number' and 'what'", -1)
+        if args.Length = 1
+            throw TypeError("YView.yview_scroll() missing 1 required positional argument: 'what'", -1)
+        if args.Length > 2
+            throw TypeError("YView.yview_scroll() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " yview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
 }
 
 class Entry extends AhkStdlibTkinterWidget
