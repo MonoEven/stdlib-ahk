@@ -3865,6 +3865,16 @@ class Listbox extends AhkStdlibTkinterWidget
         return Integer(value)
     }
 
+    activate(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.activate() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Listbox.activate() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " activate " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
     insert(args*)
     {
         if args.Length = 0
@@ -3901,6 +3911,26 @@ class Listbox extends AhkStdlibTkinterWidget
         return this.AhkStdlibRoot.eval(this._w " selection includes " AhkStdlibTkinterTclWord(args[1])) = "1" ? stdlib.True : stdlib.False
     }
 
+    select_includes(args*)
+    {
+        return this.selection_includes(args*)
+    }
+
+    selection_anchor(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.selection_anchor() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Listbox.selection_anchor() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " selection anchor " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    select_anchor(args*)
+    {
+        return this.selection_anchor(args*)
+    }
+
     selection_set(args*)
     {
         if args.Length = 0
@@ -3914,11 +3944,163 @@ class Listbox extends AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    select_set(args*)
+    {
+        return this.selection_set(args*)
+    }
+
+    select_clear(args*)
+    {
+        return this.selection_clear(args*)
+    }
+
     size(args*)
     {
         if args.Length != 0
             throw TypeError("Listbox.size() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return Integer(this.AhkStdlibRoot.eval(this._w " size"))
+    }
+
+    nearest(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.nearest() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 1
+            throw TypeError("Listbox.nearest() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return Integer(this.AhkStdlibRoot.eval(this._w " nearest " AhkStdlibTkinterTclWord(args[1])))
+    }
+
+    see(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.see() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Listbox.see() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " see " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    scan_mark(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.scan_mark() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("Listbox.scan_mark() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("Listbox.scan_mark() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " scan mark " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    scan_dragto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.scan_dragto() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("Listbox.scan_dragto() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("Listbox.scan_dragto() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " scan dragto " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    itemcget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.itemcget() missing 2 required positional arguments: 'index' and 'option'", -1)
+        if args.Length = 1
+            throw TypeError("Listbox.itemcget() missing 1 required positional argument: 'option'", -1)
+        if args.Length > 2
+            throw TypeError("Listbox.itemcget() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        option := AhkStdlibTkinterValueToString(args[2])
+        if SubStr(option, 1, 1) = "-"
+            option := SubStr(option, 2)
+        value := this.AhkStdlibRoot.eval(this._w " itemcget " AhkStdlibTkinterTclWord(args[1]) " -" option)
+        return AhkStdlibTkinterCgetValue(option, value)
+    }
+
+    itemconfigure(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.itemconfigure() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 2
+            throw TypeError("Listbox.itemconfigure() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 1
+            return AhkStdlibTkinterListboxItemConfigureDict(this.AhkStdlibRoot, this._w, args[1])
+        if AhkStdlibTkinterIsPlainKeywordObject(args[2]) {
+            this.AhkStdlibRoot.eval(this._w " itemconfigure " AhkStdlibTkinterTclWord(args[1]) AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot))
+            return stdlib.None
+        }
+        if args[2] is String
+            return AhkStdlibTkinterListboxItemConfigureOption(this.AhkStdlibRoot, this._w, args[1], args[2])
+        throw TypeError("object of type '" AhkStdlibPyTypeName(args[2]) "' has no len()", -1)
+    }
+
+    itemconfig(args*)
+    {
+        return this.itemconfigure(args*)
+    }
+
+    xview(args*)
+    {
+        script := this._w " xview"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        value := this.AhkStdlibRoot.eval(script)
+        return args.Length = 0 ? AhkStdlibTkinterFloatTuple(value) : stdlib.None
+    }
+
+    xview_moveto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("XView.xview_moveto() missing 1 required positional argument: 'fraction'", -1)
+        if args.Length > 1
+            throw TypeError("XView.xview_moveto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " xview moveto " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    xview_scroll(args*)
+    {
+        if args.Length = 0
+            throw TypeError("XView.xview_scroll() missing 2 required positional arguments: 'number' and 'what'", -1)
+        if args.Length = 1
+            throw TypeError("XView.xview_scroll() missing 1 required positional argument: 'what'", -1)
+        if args.Length > 2
+            throw TypeError("XView.xview_scroll() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " xview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    yview(args*)
+    {
+        script := this._w " yview"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        value := this.AhkStdlibRoot.eval(script)
+        return args.Length = 0 ? AhkStdlibTkinterFloatTuple(value) : stdlib.None
+    }
+
+    yview_moveto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("YView.yview_moveto() missing 1 required positional argument: 'fraction'", -1)
+        if args.Length > 1
+            throw TypeError("YView.yview_moveto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " yview moveto " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    yview_scroll(args*)
+    {
+        if args.Length = 0
+            throw TypeError("YView.yview_scroll() missing 2 required positional arguments: 'number' and 'what'", -1)
+        if args.Length = 1
+            throw TypeError("YView.yview_scroll() missing 1 required positional argument: 'what'", -1)
+        if args.Length > 2
+            throw TypeError("YView.yview_scroll() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " yview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
     }
 }
 
@@ -5659,6 +5841,44 @@ AhkStdlibTkinterPaneChildPath(value)
     if IsObject(value) && HasProp(value, "_w")
         return value._w
     return AhkStdlibTkinterValueToString(value)
+}
+
+AhkStdlibTkinterListboxItemConfigureOption(root, window, index, option)
+{
+    optionName := AhkStdlibTkinterValueToString(option)
+    if SubStr(optionName, 1, 1) = "-"
+        optionName := SubStr(optionName, 2)
+    parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval(window " itemconfigure " AhkStdlibTkinterTclWord(index) " -" optionName))
+    return AhkStdlibTkinterListboxItemConfigureTuple(optionName, parts)
+}
+
+AhkStdlibTkinterListboxItemConfigureDict(root, window, index)
+{
+    result := Map()
+    raw := root.eval(window " itemconfigure " AhkStdlibTkinterTclWord(index))
+    for entryText in AhkStdlibTkinterSplitList(root.AhkStdlibInterp, raw) {
+        parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, entryText)
+        if parts.Length = 0
+            continue
+        optionName := parts[1]
+        if SubStr(optionName, 1, 1) = "-"
+            optionName := SubStr(optionName, 2)
+        result[optionName] := AhkStdlibTkinterListboxItemConfigureTuple(optionName, parts)
+    }
+    return result
+}
+
+AhkStdlibTkinterListboxItemConfigureTuple(optionName, parts)
+{
+    result := []
+    for index, value in parts {
+        if index = 1 && SubStr(value, 1, 1) = "-"
+            value := SubStr(value, 2)
+        else if index = parts.Length
+            value := AhkStdlibTkinterCgetValue(optionName, value)
+        result.Push(value)
+    }
+    return stdlib.tuple(result)
 }
 
 AhkStdlibTkinterPaneConfigureOption(root, window, childPath, option)
