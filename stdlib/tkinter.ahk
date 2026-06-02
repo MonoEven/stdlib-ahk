@@ -3665,6 +3665,70 @@ class Text extends AhkStdlibTkinterWidget
         return this.edit("undo")
     }
 
+    dump(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.dump() missing 1 required positional argument: 'index1'", -1)
+
+        positionalLength := args.Length
+        keywordOptions := unset
+        if args.Length >= 2 && AhkStdlibTkinterIsPlainKeywordObject(args[args.Length]) {
+            keywordOptions := args[args.Length]
+            positionalLength -= 1
+        }
+        if positionalLength > 3
+            throw TypeError("Text.dump() takes from 2 to 4 positional arguments but " positionalLength + 1 " were given", -1)
+
+        index1 := args[1]
+        index2 := positionalLength >= 2 ? args[2] : stdlib.None
+        command := positionalLength >= 3 ? args[3] : stdlib.None
+        if IsSet(keywordOptions) {
+            if keywordOptions.HasOwnProp("index2") {
+                if positionalLength >= 2
+                    throw TypeError("Text.dump() got multiple values for argument 'index2'", -1)
+                index2 := keywordOptions.index2
+            }
+            if keywordOptions.HasOwnProp("command") {
+                if positionalLength >= 3
+                    throw TypeError("Text.dump() got multiple values for argument 'command'", -1)
+                command := keywordOptions.command
+            }
+        }
+
+        result := stdlib.None
+        registeredCommand := ""
+        if !AhkStdlibTruthValue(command) {
+            result := []
+            command := (key, value, index) => result.Push(stdlib.tuple([key, value, index]))
+        }
+        commandName := command
+        if IsObject(command) && HasMethod(command, "Call") {
+            commandName := AhkStdlibTkinterRegisterCommand(this.AhkStdlibRoot, command)
+            registeredCommand := commandName
+        }
+
+        script := this._w " dump -command " AhkStdlibTkinterTclWord(commandName)
+        if IsSet(keywordOptions) {
+            for key, value in keywordOptions.OwnProps() {
+                if key = "index2" || key = "command"
+                    continue
+                if AhkStdlibTruthValue(value)
+                    script .= " -" key
+            }
+        }
+        script .= " " AhkStdlibTkinterTclWord(index1)
+        if AhkStdlibTruthValue(index2)
+            script .= " " AhkStdlibTkinterTclWord(index2)
+
+        try {
+            this.AhkStdlibRoot.eval(script)
+        } finally {
+            if registeredCommand != ""
+                AhkStdlibTkinterDeleteCommand(this.AhkStdlibRoot, registeredCommand)
+        }
+        return result
+    }
+
     mark_set(args*)
     {
         if args.Length = 0

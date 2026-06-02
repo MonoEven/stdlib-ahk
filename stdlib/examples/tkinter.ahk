@@ -586,6 +586,11 @@ try {
     tkinter_example_text_tag_names_at_index := tkinter_example_text.tag_names("1.2")
     tkinter_example_text_tag_nextrange := tkinter_example_text.tag_nextrange("phrase", "1.0")
     tkinter_example_text_tag_prevrange := tkinter_example_text.tag_prevrange("phrase", "end")
+    tkinter_example_text_dump := tkinter_example_text.dump("1.0", "end")
+    tkinter_example_text_dump_text_only := tkinter_example_text.dump("1.0", "end", { text: stdlib.True })
+    tkinter_example_text_dump_tag_only := tkinter_example_text.dump("1.0", "end", { tag: stdlib.True })
+    tkinter_example_text_dump_calls := []
+    tkinter_example_text_dump_command_return := tkinter_example_text.dump("1.0", "1.3", (kind, value, index) => tkinter_example_text_dump_calls.Push(stdlib.tuple([kind, value, index])))
     tkinter_example_text_tag_remove_return := tkinter_example_text.tag_remove("phrase", "1.6", "1.10")
     tkinter_example_text_tag_raise_return := tkinter_example_text.tag_raise("phrase")
     tkinter_example_text_tag_lower_return := tkinter_example_text.tag_lower("phrase", "emphasis")
