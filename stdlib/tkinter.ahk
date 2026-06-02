@@ -3533,6 +3533,116 @@ class Text extends AhkStdlibTkinterWidget
         return value = "" ? stdlib.None : value
     }
 
+    tag_add(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_add() missing 2 required positional arguments: 'tagName' and 'index1'", -1)
+        if args.Length = 1
+            throw TypeError("Text.tag_add() missing 1 required positional argument: 'index1'", -1)
+        script := this._w " tag add"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    tag_remove(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_remove() missing 2 required positional arguments: 'tagName' and 'index1'", -1)
+        if args.Length = 1
+            throw TypeError("Text.tag_remove() missing 1 required positional argument: 'index1'", -1)
+        script := this._w " tag remove"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    tag_ranges(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_ranges() missing 1 required positional argument: 'tagName'", -1)
+        if args.Length > 1
+            throw TypeError("Text.tag_ranges() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(this._w " tag ranges " AhkStdlibTkinterTclWord(args[1]))))
+    }
+
+    tag_names(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Text.tag_names() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " tag names"
+        if args.Length = 1
+            script .= " " AhkStdlibTkinterTclWord(args[1])
+        return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(script)))
+    }
+
+    tag_nextrange(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_nextrange() missing 2 required positional arguments: 'tagName' and 'index1'", -1)
+        if args.Length = 1
+            throw TypeError("Text.tag_nextrange() missing 1 required positional argument: 'index1'", -1)
+        if args.Length > 3
+            throw TypeError("Text.tag_nextrange() takes from 3 to 4 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " tag nextrange " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])
+        if args.Length = 3
+            script .= " " AhkStdlibTkinterTclWord(args[3])
+        return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(script)))
+    }
+
+    tag_prevrange(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_prevrange() missing 2 required positional arguments: 'tagName' and 'index1'", -1)
+        if args.Length = 1
+            throw TypeError("Text.tag_prevrange() missing 1 required positional argument: 'index1'", -1)
+        if args.Length > 3
+            throw TypeError("Text.tag_prevrange() takes from 3 to 4 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " tag prevrange " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])
+        if args.Length = 3
+            script .= " " AhkStdlibTkinterTclWord(args[3])
+        return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(script)))
+    }
+
+    tag_raise(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_raise() missing 1 required positional argument: 'tagName'", -1)
+        if args.Length > 2
+            throw TypeError("Text.tag_raise() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " tag raise " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    tag_lower(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_lower() missing 1 required positional argument: 'tagName'", -1)
+        if args.Length > 2
+            throw TypeError("Text.tag_lower() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " tag lower " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    tag_delete(args*)
+    {
+        if args.Length = 0
+            return stdlib.None
+        script := this._w " tag delete"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
     bbox(args*)
     {
         if args.Length = 0
