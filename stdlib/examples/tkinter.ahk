@@ -541,6 +541,8 @@ try {
     tkinter_example_text_xview_scroll_return := tkinter_example_text.xview_scroll(1, "units")
     tkinter_example_text_yview := tkinter_example_text.yview()
     tkinter_example_text_yview_scroll_return := tkinter_example_text.yview_scroll(1, "units")
+    tkinter_example_text_compare_before := tkinter_example_text.compare("1.0", "<", "1.1")
+    tkinter_example_text_compare_end := tkinter_example_text.compare("end", "==", "7.0")
     tkinter_example_text_mark_set_return := tkinter_example_text.mark_set("alpha", "1.2")
     tkinter_example_text_mark_index := tkinter_example_text.index("alpha")
     tkinter_example_text_mark_gravity := tkinter_example_text.mark_gravity("alpha")

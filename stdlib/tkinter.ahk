@@ -3471,6 +3471,20 @@ class Text extends AhkStdlibTkinterWidget
         return this.AhkStdlibRoot.eval(this._w " index " AhkStdlibTkinterTclWord(args[1]))
     }
 
+    compare(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.compare() missing 3 required positional arguments: 'index1', 'op', and 'index2'", -1)
+        if args.Length = 1
+            throw TypeError("Text.compare() missing 2 required positional arguments: 'op' and 'index2'", -1)
+        if args.Length = 2
+            throw TypeError("Text.compare() missing 1 required positional argument: 'index2'", -1)
+        if args.Length > 3
+            throw TypeError("Text.compare() takes 4 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " compare " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]) " " AhkStdlibTkinterTclWord(args[3]))
+        return value = "1" ? stdlib.True : stdlib.False
+    }
+
     mark_set(args*)
     {
         if args.Length = 0
