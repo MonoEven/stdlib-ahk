@@ -3609,6 +3609,37 @@ class Entry extends AhkStdlibTkinterWidget
         this.AhkStdlibRoot.eval(this._w " scan dragto " AhkStdlibTkinterTclWord(args[1]))
         return stdlib.None
     }
+
+    xview(args*)
+    {
+        script := this._w " xview"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        value := this.AhkStdlibRoot.eval(script)
+        return args.Length = 0 ? AhkStdlibTkinterFloatTuple(value) : stdlib.None
+    }
+
+    xview_moveto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("XView.xview_moveto() missing 1 required positional argument: 'fraction'", -1)
+        if args.Length > 1
+            throw TypeError("XView.xview_moveto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " xview moveto " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    xview_scroll(args*)
+    {
+        if args.Length = 0
+            throw TypeError("XView.xview_scroll() missing 2 required positional arguments: 'number' and 'what'", -1)
+        if args.Length = 1
+            throw TypeError("XView.xview_scroll() missing 1 required positional argument: 'what'", -1)
+        if args.Length > 2
+            throw TypeError("XView.xview_scroll() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " xview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
 }
 
 class Spinbox extends AhkStdlibTkinterWidget
