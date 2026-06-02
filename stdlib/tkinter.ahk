@@ -3600,6 +3600,71 @@ class Text extends AhkStdlibTkinterWidget
         return this.AhkStdlibRoot.eval(script)
     }
 
+    debug(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Text.debug() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return AhkStdlibTkinterGetBooleanPublic(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(this._w " debug"))
+
+        this.AhkStdlibRoot.eval(this._w " debug " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    edit(args*)
+    {
+        script := this._w " edit"
+        effectiveLength := 0
+        for value in args {
+            if AhkStdlibIsNone(value)
+                continue
+            script .= " " AhkStdlibTkinterTclWord(value)
+            effectiveLength += 1
+        }
+        value := this.AhkStdlibRoot.eval(script)
+        if args.Length >= 1 && effectiveLength = 1 {
+            option := AhkStdlibTkinterValueToString(args[1])
+            if option = "canundo" || option = "canredo" || option = "modified"
+                return Integer(value)
+        }
+        return value
+    }
+
+    edit_modified(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Text.edit_modified() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        return args.Length = 0 ? this.edit("modified", stdlib.None) : this.edit("modified", args[1])
+    }
+
+    edit_redo(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Text.edit_redo() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.edit("redo")
+    }
+
+    edit_reset(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Text.edit_reset() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.edit("reset")
+    }
+
+    edit_separator(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Text.edit_separator() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.edit("separator")
+    }
+
+    edit_undo(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Text.edit_undo() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.edit("undo")
+    }
+
     mark_set(args*)
     {
         if args.Length = 0
