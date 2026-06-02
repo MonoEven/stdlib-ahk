@@ -2223,6 +2223,71 @@ class StdlibTkinterTest
         }
     }
 
+    static TestOptionMenuVariableMenuAndCommandSurfaceMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            commandCalls := []
+            selected := stdlib.tkinter.StringVar(root, "seed", "option_var")
+            option := stdlib.tkinter.OptionMenu(root, selected, "one", "two", "three", { command: (value) => (commandCalls.Push([value, selected.get()]), "ignored") })
+            AhkTest.AssertEqual(stdlib.None, option.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            menu := option["menu"]
+
+            AhkTest.AssertEqual("OptionMenu", Type(option))
+            AhkTest.AssertEqual(".!optionmenu", String(option))
+            AhkTest.AssertSame(root, option._root())
+            AhkTest.AssertEqual(1, option.winfo_exists())
+            AhkTest.AssertEqual("Menubutton", option.winfo_class())
+            AhkTest.AssertEqual("pack", option.winfo_manager())
+            AhkTest.AssertEqual("option_var", option.cget("textvariable"))
+            AhkTest.AssertEqual(".!optionmenu.menu", option.cget("menu"))
+            AhkTest.AssertEqual("center", option.cget("anchor"))
+            AhkTest.AssertEqual(2, option.cget("borderwidth"))
+            AhkTest.AssertEqual(1, option.cget("indicatoron"))
+            AhkTest.AssertEqual("raised", option.cget("relief"))
+            AhkTest.AssertEqual(2, option.cget("highlightthickness"))
+            AhkTest.AssertEqual("Menu", Type(menu))
+            AhkTest.AssertEqual(".!optionmenu.menu", String(menu))
+            AhkTest.AssertEqual(0, menu.cget("tearoff"))
+            AhkTest.AssertEqual(2, menu.index("end"))
+            AhkTest.AssertEqual("one", menu.entrycget(0, "label"))
+            AhkTest.AssertEqual("two", menu.entrycget(1, "label"))
+            AhkTest.AssertEqual("three", menu.entrycget(2, "label"))
+            AhkTest.AssertEqual("seed", selected.get())
+
+            AhkTest.AssertEqual("None", menu.invoke(0))
+            AhkTest.AssertEqual("one", selected.get())
+            AhkTest.AssertEqual("one", commandCalls[1][1])
+            AhkTest.AssertEqual("one", commandCalls[1][2])
+            AhkTest.AssertEqual("None", menu.invoke(2))
+            AhkTest.AssertEqual("three", selected.get())
+            AhkTest.AssertEqual("three", commandCalls[2][1])
+            AhkTest.AssertEqual("three", commandCalls[2][2])
+
+            singleValue := stdlib.tkinter.StringVar(root, "seed", "single_option_var")
+            single := stdlib.tkinter.OptionMenu(root, singleValue, "solo")
+            singleMenu := single["menu"]
+            AhkTest.AssertEqual(0, singleMenu.index("end"))
+            AhkTest.AssertEqual("solo", singleMenu.entrycget(0, "label"))
+            AhkTest.AssertEqual("None", singleMenu.invoke(0))
+            AhkTest.AssertEqual("solo", singleValue.get())
+
+            AhkTest.AssertEqual(stdlib.None, option.destroy())
+            AhkTest.AssertEqual("0", root.eval("winfo exists .!optionmenu"))
+            AhkTest.RaisesMatch(TypeError, "^OptionMenu\.__init__\(\) missing 3 required positional arguments: 'master', 'variable', and 'value'$", (*) => stdlib.tkinter.OptionMenu())
+            AhkTest.RaisesMatch(TypeError, "^OptionMenu\.__init__\(\) missing 2 required positional arguments: 'variable' and 'value'$", (*) => stdlib.tkinter.OptionMenu(root))
+            AhkTest.RaisesMatch(TypeError, "^OptionMenu\.__init__\(\) missing 1 required positional argument: 'value'$", (*) => stdlib.tkinter.OptionMenu(root, selected))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.OptionMenu(1, selected, "x"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^unknown option -bad$", (*) => stdlib.tkinter.OptionMenu(root, selected, "x", { bad: 1 }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkClipboardSurfaceMatchesLocal310()
     {
         oldClipboard := A_Clipboard

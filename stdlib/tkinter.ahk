@@ -107,6 +107,11 @@ class AhkStdlibTkinter
         return Message(args*)
     }
 
+    static OptionMenu(args*)
+    {
+        return OptionMenu(args*)
+    }
+
     static Canvas(args*)
     {
         return Canvas(args*)
@@ -2553,6 +2558,89 @@ class Message extends AhkStdlibTkinterWidget
     __New(args*)
     {
         super.__New("Message", "message", args*)
+    }
+}
+
+class OptionMenu extends Menubutton
+{
+    __New(args*)
+    {
+        if args.Length = 0
+            throw TypeError("OptionMenu.__init__() missing 3 required positional arguments: 'master', 'variable', and 'value'", -1)
+        if args.Length = 1
+            throw TypeError("OptionMenu.__init__() missing 2 required positional arguments: 'variable' and 'value'", -1)
+        if args.Length = 2
+            throw TypeError("OptionMenu.__init__() missing 1 required positional argument: 'value'", -1)
+
+        master := args[1]
+        variable := args[2]
+        values := []
+        options := {}
+        lastIsOptions := args.Length > 3 && AhkStdlibTkinterIsPlainKeywordObject(args[args.Length])
+        lastValueIndex := lastIsOptions ? args.Length - 1 : args.Length
+        index := 3
+        while index <= lastValueIndex {
+            values.Push(args[index])
+            index += 1
+        }
+        if lastIsOptions
+            options := args[args.Length]
+        for key, value in options.OwnProps() {
+            if key != "command"
+                throw AhkStdlibTkinter.TclError("unknown option -" key, -1)
+        }
+
+        if !IsObject(master) || !HasProp(master, "tk")
+            throw AttributeError("'" AhkStdlibPyTypeName(master) "' object has no attribute 'tk'", -1)
+
+        this.master := master
+        this.tk := master.tk
+        this.AhkStdlibRoot := master._root()
+        this.AhkStdlibTkCommand := "menubutton"
+        pathOptions := {}
+        this._w := AhkStdlibTkinterResolveWidgetPath(this.AhkStdlibRoot, String(master), "optionmenu", pathOptions)
+
+        widgetOptions := { borderwidth: 2, textvariable: variable, indicatoron: 1, relief: "raised", anchor: "c", highlightthickness: 2 }
+        this.AhkStdlibRoot.eval("menubutton " this._w AhkStdlibTkinterOptionsToScript(widgetOptions, false, this.AhkStdlibRoot))
+        this.AhkStdlibRoot.AhkStdlibWidgetsByPath[this._w] := this
+        this.AhkStdlibMenu := Menu(this, { name: "menu", tearoff: 0 })
+        this.menuname := String(this.AhkStdlibMenu)
+
+        callback := options.HasOwnProp("command") ? options.command : stdlib.None
+        for value in values
+            this.AhkStdlibMenu.add_command({ label: value, command: AhkStdlibTkinterOptionMenuCommand(variable, value, callback) })
+        this.configure({ menu: this.AhkStdlibMenu })
+    }
+
+    __Item[name]
+    {
+        get {
+            if name = "menu"
+                return this.AhkStdlibMenu
+            return this.cget(name)
+        }
+    }
+
+    destroy()
+    {
+        super.destroy()
+        this.AhkStdlibMenu := stdlib.None
+        return stdlib.None
+    }
+}
+
+class AhkStdlibTkinterOptionMenuCommand
+{
+    __New(variable, value, callback)
+    {
+        this.Variable := variable
+        this.Value := value
+        this.OptionCallback := callback
+    }
+
+    Call(args*)
+    {
+        return AhkStdlibTkinterOptionMenuSetit(this.Variable, this.Value, this.OptionCallback)
     }
 }
 
@@ -5215,12 +5303,20 @@ AhkStdlibTkinterCanvasCoordList(value)
 AhkStdlibTkinterCgetValue(key, value)
 {
     switch key {
-        case "width", "height", "length", "tearoff", "aspect":
+        case "width", "height", "length", "tearoff", "aspect", "borderwidth", "bd", "highlightthickness", "indicatoron":
             try return Integer(value)
         case "from", "to", "resolution":
             try return Float(value)
     }
     return value
+}
+
+AhkStdlibTkinterOptionMenuSetit(variable, value, callback)
+{
+    variable.set(value)
+    if !AhkStdlibIsNone(callback)
+        callback.Call(value)
+    return stdlib.None
 }
 
 AhkStdlibTkinterAfter(root, ms, args*)
