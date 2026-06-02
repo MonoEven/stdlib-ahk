@@ -3485,6 +3485,29 @@ class Text extends AhkStdlibTkinterWidget
         return value = "1" ? stdlib.True : stdlib.False
     }
 
+    count(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.count() missing 2 required positional arguments: 'index1' and 'index2'", -1)
+        if args.Length = 1
+            throw TypeError("Text.count() missing 1 required positional argument: 'index2'", -1)
+
+        script := this._w " count"
+        index := 3
+        while index <= args.Length {
+            script .= " " AhkStdlibTkinterTclWord("-" AhkStdlibTkinterValueToString(args[index]))
+            index += 1
+        }
+        value := this.AhkStdlibRoot.eval(script " " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        if value = ""
+            return stdlib.None
+
+        values := AhkStdlibTkinterIntegerTuple(value)
+        if args.Length <= 3 || values.Length != 1
+            return values
+        return values[1]
+    }
+
     mark_set(args*)
     {
         if args.Length = 0
