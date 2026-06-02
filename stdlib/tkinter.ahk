@@ -3471,6 +3471,68 @@ class Text extends AhkStdlibTkinterWidget
         return this.AhkStdlibRoot.eval(this._w " index " AhkStdlibTkinterTclWord(args[1]))
     }
 
+    mark_set(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.mark_set() missing 2 required positional arguments: 'markName' and 'index'", -1)
+        if args.Length = 1
+            throw TypeError("Text.mark_set() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 2
+            throw TypeError("Text.mark_set() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " mark set " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    mark_unset(args*)
+    {
+        if args.Length = 0
+            return stdlib.None
+        script := this._w " mark unset"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    mark_gravity(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.mark_gravity() missing 1 required positional argument: 'markName'", -1)
+        if args.Length > 2
+            throw TypeError("Text.mark_gravity() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " mark gravity " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+        return this.AhkStdlibRoot.eval(script)
+    }
+
+    mark_names(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Text.mark_names() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(this._w " mark names")))
+    }
+
+    mark_next(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.mark_next() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Text.mark_next() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " mark next " AhkStdlibTkinterTclWord(args[1]))
+        return value = "" ? stdlib.None : value
+    }
+
+    mark_previous(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.mark_previous() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Text.mark_previous() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " mark previous " AhkStdlibTkinterTclWord(args[1]))
+        return value = "" ? stdlib.None : value
+    }
+
     bbox(args*)
     {
         if args.Length = 0
