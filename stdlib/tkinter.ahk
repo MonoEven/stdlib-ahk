@@ -3589,6 +3589,26 @@ class Entry extends AhkStdlibTkinterWidget
     {
         return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_to()", "to", args*)
     }
+
+    scan_mark(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Entry.scan_mark() missing 1 required positional argument: 'x'", -1)
+        if args.Length > 1
+            throw TypeError("Entry.scan_mark() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " scan mark " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
+
+    scan_dragto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Entry.scan_dragto() missing 1 required positional argument: 'x'", -1)
+        if args.Length > 1
+            throw TypeError("Entry.scan_dragto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " scan dragto " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
+    }
 }
 
 class Spinbox extends AhkStdlibTkinterWidget
@@ -3677,6 +3697,32 @@ class Spinbox extends AhkStdlibTkinterWidget
             throw TypeError("Spinbox.invoke() takes 2 positional arguments but " args.Length + 1 " were given", -1)
         this.AhkStdlibRoot.eval(this._w " invoke " AhkStdlibTkinterTclWord(args[1]))
         return stdlib.None
+    }
+
+    scan(args*)
+    {
+        script := this._w " scan"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        return AhkStdlibTkinterIntegerTuple(this.AhkStdlibRoot.eval(script))
+    }
+
+    scan_mark(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Spinbox.scan_mark() missing 1 required positional argument: 'x'", -1)
+        if args.Length > 1
+            throw TypeError("Spinbox.scan_mark() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.scan("mark", args[1])
+    }
+
+    scan_dragto(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Spinbox.scan_dragto() missing 1 required positional argument: 'x'", -1)
+        if args.Length > 1
+            throw TypeError("Spinbox.scan_dragto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.scan("dragto", args[1])
     }
 
     selection_clear(args*)
