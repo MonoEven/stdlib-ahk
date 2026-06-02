@@ -28,6 +28,27 @@ class AhkStdlibTkinter
         get => 8
     }
 
+    static image_names(args*)
+    {
+        if args.Length != 0
+            throw TypeError("image_names() takes 0 positional arguments but " args.Length " " (args.Length = 1 ? "was" : "were") " given", -1)
+        return AhkStdlibTkinterGetDefaultRoot("use image_names()").image_names()
+    }
+
+    static image_types(args*)
+    {
+        if args.Length != 0
+            throw TypeError("image_types() takes 0 positional arguments but " args.Length " " (args.Length = 1 ? "was" : "were") " given", -1)
+        return AhkStdlibTkinterGetDefaultRoot("use image_types()").image_types()
+    }
+
+    static mainloop(args*)
+    {
+        if args.Length > 1
+            throw TypeError("mainloop() takes from 0 to 1 positional arguments but " args.Length " were given", -1)
+        return AhkStdlibTkinterGetDefaultRoot("run the main loop").mainloop(args*)
+    }
+
     static Tcl(args*)
     {
         if args.Length > 4
@@ -259,8 +280,10 @@ class Tk
         this.AhkStdlibCommandCallbacks := Map()
         this.AhkStdlibQuitMainLoop := false
         this.tk := this
-        if useTk
+        if useTk {
             this.eval("wm protocol . WM_DELETE_WINDOW " AhkStdlibTkinterTclWord("destroy ."))
+            AhkStdlibTkinterRegisterDefaultRoot(this)
+        }
         if hasUse
             this.AhkStdlibUse := use
     }
@@ -1053,6 +1076,7 @@ class Tk
         resultCode := DllCall("tcl86t\Tcl_Eval", "Ptr", this.AhkStdlibInterp, "Ptr", AhkStdlibTkinterUtf8Buffer("destroy .").Ptr, "Int")
         if resultCode != 0
             throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(this.AhkStdlibInterp), -1)
+        AhkStdlibTkinterForgetDefaultRoot(this)
         return stdlib.None
     }
 
@@ -1092,7 +1116,7 @@ class AhkStdlibTkinterWidget
         }
 
         if AhkStdlibIsNone(master)
-            throw RuntimeError("Too early to create widget: no default root window", -1)
+            master := AhkStdlibTkinterGetDefaultRoot("create widget")
         if !IsObject(master) || !HasProp(master, "tk")
             throw AttributeError("'" AhkStdlibPyTypeName(master) "' object has no attribute 'tk'", -1)
 
@@ -2035,7 +2059,7 @@ class AhkStdlibTkinterImage
         if options.HasOwnProp("master")
             master := options.master
         if AhkStdlibIsNone(master)
-            throw RuntimeError("Too early to create image: no default root window", -1)
+            master := AhkStdlibTkinterGetDefaultRoot("create image")
 
         tk := IsObject(master) && HasProp(master, "tk") ? master.tk : master
         if !IsObject(tk) || !HasMethod(tk, "eval")
@@ -3839,7 +3863,7 @@ class AhkStdlibTkinterVariable
         }
 
         if !hasMaster
-            throw RuntimeError("Too early to create variable: no default root window", -1)
+            master := AhkStdlibTkinterGetDefaultRoot("create variable")
         if !HasMethod(master, "_root")
             throw AttributeError("'" AhkStdlibPyTypeName(master) "' object has no attribute '_root'", -1)
 
@@ -4003,6 +4027,41 @@ stdlib.tkinter := AhkStdlibTkinter
 AhkStdlibTkinterIsPlainKeywordObject(value)
 {
     return IsObject(value) && Type(value) = "Object"
+}
+
+AhkStdlibTkinterRegisterDefaultRoot(root)
+{
+    return AhkStdlibTkinterDefaultRootState("register", root)
+}
+
+AhkStdlibTkinterForgetDefaultRoot(root)
+{
+    return AhkStdlibTkinterDefaultRootState("forget", root)
+}
+
+AhkStdlibTkinterGetDefaultRoot(what)
+{
+    return AhkStdlibTkinterDefaultRootState("get", what)
+}
+
+AhkStdlibTkinterDefaultRootState(action, value := unset)
+{
+    static defaultRoot := stdlib.None
+
+    switch action {
+        case "register":
+            if AhkStdlibIsNone(defaultRoot)
+                defaultRoot := value
+            return stdlib.None
+        case "forget":
+            if IsObject(defaultRoot) && IsSet(value) && ObjPtr(defaultRoot) = ObjPtr(value)
+                defaultRoot := stdlib.None
+            return stdlib.None
+        case "get":
+            if AhkStdlibIsNone(defaultRoot)
+                throw RuntimeError("Too early to " value ": no default root window", -1)
+            return defaultRoot
+    }
 }
 
 AhkStdlibTkinterNormalizeBool(value)

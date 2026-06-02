@@ -1565,6 +1565,45 @@ class StdlibTkinterTest
         }
     }
 
+    static TestModuleLevelDefaultRootImageAndMainloopSurfaceMatchesLocal310()
+    {
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to use image_names\(\): no default root window$", (*) => stdlib.tkinter.image_names())
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to use image_types\(\): no default root window$", (*) => stdlib.tkinter.image_types())
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to run the main loop: no default root window$", (*) => stdlib.tkinter.mainloop())
+        AhkTest.RaisesMatch(TypeError, "^image_names\(\) takes 0 positional arguments but 1 was given$", (*) => stdlib.tkinter.image_names(1))
+        AhkTest.RaisesMatch(TypeError, "^image_types\(\) takes 0 positional arguments but 1 was given$", (*) => stdlib.tkinter.image_types(1))
+        AhkTest.RaisesMatch(TypeError, "^mainloop\(\) takes from 0 to 1 positional arguments but 2 were given$", (*) => stdlib.tkinter.mainloop(0, 1))
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.eval("wm withdraw .")
+            defaultNames := stdlib.tuple(["::tk::icons::information", "::tk::icons::error", "::tk::icons::warning", "::tk::icons::question"])
+
+            AhkTest.AssertEqual(stdlib.tuple(["photo", "bitmap"]), stdlib.tkinter.image_types())
+            AhkTest.AssertEqual(defaultNames, stdlib.tkinter.image_names())
+            AhkTest.AssertEqual(root.image_types(), stdlib.tkinter.image_types())
+            AhkTest.AssertEqual(root.image_names(), stdlib.tkinter.image_names())
+
+            value := stdlib.tkinter.StringVar()
+            AhkTest.AssertEqual("", value.get())
+            AhkTest.AssertEqual(stdlib.None, value.set("defaulted"))
+            AhkTest.AssertEqual("defaulted", value.get())
+            label := stdlib.tkinter.Label({ name: "module_default_label", text: "Default" })
+            image := stdlib.tkinter.PhotoImage({ name: "module_default_image", width: 1, height: 1 })
+            AhkTest.AssertEqual(".module_default_label", String(label))
+            AhkTest.AssertEqual("Default", label.cget("text"))
+            AhkTest.AssertContains("module_default_image", stdlib.tkinter.image_names())
+
+            AhkTest.AssertRegex(root.after(0, (*) => root.quit()), "^after#[0-9]+$")
+            AhkTest.AssertEqual(stdlib.None, stdlib.tkinter.mainloop())
+            AhkTest.AssertEqual(stdlib.None, root.destroy())
+            AhkTest.RaisesMatch(RuntimeError, "^Too early to use image_types\(\): no default root window$", (*) => stdlib.tkinter.image_types())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkAfterIdleCallbacksMatchLocal310()
     {
         root := stdlib.tkinter.Tk()
@@ -3888,6 +3927,11 @@ class StdlibTkinterTest
     static TestObservedTkinterArityAndTypeErrorsMatchLocal310()
     {
         interp := stdlib.tkinter.Tcl()
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.Variable())
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.StringVar())
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.IntVar())
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.DoubleVar())
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.BooleanVar())
         gui := stdlib.tkinter.Tk()
         gui.eval("wm withdraw .")
 
@@ -3901,27 +3945,28 @@ class StdlibTkinterTest
         AhkTest.RaisesMatch(TypeError, "^Misc\.setvar\(\) takes from 1 to 3 positional arguments but 4 were given$", (*) => interp.setvar("x", "y", "z"))
         AhkTest.RaisesMatch(TypeError, "^Misc\.getvar\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => interp.getvar("x", "y"))
         AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't read " Chr(34) "missing" Chr(34) ": no such variable$", (*) => interp.getvar("missing"))
-        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.Variable())
+        defaultVariable := stdlib.tkinter.Variable()
+        AhkTest.AssertEqual("", defaultVariable.get())
         AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_root'$", (*) => stdlib.tkinter.Variable({ master: 1 }))
         AhkTest.RaisesMatch(TypeError, "^Variable\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.Variable({ master: interp, extra: 1 }))
         AhkTest.RaisesMatch(TypeError, "^Variable\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.Variable(interp, "seed", "custom_var", "extra"))
         AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.Variable({ master: interp, name: 1 }))
-        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.StringVar())
+        AhkTest.AssertEqual("", stdlib.tkinter.StringVar().get())
         AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_root'$", (*) => stdlib.tkinter.StringVar({ master: 1 }))
         AhkTest.RaisesMatch(TypeError, "^StringVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.StringVar({ master: interp, extra: 1 }))
         AhkTest.RaisesMatch(TypeError, "^StringVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.StringVar(interp, "seed", "custom_name", "extra"))
         AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.StringVar({ master: interp, name: 1 }))
-        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.IntVar())
+        AhkTest.AssertEqual(0, stdlib.tkinter.IntVar().get())
         AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_root'$", (*) => stdlib.tkinter.IntVar({ master: 1 }))
         AhkTest.RaisesMatch(TypeError, "^IntVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.IntVar({ master: interp, extra: 1 }))
         AhkTest.RaisesMatch(TypeError, "^IntVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.IntVar(interp, 1, "custom_int", "extra"))
         AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.IntVar({ master: interp, name: 1 }))
-        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.DoubleVar())
+        AhkTest.AssertEqual(0.0, stdlib.tkinter.DoubleVar().get())
         AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_root'$", (*) => stdlib.tkinter.DoubleVar({ master: 1 }))
         AhkTest.RaisesMatch(TypeError, "^DoubleVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.DoubleVar({ master: interp, extra: 1 }))
         AhkTest.RaisesMatch(TypeError, "^DoubleVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.DoubleVar(interp, 1, "custom_double", "extra"))
         AhkTest.RaisesMatch(TypeError, "^name must be a string$", (*) => stdlib.tkinter.DoubleVar({ master: interp, name: 1 }))
-        AhkTest.RaisesMatch(RuntimeError, "^Too early to create variable: no default root window$", (*) => stdlib.tkinter.BooleanVar())
+        AhkTest.AssertSame(stdlib.False, stdlib.tkinter.BooleanVar().get())
         AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute '_root'$", (*) => stdlib.tkinter.BooleanVar({ master: 1 }))
         AhkTest.RaisesMatch(TypeError, "^BooleanVar\.__init__\(\) got an unexpected keyword argument 'extra'$", (*) => stdlib.tkinter.BooleanVar({ master: interp, extra: 1 }))
         AhkTest.RaisesMatch(TypeError, "^BooleanVar\.__init__\(\) takes from 1 to 4 positional arguments but 5 were given$", (*) => stdlib.tkinter.BooleanVar(interp, 1, "custom_bool", "extra"))
