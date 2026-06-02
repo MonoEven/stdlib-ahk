@@ -1604,6 +1604,39 @@ class StdlibTkinterTest
         }
     }
 
+    static TestModuleLevelGetbooleanUsesDefaultRootMatchesLocal310()
+    {
+        AhkTest.RaisesMatch(RuntimeError, "^Too early to use getboolean\(\): no default root window$", (*) => stdlib.tkinter.getboolean("1"))
+        AhkTest.RaisesMatch(TypeError, "^getboolean\(\) missing 1 required positional argument: 's'$", (*) => stdlib.tkinter.getboolean())
+        AhkTest.RaisesMatch(TypeError, "^getboolean\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.getboolean("1", "0"))
+
+        root := stdlib.tkinter.Tk()
+        rootDestroyed := false
+        try {
+            root.eval("wm withdraw .")
+            AhkTest.AssertSame(stdlib.True, stdlib.tkinter.getboolean("1"))
+            AhkTest.AssertSame(stdlib.False, stdlib.tkinter.getboolean("0"))
+            AhkTest.AssertSame(stdlib.True, stdlib.tkinter.getboolean("yes"))
+            AhkTest.AssertSame(stdlib.False, stdlib.tkinter.getboolean("no"))
+            AhkTest.AssertSame(stdlib.True, stdlib.tkinter.getboolean(stdlib.True))
+            AhkTest.AssertSame(stdlib.False, stdlib.tkinter.getboolean(stdlib.False))
+            AhkTest.AssertSame(stdlib.True, stdlib.tkinter.getboolean(1))
+            AhkTest.AssertSame(stdlib.False, stdlib.tkinter.getboolean(0))
+            AhkTest.RaisesMatch(ValueError, "^invalid literal for getboolean\(\)$", (*) => stdlib.tkinter.getboolean("maybe"))
+            AhkTest.RaisesMatch(ValueError, "^invalid literal for getboolean\(\)$", (*) => stdlib.tkinter.getboolean(" 1 "))
+            AhkTest.RaisesMatch(TypeError, "^getboolean\(\) argument must be str, not None$", (*) => stdlib.tkinter.getboolean(stdlib.None))
+            AhkTest.RaisesMatch(TypeError, "^getboolean\(\) argument must be str, not float$", (*) => stdlib.tkinter.getboolean(1.25))
+
+            AhkTest.AssertEqual(stdlib.None, root.destroy())
+            rootDestroyed := true
+            AhkTest.RaisesMatch(RuntimeError, "^Too early to use getboolean\(\): no default root window$", (*) => stdlib.tkinter.getboolean("1"))
+        } finally {
+            if !rootDestroyed
+                try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkAfterIdleCallbacksMatchLocal310()
     {
         root := stdlib.tkinter.Tk()

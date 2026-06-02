@@ -100,6 +100,7 @@ try {
     tkinter_example_root_getint := tkinter_example_root.getint(" 7 ")
     tkinter_example_root_getdouble := tkinter_example_root.getdouble("+3.5")
     tkinter_example_root_getboolean := tkinter_example_root.getboolean("off")
+    tkinter_example_module_getboolean := stdlib.tkinter.getboolean("yes")
     tkinter_example_root_transient_query := tkinter_example_root.transient()
     tkinter_example_root_overrideredirect_before := tkinter_example_root.overrideredirect()
     tkinter_example_root_overrideredirect_return := tkinter_example_root.overrideredirect(stdlib.True)

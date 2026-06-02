@@ -28,6 +28,16 @@ class AhkStdlibTkinter
         get => 8
     }
 
+    static getboolean(args*)
+    {
+        if args.Length = 0
+            throw TypeError("getboolean() missing 1 required positional argument: 's'", -1)
+        if args.Length > 1
+            throw TypeError("getboolean() takes 1 positional argument but " args.Length " were given", -1)
+        root := AhkStdlibTkinterGetDefaultRoot("use getboolean()")
+        return AhkStdlibTkinterGetBooleanPublic(root.AhkStdlibInterp, args[1])
+    }
+
     static image_names(args*)
     {
         if args.Length != 0
@@ -1073,6 +1083,8 @@ class Tk
 
     destroy()
     {
+        AhkStdlibTkinterCancelPendingThemeChanged(this.AhkStdlibInterp)
+        AhkStdlibTkinterSilenceDestroyBackgroundErrors(this.AhkStdlibInterp)
         resultCode := DllCall("tcl86t\Tcl_Eval", "Ptr", this.AhkStdlibInterp, "Ptr", AhkStdlibTkinterUtf8Buffer("destroy .").Ptr, "Int")
         if resultCode != 0
             throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(this.AhkStdlibInterp), -1)
@@ -4042,6 +4054,18 @@ AhkStdlibTkinterForgetDefaultRoot(root)
 AhkStdlibTkinterGetDefaultRoot(what)
 {
     return AhkStdlibTkinterDefaultRootState("get", what)
+}
+
+AhkStdlibTkinterCancelPendingThemeChanged(interp)
+{
+    script := "if {[info commands after] ne {}} {foreach id [after info] {if {[catch {after info $id} info] == 0 && [lindex $info 0] eq {ttk::ThemeChanged}} {after cancel $id}}}"
+    DllCall("tcl86t\Tcl_Eval", "Ptr", interp, "Ptr", AhkStdlibTkinterUtf8Buffer(script).Ptr, "Int")
+}
+
+AhkStdlibTkinterSilenceDestroyBackgroundErrors(interp)
+{
+    script := "if {[info commands ahkstdlib_tkinter_bgerror] eq {} && [info commands bgerror] ne {}} {rename bgerror ahkstdlib_tkinter_bgerror}; proc bgerror {msg} {}"
+    DllCall("tcl86t\Tcl_Eval", "Ptr", interp, "Ptr", AhkStdlibTkinterUtf8Buffer(script).Ptr, "Int")
 }
 
 AhkStdlibTkinterDefaultRootState(action, value := unset)
