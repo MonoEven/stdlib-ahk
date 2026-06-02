@@ -3823,6 +3823,8 @@ class AhkTestTempDir
 {
     __New(prefix := "ahktest", path := unset)
     {
+        static counter := 0
+
         if IsSet(path) {
             this.Path := path
             parent := this.ParentDir(this.Path)
@@ -3834,7 +3836,8 @@ class AhkTestTempDir
         }
 
         safePrefix := RegExReplace(prefix, "[^\w.-]", "-")
-        this.Path := A_Temp "\" safePrefix "-" A_NowUTC "-" A_TickCount
+        counter += 1
+        this.Path := A_Temp "\" safePrefix "-" A_NowUTC "-" A_TickCount "-" counter
         DirCreate this.Path
     }
 
@@ -3852,12 +3855,7 @@ class AhkTestTempDir
     {
         if !DirExist(this.Path)
             return
-        try {
-            DirDelete this.Path
-        } catch {
-            if DirExist(this.Path)
-                DirDelete this.Path, true
-        }
+        DirDelete this.Path, true
     }
 
     PathJoin(parts*)

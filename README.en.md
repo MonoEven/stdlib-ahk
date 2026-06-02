@@ -43,6 +43,10 @@ Current direct modules under testing:
 - `logging`, `queue`, `tkinter`
 - `ahktest`, `assert`, `base`, `types`, `warnings`, `operator`
 
+Current full stdlib gate: `953 passed, 0 failed, 0 errors`. The 40-second
+aggregate gate is back under budget after removing slow temporary directory
+cleanup paths in `ahktest` and `tempfile`.
+
 ## Quick Start
 
 ```ahk

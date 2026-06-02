@@ -35,6 +35,9 @@
 - `logging`, `queue`, `tkinter`
 - `ahktest`, `assert`, `base`, `types`, `warnings`, `operator`
 
+当前完整 stdlib gate：`953 passed, 0 failed, 0 errors`。通过移除
+`ahktest` 与 `tempfile` 中较慢的临时目录清理路径，40 秒 aggregate gate 已回到预算内。
+
 ## 快速开始
 
 ```ahk

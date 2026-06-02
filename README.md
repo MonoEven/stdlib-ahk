@@ -62,9 +62,14 @@ AutoHotkey v2.0.26 与 v2.1-alpha.30。
 
 Public calls use `stdlib.module.func(...)` or `stdlib.module.Class(...)`; the
 stable include surface remains `#Include <stdlib\module>`.
+The current full stdlib gate is `953 passed, 0 failed, 0 errors`; the
+40-second aggregate gate is back under budget after removing slow temporary
+directory cleanup paths in `ahktest` and `tempfile`.
 
 对外调用使用 `stdlib.module.func(...)` 或 `stdlib.module.Class(...)`；稳定
 引入面保持为 `#Include <stdlib\module>`。
+当前完整 stdlib gate 为 `953 passed, 0 failed, 0 errors`；通过移除
+`ahktest` 与 `tempfile` 中较慢的临时目录清理路径，40 秒 aggregate gate 已回到预算内。
 
 ## Friendly Links
 

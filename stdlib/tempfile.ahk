@@ -78,12 +78,7 @@ class AhkStdlibTemporaryDirectory
             return
 
         try {
-            try {
-                DirDelete this.name
-            } catch {
-                if DirExist(this.name) != ""
-                    DirDelete this.name, true
-            }
+            DirDelete this.name, true
         } catch as err {
             if !this._ignore_cleanup_errors
                 throw err
