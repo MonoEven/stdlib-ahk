@@ -3368,6 +3368,122 @@ class AhkStdlibTkinterTtk
         }
     }
 
+    class AhkStdlibTkinterPanedwindow extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Panedwindow", "ttk::panedwindow", args*)
+            this.widgetName := "ttk::panedwindow"
+        }
+
+        add(args*)
+        {
+            if args.Length = 0
+                throw TypeError("PanedWindow.add() missing 1 required positional argument: 'child'", -1)
+            if args.Length > 2
+                throw TypeError("PanedWindow.add() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            options := args.Length = 2 ? args[2] : {}
+            if !AhkStdlibTkinterIsPlainKeywordObject(options)
+                throw TypeError("object of type '" AhkStdlibPyTypeName(options) "' has no len()", -1)
+            childPath := AhkStdlibTkinterPaneChildPath(args[1])
+            this.AhkStdlibRoot.eval(this._w " add " AhkStdlibTkinterTclWord(childPath) AhkStdlibTkinterOptionsToScript(options, false, this.AhkStdlibRoot))
+            return stdlib.None
+        }
+
+        forget(args*)
+        {
+            if args.Length = 0
+                throw TypeError("PanedWindow.remove() missing 1 required positional argument: 'child'", -1)
+            if args.Length > 1
+                throw TypeError("PanedWindow.remove() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " forget " AhkStdlibTkinterTclWord(AhkStdlibTkinterPaneChildPath(args[1])))
+            return stdlib.None
+        }
+
+        identify(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Widget.identify() missing 2 required positional arguments: 'x' and 'y'", -1)
+            if args.Length = 1
+                throw TypeError("Widget.identify() missing 1 required positional argument: 'y'", -1)
+            if args.Length > 2
+                throw TypeError("Widget.identify() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " identify " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        }
+
+        insert(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Panedwindow.insert() missing 2 required positional arguments: 'pos' and 'child'", -1)
+            if args.Length = 1
+                throw TypeError("Panedwindow.insert() missing 1 required positional argument: 'child'", -1)
+            if args.Length > 3
+                throw TypeError("Panedwindow.insert() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            options := args.Length = 3 ? args[3] : {}
+            if !AhkStdlibTkinterIsPlainKeywordObject(options)
+                throw TypeError("object of type '" AhkStdlibPyTypeName(options) "' has no len()", -1)
+            this.AhkStdlibRoot.eval(this._w " insert " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(AhkStdlibTkinterPaneChildPath(args[2])) AhkStdlibTkinterOptionsToScript(options, false, this.AhkStdlibRoot))
+            return stdlib.None
+        }
+
+        pane(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Panedwindow.pane() missing 1 required positional argument: 'pane'", -1)
+            if args.Length > 2
+                throw TypeError("Panedwindow.pane() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+            paneId := AhkStdlibTkinterPaneChildPath(args[1])
+            if args.Length = 1 || AhkStdlibIsNone(args[2])
+                return AhkStdlibTkinterTtkPanedwindowPaneDict(this.AhkStdlibRoot, this._w, paneId)
+            if AhkStdlibTkinterIsPlainKeywordObject(args[2]) {
+                this.AhkStdlibRoot.eval(this._w " pane " AhkStdlibTkinterTclWord(paneId) AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot))
+                return Map()
+            }
+            optionName := AhkStdlibTkinterWidgetOptionName(args[2])
+            value := this.AhkStdlibRoot.eval(this._w " pane " AhkStdlibTkinterTclWord(paneId) " -" optionName)
+            return AhkStdlibTkinterTtkPanedwindowPaneValue(this.AhkStdlibRoot, optionName, value)
+        }
+
+        panes(args*)
+        {
+            if args.Length != 0
+                throw TypeError("PanedWindow.panes() takes 1 positional argument but " args.Length + 1 " were given", -1)
+            return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(this._w " panes")))
+        }
+
+        sashpos(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Panedwindow.sashpos() missing 1 required positional argument: 'index'", -1)
+            if args.Length > 2
+                throw TypeError("Panedwindow.sashpos() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+            script := this._w " sashpos " AhkStdlibTkinterTclWord(args[1])
+            if args.Length = 2
+                script .= " " AhkStdlibTkinterTclWord(args[2])
+            return Integer(this.AhkStdlibRoot.eval(script))
+        }
+    }
+
+    class AhkStdlibTkinterSizegrip extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Sizegrip", "ttk::sizegrip", args*)
+            this.widgetName := "ttk::sizegrip"
+        }
+
+        identify(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Widget.identify() missing 2 required positional arguments: 'x' and 'y'", -1)
+            if args.Length = 1
+                throw TypeError("Widget.identify() missing 1 required positional argument: 'y'", -1)
+            if args.Length > 2
+                throw TypeError("Widget.identify() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " identify " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        }
+    }
+
     class AhkStdlibTkinterLabelFrame extends AhkStdlibTkinterWidget
     {
         __New(args*)
@@ -7348,6 +7464,8 @@ AhkStdlibTkinterTtkBindPublicClasses()
         "Radiobutton", AhkStdlibTkinterTtk.AhkStdlibTkinterRadiobutton,
         "Scale", AhkStdlibTkinterTtk.AhkStdlibTkinterScale,
         "Scrollbar", AhkStdlibTkinterTtk.AhkStdlibTkinterScrollbar,
+        "Panedwindow", AhkStdlibTkinterTtk.AhkStdlibTkinterPanedwindow,
+        "Sizegrip", AhkStdlibTkinterTtk.AhkStdlibTkinterSizegrip,
         "LabelFrame", AhkStdlibTkinterTtk.AhkStdlibTkinterLabelFrame
     )
     for publicName, classObject in classMap
@@ -9735,6 +9853,31 @@ AhkStdlibTkinterNotebookTabValue(root, optionName, value, asDict)
         case "underline":
             try return Integer(value)
     }
+    return AhkStdlibTkinterCgetValue(optionName, value, root)
+}
+
+AhkStdlibTkinterTtkPanedwindowPaneDict(root, window, paneId)
+{
+    result := Map()
+    raw := root.eval(window " pane " AhkStdlibTkinterTclWord(paneId))
+    parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, raw)
+    index := 1
+    while index <= parts.Length {
+        optionName := parts[index]
+        if SubStr(optionName, 1, 1) = "-"
+            optionName := SubStr(optionName, 2)
+        value := index + 1 <= parts.Length ? parts[index + 1] : ""
+        result[optionName] := AhkStdlibTkinterTtkPanedwindowPaneValue(root, optionName, value)
+        index += 2
+    }
+    return result
+}
+
+AhkStdlibTkinterTtkPanedwindowPaneValue(root, optionName, value)
+{
+    optionName := AhkStdlibTkinterWidgetOptionName(optionName)
+    if optionName = "weight"
+        try return Integer(value)
     return AhkStdlibTkinterCgetValue(optionName, value, root)
 }
 

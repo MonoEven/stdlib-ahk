@@ -1,64 +1,50 @@
 # stdlib for AutoHotkey v2
 
-`stdlib` is a Python 3.10-inspired standard library for AutoHotkey v2.
+## English
 
-`stdlib` 是一个面向 AutoHotkey v2 的标准库项目，设计参考 Python 3.10
-标准库的模块划分和常用接口。
+`stdlib` brings a Python 3.10-style standard-library surface to AutoHotkey v2.
 
-## Readme Versions
+Public modules keep a stable include path: `#Include <stdlib\...>`. Public APIs are exposed as `stdlib.module.func(...)` and `stdlib.module.Class(...)`.
 
-- [English](README.en.md)
-- [中文](README.zh-CN.md)
+Use the language-specific READMEs for setup notes, module coverage, and runnable examples.
 
-## Overview
+- [English README](README.en.md)
+- [Chinese README](README.zh-CN.md)
 
-Public modules use the predictable `#Include <stdlib\...>` surface. Promoted
-modules include focused behavior tests and examples.
+### Requirements
 
-对外公开模块使用稳定的 `#Include <stdlib\...>` 引入路径。提升为正式模块的
-内容会配套维护行为测试和示例。
+AutoHotkey v2.0.5 or later is required. Current local gates run on AutoHotkey v2.0.26 and v2.1-alpha.30.
 
-## Requirements
+`stdlib.tkinter` includes `tcl86t.dll` and `tk86t.dll` for `useTk`. The CPython 3.10.11 source reference and SHA256 report are kept in `stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
 
-`stdlib` requires AutoHotkey v2.0.5 or later. It is currently developed and
-tested with AutoHotkey v2.0.26 and v2.1-alpha.30.
+### Project Notes
 
-The `stdlib.tkinter` slice includes bundled Tcl/Tk runtime DLLs
-(`tcl86t.dll` and `tk86t.dll`) for `useTk` support. Their CPython 3.10.11
-source and SHA256 verification report are tracked in
-`stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
+- Behavior tests: `stdlib\tests`
+- Examples: `stdlib\examples` and the language-specific READMEs
+- Architecture and promotion history: `docs\stdlib-architecture.md`
 
-`stdlib` 需要 AutoHotkey v2.0.5 或更高版本。当前开发和测试环境为
-AutoHotkey v2.0.26 与 v2.1-alpha.30。
+## 中文
 
-`stdlib.tkinter` 切片包含用于 `useTk` 支持的 Tcl/Tk 运行时 DLL
-（`tcl86t.dll` 与 `tk86t.dll`）。其 CPython 3.10.11 来源与 SHA256
-校验报告已随 `stdlib\tkinter\lib\README.md` 和
-`stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
+`stdlib` 将 Python 3.10 风格的标准库接口带到 AutoHotkey v2。
 
-Public calls use `stdlib.module.func(...)` or `stdlib.module.Class(...)`; the
-stable include surface remains `#Include <stdlib\module>`.
-Detailed module promotion and gate-history notes are maintained in
-`docs\stdlib-architecture.md`, not in README.
+公开模块保持稳定的引入路径：`#Include <stdlib\...>`。公开 API 使用 `stdlib.module.func(...)` 和 `stdlib.module.Class(...)`。
 
-对外调用使用 `stdlib.module.func(...)` 或 `stdlib.module.Class(...)`；稳定
-引入面保持为 `#Include <stdlib\module>`。
-具体模块 promotion 和 gate 历史维护在 `docs\stdlib-architecture.md`，不写入
-README。
+安装说明、模块覆盖范围和可运行示例请查看对应语言版本：
 
-## Usage Docs
+- [英文 README](README.en.md)
+- [中文 README](README.zh-CN.md)
 
-Quick-start examples are maintained in the language-specific README files:
+### 版本要求
 
-- [English quick start](README.en.md#quick-start)
-- [中文快速开始](README.zh-CN.md#快速开始)
+需要 AutoHotkey v2.0.5 或更高版本。当前本地 gate 使用 AutoHotkey v2.0.26 与 v2.1-alpha.30。
 
-## 使用文档
+`stdlib.tkinter` 内置 `tcl86t.dll` 和 `tk86t.dll` 以支持 `useTk`。CPython 3.10.11 来源记录和 SHA256 校验报告保存在 `stdlib\tkinter\lib\README.md` 与 `stdlib\tkinter\lib\SHA256SUMS`。
 
-快速开始示例维护在对应语言版本的 README 中：
+### 项目说明
 
-- [English quick start](README.en.md#quick-start)
-- [中文快速开始](README.zh-CN.md#快速开始)
+- 行为测试：`stdlib\tests`
+- 示例：`stdlib\examples` 与对应语言版本 README
+- 架构和 promotion 历史：`docs\stdlib-architecture.md`
 
 ## Friendly Links
 

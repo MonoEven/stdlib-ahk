@@ -65,6 +65,19 @@ canvas.grid({ row: 2, column: 0, columnspan: 2, padx: 6, pady: 6 })
 bar := canvas.create_rectangle(10, 55, 10, 75, { fill: "steelblue", outline: "steelblue" })
 caption := canvas.create_text(12, 20, { text: "Click Update", anchor: "nw", fill: "gray20" })
 
+paned := stdlib.tkinter.ttk.Panedwindow(frame, { orient: "horizontal", height: 72 })
+paned.grid({ row: 3, column: 0, columnspan: 2, padx: 6, pady: 6, sticky: "ew" })
+leftPane := stdlib.tkinter.ttk.Frame(paned)
+rightPane := stdlib.tkinter.ttk.Frame(paned)
+paned.add(leftPane, { weight: 1 })
+paned.add(rightPane, { weight: 2 })
+stdlib.tkinter.ttk.Label(leftPane, { text: "ttk widgets" })
+    .grid({ row: 0, column: 0, padx: 8, pady: 8 })
+stdlib.tkinter.ttk.Label(rightPane, { text: "Canvas + variables + callbacks" })
+    .grid({ row: 0, column: 0, padx: 8, pady: 8 })
+stdlib.tkinter.ttk.Sizegrip(rightPane)
+    .grid({ row: 1, column: 0, padx: 8, pady: 4, sticky: "e" })
+
 update_demo(*) {
     global count, name, status, progressValue, canvas, bar, caption
     count += 1
@@ -78,9 +91,9 @@ update_demo(*) {
 }
 
 button := stdlib.tkinter.ttk.Button(frame, { text: "Update", command: update_demo })
-button.grid({ row: 3, column: 0, padx: 6, pady: 6, sticky: "ew" })
+button.grid({ row: 4, column: 0, padx: 6, pady: 6, sticky: "ew" })
 stdlib.tkinter.ttk.Label(frame, { textvariable: status })
-    .grid({ row: 3, column: 1, padx: 6, pady: 6, sticky: "w" })
+    .grid({ row: 4, column: 1, padx: 6, pady: 6, sticky: "w" })
 
 frame.columnconfigure(1, { weight: 1 })
 root.columnconfigure(0, { weight: 1 })

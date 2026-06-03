@@ -100,11 +100,69 @@ small TDD slices. Current direct modules:
 The framework manifest currently tracks `57` total module slots: `57` direct,
 `0` candidate, and `0` native-quarantine.
 
-Current verified wrapper baseline is `stdlib/tests: 1023 passed, 0 failed, 0 errors`,
+Current verified wrapper baseline is `stdlib/tests: 1025 passed, 0 failed, 0 errors`,
 with the existing `plain fallback` stderr line from the logging bootstrap smoke
 still treated as expected output rather than a failure. The latest aggregate
 gate completed with `run-ahktest stdlib/tests -TimeoutSeconds 70`, reporting
-1023 passed, 0 failed, and 0 errors with the known `plain fallback` stderr
+1025 passed, 0 failed, and 0 errors with the known `plain fallback` stderr
+line.
+
+The latest tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Sizegrip`. Fresh Python 3.10.11 probes confirmed that
+`tkinter.ttk.Sizegrip` has signature `(master=None, **kw)`, imports from
+`tkinter.ttk`, rejects a string master with
+`AttributeError("'str' object has no attribute 'tk'")`, creates default-root
+widgets when no master is supplied, uses `widgetName == "ttk::sizegrip"`,
+reports `winfo_class() == "TSizegrip"`, and exposes `class`, `cursor`,
+`style`, and `takefocus` configure keys. The covered behavior includes
+`cget(...)` and `configure(...)` readback for those keys, `identify(x, y)`,
+the inherited `state(statespec=None)` and
+`instate(statespec, callback=None, *args)` paths, Python-observed arity
+messages, non-iterable state-spec `TypeError("can only join an iterable")`,
+bare-string state Tcl errors, and Tcl bad-option errors passing through
+unchanged. The AHK surface implements this as a prefixed internal
+`AhkStdlibTkinterSizegrip` class bound to public
+`stdlib.tkinter.ttk.Sizegrip` through `DefineProp(Get, Call)`, preserving the
+fixed public API while avoiding raw AHK class-name collisions. The
+language-specific README tkinter examples now include a `ttk.Sizegrip` inside
+the `ttk.Panedwindow` demo area; root `README.md` remains an English-first,
+Chinese-second entry page with no code examples. Fresh promotion evidence
+includes the focused red test failing because `stdlib.tkinter.ttk` had no
+`Sizegrip` property, focused green passing 1/1, `Ttk` filter passing 94/94,
+full `stdlib/tests/tkinter.test.ahk` passing 157/157,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passing, README tkinter demo
+probes passing with `/ErrorStdOut=UTF-8`, and aggregate `stdlib/tests` passing
+1025/1025 with `-TimeoutSeconds 70` and the known `plain fallback` stderr
+line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Panedwindow`. Fresh Python 3.10.11 probes confirmed that
+`tkinter.ttk.Panedwindow` has signature `(master=None, **kw)`, imports from
+`tkinter.ttk`, rejects a string master with
+`AttributeError("'str' object has no attribute 'tk'")`, creates default-root
+widgets when no master is supplied, uses `widgetName == "ttk::panedwindow"`,
+reports `winfo_class() == "TPanedwindow"`, exposes `orient`, `width`,
+`height`, `takefocus`, `cursor`, `style`, and `class` configure keys, and
+returns pane paths as tuples. The covered pane behavior includes
+`add(child, **kw)`, `forget(child)`, `insert(pos, child, **kw)`,
+`pane(pane, option=None, **kw)`, `panes()`, `sashpos(index, newpos=None)`,
+and `identify(x, y)` with Python-observed arity messages, integer `weight`
+readback, `pane(..., {weight: ...})` returning `{}`, empty-pane
+`sashpos(0)` raising `TclError("sash index 0 out of range")`, and Tcl bad
+option errors passing through unchanged. The AHK surface implements this as a
+prefixed internal `AhkStdlibTkinterPanedwindow` class bound to public
+`stdlib.tkinter.ttk.Panedwindow` through `DefineProp(Get, Call)`, preserving
+the fixed public API while avoiding raw AHK class-name collisions. The
+language-specific README tkinter examples now include a `ttk.Panedwindow`
+container alongside ttk labels, entry, progressbar, variables, callbacks,
+`grid`, and Canvas drawing; root `README.md` remains an English-first,
+Chinese-second entry page with no code examples. Fresh promotion evidence
+includes the focused red test failing because `stdlib.tkinter.ttk` had no
+`Panedwindow` property, focused green passing 1/1, `Ttk` filter passing
+93/93, full `stdlib/tests/tkinter.test.ahk` passing 156/156,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passing, README tkinter demo
+probe passing with `/ErrorStdOut=UTF-8`, and aggregate `stdlib/tests` passing
+1024/1024 with `-TimeoutSeconds 70` and the known `plain fallback` stderr
 line.
 
 The latest tkinter safety slice keeps the public `stdlib.tkinter.X` and
@@ -215,8 +273,8 @@ metadata so generic widget option conversion remains unchanged. Fresh probes
 also captured unmanaged-tab, invalid-slave, bad-option, and representative
 arity messages. `Notebook.identify(...)` plus other ttk widgets such as
 `Treeview`, `Style`, `Checkbutton`, `Radiobutton`, `Scale`, `Scrollbar`,
-`Spinbox`, `LabelFrame`, `Menubutton`, `Panedwindow`, and `Sizegrip` remain
-unclaimed. Fresh promotion gates include the focused red test failing because
+`Spinbox`, `LabelFrame`, `Menubutton`, `Panedwindow`, and `Sizegrip` remained
+unclaimed at that point. Fresh promotion gates include the focused red test failing because
 `stdlib.tkinter.ttk` had no `Notebook` property, focused green passing 1/1 in
 297ms after fresh probes corrected the disabled-tab selection expectation and
 confirmed `identify(1, 1) == ""` while `identify(5, 5) == "tab"` in the
@@ -2676,8 +2734,10 @@ surfaces `stdlib.tkinter.ttk.Frame(...)`, `stdlib.tkinter.ttk.Label(...)`,
 `stdlib.tkinter.ttk.Button(...)`, `stdlib.tkinter.ttk.Checkbutton(...)`,
 `stdlib.tkinter.ttk.Radiobutton(...)`, `stdlib.tkinter.ttk.Scale(...)`, and
 `stdlib.tkinter.ttk.Scrollbar(...)`,
-plus `stdlib.tkinter.ttk.Separator(...)` and
-`stdlib.tkinter.ttk.Progressbar(...)`. The
+plus `stdlib.tkinter.ttk.Separator(...)`,
+`stdlib.tkinter.ttk.Progressbar(...)`, `stdlib.tkinter.ttk.Notebook(...)`,
+`stdlib.tkinter.ttk.LabelFrame(...)`, `stdlib.tkinter.ttk.Panedwindow(...)`,
+and `stdlib.tkinter.ttk.Sizegrip(...)`. The
 covered behavior matches local Python 3.10.11 probing for `Tcl()` argument-count
 and keyword/type-error wording, Tcl interpreter creation with explicit local
 Tcl library discovery, `eval(...)`, `setvar(...)`, `getvar(...)`, `_root()`
