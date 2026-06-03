@@ -17,7 +17,7 @@ class StdlibTkinterTest
         AhkTest.AssertEqual(2, stdlib.tkinter.READABLE)
         AhkTest.AssertEqual(4, stdlib.tkinter.WRITABLE)
         AhkTest.AssertEqual(8, stdlib.tkinter.EXCEPTION)
-        AhkTest.AssertEqual("Tk", Type(interp))
+        AhkTest.AssertTrue(interp is stdlib.tkinter.Tk)
         AhkTest.AssertEqual("3", interp.eval("expr 1 + 2"))
         AhkTest.AssertEqual(stdlib.None, interp.setvar("x", "hello"))
         AhkTest.AssertEqual("hello", interp.getvar("x"))
@@ -268,7 +268,7 @@ class StdlibTkinterTest
         AhkTest.AssertTrue(HasMethod(stdlib.tkinter, "Event"))
 
         event := stdlib.tkinter.Event()
-        AhkTest.AssertEqual("Event", Type(event))
+        AhkTest.AssertTrue(event is stdlib.tkinter.Event)
         AhkTest.AssertFalse(HasProp(event, "widget"))
         AhkTest.AssertFalse(HasProp(event, "x"))
         AhkTest.AssertFalse(HasProp(event, "y"))
@@ -312,7 +312,7 @@ class StdlibTkinterTest
 
         for entry in eventTypes {
             eventType := stdlib.tkinter.EventType(entry[1])
-            AhkTest.AssertEqual("EventType", Type(eventType), entry[1])
+            AhkTest.AssertTrue(eventType is stdlib.tkinter.EventType, entry[1])
             AhkTest.AssertEqual(entry[2], eventType.name, entry[1])
             AhkTest.AssertEqual(entry[1], eventType.value, entry[1])
             AhkTest.AssertEqual(entry[1], String(eventType), entry[1])
@@ -1342,7 +1342,8 @@ class StdlibTkinterTest
             missingAttr := entry[3]
             AhkTest.AssertTrue(HasMethod(stdlib.tkinter, className), className)
             instance := StdlibTkinterTest.TkinterModuleCall(className)
-            AhkTest.AssertEqual(className, Type(instance), className)
+            classObject := stdlib.tkinter.%className%
+            AhkTest.AssertTrue(instance is classObject, className)
             AhkTest.AssertFalse(HasProp(instance, "tk"), className)
             AhkTest.AssertFalse(HasProp(instance, "_w"), className)
             AhkTest.AssertTrue(HasMethod(instance, methodName), className "." methodName)
@@ -1440,7 +1441,7 @@ class StdlibTkinterTest
         try {
             root.eval("wm withdraw .")
             widget := stdlib.tkinter.Widget(root, "label", { text: "Widget", name: "public_widget_probe" })
-            AhkTest.AssertEqual("Widget", Type(widget))
+            AhkTest.AssertTrue(widget is stdlib.tkinter.Widget)
             AhkTest.AssertEqual(".public_widget_probe", String(widget))
             AhkTest.AssertEqual("label", widget.widgetName)
             AhkTest.AssertSame(root, widget.master)
@@ -1476,7 +1477,7 @@ class StdlibTkinterTest
         try {
             root.eval("wm withdraw .")
             widget := stdlib.tkinter.BaseWidget(root, "label", { text: "BaseWidget", name: "public_basewidget_probe" })
-            AhkTest.AssertEqual("BaseWidget", Type(widget))
+            AhkTest.AssertTrue(widget is stdlib.tkinter.BaseWidget)
             AhkTest.AssertEqual(".public_basewidget_probe", String(widget))
             AhkTest.AssertEqual("label", widget.widgetName)
             AhkTest.AssertSame(root, widget.master)
@@ -1822,7 +1823,7 @@ class StdlibTkinterTest
         try {
             root.eval("wm withdraw .")
 
-            AhkTest.AssertEqual("Tk", Type(root))
+            AhkTest.AssertTrue(root is stdlib.tkinter.Tk)
             AhkTest.AssertEqual(".", String(root))
             AhkTest.AssertSame(root, root._root())
             AhkTest.AssertEqual("winfo", root.eval("info commands winfo"))
@@ -3803,7 +3804,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, root.update())
             AhkTest.AssertEqual(1, recorder.Calls.Length)
             event := recorder.Calls[1]
-            AhkTest.AssertEqual("Event", Type(event))
+            AhkTest.AssertTrue(event is stdlib.tkinter.Event)
             AhkTest.AssertSame(label, event.widget)
             AhkTest.AssertEqual("ButtonPress", event.type.name)
             AhkTest.AssertEqual(7, event.x)
@@ -3997,9 +3998,9 @@ class StdlibTkinterTest
             label := stdlib.tkinter.Label(root, { text: "Hello" })
             button := stdlib.tkinter.Button(frame, { text: "Press" })
 
-            AhkTest.AssertEqual("Frame", Type(frame))
-            AhkTest.AssertEqual("Label", Type(label))
-            AhkTest.AssertEqual("Button", Type(button))
+            AhkTest.AssertTrue(frame is stdlib.tkinter.Frame)
+            AhkTest.AssertTrue(label is stdlib.tkinter.Label)
+            AhkTest.AssertTrue(button is stdlib.tkinter.Button)
             AhkTest.AssertEqual(".host", String(frame))
             AhkTest.AssertEqual(".!label", String(label))
             AhkTest.AssertEqual(".host.!button", String(button))
@@ -4125,7 +4126,7 @@ class StdlibTkinterTest
             root.eval("wm withdraw .")
             top := stdlib.tkinter.Toplevel(root, { name: "dialog", width: 120, height: 80, bg: "white" })
 
-            AhkTest.AssertEqual("Toplevel", Type(top))
+            AhkTest.AssertTrue(top is stdlib.tkinter.Toplevel)
             AhkTest.AssertEqual(".dialog", String(top))
             AhkTest.AssertSame(root, top._root())
             AhkTest.AssertEqual(1, top.winfo_exists())
@@ -4169,7 +4170,7 @@ class StdlibTkinterTest
             root.eval("wm withdraw .")
             listbox := stdlib.tkinter.Listbox(root, { name: "choices", height: 4, width: 12, selectmode: "extended" })
 
-            AhkTest.AssertEqual("Listbox", Type(listbox))
+            AhkTest.AssertTrue(listbox is stdlib.tkinter.Listbox)
             AhkTest.AssertEqual(".choices", String(listbox))
             AhkTest.AssertSame(root, listbox._root())
             AhkTest.AssertEqual(1, listbox.winfo_exists())
@@ -4433,6 +4434,62 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTkMainloopReturnsAfterDefaultWindowCloseMatchesLocal310()
+    {
+        scriptPath := A_Temp "\stdlib-tkinter-mainloop-close-" A_TickCount "-" Random(100000, 999999) ".ahk"
+        SplitPath A_LineFile, , &testsDir
+        stdlibDir := RegExReplace(testsDir, "\\tests$")
+        tkinterPath := stdlibDir "\tkinter.ahk"
+        script := '#Requires AutoHotkey v2.0`n'
+            . '#ErrorStdOut "UTF-8"`n'
+            . '#Include "' tkinterPath '"`n'
+            . 'fail(message) {`n'
+            . '    FileAppend "FAIL:" message "``n", "**", "UTF-8"`n'
+            . '    ExitApp 7`n'
+            . '}`n'
+            . 'assert_same(expected, actual, label) {`n'
+            . '    if expected !== actual`n'
+            . '        fail(label ": unexpected object")`n'
+            . '}`n'
+            . 'raises(errorType, pattern, callback, label) {`n'
+            . '    try {`n'
+            . '        callback.Call()`n'
+            . '    } catch as err {`n'
+            . '        if !(err is errorType)`n'
+            . '            fail(label ": wrong error type " Type(err) ": " err.Message)`n'
+            . '        if !RegExMatch(err.Message, pattern)`n'
+            . '            fail(label ": wrong message " err.Message)`n'
+            . '        return`n'
+            . '    }`n'
+            . '    fail(label ": no error")`n'
+            . '}`n'
+            . 'root := stdlib.tkinter.Tk()`n'
+            . 'root.eval("wm withdraw .")`n'
+            . 'closeCommand := root.protocol("WM_DELETE_WINDOW")`n'
+            . 'if closeCommand = ""`n'
+            . '    fail("missing close command")`n'
+            . 'root.eval(closeCommand)`n'
+            . 'assert_same(stdlib.None, root.mainloop(), "mainloop return")`n'
+            . 'raises(RuntimeError, "^Too early to create widget: no default root window$", (*) => stdlib.tkinter.Label({ text: "closed" }), "closed default widget")`n'
+            . 'nextRoot := stdlib.tkinter.Tk()`n'
+            . 'label := stdlib.tkinter.Label({ text: "new default" })`n'
+            . 'assert_same(nextRoot, label._root(), "new default root")`n'
+            . 'if label.cget("text") != "new default"`n'
+            . '    fail("new default label text")`n'
+            . 'nextRoot.destroy()`n'
+            . 'FileAppend "ok``n", "*", "UTF-8"`n'
+            . 'ExitApp 0`n'
+        try {
+            FileAppend script, scriptPath, "UTF-8"
+            result := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", scriptPath], { WorkingDir: stdlibDir, TimeoutSeconds: 10 })
+        } finally {
+            try FileDelete scriptPath
+        }
+        diagnostic := "exit=" result.ExitCode " stdout=" result.Out " stderr=" result.Err
+        AhkTest.AssertEqual(0, result.ExitCode, diagnostic)
+        AhkTest.AssertContains("ok", result.Out, diagnostic)
+    }
+
     static TestModuleLevelGetbooleanUsesDefaultRootMatchesLocal310()
     {
         AhkTest.RaisesMatch(RuntimeError, "^Too early to use getboolean\(\): no default root window$", (*) => stdlib.tkinter.getboolean("1"))
@@ -4547,6 +4604,56 @@ class StdlibTkinterTest
             . 'raises(RuntimeError, "^No master specified and tkinter is configured to not support default root$", (*) => stdlib.tkinter.getboolean("1"), "new root not default")`n'
             . 'nextRoot.destroy()`n'
             . 'root.destroy()`n'
+            . 'FileAppend "ok``n", "*", "UTF-8"`n'
+            . 'ExitApp 0`n'
+        try {
+            FileAppend script, scriptPath, "UTF-8"
+            result := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", scriptPath], { WorkingDir: stdlibDir, TimeoutSeconds: 10 })
+        } finally {
+            try FileDelete scriptPath
+        }
+        diagnostic := "exit=" result.ExitCode " stdout=" result.Out " stderr=" result.Err
+        AhkTest.AssertEqual(0, result.ExitCode, diagnostic)
+        AhkTest.AssertContains("ok", result.Out, diagnostic)
+    }
+
+    static TestTkinterIncludeToleratesHostClassNameCollisions()
+    {
+        scriptPath := A_Temp "\stdlib-tkinter-class-collision-" A_TickCount "-" Random(100000, 999999) ".ahk"
+        SplitPath A_LineFile, , &testsDir
+        stdlibDir := RegExReplace(testsDir, "\\tests$")
+        tkinterPath := stdlibDir "\tkinter.ahk"
+        script := '#Requires AutoHotkey v2.0`n'
+            . '#ErrorStdOut "UTF-8"`n'
+            . 'class Menu`n'
+            . '{`n'
+            . '}`n'
+            . 'class Button`n'
+            . '{`n'
+            . '}`n'
+            . 'class Event`n'
+            . '{`n'
+            . '}`n'
+            . 'class Image`n'
+            . '{`n'
+            . '}`n'
+            . 'class Text`n'
+            . '{`n'
+            . '}`n'
+            . '#Include "' tkinterPath '"`n'
+            . 'interp := stdlib.tkinter.Tcl()`n'
+            . 'evtInstance := stdlib.tkinter.Event()`n'
+            . 'eventTypeInstance := stdlib.tkinter.EventType("4")`n'
+            . 'if !(interp is stdlib.tkinter.Tk)`n'
+            . '    ExitApp 11`n'
+            . 'if !(evtInstance is stdlib.tkinter.Event)`n'
+            . '    ExitApp 12`n'
+            . 'if !(eventTypeInstance is stdlib.tkinter.EventType)`n'
+            . '    ExitApp 13`n'
+            . 'if !HasMethod(stdlib.tkinter, "Menu")`n'
+            . '    ExitApp 14`n'
+            . 'if (stdlib.tkinter.Menu = Menu)`n'
+            . '    ExitApp 15`n'
             . 'FileAppend "ok``n", "*", "UTF-8"`n'
             . 'ExitApp 0`n'
         try {
@@ -4822,7 +4929,7 @@ class StdlibTkinterTest
             value := stdlib.tkinter.StringVar(root, "off", "check_var")
             check := stdlib.tkinter.Checkbutton(root, { name: "agree", text: "Agree", variable: value, onvalue: "yes", offvalue: "no", command: command })
 
-            AhkTest.AssertEqual("Checkbutton", Type(check))
+            AhkTest.AssertTrue(check is stdlib.tkinter.Checkbutton)
             AhkTest.AssertEqual(".agree", String(check))
             AhkTest.AssertSame(root, check._root())
             AhkTest.AssertEqual(1, check.winfo_exists())
@@ -4882,7 +4989,7 @@ class StdlibTkinterTest
             value := stdlib.tkinter.StringVar(root, "none", "radio_var")
             radio := stdlib.tkinter.Radiobutton(root, { name: "choice", text: "Choice A", variable: value, value: "A", command: command })
 
-            AhkTest.AssertEqual("Radiobutton", Type(radio))
+            AhkTest.AssertTrue(radio is stdlib.tkinter.Radiobutton)
             AhkTest.AssertEqual(".choice", String(radio))
             AhkTest.AssertSame(root, radio._root())
             AhkTest.AssertEqual(1, radio.winfo_exists())
@@ -4937,7 +5044,7 @@ class StdlibTkinterTest
             value := stdlib.tkinter.DoubleVar(root, 2.0, "scale_var")
             scale := stdlib.tkinter.Scale(root, { name: "volume", from_: 0, to: 10, orient: "horizontal", resolution: 0.5, variable: value, command: command, length: 120, label: "Volume" })
 
-            AhkTest.AssertEqual("Scale", Type(scale))
+            AhkTest.AssertTrue(scale is stdlib.tkinter.Scale)
             AhkTest.AssertEqual(".volume", String(scale))
             AhkTest.AssertSame(root, scale._root())
             AhkTest.AssertEqual(1, scale.winfo_exists())
@@ -4997,7 +5104,7 @@ class StdlibTkinterTest
             command := (args*) => (calls.Push(args), "done")
             bar := stdlib.tkinter.Scrollbar(root, { name: "bar", orient: "vertical", command: command, width: 17 })
 
-            AhkTest.AssertEqual("Scrollbar", Type(bar))
+            AhkTest.AssertTrue(bar is stdlib.tkinter.Scrollbar)
             AhkTest.AssertEqual(".bar", String(bar))
             AhkTest.AssertSame(root, bar._root())
             AhkTest.AssertEqual(1, bar.winfo_exists())
@@ -5060,7 +5167,7 @@ class StdlibTkinterTest
             command := (*) => (calls.Push("cmd"), "done")
             menu := stdlib.tkinter.Menu(root, { name: "menubar", tearoff: 0 })
 
-            AhkTest.AssertEqual("Menu", Type(menu))
+            AhkTest.AssertTrue(menu is stdlib.tkinter.Menu)
             AhkTest.AssertEqual(".menubar", String(menu))
             AhkTest.AssertSame(root, menu._root())
             AhkTest.AssertEqual(1, menu.winfo_exists())
@@ -5397,7 +5504,7 @@ class StdlibTkinterTest
 
             AhkTest.AssertEqual(stdlib.None, root.update())
             AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
-            AhkTest.AssertEqual("Entry", Type(entry))
+            AhkTest.AssertTrue(entry is stdlib.tkinter.Entry)
             AhkTest.AssertEqual(".!entry", String(entry))
             AhkTest.AssertSame(root, entry._root())
             AhkTest.AssertEqual(1, entry.winfo_exists())
@@ -5594,7 +5701,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
             AhkTest.AssertEqual(stdlib.None, root.update())
 
-            AhkTest.AssertEqual("Spinbox", Type(spin))
+            AhkTest.AssertTrue(spin is stdlib.tkinter.Spinbox)
             AhkTest.AssertEqual(".!spinbox", String(spin))
             AhkTest.AssertSame(root, spin._root())
             AhkTest.AssertEqual(1, spin.winfo_exists())
@@ -5695,7 +5802,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
             AhkTest.AssertEqual(stdlib.None, root.update())
 
-            AhkTest.AssertEqual("Message", Type(message))
+            AhkTest.AssertTrue(message is stdlib.tkinter.Message)
             AhkTest.AssertEqual(".msg_probe", String(message))
             AhkTest.AssertSame(root, message._root())
             AhkTest.AssertEqual(1, message.winfo_exists())
@@ -5705,7 +5812,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(120, message.cget("width"))
             AhkTest.AssertEqual(200, message.cget("aspect"))
 
-            AhkTest.AssertEqual("Menubutton", Type(menubutton))
+            AhkTest.AssertTrue(menubutton is stdlib.tkinter.Menubutton)
             AhkTest.AssertEqual(".mb_probe", String(menubutton))
             AhkTest.AssertSame(root, menubutton._root())
             AhkTest.AssertEqual(1, menubutton.winfo_exists())
@@ -5718,7 +5825,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual("opened", menu.invoke(0))
             AhkTest.AssertEqual("open", menuCalls[1])
 
-            AhkTest.AssertEqual("LabelFrame", Type(labelframe))
+            AhkTest.AssertTrue(labelframe is stdlib.tkinter.LabelFrame)
             AhkTest.AssertEqual(".lf_probe", String(labelframe))
             AhkTest.AssertSame(root, labelframe._root())
             AhkTest.AssertEqual(1, labelframe.winfo_exists())
@@ -5767,7 +5874,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, root.update())
             menu := option["menu"]
 
-            AhkTest.AssertEqual("OptionMenu", Type(option))
+            AhkTest.AssertTrue(option is stdlib.tkinter.OptionMenu)
             AhkTest.AssertEqual(".!optionmenu", String(option))
             AhkTest.AssertSame(root, option._root())
             AhkTest.AssertEqual(1, option.winfo_exists())
@@ -5780,7 +5887,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(1, option.cget("indicatoron"))
             AhkTest.AssertEqual("raised", option.cget("relief"))
             AhkTest.AssertEqual(2, option.cget("highlightthickness"))
-            AhkTest.AssertEqual("Menu", Type(menu))
+            AhkTest.AssertTrue(menu is stdlib.tkinter.Menu)
             AhkTest.AssertEqual(".!optionmenu.menu", String(menu))
             AhkTest.AssertEqual(0, menu.cget("tearoff"))
             AhkTest.AssertEqual(2, menu.index("end"))
@@ -5833,7 +5940,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, panes.add(right, { minsize: 30 }))
             AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
 
-            AhkTest.AssertEqual("PanedWindow", Type(panes))
+            AhkTest.AssertTrue(panes is stdlib.tkinter.PanedWindow)
             AhkTest.AssertEqual(".panes_probe", String(panes))
             AhkTest.AssertSame(root, panes._root())
             AhkTest.AssertEqual(1, panes.winfo_exists())
@@ -6012,7 +6119,7 @@ class StdlibTkinterTest
             root.eval("wm withdraw .")
             text := stdlib.tkinter.Text(root, { width: 20, height: 4, wrap: "none" })
 
-            AhkTest.AssertEqual("Text", Type(text))
+            AhkTest.AssertTrue(text is stdlib.tkinter.Text)
             AhkTest.AssertEqual(".!text", String(text))
             AhkTest.AssertEqual(20, text.cget("width"))
             AhkTest.AssertEqual(4, text.cget("height"))
@@ -6490,7 +6597,7 @@ class StdlibTkinterTest
             imageName := String(image)
             imageNamePattern := "^p" "y" "image\d+$"
 
-            AhkTest.AssertEqual("PhotoImage", Type(image))
+            AhkTest.AssertTrue(image is stdlib.tkinter.PhotoImage)
             AhkTest.AssertRegex(imageName, imageNamePattern)
             AhkTest.AssertEqual(2, image.width())
             AhkTest.AssertEqual(2, image.height())
@@ -6540,7 +6647,7 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, image.put("#abcdef", { to: [2, 1] }))
 
             dupImage := image.copy()
-            AhkTest.AssertEqual("PhotoImage", Type(dupImage))
+            AhkTest.AssertTrue(dupImage is stdlib.tkinter.PhotoImage)
             AhkTest.AssertEqual(3, dupImage.width())
             AhkTest.AssertEqual(2, dupImage.height())
             AhkTest.AssertEqual("photo", dupImage.type())
@@ -6598,7 +6705,7 @@ class StdlibTkinterTest
         try {
             root.eval("wm withdraw .")
             image := stdlib.tkinter.Image("photo", "public_image_probe", { width: 2, height: 3 }, root)
-            AhkTest.AssertEqual("Image", Type(image))
+            AhkTest.AssertTrue(image is stdlib.tkinter.Image)
             AhkTest.AssertEqual("public_image_probe", String(image))
             AhkTest.AssertEqual("photo", image.type())
             AhkTest.AssertEqual(2, image.width())
@@ -6613,7 +6720,7 @@ class StdlibTkinterTest
             AhkTest.AssertContains(String(generated), root.image_names())
 
             bitmap := stdlib.tkinter.Image("bitmap", stdlib.None, {}, root)
-            AhkTest.AssertEqual("Image", Type(bitmap))
+            AhkTest.AssertTrue(bitmap is stdlib.tkinter.Image)
             AhkTest.AssertEqual("bitmap", bitmap.type())
             AhkTest.AssertEqual(0, bitmap.width())
             AhkTest.AssertEqual(0, bitmap.height())
@@ -6637,7 +6744,7 @@ class StdlibTkinterTest
             root.eval("wm withdraw .")
             image := stdlib.tkinter.BitmapImage({ master: root, name: "bitmap_probe", data: bitmapData, foreground: "red", background: "white" })
 
-            AhkTest.AssertEqual("BitmapImage", Type(image))
+            AhkTest.AssertTrue(image is stdlib.tkinter.BitmapImage)
             AhkTest.AssertEqual("bitmap_probe", String(image))
             AhkTest.AssertEqual(2, image.width())
             AhkTest.AssertEqual(2, image.height())
@@ -6653,7 +6760,7 @@ class StdlibTkinterTest
             try FileDelete bitmapPath
             FileAppend bitmapData, bitmapPath, "UTF-8-RAW"
             fileImage := stdlib.tkinter.BitmapImage({ master: root, name: "bitmap_file_probe", file: bitmapPath })
-            AhkTest.AssertEqual("BitmapImage", Type(fileImage))
+            AhkTest.AssertTrue(fileImage is stdlib.tkinter.BitmapImage)
             AhkTest.AssertEqual(2, fileImage.width())
             AhkTest.AssertEqual(2, fileImage.height())
             AhkTest.AssertEqual("bitmap", fileImage.type())
@@ -6715,7 +6822,7 @@ class StdlibTkinterTest
             lineId := canvas.create_line(0, 1, 10, 20, { fill: "red", width: 2 })
             rectId := canvas.create_rectangle(5, 6, 30, 40, { outline: "blue", fill: "green" })
 
-            AhkTest.AssertEqual("Canvas", Type(canvas))
+            AhkTest.AssertTrue(canvas is stdlib.tkinter.Canvas)
             AhkTest.AssertEqual(".!canvas", String(canvas))
             AhkTest.AssertEqual("120", canvas.cget("width"))
             AhkTest.AssertEqual("80", canvas.cget("height"))

@@ -3744,7 +3744,7 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual(2, stdlib.tkinter.READABLE)
         AhkTest.AssertEqual(4, stdlib.tkinter.WRITABLE)
         AhkTest.AssertEqual(8, stdlib.tkinter.EXCEPTION)
-        AhkTest.AssertEqual("Tk", Type(interp))
+        AhkTest.AssertTrue(interp is stdlib.tkinter.Tk)
         AhkTest.AssertEqual("3", interp.eval("expr 1 + 2"))
         AhkTest.AssertEqual(stdlib.None, interp.setvar("x", "hello"))
         AhkTest.AssertEqual("hello", interp.getvar("x"))

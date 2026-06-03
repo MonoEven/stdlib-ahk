@@ -172,7 +172,7 @@ class AhkStdlibTkinter
     {
         if args.Length != 0
             throw TypeError("Event() takes no arguments", -1)
-        return Event()
+        return AhkStdlibTkinterEvent()
     }
 
     static EventType(args*)
@@ -181,61 +181,61 @@ class AhkStdlibTkinter
             throw TypeError("EnumMeta.__call__() missing 1 required positional argument: 'value'", -1)
         if args.Length > 1
             throw TypeError("Cannot extend enumerations", -1)
-        return EventType(args[1])
+        return AhkStdlibTkinterEventType(args[1])
     }
 
     static CallWrapper(args*)
     {
-        return CallWrapper(args*)
+        return AhkStdlibTkinterCallWrapper(args*)
     }
 
     static Pack(args*)
     {
-        return Pack(args*)
+        return AhkStdlibTkinterPack(args*)
     }
 
     static Place(args*)
     {
-        return Place(args*)
+        return AhkStdlibTkinterPlace(args*)
     }
 
     static Grid(args*)
     {
-        return Grid(args*)
+        return AhkStdlibTkinterGrid(args*)
     }
 
     static XView(args*)
     {
-        return XView(args*)
+        return AhkStdlibTkinterXView(args*)
     }
 
     static YView(args*)
     {
-        return YView(args*)
+        return AhkStdlibTkinterYView(args*)
     }
 
     static Misc(args*)
     {
-        return Misc(args*)
+        return AhkStdlibTkinterMisc(args*)
     }
 
     static Wm(args*)
     {
-        return Wm(args*)
+        return AhkStdlibTkinterWm(args*)
     }
 
     static Tcl(args*)
     {
         if args.Length > 4
             throw TypeError("Tcl() takes from 0 to 4 positional arguments but " args.Length " were given", -1)
-        return Tk(false, "Tcl", args*)
+        return AhkStdlibTkinterTk(false, "Tcl", args*)
     }
 
     static Tk(args*)
     {
         if args.Length > 6
             throw TypeError("Tk.__init__() takes from 1 to 7 positional arguments but " args.Length + 1 " were given", -1)
-        return Tk(true, "Tk", args*)
+        return AhkStdlibTkinterTk(true, "Tk", args*)
     }
 
     static Variable(args*)
@@ -245,122 +245,122 @@ class AhkStdlibTkinter
 
     static Frame(args*)
     {
-        return Frame(args*)
+        return AhkStdlibTkinterFrame(args*)
     }
 
     static Label(args*)
     {
-        return Label(args*)
+        return AhkStdlibTkinterLabel(args*)
     }
 
     static LabelFrame(args*)
     {
-        return LabelFrame(args*)
+        return AhkStdlibTkinterLabelFrame(args*)
     }
 
     static Toplevel(args*)
     {
-        return Toplevel(args*)
+        return AhkStdlibTkinterToplevel(args*)
     }
 
     static Button(args*)
     {
-        return Button(args*)
+        return AhkStdlibTkinterButton(args*)
     }
 
     static Checkbutton(args*)
     {
-        return Checkbutton(args*)
+        return AhkStdlibTkinterCheckbutton(args*)
     }
 
     static Radiobutton(args*)
     {
-        return Radiobutton(args*)
+        return AhkStdlibTkinterRadiobutton(args*)
     }
 
     static Scale(args*)
     {
-        return Scale(args*)
+        return AhkStdlibTkinterScale(args*)
     }
 
     static Scrollbar(args*)
     {
-        return Scrollbar(args*)
+        return AhkStdlibTkinterScrollbar(args*)
     }
 
     static Menu(args*)
     {
-        return Menu(args*)
+        return AhkStdlibTkinterMenu(args*)
     }
 
     static Menubutton(args*)
     {
-        return Menubutton(args*)
+        return AhkStdlibTkinterMenubutton(args*)
     }
 
     static Message(args*)
     {
-        return Message(args*)
+        return AhkStdlibTkinterMessage(args*)
     }
 
     static OptionMenu(args*)
     {
-        return OptionMenu(args*)
+        return AhkStdlibTkinterOptionMenu(args*)
     }
 
     static PanedWindow(args*)
     {
-        return PanedWindow(args*)
+        return AhkStdlibTkinterPanedWindow(args*)
     }
 
     static Canvas(args*)
     {
-        return Canvas(args*)
+        return AhkStdlibTkinterCanvas(args*)
     }
 
     static Entry(args*)
     {
-        return Entry(args*)
+        return AhkStdlibTkinterEntry(args*)
     }
 
     static Spinbox(args*)
     {
-        return Spinbox(args*)
+        return AhkStdlibTkinterSpinbox(args*)
     }
 
     static Listbox(args*)
     {
-        return Listbox(args*)
+        return AhkStdlibTkinterListbox(args*)
     }
 
     static Text(args*)
     {
-        return Text(args*)
+        return AhkStdlibTkinterText(args*)
     }
 
     static BaseWidget(args*)
     {
-        return BaseWidget(args*)
+        return AhkStdlibTkinterBaseWidget(args*)
     }
 
     static Widget(args*)
     {
-        return Widget(args*)
+        return AhkStdlibTkinterPublicWidget(args*)
     }
 
     static Image(args*)
     {
-        return Image(args*)
+        return AhkStdlibTkinterPublicImage(args*)
     }
 
     static BitmapImage(args*)
     {
-        return BitmapImage(args*)
+        return AhkStdlibTkinterBitmapImage(args*)
     }
 
     static PhotoImage(args*)
     {
-        return PhotoImage(args*)
+        return AhkStdlibTkinterPhotoImage(args*)
     }
 
     static StringVar(args*)
@@ -384,7 +384,7 @@ class AhkStdlibTkinter
     }
 }
 
-class Tk
+class AhkStdlibTkinterTk
 {
     __New(defaultUseTk, callName, args*)
     {
@@ -471,7 +471,7 @@ class Tk
         this.AhkStdlibQuitMainLoop := false
         this.tk := this
         if useTk {
-            this.eval("wm protocol . WM_DELETE_WINDOW " AhkStdlibTkinterTclWord("destroy ."))
+            AhkStdlibTkinterSetDefaultRootCloseProtocol(this)
             AhkStdlibTkinterRegisterDefaultRoot(this)
         }
         if hasUse
@@ -499,7 +499,7 @@ class Tk
             AhkStdlibTkinterEnsureTclRuntime(true)
             AhkStdlibTkinterInitTk(this.AhkStdlibInterp)
             this.AhkStdlibUseTk := true
-            this.eval("wm protocol . WM_DELETE_WINDOW " AhkStdlibTkinterTclWord("destroy ."))
+            AhkStdlibTkinterSetDefaultRootCloseProtocol(this)
             AhkStdlibTkinterRegisterDefaultRoot(this)
         }
         return stdlib.None
@@ -1289,8 +1289,18 @@ class Tk
         if args.Length > 1
             throw TypeError("Misc.mainloop() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
         this.AhkStdlibQuitMainLoop := false
-        while !this.AhkStdlibQuitMainLoop && this.eval("winfo exists .") = "1" {
-            this.update()
+        while !this.AhkStdlibQuitMainLoop {
+            try {
+                if this.eval("winfo exists .") != "1"
+                    break
+                this.update()
+            } catch as err {
+                if AhkStdlibTkinterIsApplicationDestroyedError(err) {
+                    AhkStdlibTkinterForgetDefaultRoot(this)
+                    break
+                }
+                throw err
+            }
             Sleep 1
         }
         return stdlib.None
@@ -2633,7 +2643,7 @@ class AhkStdlibTkinterWidget
     }
 }
 
-class BaseWidget
+class AhkStdlibTkinterBaseWidget
 {
     __New(args*)
     {
@@ -2706,7 +2716,7 @@ class BaseWidget
     }
 }
 
-class Widget extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterPublicWidget extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -2769,7 +2779,7 @@ class AhkStdlibTkinterTtk
         }
     }
 
-    class Entry extends AhkStdlibTkinterWidget
+    class AhkStdlibTkinterEntry extends AhkStdlibTkinterWidget
     {
         __New(args*)
         {
@@ -2940,7 +2950,7 @@ class AhkStdlibTkinterTtk
         }
     }
 
-    class Frame extends AhkStdlibTkinterWidget
+    class AhkStdlibTkinterFrame extends AhkStdlibTkinterWidget
     {
         __New(args*)
         {
@@ -2949,7 +2959,7 @@ class AhkStdlibTkinterTtk
         }
     }
 
-    class Label extends AhkStdlibTkinterWidget
+    class AhkStdlibTkinterLabel extends AhkStdlibTkinterWidget
     {
         __New(args*)
         {
@@ -2958,7 +2968,7 @@ class AhkStdlibTkinterTtk
         }
     }
 
-    class Button extends AhkStdlibTkinterWidget
+    class AhkStdlibTkinterButton extends AhkStdlibTkinterWidget
     {
         __New(args*)
         {
@@ -2974,7 +2984,7 @@ class AhkStdlibTkinterTtk
         }
     }
 
-    class Checkbutton extends AhkStdlibTkinterWidget
+    class AhkStdlibTkinterCheckbutton extends AhkStdlibTkinterWidget
     {
         __New(args*)
         {
@@ -2990,7 +3000,7 @@ class AhkStdlibTkinterTtk
         }
     }
 
-    class Radiobutton extends AhkStdlibTkinterWidget
+    class AhkStdlibTkinterRadiobutton extends AhkStdlibTkinterWidget
     {
         __New(args*)
         {
@@ -3006,7 +3016,7 @@ class AhkStdlibTkinterTtk
         }
     }
 
-    class Scale extends AhkStdlibTkinterWidget
+    class AhkStdlibTkinterScale extends AhkStdlibTkinterWidget
     {
         __New(args*)
         {
@@ -3045,7 +3055,7 @@ class AhkStdlibTkinterTtk
         }
     }
 
-    class Scrollbar extends AhkStdlibTkinterWidget
+    class AhkStdlibTkinterScrollbar extends AhkStdlibTkinterWidget
     {
         __New(args*)
         {
@@ -3358,7 +3368,7 @@ class AhkStdlibTkinterTtk
         }
     }
 
-    class LabelFrame extends AhkStdlibTkinterWidget
+    class AhkStdlibTkinterLabelFrame extends AhkStdlibTkinterWidget
     {
         __New(args*)
         {
@@ -3379,7 +3389,7 @@ class AhkStdlibTkinterTtk
     }
 }
 
-class Frame extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterFrame extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -3387,7 +3397,7 @@ class Frame extends AhkStdlibTkinterWidget
     }
 }
 
-class Label extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterLabel extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -3395,7 +3405,7 @@ class Label extends AhkStdlibTkinterWidget
     }
 }
 
-class LabelFrame extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterLabelFrame extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -3403,7 +3413,7 @@ class LabelFrame extends AhkStdlibTkinterWidget
     }
 }
 
-class Toplevel extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterToplevel extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -3763,7 +3773,7 @@ class Toplevel extends AhkStdlibTkinterWidget
     }
 }
 
-class Event
+class AhkStdlibTkinterEvent
 {
     __New(args*)
     {
@@ -3775,14 +3785,14 @@ class Event
         eventTypeRaw := rawArgs.Length >= 2 ? rawArgs[2] : ""
         eventTypeName := AhkStdlibTkinterEventTypeName(eventTypeRaw, sequence)
         this.widget := widget
-        this.type := EventType(AhkStdlibTkinterEventTypeInternalValue(eventTypeRaw, eventTypeName), eventTypeName)
+        this.type := AhkStdlibTkinterEventType(AhkStdlibTkinterEventTypeInternalValue(eventTypeRaw, eventTypeName), eventTypeName)
         this.x := AhkStdlibTkinterEventInteger(rawArgs.Length >= 3 ? rawArgs[3] : "0")
         this.y := AhkStdlibTkinterEventInteger(rawArgs.Length >= 4 ? rawArgs[4] : "0")
         this.num := AhkStdlibTkinterEventInteger(rawArgs.Length >= 5 ? rawArgs[5] : "0")
     }
 }
 
-class EventType
+class AhkStdlibTkinterEventType
 {
     __New(args*)
     {
@@ -3802,7 +3812,7 @@ class EventType
     }
 }
 
-class CallWrapper
+class AhkStdlibTkinterCallWrapper
 {
     __New(args*)
     {
@@ -3838,15 +3848,16 @@ class AhkStdlibTkinterBareMixin
     {
         if args.Length != 0
             throw TypeError(className "() takes no arguments", -1)
+        this.AhkStdlibClassName := className
     }
 
     _missingTk()
     {
-        throw AttributeError("'" Type(this) "' object has no attribute 'tk'", -1)
+        throw AttributeError("'" this.AhkStdlibClassName "' object has no attribute 'tk'", -1)
     }
 }
 
-class Pack extends AhkStdlibTkinterBareMixin
+class AhkStdlibTkinterPack extends AhkStdlibTkinterBareMixin
 {
     __New(args*)
     {
@@ -3859,7 +3870,7 @@ class Pack extends AhkStdlibTkinterBareMixin
     }
 }
 
-class Place extends AhkStdlibTkinterBareMixin
+class AhkStdlibTkinterPlace extends AhkStdlibTkinterBareMixin
 {
     __New(args*)
     {
@@ -3872,7 +3883,7 @@ class Place extends AhkStdlibTkinterBareMixin
     }
 }
 
-class Grid extends AhkStdlibTkinterBareMixin
+class AhkStdlibTkinterGrid extends AhkStdlibTkinterBareMixin
 {
     __New(args*)
     {
@@ -3885,7 +3896,7 @@ class Grid extends AhkStdlibTkinterBareMixin
     }
 }
 
-class XView extends AhkStdlibTkinterBareMixin
+class AhkStdlibTkinterXView extends AhkStdlibTkinterBareMixin
 {
     __New(args*)
     {
@@ -3898,7 +3909,7 @@ class XView extends AhkStdlibTkinterBareMixin
     }
 }
 
-class YView extends AhkStdlibTkinterBareMixin
+class AhkStdlibTkinterYView extends AhkStdlibTkinterBareMixin
 {
     __New(args*)
     {
@@ -3911,7 +3922,7 @@ class YView extends AhkStdlibTkinterBareMixin
     }
 }
 
-class Misc extends AhkStdlibTkinterBareMixin
+class AhkStdlibTkinterMisc extends AhkStdlibTkinterBareMixin
 {
     __New(args*)
     {
@@ -3926,7 +3937,7 @@ class Misc extends AhkStdlibTkinterBareMixin
     }
 }
 
-class Wm extends AhkStdlibTkinterBareMixin
+class AhkStdlibTkinterWm extends AhkStdlibTkinterBareMixin
 {
     __New(args*)
     {
@@ -4035,7 +4046,7 @@ class AhkStdlibTkinterImage
     }
 }
 
-class Image extends AhkStdlibTkinterImage
+class AhkStdlibTkinterPublicImage extends AhkStdlibTkinterImage
 {
     __New(args*)
     {
@@ -4051,7 +4062,7 @@ class Image extends AhkStdlibTkinterImage
     }
 }
 
-class PhotoImage extends AhkStdlibTkinterImage
+class AhkStdlibTkinterPhotoImage extends AhkStdlibTkinterImage
 {
     __New(args*)
     {
@@ -4070,7 +4081,7 @@ class PhotoImage extends AhkStdlibTkinterImage
     {
         if args.Length != 0
             throw TypeError("PhotoImage.copy() takes 1 positional argument but " args.Length + 1 " were given", -1)
-        destImage := PhotoImage({ master: this.tk })
+        destImage := AhkStdlibTkinterPhotoImage({ master: this.tk })
         this.tk.eval(AhkStdlibTkinterTclWord(destImage.name) " copy " AhkStdlibTkinterTclWord(this.name))
         return destImage
     }
@@ -4119,7 +4130,7 @@ class PhotoImage extends AhkStdlibTkinterImage
             throw TypeError("PhotoImage.subsample() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
         x := args[1]
         y := args.Length = 1 || args[2] = "" ? x : args[2]
-        destImage := PhotoImage({ master: this.tk })
+        destImage := AhkStdlibTkinterPhotoImage({ master: this.tk })
         this.tk.eval(AhkStdlibTkinterTclWord(destImage.name) " copy " AhkStdlibTkinterTclWord(this.name) " -subsample " AhkStdlibTkinterTclWord(x) " " AhkStdlibTkinterTclWord(y))
         return destImage
     }
@@ -4178,13 +4189,13 @@ class PhotoImage extends AhkStdlibTkinterImage
             throw TypeError("PhotoImage.zoom() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
         x := args[1]
         y := args.Length = 1 || args[2] = "" ? x : args[2]
-        destImage := PhotoImage({ master: this.tk })
+        destImage := AhkStdlibTkinterPhotoImage({ master: this.tk })
         this.tk.eval(AhkStdlibTkinterTclWord(destImage.name) " copy " AhkStdlibTkinterTclWord(this.name) " -zoom " AhkStdlibTkinterTclWord(x) " " AhkStdlibTkinterTclWord(y))
         return destImage
     }
 }
 
-class BitmapImage extends AhkStdlibTkinterImage
+class AhkStdlibTkinterBitmapImage extends AhkStdlibTkinterImage
 {
     __New(args*)
     {
@@ -4192,7 +4203,7 @@ class BitmapImage extends AhkStdlibTkinterImage
     }
 }
 
-class Button extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterButton extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -4215,7 +4226,7 @@ class Button extends AhkStdlibTkinterWidget
     }
 }
 
-class Checkbutton extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterCheckbutton extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -4262,7 +4273,7 @@ class Checkbutton extends AhkStdlibTkinterWidget
     }
 }
 
-class Radiobutton extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterRadiobutton extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -4301,7 +4312,7 @@ class Radiobutton extends AhkStdlibTkinterWidget
     }
 }
 
-class Scale extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterScale extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -4347,7 +4358,7 @@ class Scale extends AhkStdlibTkinterWidget
     }
 }
 
-class Scrollbar extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterScrollbar extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -4429,7 +4440,7 @@ class Scrollbar extends AhkStdlibTkinterWidget
     }
 }
 
-class Menu extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterMenu extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -4718,7 +4729,7 @@ class Menu extends AhkStdlibTkinterWidget
     }
 }
 
-class Menubutton extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterMenubutton extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -4726,7 +4737,7 @@ class Menubutton extends AhkStdlibTkinterWidget
     }
 }
 
-class Message extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterMessage extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -4734,7 +4745,7 @@ class Message extends AhkStdlibTkinterWidget
     }
 }
 
-class OptionMenu extends Menubutton
+class AhkStdlibTkinterOptionMenu extends AhkStdlibTkinterMenubutton
 {
     __New(args*)
     {
@@ -4776,7 +4787,7 @@ class OptionMenu extends Menubutton
         widgetOptions := { borderwidth: 2, textvariable: variable, indicatoron: 1, relief: "raised", anchor: "c", highlightthickness: 2 }
         this.AhkStdlibRoot.eval("menubutton " this._w AhkStdlibTkinterOptionsToScript(widgetOptions, false, this.AhkStdlibRoot))
         this.AhkStdlibRoot.AhkStdlibWidgetsByPath[this._w] := this
-        this.AhkStdlibMenu := Menu(this, { name: "menu", tearoff: 0 })
+        this.AhkStdlibMenu := AhkStdlibTkinterMenu(this, { name: "menu", tearoff: 0 })
         this.menuname := String(this.AhkStdlibMenu)
 
         callback := options.HasOwnProp("command") ? options.command : stdlib.None
@@ -4802,7 +4813,7 @@ class OptionMenu extends Menubutton
     }
 }
 
-class PanedWindow extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterPanedWindow extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -4979,7 +4990,7 @@ class AhkStdlibTkinterOptionMenuCommand
     }
 }
 
-class Canvas extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterCanvas extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -5531,7 +5542,7 @@ class Canvas extends AhkStdlibTkinterWidget
 
 }
 
-class Text extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterText extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -6389,7 +6400,7 @@ class Text extends AhkStdlibTkinterWidget
     }
 }
 
-class Entry extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterEntry extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -6559,7 +6570,7 @@ class Entry extends AhkStdlibTkinterWidget
     }
 }
 
-class Spinbox extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterSpinbox extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -6730,7 +6741,7 @@ class Spinbox extends AhkStdlibTkinterWidget
     }
 }
 
-class Listbox extends AhkStdlibTkinterWidget
+class AhkStdlibTkinterListbox extends AhkStdlibTkinterWidget
 {
     __New(args*)
     {
@@ -7237,6 +7248,114 @@ class AhkStdlibTkinterBooleanVar extends AhkStdlibTkinterVariable
 }
 
 stdlib.tkinter := AhkStdlibTkinter
+AhkStdlibTkinterBindPublicClasses()
+AhkStdlibTkinterTtkBindPublicClasses()
+
+AhkStdlibTkinterBindPublicClasses()
+{
+    classMap := Map(
+        "Event", AhkStdlibTkinterEvent,
+        "EventType", AhkStdlibTkinterEventType,
+        "CallWrapper", AhkStdlibTkinterCallWrapper,
+        "Pack", AhkStdlibTkinterPack,
+        "Place", AhkStdlibTkinterPlace,
+        "Grid", AhkStdlibTkinterGrid,
+        "XView", AhkStdlibTkinterXView,
+        "YView", AhkStdlibTkinterYView,
+        "Misc", AhkStdlibTkinterMisc,
+        "Wm", AhkStdlibTkinterWm,
+        "Tk", AhkStdlibTkinterTk,
+        "Frame", AhkStdlibTkinterFrame,
+        "Label", AhkStdlibTkinterLabel,
+        "LabelFrame", AhkStdlibTkinterLabelFrame,
+        "Toplevel", AhkStdlibTkinterToplevel,
+        "Button", AhkStdlibTkinterButton,
+        "Checkbutton", AhkStdlibTkinterCheckbutton,
+        "Radiobutton", AhkStdlibTkinterRadiobutton,
+        "Scale", AhkStdlibTkinterScale,
+        "Scrollbar", AhkStdlibTkinterScrollbar,
+        "Menu", AhkStdlibTkinterMenu,
+        "Menubutton", AhkStdlibTkinterMenubutton,
+        "Message", AhkStdlibTkinterMessage,
+        "OptionMenu", AhkStdlibTkinterOptionMenu,
+        "PanedWindow", AhkStdlibTkinterPanedWindow,
+        "Canvas", AhkStdlibTkinterCanvas,
+        "Entry", AhkStdlibTkinterEntry,
+        "Spinbox", AhkStdlibTkinterSpinbox,
+        "Listbox", AhkStdlibTkinterListbox,
+        "Text", AhkStdlibTkinterText,
+        "BaseWidget", AhkStdlibTkinterBaseWidget,
+        "Widget", AhkStdlibTkinterPublicWidget,
+        "Image", AhkStdlibTkinterPublicImage,
+        "BitmapImage", AhkStdlibTkinterBitmapImage,
+        "PhotoImage", AhkStdlibTkinterPhotoImage,
+        "Variable", AhkStdlibTkinterPublicVariable,
+        "StringVar", AhkStdlibTkinterStringVar,
+        "IntVar", AhkStdlibTkinterIntVar,
+        "DoubleVar", AhkStdlibTkinterDoubleVar,
+        "BooleanVar", AhkStdlibTkinterBooleanVar
+    )
+    for publicName, classObject in classMap
+        AhkStdlibTkinter.DefineProp(publicName, {
+            Get: ((cls, *) => cls).Bind(classObject),
+            Call: ((cls, this, args*) => cls(args*)).Bind(classObject)
+        })
+    AhkStdlibTkinter.DefineProp("Tk", {
+        Get: ((cls, *) => cls).Bind(AhkStdlibTkinterTk),
+        Call: AhkStdlibTkinterPublicTkCall.Bind(AhkStdlibTkinterTk)
+    })
+    AhkStdlibTkinter.DefineProp("Event", {
+        Get: ((cls, *) => cls).Bind(AhkStdlibTkinterEvent),
+        Call: AhkStdlibTkinterPublicEventCall.Bind(AhkStdlibTkinterEvent)
+    })
+    AhkStdlibTkinter.DefineProp("EventType", {
+        Get: ((cls, *) => cls).Bind(AhkStdlibTkinterEventType),
+        Call: AhkStdlibTkinterPublicEventTypeCall.Bind(AhkStdlibTkinterEventType)
+    })
+}
+
+AhkStdlibTkinterPublicTkCall(cls, this, args*)
+{
+    if args.Length > 6
+        throw TypeError("Tk.__init__() takes from 1 to 7 positional arguments but " args.Length + 1 " were given", -1)
+    return cls(true, "Tk", args*)
+}
+
+AhkStdlibTkinterPublicEventCall(cls, this, args*)
+{
+    if args.Length != 0
+        throw TypeError("Event() takes no arguments", -1)
+    return cls()
+}
+
+AhkStdlibTkinterPublicEventTypeCall(cls, this, args*)
+{
+    if args.Length = 0
+        throw TypeError("EnumMeta.__call__() missing 1 required positional argument: 'value'", -1)
+    if args.Length > 1
+        throw TypeError("Cannot extend enumerations", -1)
+    return cls(args[1])
+}
+
+AhkStdlibTkinterTtkBindPublicClasses()
+{
+    classMap := Map(
+        "Entry", AhkStdlibTkinterTtk.AhkStdlibTkinterEntry,
+        "Frame", AhkStdlibTkinterTtk.AhkStdlibTkinterFrame,
+        "Label", AhkStdlibTkinterTtk.AhkStdlibTkinterLabel,
+        "Button", AhkStdlibTkinterTtk.AhkStdlibTkinterButton,
+        "Checkbutton", AhkStdlibTkinterTtk.AhkStdlibTkinterCheckbutton,
+        "Radiobutton", AhkStdlibTkinterTtk.AhkStdlibTkinterRadiobutton,
+        "Scale", AhkStdlibTkinterTtk.AhkStdlibTkinterScale,
+        "Scrollbar", AhkStdlibTkinterTtk.AhkStdlibTkinterScrollbar,
+        "LabelFrame", AhkStdlibTkinterTtk.AhkStdlibTkinterLabelFrame
+    )
+    for publicName, classObject in classMap
+        AhkStdlibTkinterTtk.DefineProp(publicName, {
+            Get: ((cls, *) => cls).Bind(classObject),
+            Call: ((cls, this, args*) => cls(args*)).Bind(classObject)
+        })
+}
 
 AhkStdlibTkinterIsPlainKeywordObject(value)
 {
@@ -7322,6 +7441,18 @@ AhkStdlibTkinterRegisterDefaultRoot(root)
 AhkStdlibTkinterForgetDefaultRoot(root)
 {
     return AhkStdlibTkinterDefaultRootState("forget", root)
+}
+
+AhkStdlibTkinterSetDefaultRootCloseProtocol(root)
+{
+    commandName := AhkStdlibTkinterRegisterCommand(root, (*) => root.destroy())
+    root.eval("wm protocol . WM_DELETE_WINDOW " AhkStdlibTkinterTclWord(commandName))
+    return stdlib.None
+}
+
+AhkStdlibTkinterIsApplicationDestroyedError(err)
+{
+    return (err is AhkStdlibTkinter.TclError) && InStr(err.Message, "application has been destroyed") > 0
 }
 
 AhkStdlibTkinterGetDefaultRoot(what)
@@ -7612,7 +7743,7 @@ AhkStdlibTkinterWidgetToplevel(widget)
 {
     current := widget
     loop {
-        if current is Tk || current is Toplevel
+        if current is AhkStdlibTkinterTk || current is AhkStdlibTkinterToplevel
             return current
         if !HasProp(current, "master")
             return widget._root()
@@ -8834,7 +8965,7 @@ AhkStdlibTkinterWaitFor(root, window, command, methodName, args*)
 
 AhkStdlibTkinterWaitTarget(value)
 {
-    if value is Tk
+    if value is AhkStdlibTkinterTk
         return "."
     if IsObject(value) && HasProp(value, "_w")
         return value._w
@@ -9129,7 +9260,7 @@ AhkStdlibTkinterCallCommandCallback(entry, args)
         if args.Length >= 1 {
             try eventWidget := AhkStdlibTkinterWidgetFromPath(entry.Root, args[1])
         }
-        return entry.Callback.Call(Event(eventWidget, args, entry.Sequence))
+        return entry.Callback.Call(AhkStdlibTkinterEvent(eventWidget, args, entry.Sequence))
     }
     if IsObject(entry) && entry.HasOwnProp("Kind") && entry.Kind = "Register" {
         callbackArgs := args

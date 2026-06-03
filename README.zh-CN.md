@@ -36,11 +36,55 @@ stdlib.bisect.insort_right(bisect_example_values, 2)
 #Include <stdlib\tkinter>
 
 root := stdlib.tkinter.Tk()
-root.withdraw()
-label := stdlib.tkinter.Label(root, { text: "stdlib tkinter" })
-label.pack()
-root.update()
-root.destroy()
+root.title("stdlib tkinter demo")
+
+count := 0
+name := stdlib.tkinter.StringVar(root, "AutoHotkey")
+status := stdlib.tkinter.StringVar(root, "Ready")
+progressValue := stdlib.tkinter.DoubleVar(root, 0)
+
+frame := stdlib.tkinter.ttk.LabelFrame(root, { text: "Python-style tkinter" })
+frame.grid({ row: 0, column: 0, padx: 16, pady: 16, sticky: "nsew" })
+
+stdlib.tkinter.ttk.Label(frame, { text: "Name" })
+    .grid({ row: 0, column: 0, padx: 6, pady: 6, sticky: "w" })
+entry := stdlib.tkinter.ttk.Entry(frame, { textvariable: name, width: 24 })
+entry.grid({ row: 0, column: 1, padx: 6, pady: 6, sticky: "ew" })
+
+progress := stdlib.tkinter.ttk.Progressbar(frame, {
+    orient: "horizontal",
+    length: 180,
+    mode: "determinate",
+    maximum: 100,
+    variable: progressValue
+})
+progress.grid({ row: 1, column: 0, columnspan: 2, padx: 6, pady: 6, sticky: "ew" })
+
+canvas := stdlib.tkinter.Canvas(frame, { width: 240, height: 90, bg: "white" })
+canvas.grid({ row: 2, column: 0, columnspan: 2, padx: 6, pady: 6 })
+bar := canvas.create_rectangle(10, 55, 10, 75, { fill: "steelblue", outline: "steelblue" })
+caption := canvas.create_text(12, 20, { text: "Click Update", anchor: "nw", fill: "gray20" })
+
+update_demo(*) {
+    global count, name, status, progressValue, canvas, bar, caption
+    count += 1
+    percent := Mod(count * 20, 120)
+    if (percent = 0)
+        percent := 100
+    progressValue.set(percent)
+    status.set("Hello " name.get() " - " percent "%")
+    canvas.coords(bar, 10, 55, 10 + percent * 2, 75)
+    canvas.itemconfigure(caption, { text: status.get() })
+}
+
+button := stdlib.tkinter.ttk.Button(frame, { text: "Update", command: update_demo })
+button.grid({ row: 3, column: 0, padx: 6, pady: 6, sticky: "ew" })
+stdlib.tkinter.ttk.Label(frame, { textvariable: status })
+    .grid({ row: 3, column: 1, padx: 6, pady: 6, sticky: "w" })
+
+frame.columnconfigure(1, { weight: 1 })
+root.columnconfigure(0, { weight: 1 })
+root.mainloop()
 ```
 
 ## 设计规则

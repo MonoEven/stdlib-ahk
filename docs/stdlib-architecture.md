@@ -100,12 +100,47 @@ small TDD slices. Current direct modules:
 The framework manifest currently tracks `57` total module slots: `57` direct,
 `0` candidate, and `0` native-quarantine.
 
-Current verified wrapper baseline is `stdlib/tests: 1021 passed, 0 failed, 0 errors`,
+Current verified wrapper baseline is `stdlib/tests: 1023 passed, 0 failed, 0 errors`,
 with the existing `plain fallback` stderr line from the logging bootstrap smoke
 still treated as expected output rather than a failure. The latest aggregate
-gate completed with `run-ahktest stdlib/tests -TimeoutSeconds 60`, reporting
-1021 passed, 0 failed, and 0 errors with the known `plain fallback` stderr
+gate completed with `run-ahktest stdlib/tests -TimeoutSeconds 70`, reporting
+1023 passed, 0 failed, and 0 errors with the known `plain fallback` stderr
 line.
+
+The latest tkinter safety slice keeps the public `stdlib.tkinter.X` and
+`stdlib.tkinter.ttk.X` class surface stable while moving classic tkinter
+implementation classes off AHK's global class names. A fresh AHK parser probe
+confirmed that same-name host classes such as `Menu`, `Button`, `Event`,
+`Image`, and `Text` can be declared before including `stdlib\tkinter.ahk`
+when the stdlib implementation classes are prefixed; a focused subprocess
+regression now covers that include path and confirms
+`stdlib.tkinter.Tcl() is stdlib.tkinter.Tk`,
+`stdlib.tkinter.Event() is stdlib.tkinter.Event`, and
+`stdlib.tkinter.EventType("4") is stdlib.tkinter.EventType` while
+`stdlib.tkinter.Menu` is not the host `Menu` class. The implementation now
+binds public class properties with `DefineProp(Get, Call)` shims for classic
+tkinter and the renamed ttk nested classes, preserving
+`stdlib.tkinter.Menu(...)` and `obj is stdlib.tkinter.Menu` while avoiding raw
+top-level `class Menu extends ...` declarations. The language-specific
+README tkinter demo snippets now keep the window visible with `root.mainloop()`
+and exercise the covered `ttk` widgets, Tk variables, command callbacks,
+`grid` layout, and Canvas drawing path instead of immediately withdrawing and
+destroying a root; the root `README.md` remains a bilingual entry point that
+links to the English and Chinese quick starts rather than duplicating code
+examples.
+A fresh Python 3.10.11 probe also confirmed that `Tk.mainloop()` returns
+`None` after `root.destroy()` and that the default root is cleared, while a
+direct Tcl-side `destroy .` still lets `mainloop()` return `None`; the AHK
+surface now sets the default `WM_DELETE_WINDOW` protocol through a registered
+callback that calls `root.destroy()` and treats the Tk `application has been
+destroyed` state as normal `mainloop()` exit. Fresh gates: the focused
+host-class collision regression passed 1/1, focused default-window-close
+mainloop regression passed 1/1, README tkinter demo probe passed with
+`/ErrorStdOut=UTF-8`, `Ttk` filter passed 91/91, full
+`stdlib/tests/tkinter.test.ahk` passed 155/155,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passed, and aggregate
+`stdlib/tests` passed 1023/1023 with `-TimeoutSeconds 70` and the known
+`plain fallback` stderr line.
 
 The latest tkinter.ttk promotion extends the covered themed-widget submodule
 slice with `ttk.LabelFrame`. Fresh Python 3.10.11 probes confirmed that

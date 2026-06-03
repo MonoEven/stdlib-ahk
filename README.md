@@ -46,31 +46,19 @@ Detailed module promotion and gate-history notes are maintained in
 具体模块 promotion 和 gate 历史维护在 `docs\stdlib-architecture.md`，不写入
 README。
 
-## Quick Start
+## Usage Docs
 
-```ahk
-#Requires AutoHotkey v2.0
+Quick-start examples are maintained in the language-specific README files:
 
-#Include <stdlib\bisect>
+- [English quick start](README.en.md#quick-start)
+- [中文快速开始](README.zh-CN.md#快速开始)
 
-bisect_example_values := [1, 2, 2, 3]
-bisect_example_left := stdlib.bisect.bisect_left(bisect_example_values, 2)
-bisect_example_right := stdlib.bisect.bisect_right(bisect_example_values, 2)
-stdlib.bisect.insort_right(bisect_example_values, 2)
-```
+## 使用文档
 
-```ahk
-#Requires AutoHotkey v2.0
+快速开始示例维护在对应语言版本的 README 中：
 
-#Include <stdlib\tkinter>
-
-root := stdlib.tkinter.Tk()
-root.withdraw()
-label := stdlib.tkinter.Label(root, { text: "stdlib tkinter" })
-label.pack()
-root.update()
-root.destroy()
-```
+- [English quick start](README.en.md#quick-start)
+- [中文快速开始](README.zh-CN.md#快速开始)
 
 ## Friendly Links
 
