@@ -6,6 +6,17 @@ class AhkStdlibTkinter
 {
     class TclError extends Error
     {
+        __New(args*)
+        {
+            if args.Length = 0
+                message := ""
+            else if args.Length = 1
+                message := AhkStdlibTkinterExceptionArgToString(args[1])
+            else
+                message := AhkStdlibTkinterExceptionArgsTupleString(args)
+            super.__New(message, -1)
+            this.args := stdlib.tuple(args)
+        }
     }
 
     static TclVersion {
@@ -26,6 +37,104 @@ class AhkStdlibTkinter
 
     static EXCEPTION {
         get => 8
+    }
+
+    static ACTIVE := "active"
+    static ALL := "all"
+    static ANCHOR := "anchor"
+    static ARC := "arc"
+    static BASELINE := "baseline"
+    static BEVEL := "bevel"
+    static BOTH := "both"
+    static BOTTOM := "bottom"
+    static BROWSE := "browse"
+    static BUTT := "butt"
+    static CASCADE := "cascade"
+    static CENTER := "center"
+    static CHAR := "char"
+    static CHORD := "chord"
+    static COMMAND := "command"
+    static CURRENT := "current"
+    static DISABLED := "disabled"
+    static DOTBOX := "dotbox"
+    static E := "e"
+    static END := "end"
+    static EW := "ew"
+    static EXTENDED := "extended"
+    static FALSE := 0
+    static FIRST := "first"
+    static FLAT := "flat"
+    static GROOVE := "groove"
+    static HIDDEN := "hidden"
+    static HORIZONTAL := "horizontal"
+    static INSERT := "insert"
+    static INSIDE := "inside"
+    static LAST := "last"
+    static LEFT := "left"
+    static MITER := "miter"
+    static MOVETO := "moveto"
+    static MULTIPLE := "multiple"
+    static N := "n"
+    static NE := "ne"
+    static NO := 0
+    static NONE := "none"
+    static NORMAL := "normal"
+    static NS := "ns"
+    static NSEW := "nsew"
+    static NUMERIC := "numeric"
+    static NW := "nw"
+    static OFF := 0
+    static ON := 1
+    static OUTSIDE := "outside"
+    static PAGES := "pages"
+    static PIESLICE := "pieslice"
+    static PROJECTING := "projecting"
+    static RAISED := "raised"
+    static RIDGE := "ridge"
+    static RIGHT := "right"
+    static ROUND := "round"
+    static S := "s"
+    static SCROLL := "scroll"
+    static SE := "se"
+    static SEL := "sel"
+    static SEL_FIRST := "sel.first"
+    static SEL_LAST := "sel.last"
+    static SEPARATOR := "separator"
+    static SINGLE := "single"
+    static SOLID := "solid"
+    static SUNKEN := "sunken"
+    static SW := "sw"
+    static TOP := "top"
+    static TRUE := 1
+    static UNDERLINE := "underline"
+    static UNITS := "units"
+    static VERTICAL := "vertical"
+    static W := "w"
+    static WORD := "word"
+    static X := "x"
+    static Y := "y"
+    static YES := 1
+    static wantobjects := 1
+
+    static ttk {
+        get => AhkStdlibTkinterTtk
+    }
+
+    static NoDefaultRoot(args*)
+    {
+        if args.Length != 0
+            throw TypeError("NoDefaultRoot() takes 0 positional arguments but " args.Length " " (args.Length = 1 ? "was" : "were") " given", -1)
+        return AhkStdlibTkinterDefaultRootState("disable")
+    }
+
+    static getint(args*)
+    {
+        return AhkStdlibTkinterModuleGetInt(args*)
+    }
+
+    static getdouble(args*)
+    {
+        return AhkStdlibTkinterModuleGetDouble(args*)
     }
 
     static getboolean(args*)
@@ -57,6 +166,62 @@ class AhkStdlibTkinter
         if args.Length > 1
             throw TypeError("mainloop() takes from 0 to 1 positional arguments but " args.Length " were given", -1)
         return AhkStdlibTkinterGetDefaultRoot("run the main loop").mainloop(args*)
+    }
+
+    static Event(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Event() takes no arguments", -1)
+        return Event()
+    }
+
+    static EventType(args*)
+    {
+        if args.Length = 0
+            throw TypeError("EnumMeta.__call__() missing 1 required positional argument: 'value'", -1)
+        if args.Length > 1
+            throw TypeError("Cannot extend enumerations", -1)
+        return EventType(args[1])
+    }
+
+    static CallWrapper(args*)
+    {
+        return CallWrapper(args*)
+    }
+
+    static Pack(args*)
+    {
+        return Pack(args*)
+    }
+
+    static Place(args*)
+    {
+        return Place(args*)
+    }
+
+    static Grid(args*)
+    {
+        return Grid(args*)
+    }
+
+    static XView(args*)
+    {
+        return XView(args*)
+    }
+
+    static YView(args*)
+    {
+        return YView(args*)
+    }
+
+    static Misc(args*)
+    {
+        return Misc(args*)
+    }
+
+    static Wm(args*)
+    {
+        return Wm(args*)
     }
 
     static Tcl(args*)
@@ -171,6 +336,21 @@ class AhkStdlibTkinter
     static Text(args*)
     {
         return Text(args*)
+    }
+
+    static BaseWidget(args*)
+    {
+        return BaseWidget(args*)
+    }
+
+    static Widget(args*)
+    {
+        return Widget(args*)
+    }
+
+    static Image(args*)
+    {
+        return Image(args*)
     }
 
     static BitmapImage(args*)
@@ -307,8 +487,49 @@ class Tk
 
         resultCode := DllCall("tcl86t\Tcl_Eval", "Ptr", this.AhkStdlibInterp, "Ptr", AhkStdlibTkinterUtf8Buffer(args[1]).Ptr, "Int")
         if resultCode != 0
-            throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(this.AhkStdlibInterp), -1)
+            throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(this.AhkStdlibInterp))
         return AhkStdlibTkinterGetStringResult(this.AhkStdlibInterp)
+    }
+
+    loadtk(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Tk.loadtk() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        if !this.AhkStdlibUseTk {
+            AhkStdlibTkinterEnsureTclRuntime(true)
+            AhkStdlibTkinterInitTk(this.AhkStdlibInterp)
+            this.AhkStdlibUseTk := true
+            this.eval("wm protocol . WM_DELETE_WINDOW " AhkStdlibTkinterTclWord("destroy ."))
+            AhkStdlibTkinterRegisterDefaultRoot(this)
+        }
+        return stdlib.None
+    }
+
+    readprofile(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Tk.readprofile() missing 2 required positional arguments: 'baseName' and 'className'", -1)
+        if args.Length = 1
+            throw TypeError("Tk.readprofile() missing 1 required positional argument: 'className'", -1)
+        if args.Length > 2
+            throw TypeError("Tk.readprofile() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        AhkStdlibTkinterReadprofileTcl(this, args[2])
+        AhkStdlibTkinterReadprofileTcl(this, args[1])
+        return stdlib.None
+    }
+
+    report_callback_exception(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Tk.report_callback_exception() missing 3 required positional arguments: 'exc', 'val', and 'tb'", -1)
+        if args.Length = 1
+            throw TypeError("Tk.report_callback_exception() missing 2 required positional arguments: 'val' and 'tb'", -1)
+        if args.Length = 2
+            throw TypeError("Tk.report_callback_exception() missing 1 required positional argument: 'tb'", -1)
+        if args.Length > 3
+            throw TypeError("Tk.report_callback_exception() takes 4 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibLastCallbackException := { Exc: args[1], Value: args[2], Traceback: args[3] }
+        return stdlib.None
     }
 
     setvar(args*)
@@ -343,7 +564,7 @@ class Tk
 
         value := AhkStdlibTkinterGetVar(this.AhkStdlibInterp, name)
         if value == AhkStdlibTkinterMissingValue()
-            throw AhkStdlibTkinter.TclError("can't read " Chr(34) name Chr(34) ": no such variable", -1)
+            throw AhkStdlibTkinter.TclError("can't read " Chr(34) name Chr(34) ": no such variable")
         return value
     }
 
@@ -360,6 +581,31 @@ class Tk
     getboolean(args*)
     {
         return AhkStdlibTkinterGetBooleanMethod(this, args*)
+    }
+
+    tk_bisque(args*)
+    {
+        return AhkStdlibTkinterBisque(this, args*)
+    }
+
+    tk_setPalette(args*)
+    {
+        return AhkStdlibTkinterSetPalette(this, args*)
+    }
+
+    tk_strictMotif(args*)
+    {
+        return AhkStdlibTkinterStrictMotif(this, args*)
+    }
+
+    register(args*)
+    {
+        return AhkStdlibTkinterRegisterPublic(this, args*)
+    }
+
+    deletecommand(args*)
+    {
+        return AhkStdlibTkinterDeleteCommandPublic(this, args*)
     }
 
     _root()
@@ -379,7 +625,7 @@ class Tk
         if args.Length > 1
             throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
         value := this.eval(". cget -" args[1])
-        return AhkStdlibTkinterCgetValue(args[1], value)
+        return AhkStdlibTkinterCgetValue(args[1], value, this)
     }
 
     keys(args*)
@@ -393,6 +639,8 @@ class Tk
             throw TypeError("Misc.configure() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
         if args.Length = 0
             return stdlib.None
+        if args[1] is String
+            return AhkStdlibTkinterWidgetConfigureOption(this, ".", args[1])
         if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
             throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
         this.eval(". configure" AhkStdlibTkinterOptionsToScript(args[1], false, this))
@@ -408,9 +656,14 @@ class Tk
     {
         if args.Length > 1
             throw TypeError("Wm.wm_title() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
-        if args.Length = 0
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
             return this.eval("wm title .")
         return this.eval("wm title . " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_title(args*)
+    {
+        return this.title(args*)
     }
 
     geometry(args*)
@@ -422,9 +675,149 @@ class Tk
         return this.eval("wm geometry . " AhkStdlibTkinterTclWord(args[1]))
     }
 
+    wm_geometry(args*)
+    {
+        return this.geometry(args*)
+    }
+
+    attributes(args*)
+    {
+        return AhkStdlibTkinterWmAttributes(this, ".", args*)
+    }
+
+    wm_attributes(args*)
+    {
+        return this.attributes(args*)
+    }
+
+    aspect(args*)
+    {
+        return AhkStdlibTkinterWmAspect(this, ".", args*)
+    }
+
+    wm_aspect(args*)
+    {
+        return this.aspect(args*)
+    }
+
+    grid(args*)
+    {
+        return AhkStdlibTkinterWmGrid(this, ".", args*)
+    }
+
+    wm_grid(args*)
+    {
+        return this.grid(args*)
+    }
+
+    group(args*)
+    {
+        return AhkStdlibTkinterWmGroup(this, ".", args*)
+    }
+
+    wm_group(args*)
+    {
+        return this.group(args*)
+    }
+
+    command(args*)
+    {
+        return AhkStdlibTkinterWmCommand(this, ".", args*)
+    }
+
+    wm_command(args*)
+    {
+        return this.command(args*)
+    }
+
+    manage(args*)
+    {
+        return AhkStdlibTkinterWmManage(this, args*)
+    }
+
+    wm_manage(args*)
+    {
+        return this.manage(args*)
+    }
+
+    forget(args*)
+    {
+        return AhkStdlibTkinterWmForget(this, args*)
+    }
+
+    wm_forget(args*)
+    {
+        return this.forget(args*)
+    }
+
+    colormapwindows(args*)
+    {
+        return AhkStdlibTkinterWmColormapwindows(this, ".", args*)
+    }
+
+    wm_colormapwindows(args*)
+    {
+        return this.colormapwindows(args*)
+    }
+
+    iconposition(args*)
+    {
+        return AhkStdlibTkinterWmIconposition(this, ".", args*)
+    }
+
+    wm_iconposition(args*)
+    {
+        return this.iconposition(args*)
+    }
+
+    iconwindow(args*)
+    {
+        return AhkStdlibTkinterWmIconwindow(this, ".", args*)
+    }
+
+    wm_iconwindow(args*)
+    {
+        return this.iconwindow(args*)
+    }
+
+    iconmask(args*)
+    {
+        return AhkStdlibTkinterWmIconmask(this, ".", args*)
+    }
+
+    wm_iconmask(args*)
+    {
+        return this.iconmask(args*)
+    }
+
+    iconbitmap(args*)
+    {
+        return AhkStdlibTkinterWmIconbitmap(this, ".", args*)
+    }
+
+    wm_iconbitmap(args*)
+    {
+        return this.iconbitmap(args*)
+    }
+
+    iconphoto(args*)
+    {
+        return AhkStdlibTkinterWmIconphoto(this, ".", args*)
+    }
+
+    wm_iconphoto(args*)
+    {
+        return this.iconphoto(args*)
+    }
+
     resizable(args*)
     {
         return AhkStdlibTkinterWmResizable(this, ".", args*)
+    }
+
+    wm_resizable(args*)
+    {
+        return this.resizable(args*)
     }
 
     minsize(args*)
@@ -432,9 +825,19 @@ class Tk
         return AhkStdlibTkinterWmSize(this, ".", "minsize", args*)
     }
 
+    wm_minsize(args*)
+    {
+        return this.minsize(args*)
+    }
+
     maxsize(args*)
     {
         return AhkStdlibTkinterWmSize(this, ".", "maxsize", args*)
+    }
+
+    wm_maxsize(args*)
+    {
+        return this.maxsize(args*)
     }
 
     protocol(args*)
@@ -465,6 +868,88 @@ class Tk
     wm_overrideredirect(args*)
     {
         return this.overrideredirect(args*)
+    }
+
+    frame(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Wm.wm_frame() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.eval("wm frame .")
+    }
+
+    wm_frame(args*)
+    {
+        return this.frame(args*)
+    }
+
+    focusmodel(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_focusmodel() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.eval("wm focusmodel .")
+        return this.eval("wm focusmodel . " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_focusmodel(args*)
+    {
+        return this.focusmodel(args*)
+    }
+
+    positionfrom(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_positionfrom() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.eval("wm positionfrom .")
+        return this.eval("wm positionfrom . " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_positionfrom(args*)
+    {
+        return this.positionfrom(args*)
+    }
+
+    sizefrom(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_sizefrom() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.eval("wm sizefrom .")
+        return this.eval("wm sizefrom . " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_sizefrom(args*)
+    {
+        return this.sizefrom(args*)
+    }
+
+    iconname(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_iconname() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.eval("wm iconname .")
+        return this.eval("wm iconname . " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_iconname(args*)
+    {
+        return this.iconname(args*)
+    }
+
+    client(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_client() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.eval("wm client .")
+        return this.eval("wm client . " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_client(args*)
+    {
+        return this.client(args*)
     }
 
     bind(args*)
@@ -542,6 +1027,11 @@ class Tk
         return AhkStdlibTkinterGrabSet(this, ".", "grab_set", args*)
     }
 
+    grab_set_global(args*)
+    {
+        return AhkStdlibTkinterGrabSetGlobal(this, ".", args*)
+    }
+
     grab_release(args*)
     {
         return AhkStdlibTkinterGrabRelease(this, ".", args*)
@@ -582,6 +1072,11 @@ class Tk
         return AhkStdlibTkinterFocusSet(this, ".", "focus_set", false, args*)
     }
 
+    focus(args*)
+    {
+        return this.focus_set(args*)
+    }
+
     focus_force(args*)
     {
         return AhkStdlibTkinterFocusSet(this, ".", "focus_force", true, args*)
@@ -597,6 +1092,31 @@ class Tk
         return AhkStdlibTkinterFocusQuery(this, "focus -displayof .", "focus_displayof", args*)
     }
 
+    focus_lastfor(args*)
+    {
+        return AhkStdlibTkinterFocusLastfor(this, ".", args*)
+    }
+
+    tk_focusNext(args*)
+    {
+        return AhkStdlibTkinterFocusTraversal(this, ".", "tk_focusNext", args*)
+    }
+
+    tk_focusPrev(args*)
+    {
+        return AhkStdlibTkinterFocusTraversal(this, ".", "tk_focusPrev", args*)
+    }
+
+    tk_focusFollowsMouse(args*)
+    {
+        return AhkStdlibTkinterFocusFollowsMouse(this, args*)
+    }
+
+    bell(args*)
+    {
+        return AhkStdlibTkinterBell(this, ".", args*)
+    }
+
     clipboard_clear(args*)
     {
         return AhkStdlibTkinterClipboardClear(this, ".", args*)
@@ -610,6 +1130,38 @@ class Tk
     clipboard_get(args*)
     {
         return AhkStdlibTkinterClipboardGet(this, ".", args*)
+    }
+
+    selection_get(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.selection_get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.eval("selection get")
+    }
+
+    selection_handle(args*)
+    {
+        return AhkStdlibTkinterSelectionHandle(this, ".", args*)
+    }
+
+    selection_clear(args*)
+    {
+        return AhkStdlibTkinterSelectionClear(this, args*)
+    }
+
+    selection_own(args*)
+    {
+        return AhkStdlibTkinterSelectionOwn(this, ".", args*)
+    }
+
+    selection_own_get(args*)
+    {
+        return AhkStdlibTkinterSelectionOwnGet(this, args*)
+    }
+
+    send(args*)
+    {
+        return AhkStdlibTkinterSend(this, args*)
     }
 
     option_add(args*)
@@ -641,11 +1193,21 @@ class Tk
         return this.eval("wm state . " AhkStdlibTkinterTclWord(args[1]))
     }
 
+    wm_state(args*)
+    {
+        return this.state(args*)
+    }
+
     withdraw(args*)
     {
         if args.Length != 0
             throw TypeError("Wm.wm_withdraw() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.eval("wm withdraw .")
+    }
+
+    wm_withdraw(args*)
+    {
+        return this.withdraw(args*)
     }
 
     iconify(args*)
@@ -655,11 +1217,21 @@ class Tk
         return this.eval("wm iconify .")
     }
 
+    wm_iconify(args*)
+    {
+        return this.iconify(args*)
+    }
+
     deiconify(args*)
     {
         if args.Length != 0
             throw TypeError("Wm.wm_deiconify() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.eval("wm deiconify .")
+    }
+
+    wm_deiconify(args*)
+    {
+        return this.deiconify(args*)
     }
 
     update(args*)
@@ -1087,7 +1659,7 @@ class Tk
         AhkStdlibTkinterSilenceDestroyBackgroundErrors(this.AhkStdlibInterp)
         resultCode := DllCall("tcl86t\Tcl_Eval", "Ptr", this.AhkStdlibInterp, "Ptr", AhkStdlibTkinterUtf8Buffer("destroy .").Ptr, "Int")
         if resultCode != 0
-            throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(this.AhkStdlibInterp), -1)
+            throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(this.AhkStdlibInterp))
         AhkStdlibTkinterForgetDefaultRoot(this)
         return stdlib.None
     }
@@ -1160,7 +1732,7 @@ class AhkStdlibTkinterWidget
         if args.Length > 1
             throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
         value := this.AhkStdlibRoot.eval(this._w " cget -" args[1])
-        return AhkStdlibTkinterCgetValue(args[1], value)
+        return AhkStdlibTkinterCgetValue(args[1], value, this.AhkStdlibRoot)
     }
 
     keys(args*)
@@ -1174,6 +1746,8 @@ class AhkStdlibTkinterWidget
             throw TypeError("Misc.configure() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
         if args.Length = 0
             return stdlib.None
+        if args[1] is String
+            return AhkStdlibTkinterWidgetConfigureOption(this.AhkStdlibRoot, this._w, args[1])
         if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
             throw TypeError("cnf must be a dictionary", -1)
         this.AhkStdlibRoot.eval(this._w " configure" AhkStdlibTkinterOptionsToScript(args[1], false, this.AhkStdlibRoot))
@@ -1183,6 +1757,37 @@ class AhkStdlibTkinterWidget
     config(args*)
     {
         return this.configure(args*)
+    }
+
+    state(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Widget.state() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(this._w " state")))
+
+        statespec := AhkStdlibTkinterStateSpecWord(args[1])
+        return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(this._w " state " statespec)))
+    }
+
+    instate(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Widget.instate() missing 1 required positional argument: 'statespec'", -1)
+
+        statespec := AhkStdlibTkinterStateSpecWord(args[1])
+        matched := AhkStdlibTkinterGetBoolean(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(this._w " instate " statespec))
+        if AhkStdlibTruthValue(matched) && args.Length >= 2 {
+            callback := args[2]
+            callbackArgs := []
+            index := 3
+            while index <= args.Length {
+                callbackArgs.Push(args[index])
+                index += 1
+            }
+            return callback.Call(callbackArgs*)
+        }
+        return matched
     }
 
     pack(args*)
@@ -1415,11 +2020,44 @@ class AhkStdlibTkinterWidget
         return info
     }
 
+    update(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.update() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval("update")
+        return stdlib.None
+    }
+
+    update_idletasks(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.update_idletasks() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval("update idletasks")
+        return stdlib.None
+    }
+
+    after(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.after() missing 1 required positional argument: 'ms'", -1)
+        return AhkStdlibTkinterAfter(this.AhkStdlibRoot, args*)
+    }
+
     after_idle(args*)
     {
         if args.Length = 0
             throw TypeError("Misc.after_idle() missing 1 required positional argument: 'func'", -1)
         return AhkStdlibTkinterAfter(this.AhkStdlibRoot, "idle", args*)
+    }
+
+    after_cancel(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.after_cancel() missing 1 required positional argument: 'id'", -1)
+        if args.Length > 1
+            throw TypeError("Misc.after_cancel() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval("after cancel " AhkStdlibTkinterTclWord(args[1]))
+        return stdlib.None
     }
 
     image_names(args*)
@@ -1430,6 +2068,16 @@ class AhkStdlibTkinterWidget
     image_types(args*)
     {
         return AhkStdlibTkinterImageTypes(this.AhkStdlibRoot, args*)
+    }
+
+    mainloop(args*)
+    {
+        return this.AhkStdlibRoot.mainloop(args*)
+    }
+
+    quit(args*)
+    {
+        return this.AhkStdlibRoot.quit(args*)
     }
 
     bind(args*)
@@ -1507,6 +2155,11 @@ class AhkStdlibTkinterWidget
         return AhkStdlibTkinterGrabSet(this.AhkStdlibRoot, this._w, "grab_set", args*)
     }
 
+    grab_set_global(args*)
+    {
+        return AhkStdlibTkinterGrabSetGlobal(this.AhkStdlibRoot, this._w, args*)
+    }
+
     grab_release(args*)
     {
         return AhkStdlibTkinterGrabRelease(this.AhkStdlibRoot, this._w, args*)
@@ -1547,6 +2200,11 @@ class AhkStdlibTkinterWidget
         return AhkStdlibTkinterFocusSet(this.AhkStdlibRoot, this._w, "focus_set", false, args*)
     }
 
+    focus(args*)
+    {
+        return this.focus_set(args*)
+    }
+
     focus_force(args*)
     {
         return AhkStdlibTkinterFocusSet(this.AhkStdlibRoot, this._w, "focus_force", true, args*)
@@ -1560,6 +2218,31 @@ class AhkStdlibTkinterWidget
     focus_displayof(args*)
     {
         return AhkStdlibTkinterFocusQuery(this.AhkStdlibRoot, "focus -displayof " this._w, "focus_displayof", args*)
+    }
+
+    focus_lastfor(args*)
+    {
+        return AhkStdlibTkinterFocusLastfor(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    tk_focusNext(args*)
+    {
+        return AhkStdlibTkinterFocusTraversal(this.AhkStdlibRoot, this._w, "tk_focusNext", args*)
+    }
+
+    tk_focusPrev(args*)
+    {
+        return AhkStdlibTkinterFocusTraversal(this.AhkStdlibRoot, this._w, "tk_focusPrev", args*)
+    }
+
+    tk_focusFollowsMouse(args*)
+    {
+        return AhkStdlibTkinterFocusFollowsMouse(this.AhkStdlibRoot, args*)
+    }
+
+    bell(args*)
+    {
+        return AhkStdlibTkinterBell(this.AhkStdlibRoot, this._w, args*)
     }
 
     clipboard_clear(args*)
@@ -1604,6 +2287,41 @@ class AhkStdlibTkinterWidget
         return this.AhkStdlibRoot.eval("selection get")
     }
 
+    selection_handle(args*)
+    {
+        return AhkStdlibTkinterSelectionHandle(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    selection_clear(args*)
+    {
+        return AhkStdlibTkinterSelectionClear(this.AhkStdlibRoot, args*)
+    }
+
+    selection_own(args*)
+    {
+        return AhkStdlibTkinterSelectionOwn(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    selection_own_get(args*)
+    {
+        return AhkStdlibTkinterSelectionOwnGet(this.AhkStdlibRoot, args*)
+    }
+
+    send(args*)
+    {
+        return AhkStdlibTkinterSend(this.AhkStdlibRoot, args*)
+    }
+
+    setvar(args*)
+    {
+        return this.AhkStdlibRoot.setvar(args*)
+    }
+
+    getvar(args*)
+    {
+        return this.AhkStdlibRoot.getvar(args*)
+    }
+
     getint(args*)
     {
         return AhkStdlibTkinterGetIntMethod(this.AhkStdlibRoot, args*)
@@ -1617,6 +2335,31 @@ class AhkStdlibTkinterWidget
     getboolean(args*)
     {
         return AhkStdlibTkinterGetBooleanMethod(this.AhkStdlibRoot, args*)
+    }
+
+    tk_bisque(args*)
+    {
+        return AhkStdlibTkinterBisque(this.AhkStdlibRoot, args*)
+    }
+
+    tk_setPalette(args*)
+    {
+        return AhkStdlibTkinterSetPalette(this.AhkStdlibRoot, args*)
+    }
+
+    tk_strictMotif(args*)
+    {
+        return AhkStdlibTkinterStrictMotif(this.AhkStdlibRoot, args*)
+    }
+
+    register(args*)
+    {
+        return AhkStdlibTkinterRegisterPublic(this.AhkStdlibRoot, args*)
+    }
+
+    deletecommand(args*)
+    {
+        return AhkStdlibTkinterDeleteCommandPublic(this.AhkStdlibRoot, args*)
     }
 
     winfo_exists(args*)
@@ -1890,6 +2633,752 @@ class AhkStdlibTkinterWidget
     }
 }
 
+class BaseWidget
+{
+    __New(args*)
+    {
+        AhkStdlibTkinterPublicWidgetNew(this, "BaseWidget", args*)
+    }
+
+    _root()
+    {
+        return this.AhkStdlibRoot
+    }
+
+    nametowidget(args*)
+    {
+        return AhkStdlibTkinterNameToWidget(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    cget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Misc.cget() missing 1 required positional argument: 'key'", -1)
+        if args.Length > 1
+            throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " cget -" args[1])
+        return AhkStdlibTkinterCgetValue(args[1], value, this.AhkStdlibRoot)
+    }
+
+    keys(args*)
+    {
+        return AhkStdlibTkinterKeys(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    configure(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Misc.configure() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0
+            return stdlib.None
+        if args[1] is String
+            return AhkStdlibTkinterWidgetConfigureOption(this.AhkStdlibRoot, this._w, args[1])
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            throw TypeError("cnf must be a dictionary", -1)
+        this.AhkStdlibRoot.eval(this._w " configure" AhkStdlibTkinterOptionsToScript(args[1], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    config(args*)
+    {
+        return this.configure(args*)
+    }
+
+    winfo_class(args*)
+    {
+        return AhkStdlibTkinterWinfoString(this.AhkStdlibRoot, this._w, "class", "winfo_class", args*)
+    }
+
+    destroy()
+    {
+        this.AhkStdlibRoot.eval("destroy " this._w)
+        return stdlib.None
+    }
+
+    ToString()
+    {
+        return this._w
+    }
+
+    __Call(name, args*)
+    {
+        throw AttributeError("'BaseWidget' object has no attribute '" name "'", -1)
+    }
+}
+
+class Widget extends AhkStdlibTkinterWidget
+{
+    __New(args*)
+    {
+        AhkStdlibTkinterPublicWidgetNew(this, "Widget", args*)
+    }
+}
+
+class AhkStdlibTkinterTtk
+{
+    class Combobox extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Combobox", "ttk::combobox", args*)
+            this.widgetName := "ttk::combobox"
+        }
+
+        current(args*)
+        {
+            if args.Length > 1
+                throw TypeError("Combobox.current() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+            if args.Length = 0
+                return Integer(this.AhkStdlibRoot.eval(this._w " current"))
+            this.AhkStdlibRoot.eval(this._w " current " AhkStdlibTkinterTclWord(args[1]))
+            return stdlib.None
+        }
+
+        get(args*)
+        {
+            if args.Length != 0
+                throw TypeError("Entry.get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " get")
+        }
+
+        set(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Combobox.set() missing 1 required positional argument: 'value'", -1)
+            if args.Length > 1
+                throw TypeError("Combobox.set() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " set " AhkStdlibTkinterTclWord(args[1]))
+            return stdlib.None
+        }
+
+        configure(args*)
+        {
+            if args.Length = 1 && args[1] is String {
+                optionName := AhkStdlibTkinterWidgetOptionName(args[1])
+                value := AhkStdlibTkinterWidgetConfigureOption(this.AhkStdlibRoot, this._w, optionName)
+                if optionName = "width"
+                    return stdlib.tuple([value[1], value[2], value[3], Integer(value[4]), value[5]])
+                return value
+            }
+            return super.configure(args*)
+        }
+
+        config(args*)
+        {
+            return this.configure(args*)
+        }
+    }
+
+    class Entry extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Entry", "ttk::entry", args*)
+            this.widgetName := "ttk::entry"
+        }
+
+        get(args*)
+        {
+            if args.Length != 0
+                throw TypeError("Entry.get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " get")
+        }
+
+        insert(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Entry.insert() missing 2 required positional arguments: 'index' and 'string'", -1)
+            if args.Length = 1
+                throw TypeError("Entry.insert() missing 1 required positional argument: 'string'", -1)
+            if args.Length > 2
+                throw TypeError("Entry.insert() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " insert " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+            return stdlib.None
+        }
+
+        delete(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Entry.delete() missing 1 required positional argument: 'first'", -1)
+            if args.Length > 2
+                throw TypeError("Entry.delete() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+            script := this._w " delete " AhkStdlibTkinterTclWord(args[1])
+            if args.Length = 2
+                script .= " " AhkStdlibTkinterTclWord(args[2])
+            this.AhkStdlibRoot.eval(script)
+            return stdlib.None
+        }
+
+        index(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Entry.index() missing 1 required positional argument: 'index'", -1)
+            if args.Length > 1
+                throw TypeError("Entry.index() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            return Integer(this.AhkStdlibRoot.eval(this._w " index " AhkStdlibTkinterTclWord(args[1])))
+        }
+
+        icursor(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Entry.icursor() missing 1 required positional argument: 'index'", -1)
+            if args.Length > 1
+                throw TypeError("Entry.icursor() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " icursor " AhkStdlibTkinterTclWord(args[1]))
+            return stdlib.None
+        }
+
+        select_adjust(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_adjust()", "adjust", args*)
+        }
+
+        select_clear(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionClear(this, "Entry.selection_clear()", args*)
+        }
+
+        select_from(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_from()", "from", args*)
+        }
+
+        select_present(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionPresent(this, "Entry.selection_present()", args*)
+        }
+
+        select_range(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionRange(this, "Entry.selection_range()", args*)
+        }
+
+        select_to(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_to()", "to", args*)
+        }
+
+        selection_adjust(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_adjust()", "adjust", args*)
+        }
+
+        selection_clear(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionClear(this, "Entry.selection_clear()", args*)
+        }
+
+        selection_from(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_from()", "from", args*)
+        }
+
+        selection_present(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionPresent(this, "Entry.selection_present()", args*)
+        }
+
+        selection_range(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionRange(this, "Entry.selection_range()", args*)
+        }
+
+        selection_to(args*)
+        {
+            return AhkStdlibTkinterEntrySelectionIndex(this, "Entry.selection_to()", "to", args*)
+        }
+
+        scan_mark(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Entry.scan_mark() missing 1 required positional argument: 'x'", -1)
+            if args.Length > 1
+                throw TypeError("Entry.scan_mark() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " scan mark " AhkStdlibTkinterTclWord(args[1]))
+            return stdlib.None
+        }
+
+        scan_dragto(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Entry.scan_dragto() missing 1 required positional argument: 'x'", -1)
+            if args.Length > 1
+                throw TypeError("Entry.scan_dragto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " scan dragto " AhkStdlibTkinterTclWord(args[1]))
+            return stdlib.None
+        }
+
+        xview(args*)
+        {
+            script := this._w " xview"
+            for value in args
+                script .= " " AhkStdlibTkinterTclWord(value)
+            value := this.AhkStdlibRoot.eval(script)
+            return args.Length = 0 ? AhkStdlibTkinterFloatTuple(value) : stdlib.None
+        }
+
+        xview_moveto(args*)
+        {
+            if args.Length = 0
+                throw TypeError("XView.xview_moveto() missing 1 required positional argument: 'fraction'", -1)
+            if args.Length > 1
+                throw TypeError("XView.xview_moveto() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " xview moveto " AhkStdlibTkinterTclWord(args[1]))
+            return stdlib.None
+        }
+
+        xview_scroll(args*)
+        {
+            if args.Length = 0
+                throw TypeError("XView.xview_scroll() missing 2 required positional arguments: 'number' and 'what'", -1)
+            if args.Length = 1
+                throw TypeError("XView.xview_scroll() missing 1 required positional argument: 'what'", -1)
+            if args.Length > 2
+                throw TypeError("XView.xview_scroll() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " xview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+            return stdlib.None
+        }
+    }
+
+    class Frame extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Frame", "ttk::frame", args*)
+            this.widgetName := "ttk::frame"
+        }
+    }
+
+    class Label extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Label", "ttk::label", args*)
+            this.widgetName := "ttk::label"
+        }
+    }
+
+    class Button extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Button", "ttk::button", args*)
+            this.widgetName := "ttk::button"
+        }
+
+        invoke(args*)
+        {
+            if args.Length != 0
+                throw TypeError("Button.invoke() takes 1 positional argument but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " invoke")
+        }
+    }
+
+    class Checkbutton extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Checkbutton", "ttk::checkbutton", args*)
+            this.widgetName := "ttk::checkbutton"
+        }
+
+        invoke(args*)
+        {
+            if args.Length != 0
+                throw TypeError("Checkbutton.invoke() takes 1 positional argument but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " invoke")
+        }
+    }
+
+    class Radiobutton extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Radiobutton", "ttk::radiobutton", args*)
+            this.widgetName := "ttk::radiobutton"
+        }
+
+        invoke(args*)
+        {
+            if args.Length != 0
+                throw TypeError("Radiobutton.invoke() takes 1 positional argument but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " invoke")
+        }
+    }
+
+    class Scale extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Scale", "ttk::scale", args*)
+            this.widgetName := "ttk::scale"
+        }
+
+        get(args*)
+        {
+            script := this._w " get"
+            for value in args
+                script .= " " AhkStdlibTkinterTclWord(value)
+            value := this.AhkStdlibRoot.eval(script)
+            return args.Length = 0 ? AhkStdlibTkinterIntOrFloatValue(value) : value
+        }
+
+        identify(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Widget.identify() missing 2 required positional arguments: 'x' and 'y'", -1)
+            if args.Length = 1
+                throw TypeError("Widget.identify() missing 1 required positional argument: 'y'", -1)
+            if args.Length > 2
+                throw TypeError("Widget.identify() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " identify " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        }
+
+        set(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Scale.set() missing 1 required positional argument: 'value'", -1)
+            if args.Length > 1
+                throw TypeError("Scale.set() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " set " AhkStdlibTkinterTclWord(args[1]))
+            return stdlib.None
+        }
+    }
+
+    class Scrollbar extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Scrollbar", "ttk::scrollbar", args*)
+            this.widgetName := "ttk::scrollbar"
+        }
+
+        activate(args*)
+        {
+            if args.Length > 1
+                throw TypeError("Scrollbar.activate() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+            script := this._w " activate"
+            if args.Length = 1
+                script .= " " AhkStdlibTkinterTclWord(args[1])
+            this.AhkStdlibRoot.eval(script)
+            return stdlib.None
+        }
+
+        cget(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Misc.cget() missing 1 required positional argument: 'key'", -1)
+            if args.Length > 1
+                throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " cget -" args[1])
+        }
+
+        delta(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Scrollbar.delta() missing 2 required positional arguments: 'deltax' and 'deltay'", -1)
+            if args.Length = 1
+                throw TypeError("Scrollbar.delta() missing 1 required positional argument: 'deltay'", -1)
+            if args.Length > 2
+                throw TypeError("Scrollbar.delta() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            return Float(this.AhkStdlibRoot.eval(this._w " delta " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])))
+        }
+
+        fraction(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Scrollbar.fraction() missing 2 required positional arguments: 'x' and 'y'", -1)
+            if args.Length = 1
+                throw TypeError("Scrollbar.fraction() missing 1 required positional argument: 'y'", -1)
+            if args.Length > 2
+                throw TypeError("Scrollbar.fraction() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            return Float(this.AhkStdlibRoot.eval(this._w " fraction " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])))
+        }
+
+        get(args*)
+        {
+            if args.Length != 0
+                throw TypeError("Scrollbar.get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+            return AhkStdlibTkinterFloatTuple(this.AhkStdlibRoot.eval(this._w " get"))
+        }
+
+        identify(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Widget.identify() missing 2 required positional arguments: 'x' and 'y'", -1)
+            if args.Length = 1
+                throw TypeError("Widget.identify() missing 1 required positional argument: 'y'", -1)
+            if args.Length > 2
+                throw TypeError("Widget.identify() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " identify " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        }
+
+        set(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Scrollbar.set() missing 2 required positional arguments: 'first' and 'last'", -1)
+            if args.Length = 1
+                throw TypeError("Scrollbar.set() missing 1 required positional argument: 'last'", -1)
+            if args.Length > 2
+                throw TypeError("Scrollbar.set() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " set " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+            return stdlib.None
+        }
+    }
+
+    class Separator extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Separator", "ttk::separator", args*)
+            this.widgetName := "ttk::separator"
+        }
+    }
+
+    class Progressbar extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Progressbar", "ttk::progressbar", args*)
+            this.widgetName := "ttk::progressbar"
+        }
+
+        start(args*)
+        {
+            if args.Length > 1
+                throw TypeError("Progressbar.start() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+            script := this._w " start"
+            if args.Length = 1
+                script .= " " AhkStdlibTkinterTclWord(args[1])
+            this.AhkStdlibRoot.eval(script)
+            return stdlib.None
+        }
+
+        step(args*)
+        {
+            if args.Length > 1
+                throw TypeError("Progressbar.step() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+            script := this._w " step"
+            if args.Length = 1
+                script .= " " AhkStdlibTkinterTclWord(args[1])
+            this.AhkStdlibRoot.eval(script)
+            return stdlib.None
+        }
+
+        stop(args*)
+        {
+            if args.Length != 0
+                throw TypeError("Progressbar.stop() takes 1 positional argument but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " stop")
+            return stdlib.None
+        }
+
+        cget(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Misc.cget() missing 1 required positional argument: 'key'", -1)
+            if args.Length > 1
+                throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            optionName := AhkStdlibTkinterWidgetOptionName(args[1])
+            value := this.AhkStdlibRoot.eval(this._w " cget -" optionName)
+            if optionName = "maximum"
+                return AhkStdlibTkinterIntOrFloatValue(value)
+            if optionName = "value"
+                return Float(value)
+            return AhkStdlibTkinterCgetValue(optionName, value, this.AhkStdlibRoot)
+        }
+
+        configure(args*)
+        {
+            if args.Length = 1 && args[1] is String {
+                optionName := AhkStdlibTkinterWidgetOptionName(args[1])
+                value := AhkStdlibTkinterWidgetConfigureOption(this.AhkStdlibRoot, this._w, optionName)
+                if optionName = "maximum"
+                    return stdlib.tuple([value[1], value[2], value[3], AhkStdlibTkinterIntOrFloatValue(value[4]), AhkStdlibTkinterIntOrFloatValue(value[5])])
+                if optionName = "value"
+                    return stdlib.tuple([value[1], value[2], value[3], Float(value[4]), Float(value[5])])
+                return value
+            }
+            return super.configure(args*)
+        }
+
+        config(args*)
+        {
+            return this.configure(args*)
+        }
+    }
+
+    class Notebook extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("Notebook", "ttk::notebook", args*)
+            this.widgetName := "ttk::notebook"
+        }
+
+        cget(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Misc.cget() missing 1 required positional argument: 'key'", -1)
+            if args.Length > 1
+                throw TypeError("Misc.cget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            optionName := AhkStdlibTkinterWidgetOptionName(args[1])
+            value := this.AhkStdlibRoot.eval(this._w " cget -" optionName)
+            if optionName = "padding"
+                return value = "" ? "" : stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, value))
+            return AhkStdlibTkinterCgetValue(optionName, value, this.AhkStdlibRoot)
+        }
+
+        configure(args*)
+        {
+            if args.Length = 1 && args[1] is String {
+                optionName := AhkStdlibTkinterWidgetOptionName(args[1])
+                if optionName = "padding"
+                    return AhkStdlibTkinterNotebookConfigureOption(this.AhkStdlibRoot, this._w, optionName)
+                return AhkStdlibTkinterWidgetConfigureOption(this.AhkStdlibRoot, this._w, optionName)
+            }
+            return super.configure(args*)
+        }
+
+        config(args*)
+        {
+            return this.configure(args*)
+        }
+
+        add(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Notebook.add() missing 1 required positional argument: 'child'", -1)
+            if args.Length > 2
+                throw TypeError("Notebook.add() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            options := args.Length = 2 ? args[2] : {}
+            if !AhkStdlibTkinterIsPlainKeywordObject(options)
+                throw TypeError("object of type '" AhkStdlibPyTypeName(options) "' has no len()", -1)
+            childPath := AhkStdlibTkinterPaneChildPath(args[1])
+            this.AhkStdlibRoot.eval(this._w " add " AhkStdlibTkinterTclWord(childPath) AhkStdlibTkinterOptionsToScript(options, false, this.AhkStdlibRoot))
+            return stdlib.None
+        }
+
+        forget(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Notebook.forget() missing 1 required positional argument: 'tab_id'", -1)
+            if args.Length > 1
+                throw TypeError("Notebook.forget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " forget " AhkStdlibTkinterTclWord(AhkStdlibTkinterPaneChildPath(args[1])))
+            return stdlib.None
+        }
+
+        hide(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Notebook.hide() missing 1 required positional argument: 'tab_id'", -1)
+            if args.Length > 1
+                throw TypeError("Notebook.hide() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval(this._w " hide " AhkStdlibTkinterTclWord(AhkStdlibTkinterPaneChildPath(args[1])))
+            return stdlib.None
+        }
+
+        identify(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Notebook.identify() missing 2 required positional arguments: 'x' and 'y'", -1)
+            if args.Length = 1
+                throw TypeError("Notebook.identify() missing 1 required positional argument: 'y'", -1)
+            if args.Length > 2
+                throw TypeError("Notebook.identify() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " identify " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        }
+
+        index(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Notebook.index() missing 1 required positional argument: 'tab_id'", -1)
+            if args.Length > 1
+                throw TypeError("Notebook.index() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+            return Integer(this.AhkStdlibRoot.eval(this._w " index " AhkStdlibTkinterTclWord(AhkStdlibTkinterPaneChildPath(args[1]))))
+        }
+
+        insert(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Notebook.insert() missing 2 required positional arguments: 'pos' and 'child'", -1)
+            if args.Length = 1
+                throw TypeError("Notebook.insert() missing 1 required positional argument: 'child'", -1)
+            if args.Length > 3
+                throw TypeError("Notebook.insert() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            options := args.Length = 3 ? args[3] : {}
+            if !AhkStdlibTkinterIsPlainKeywordObject(options)
+                throw TypeError("object of type '" AhkStdlibPyTypeName(options) "' has no len()", -1)
+            this.AhkStdlibRoot.eval(this._w " insert " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(AhkStdlibTkinterPaneChildPath(args[2])) AhkStdlibTkinterOptionsToScript(options, false, this.AhkStdlibRoot))
+            return stdlib.None
+        }
+
+        select(args*)
+        {
+            if args.Length > 1
+                throw TypeError("Notebook.select() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+            script := this._w " select"
+            if args.Length = 1 && !AhkStdlibIsNone(args[1])
+                script .= " " AhkStdlibTkinterTclWord(AhkStdlibTkinterPaneChildPath(args[1]))
+            return this.AhkStdlibRoot.eval(script)
+        }
+
+        tab(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Notebook.tab() missing 1 required positional argument: 'tab_id'", -1)
+            if args.Length > 2
+                throw TypeError("Notebook.tab() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+            tabId := AhkStdlibTkinterPaneChildPath(args[1])
+            if args.Length = 1
+                return AhkStdlibTkinterNotebookTabDict(this.AhkStdlibRoot, this._w, tabId)
+            if AhkStdlibTkinterIsPlainKeywordObject(args[2]) {
+                this.AhkStdlibRoot.eval(this._w " tab " AhkStdlibTkinterTclWord(tabId) AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot))
+                return Map()
+            }
+            optionName := AhkStdlibTkinterWidgetOptionName(args[2])
+            value := this.AhkStdlibRoot.eval(this._w " tab " AhkStdlibTkinterTclWord(tabId) " -" optionName)
+            return AhkStdlibTkinterNotebookTabValue(this.AhkStdlibRoot, optionName, value, false)
+        }
+
+        tabs(args*)
+        {
+            if args.Length != 0
+                throw TypeError("Notebook.tabs() takes 1 positional argument but " args.Length + 1 " were given", -1)
+            return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(this._w " tabs")))
+        }
+
+        enable_traversal(args*)
+        {
+            if args.Length != 0
+                throw TypeError("Notebook.enable_traversal() takes 1 positional argument but " args.Length + 1 " were given", -1)
+            this.AhkStdlibRoot.eval("ttk::notebook::enableTraversal " AhkStdlibTkinterTclWord(this._w))
+            return stdlib.None
+        }
+    }
+
+    class LabelFrame extends AhkStdlibTkinterWidget
+    {
+        __New(args*)
+        {
+            super.__New("LabelFrame", "ttk::labelframe", args*)
+            this.widgetName := "ttk::labelframe"
+        }
+
+        identify(args*)
+        {
+            if args.Length = 0
+                throw TypeError("Widget.identify() missing 2 required positional arguments: 'x' and 'y'", -1)
+            if args.Length = 1
+                throw TypeError("Widget.identify() missing 1 required positional argument: 'y'", -1)
+            if args.Length > 2
+                throw TypeError("Widget.identify() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+            return this.AhkStdlibRoot.eval(this._w " identify " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        }
+    }
+}
+
 class Frame extends AhkStdlibTkinterWidget
 {
     __New(args*)
@@ -1932,9 +3421,149 @@ class Toplevel extends AhkStdlibTkinterWidget
         return this.AhkStdlibRoot.eval("wm geometry " this._w " " AhkStdlibTkinterTclWord(args[1]))
     }
 
+    wm_geometry(args*)
+    {
+        return this.geometry(args*)
+    }
+
+    attributes(args*)
+    {
+        return AhkStdlibTkinterWmAttributes(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_attributes(args*)
+    {
+        return this.attributes(args*)
+    }
+
+    aspect(args*)
+    {
+        return AhkStdlibTkinterWmAspect(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_aspect(args*)
+    {
+        return this.aspect(args*)
+    }
+
+    grid(args*)
+    {
+        return AhkStdlibTkinterWmGrid(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_grid(args*)
+    {
+        return this.grid(args*)
+    }
+
+    group(args*)
+    {
+        return AhkStdlibTkinterWmGroup(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_group(args*)
+    {
+        return this.group(args*)
+    }
+
+    command(args*)
+    {
+        return AhkStdlibTkinterWmCommand(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_command(args*)
+    {
+        return this.command(args*)
+    }
+
+    manage(args*)
+    {
+        return AhkStdlibTkinterWmManage(this.AhkStdlibRoot, args*)
+    }
+
+    wm_manage(args*)
+    {
+        return this.manage(args*)
+    }
+
+    forget(args*)
+    {
+        return AhkStdlibTkinterWmForget(this.AhkStdlibRoot, args*)
+    }
+
+    wm_forget(args*)
+    {
+        return this.forget(args*)
+    }
+
+    colormapwindows(args*)
+    {
+        return AhkStdlibTkinterWmColormapwindows(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_colormapwindows(args*)
+    {
+        return this.colormapwindows(args*)
+    }
+
+    iconposition(args*)
+    {
+        return AhkStdlibTkinterWmIconposition(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_iconposition(args*)
+    {
+        return this.iconposition(args*)
+    }
+
+    iconwindow(args*)
+    {
+        return AhkStdlibTkinterWmIconwindow(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_iconwindow(args*)
+    {
+        return this.iconwindow(args*)
+    }
+
+    iconmask(args*)
+    {
+        return AhkStdlibTkinterWmIconmask(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_iconmask(args*)
+    {
+        return this.iconmask(args*)
+    }
+
+    iconbitmap(args*)
+    {
+        return AhkStdlibTkinterWmIconbitmap(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_iconbitmap(args*)
+    {
+        return this.iconbitmap(args*)
+    }
+
+    iconphoto(args*)
+    {
+        return AhkStdlibTkinterWmIconphoto(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_iconphoto(args*)
+    {
+        return this.iconphoto(args*)
+    }
+
     resizable(args*)
     {
         return AhkStdlibTkinterWmResizable(this.AhkStdlibRoot, this._w, args*)
+    }
+
+    wm_resizable(args*)
+    {
+        return this.resizable(args*)
     }
 
     minsize(args*)
@@ -1942,18 +3571,33 @@ class Toplevel extends AhkStdlibTkinterWidget
         return AhkStdlibTkinterWmSize(this.AhkStdlibRoot, this._w, "minsize", args*)
     }
 
+    wm_minsize(args*)
+    {
+        return this.minsize(args*)
+    }
+
     maxsize(args*)
     {
         return AhkStdlibTkinterWmSize(this.AhkStdlibRoot, this._w, "maxsize", args*)
+    }
+
+    wm_maxsize(args*)
+    {
+        return this.maxsize(args*)
     }
 
     title(args*)
     {
         if args.Length > 1
             throw TypeError("Wm.wm_title() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
-        if args.Length = 0
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
             return this.AhkStdlibRoot.eval("wm title " this._w)
         return this.AhkStdlibRoot.eval("wm title " this._w " " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_title(args*)
+    {
+        return this.title(args*)
     }
 
     protocol(args*)
@@ -1986,6 +3630,88 @@ class Toplevel extends AhkStdlibTkinterWidget
         return this.overrideredirect(args*)
     }
 
+    frame(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Wm.wm_frame() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval("wm frame " this._w)
+    }
+
+    wm_frame(args*)
+    {
+        return this.frame(args*)
+    }
+
+    focusmodel(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_focusmodel() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.AhkStdlibRoot.eval("wm focusmodel " this._w)
+        return this.AhkStdlibRoot.eval("wm focusmodel " this._w " " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_focusmodel(args*)
+    {
+        return this.focusmodel(args*)
+    }
+
+    positionfrom(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_positionfrom() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.AhkStdlibRoot.eval("wm positionfrom " this._w)
+        return this.AhkStdlibRoot.eval("wm positionfrom " this._w " " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_positionfrom(args*)
+    {
+        return this.positionfrom(args*)
+    }
+
+    sizefrom(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_sizefrom() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.AhkStdlibRoot.eval("wm sizefrom " this._w)
+        return this.AhkStdlibRoot.eval("wm sizefrom " this._w " " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_sizefrom(args*)
+    {
+        return this.sizefrom(args*)
+    }
+
+    iconname(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_iconname() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.AhkStdlibRoot.eval("wm iconname " this._w)
+        return this.AhkStdlibRoot.eval("wm iconname " this._w " " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_iconname(args*)
+    {
+        return this.iconname(args*)
+    }
+
+    client(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Wm.wm_client() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 || AhkStdlibIsNone(args[1])
+            return this.AhkStdlibRoot.eval("wm client " this._w)
+        return this.AhkStdlibRoot.eval("wm client " this._w " " AhkStdlibTkinterTclWord(args[1]))
+    }
+
+    wm_client(args*)
+    {
+        return this.client(args*)
+    }
+
     state(args*)
     {
         if args.Length > 1
@@ -1995,11 +3721,21 @@ class Toplevel extends AhkStdlibTkinterWidget
         return this.AhkStdlibRoot.eval("wm state " this._w " " AhkStdlibTkinterTclWord(args[1]))
     }
 
+    wm_state(args*)
+    {
+        return this.state(args*)
+    }
+
     withdraw(args*)
     {
         if args.Length != 0
             throw TypeError("Wm.wm_withdraw() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval("wm withdraw " this._w)
+    }
+
+    wm_withdraw(args*)
+    {
+        return this.withdraw(args*)
     }
 
     iconify(args*)
@@ -2009,20 +3745,37 @@ class Toplevel extends AhkStdlibTkinterWidget
         return this.AhkStdlibRoot.eval("wm iconify " this._w)
     }
 
+    wm_iconify(args*)
+    {
+        return this.iconify(args*)
+    }
+
     deiconify(args*)
     {
         if args.Length != 0
             throw TypeError("Wm.wm_deiconify() takes 1 positional argument but " args.Length + 1 " were given", -1)
         return this.AhkStdlibRoot.eval("wm deiconify " this._w)
     }
+
+    wm_deiconify(args*)
+    {
+        return this.deiconify(args*)
+    }
 }
 
 class Event
 {
-    __New(widget, rawArgs, sequence := "")
+    __New(args*)
     {
+        if args.Length = 0
+            return
+        widget := args[1]
+        rawArgs := args[2]
+        sequence := args.Length >= 3 ? args[3] : ""
+        eventTypeRaw := rawArgs.Length >= 2 ? rawArgs[2] : ""
+        eventTypeName := AhkStdlibTkinterEventTypeName(eventTypeRaw, sequence)
         this.widget := widget
-        this.type := EventType(AhkStdlibTkinterEventTypeName(rawArgs.Length >= 2 ? rawArgs[2] : "", sequence))
+        this.type := EventType(AhkStdlibTkinterEventTypeInternalValue(eventTypeRaw, eventTypeName), eventTypeName)
         this.x := AhkStdlibTkinterEventInteger(rawArgs.Length >= 3 ? rawArgs[3] : "0")
         this.y := AhkStdlibTkinterEventInteger(rawArgs.Length >= 4 ? rawArgs[4] : "0")
         this.num := AhkStdlibTkinterEventInteger(rawArgs.Length >= 5 ? rawArgs[5] : "0")
@@ -2031,14 +3784,158 @@ class Event
 
 class EventType
 {
-    __New(name)
+    __New(args*)
     {
+        if args.Length = 0
+            throw TypeError("EnumMeta.__call__() missing 1 required positional argument: 'value'", -1)
+        if args.Length > 2
+            throw TypeError("Cannot extend enumerations", -1)
+        value := args[1]
+        name := args.Length = 2 ? args[2] : AhkStdlibTkinterEventTypeValueToName(value)
         this.name := name
+        this.value := value ""
     }
 
     ToString()
     {
-        return this.name
+        return this.value
+    }
+}
+
+class CallWrapper
+{
+    __New(args*)
+    {
+        if args.Length = 0
+            throw TypeError("CallWrapper.__init__() missing 3 required positional arguments: 'func', 'subst', and 'widget'", -1)
+        if args.Length = 1
+            throw TypeError("CallWrapper.__init__() missing 2 required positional arguments: 'subst' and 'widget'", -1)
+        if args.Length = 2
+            throw TypeError("CallWrapper.__init__() missing 1 required positional argument: 'widget'", -1)
+        if args.Length > 3
+            throw TypeError("CallWrapper.__init__() takes 4 positional arguments but " args.Length + 1 " were given", -1)
+        this.func := args[1]
+        this.subst := args[2]
+        this.widget := args[3]
+    }
+
+    Call(args*)
+    {
+        try {
+            if !AhkStdlibIsNone(this.subst)
+                args := AhkStdlibTkinterCallWrapperArgs(this.subst.Call(args*))
+            return this.func.Call(args*)
+        } catch as err {
+            this.widget._report_exception()
+            return stdlib.None
+        }
+    }
+}
+
+class AhkStdlibTkinterBareMixin
+{
+    __New(className, args*)
+    {
+        if args.Length != 0
+            throw TypeError(className "() takes no arguments", -1)
+    }
+
+    _missingTk()
+    {
+        throw AttributeError("'" Type(this) "' object has no attribute 'tk'", -1)
+    }
+}
+
+class Pack extends AhkStdlibTkinterBareMixin
+{
+    __New(args*)
+    {
+        super.__New("Pack", args*)
+    }
+
+    pack(args*)
+    {
+        return this._missingTk()
+    }
+}
+
+class Place extends AhkStdlibTkinterBareMixin
+{
+    __New(args*)
+    {
+        super.__New("Place", args*)
+    }
+
+    place(args*)
+    {
+        return this._missingTk()
+    }
+}
+
+class Grid extends AhkStdlibTkinterBareMixin
+{
+    __New(args*)
+    {
+        super.__New("Grid", args*)
+    }
+
+    grid(args*)
+    {
+        return this._missingTk()
+    }
+}
+
+class XView extends AhkStdlibTkinterBareMixin
+{
+    __New(args*)
+    {
+        super.__New("XView", args*)
+    }
+
+    xview(args*)
+    {
+        return this._missingTk()
+    }
+}
+
+class YView extends AhkStdlibTkinterBareMixin
+{
+    __New(args*)
+    {
+        super.__New("YView", args*)
+    }
+
+    yview(args*)
+    {
+        return this._missingTk()
+    }
+}
+
+class Misc extends AhkStdlibTkinterBareMixin
+{
+    __New(args*)
+    {
+        super.__New("Misc", args*)
+    }
+
+    destroy(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Misc.destroy() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return stdlib.None
+    }
+}
+
+class Wm extends AhkStdlibTkinterBareMixin
+{
+    __New(args*)
+    {
+        super.__New("Wm", args*)
+    }
+
+    wm_title(args*)
+    {
+        return this._missingTk()
     }
 }
 
@@ -2135,6 +4032,22 @@ class AhkStdlibTkinterImage
             if this.HasOwnProp("name") && this.name != ""
                 this.tk.eval("image delete " AhkStdlibTkinterTclWord(this.name))
         }
+    }
+}
+
+class Image extends AhkStdlibTkinterImage
+{
+    __New(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Image.__init__() missing 1 required positional argument: 'imgtype'", -1)
+        if args.Length > 4
+            throw TypeError("Image.__init__() takes from 2 to 5 positional arguments but " args.Length + 1 " were given", -1)
+
+        imageArgs := []
+        loop args.Length - 1
+            imageArgs.Push(args[A_Index + 1])
+        super.__New("Image", args[1], imageArgs*)
     }
 }
 
@@ -2523,6 +4436,22 @@ class Menu extends AhkStdlibTkinterWidget
         super.__New("Menu", "menu", args*)
     }
 
+    add(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.add() missing 1 required positional argument: 'itemType'", -1)
+        if args.Length > 2
+            throw TypeError("Menu.add() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " add " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2 {
+            if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+                throw TypeError("object of type '" AhkStdlibPyTypeName(args[2]) "' has no len()", -1)
+            script .= AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot)
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
     add_command(args*)
     {
         if args.Length > 1
@@ -2534,6 +4463,182 @@ class Menu extends AhkStdlibTkinterWidget
         if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
             throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
         this.AhkStdlibRoot.eval(this._w " add command" AhkStdlibTkinterOptionsToScript(args[1], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    add_cascade(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Menu.add_cascade() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 {
+            this.AhkStdlibRoot.eval(this._w " add cascade")
+            return stdlib.None
+        }
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
+        this.AhkStdlibRoot.eval(this._w " add cascade" AhkStdlibTkinterOptionsToScript(args[1], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    add_checkbutton(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Menu.add_checkbutton() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 {
+            this.AhkStdlibRoot.eval(this._w " add checkbutton")
+            return stdlib.None
+        }
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
+        this.AhkStdlibRoot.eval(this._w " add checkbutton" AhkStdlibTkinterOptionsToScript(args[1], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    add_radiobutton(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Menu.add_radiobutton() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 {
+            this.AhkStdlibRoot.eval(this._w " add radiobutton")
+            return stdlib.None
+        }
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
+        this.AhkStdlibRoot.eval(this._w " add radiobutton" AhkStdlibTkinterOptionsToScript(args[1], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    add_separator(args*)
+    {
+        if args.Length > 1
+            throw TypeError("Menu.add_separator() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+        if args.Length = 0 {
+            this.AhkStdlibRoot.eval(this._w " add separator")
+            return stdlib.None
+        }
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            throw TypeError("object of type '" AhkStdlibPyTypeName(args[1]) "' has no len()", -1)
+        this.AhkStdlibRoot.eval(this._w " add separator" AhkStdlibTkinterOptionsToScript(args[1], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    insert(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.insert() missing 2 required positional arguments: 'index' and 'itemType'", -1)
+        if args.Length = 1
+            throw TypeError("Menu.insert() missing 1 required positional argument: 'itemType'", -1)
+        if args.Length > 3
+            throw TypeError("Menu.insert() takes from 3 to 4 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " insert " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2])
+        if args.Length = 3 {
+            if !AhkStdlibTkinterIsPlainKeywordObject(args[3])
+                throw TypeError("object of type '" AhkStdlibPyTypeName(args[3]) "' has no len()", -1)
+            script .= AhkStdlibTkinterOptionsToScript(args[3], false, this.AhkStdlibRoot)
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    insert_cascade(args*)
+    {
+        return this.AhkStdlibInsertMenuEntry("insert_cascade", "cascade", args*)
+    }
+
+    insert_checkbutton(args*)
+    {
+        return this.AhkStdlibInsertMenuEntry("insert_checkbutton", "checkbutton", args*)
+    }
+
+    insert_command(args*)
+    {
+        return this.AhkStdlibInsertMenuEntry("insert_command", "command", args*)
+    }
+
+    insert_radiobutton(args*)
+    {
+        return this.AhkStdlibInsertMenuEntry("insert_radiobutton", "radiobutton", args*)
+    }
+
+    insert_separator(args*)
+    {
+        return this.AhkStdlibInsertMenuEntry("insert_separator", "separator", args*)
+    }
+
+    AhkStdlibInsertMenuEntry(methodName, itemType, args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu." methodName "() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 2
+            throw TypeError("Menu." methodName "() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+        script := this._w " insert " AhkStdlibTkinterTclWord(args[1]) " " itemType
+        if args.Length = 2 {
+            if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+                throw TypeError("object of type '" AhkStdlibPyTypeName(args[2]) "' has no len()", -1)
+            script .= AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot)
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    post(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.post() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("Menu.post() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 2
+            throw TypeError("Menu.post() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " post " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    tk_popup(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.tk_popup() missing 2 required positional arguments: 'x' and 'y'", -1)
+        if args.Length = 1
+            throw TypeError("Menu.tk_popup() missing 1 required positional argument: 'y'", -1)
+        if args.Length > 3
+            throw TypeError("Menu.tk_popup() takes from 3 to 4 positional arguments but " args.Length + 1 " were given", -1)
+        entry := args.Length = 3 ? args[3] : ""
+        this.AhkStdlibRoot.eval("tk_popup " this._w " " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]) " " AhkStdlibTkinterTclWord(entry))
+        return stdlib.None
+    }
+
+    unpost(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Menu.unpost() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " unpost")
+        return stdlib.None
+    }
+
+    xposition(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.xposition() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Menu.xposition() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return Integer(this.AhkStdlibRoot.eval(this._w " xposition " AhkStdlibTkinterTclWord(args[1])))
+    }
+
+    yposition(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.yposition() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Menu.yposition() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return Integer(this.AhkStdlibRoot.eval(this._w " yposition " AhkStdlibTkinterTclWord(args[1])))
+    }
+
+    activate(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.activate() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Menu.activate() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        this.AhkStdlibRoot.eval(this._w " activate " AhkStdlibTkinterTclWord(args[1]))
         return stdlib.None
     }
 
@@ -2568,9 +4673,11 @@ class Menu extends AhkStdlibTkinterWidget
         if args.Length > 2
             throw TypeError("Menu.entryconfigure() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
         if args.Length = 1
-            return stdlib.None
+            return AhkStdlibTkinterMenuEntryConfigureDict(this.AhkStdlibRoot, this._w, args[1])
+        if Type(args[2]) = "String"
+            return AhkStdlibTkinterMenuEntryConfigureOption(this.AhkStdlibRoot, this._w, args[1], args[2])
         if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
-            throw TypeError("cnf must be a dictionary", -1)
+            throw TypeError("object of type '" AhkStdlibPyTypeName(args[2]) "' has no len()", -1)
         this.AhkStdlibRoot.eval(this._w " entryconfigure " AhkStdlibTkinterTclWord(args[1]) AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot))
         return stdlib.None
     }
@@ -2590,6 +4697,15 @@ class Menu extends AhkStdlibTkinterWidget
         if value = "none"
             return stdlib.None
         return Integer(value)
+    }
+
+    type(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Menu.type() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Menu.type() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        return this.AhkStdlibRoot.eval(this._w " type " AhkStdlibTkinterTclWord(args[1]))
     }
 
     invoke(args*)
@@ -2644,7 +4760,7 @@ class OptionMenu extends Menubutton
             options := args[args.Length]
         for key, value in options.OwnProps() {
             if key != "command"
-                throw AhkStdlibTkinter.TclError("unknown option -" key, -1)
+                throw AhkStdlibTkinter.TclError("unknown option -" key)
         }
 
         if !IsObject(master) || !HasProp(master, "tk")
@@ -3412,6 +5528,7 @@ class Canvas extends AhkStdlibTkinterWidget
         this.AhkStdlibRoot.eval(this._w " yview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
         return stdlib.None
     }
+
 }
 
 class Text extends AhkStdlibTkinterWidget
@@ -3460,6 +5577,49 @@ class Text extends AhkStdlibTkinterWidget
             script .= " " AhkStdlibTkinterTclWord(args[2])
         this.AhkStdlibRoot.eval(script)
         return stdlib.None
+    }
+
+    replace(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.replace() missing 3 required positional arguments: 'index1', 'index2', and 'chars'", -1)
+        if args.Length = 1
+            throw TypeError("Text.replace() missing 2 required positional arguments: 'index2' and 'chars'", -1)
+        if args.Length = 2
+            throw TypeError("Text.replace() missing 1 required positional argument: 'chars'", -1)
+
+        script := this._w " replace " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]) " " AhkStdlibTkinterTclWord(args[3])
+        index := 4
+        while index <= args.Length {
+            script .= " " AhkStdlibTkinterTclWord(args[index])
+            index += 1
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    peer_create(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.peer_create() missing 1 required positional argument: 'newPathName'", -1)
+        if args.Length > 2
+            throw TypeError("Text.peer_create() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        script := this._w " peer create " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2 && !AhkStdlibIsNone(args[2]) {
+            if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+                throw TypeError("object of type '" AhkStdlibPyTypeName(args[2]) "' has no len()", -1)
+            script .= AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot)
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    peer_names(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Text.peer_names() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(this._w " peer names")))
     }
 
     index(args*)
@@ -3804,6 +5964,208 @@ class Text extends AhkStdlibTkinterWidget
         return stdlib.None
     }
 
+    tag_cget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_cget() missing 2 required positional arguments: 'tagName' and 'option'", -1)
+        if args.Length = 1
+            throw TypeError("Text.tag_cget() missing 1 required positional argument: 'option'", -1)
+        if args.Length > 2
+            throw TypeError("Text.tag_cget() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        optionName := AhkStdlibTkinterTagOptionName(args[2])
+        return this.AhkStdlibRoot.eval(this._w " tag cget " AhkStdlibTkinterTclWord(args[1]) " -" optionName)
+    }
+
+    tag_configure(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_configure() missing 1 required positional argument: 'tagName'", -1)
+        if args.Length > 2
+            throw TypeError("Text.tag_configure() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        if args.Length = 1 || AhkStdlibIsNone(args[2])
+            return AhkStdlibTkinterTextTagConfigureDict(this.AhkStdlibRoot, this._w, args[1])
+        if args[2] is String
+            return AhkStdlibTkinterTextTagConfigureOption(this.AhkStdlibRoot, this._w, args[1], args[2])
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+            throw TypeError("object of type '" AhkStdlibPyTypeName(args[2]) "' has no len()", -1)
+
+        this.AhkStdlibRoot.eval(this._w " tag configure " AhkStdlibTkinterTclWord(args[1]) AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    tag_config(args*)
+    {
+        return this.tag_configure(args*)
+    }
+
+    tag_bind(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_bind() missing 3 required positional arguments: 'tagName', 'sequence', and 'func'", -1)
+        if args.Length = 1
+            throw TypeError("Text.tag_bind() missing 2 required positional arguments: 'sequence' and 'func'", -1)
+        if args.Length = 2
+            throw TypeError("Text.tag_bind() missing 1 required positional argument: 'func'", -1)
+        if args.Length > 4
+            throw TypeError("Text.tag_bind() takes from 4 to 5 positional arguments but " args.Length + 1 " were given", -1)
+
+        tagWord := AhkStdlibTkinterTclWord(args[1])
+        sequence := args[2]
+        func := args[3]
+        if !AhkStdlibTruthValue(func) {
+            if AhkStdlibTruthValue(sequence)
+                return this.AhkStdlibRoot.eval(this._w " tag bind " tagWord " " AhkStdlibTkinterTclWord(sequence))
+            return stdlib.tuple(AhkStdlibTkinterSimpleList(this.AhkStdlibRoot.eval(this._w " tag bind " tagWord)))
+        }
+
+        if func is String {
+            this.AhkStdlibRoot.eval(this._w " tag bind " tagWord " " AhkStdlibTkinterTclWord(sequence) " " AhkStdlibTkinterTclScriptWord(func))
+            return stdlib.None
+        }
+
+        commandName := AhkStdlibTkinterRegisterEventCommand(this.AhkStdlibRoot, this, func, sequence)
+        addPrefix := args.Length >= 4 && args[4] = "+" ? "+" : ""
+        script := addPrefix "if {`"[" commandName " %W %T %x %y %b]`" == `"break`"} break"
+        this.AhkStdlibRoot.eval(this._w " tag bind " tagWord " " AhkStdlibTkinterTclWord(sequence) " " AhkStdlibTkinterTclScriptWord(script))
+        return commandName
+    }
+
+    tag_unbind(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.tag_unbind() missing 2 required positional arguments: 'tagName' and 'sequence'", -1)
+        if args.Length = 1
+            throw TypeError("Text.tag_unbind() missing 1 required positional argument: 'sequence'", -1)
+        if args.Length > 3
+            throw TypeError("Text.tag_unbind() takes from 3 to 4 positional arguments but " args.Length + 1 " were given", -1)
+
+        this.AhkStdlibRoot.eval(this._w " tag bind " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]) " {}")
+        if args.Length = 3 && AhkStdlibTruthValue(args[3])
+            AhkStdlibTkinterDeleteCommand(this.AhkStdlibRoot, args[3], "can't delete Tcl command")
+        return stdlib.None
+    }
+
+    image_create(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.image_create() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 2
+            throw TypeError("Text.image_create() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        script := this._w " image create " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2 && !AhkStdlibIsNone(args[2]) {
+            if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+                throw TypeError("object of type '" AhkStdlibPyTypeName(args[2]) "' has no len()", -1)
+            script .= AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot)
+        }
+        return this.AhkStdlibRoot.eval(script)
+    }
+
+    image_names(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Text.image_names() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        raw := this.AhkStdlibRoot.eval(this._w " image names")
+        if raw = ""
+            return ""
+        return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, raw))
+    }
+
+    image_cget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.image_cget() missing 2 required positional arguments: 'index' and 'option'", -1)
+        if args.Length = 1
+            throw TypeError("Text.image_cget() missing 1 required positional argument: 'option'", -1)
+        if args.Length > 2
+            throw TypeError("Text.image_cget() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        optionName := AhkStdlibTkinterTextImageOptionName(args[2])
+        value := this.AhkStdlibRoot.eval(this._w " image cget " AhkStdlibTkinterTclWord(args[1]) " -" optionName)
+        return AhkStdlibTkinterCgetValue(optionName, value)
+    }
+
+    image_configure(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.image_configure() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 2
+            throw TypeError("Text.image_configure() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        if args.Length = 1 || AhkStdlibIsNone(args[2])
+            return AhkStdlibTkinterTextImageConfigureDict(this.AhkStdlibRoot, this._w, args[1])
+        if args[2] is String
+            return AhkStdlibTkinterTextImageConfigureOption(this.AhkStdlibRoot, this._w, args[1], args[2])
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+            throw TypeError("object of type '" AhkStdlibPyTypeName(args[2]) "' has no len()", -1)
+
+        this.AhkStdlibRoot.eval(this._w " image configure " AhkStdlibTkinterTclWord(args[1]) AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    window_create(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.window_create() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 2
+            throw TypeError("Text.window_create() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        script := this._w " window create " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2 && !AhkStdlibIsNone(args[2]) {
+            if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+                throw TypeError("object of type '" AhkStdlibPyTypeName(args[2]) "' has no len()", -1)
+            script .= AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot)
+        }
+        this.AhkStdlibRoot.eval(script)
+        return stdlib.None
+    }
+
+    window_names(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Text.window_names() takes 1 positional argument but " args.Length + 1 " were given", -1)
+        return stdlib.tuple(AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(this._w " window names")))
+    }
+
+    window_cget(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.window_cget() missing 2 required positional arguments: 'index' and 'option'", -1)
+        if args.Length = 1
+            throw TypeError("Text.window_cget() missing 1 required positional argument: 'option'", -1)
+        if args.Length > 2
+            throw TypeError("Text.window_cget() takes 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        optionName := AhkStdlibTkinterTextWindowOptionName(args[2])
+        value := this.AhkStdlibRoot.eval(this._w " window cget " AhkStdlibTkinterTclWord(args[1]) " -" optionName)
+        return AhkStdlibTkinterCgetValue(optionName, value)
+    }
+
+    window_configure(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Text.window_configure() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 2
+            throw TypeError("Text.window_configure() takes from 2 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+        if args.Length = 1 || AhkStdlibIsNone(args[2])
+            return AhkStdlibTkinterTextWindowConfigureDict(this.AhkStdlibRoot, this._w, args[1])
+        if args[2] is String
+            return AhkStdlibTkinterTextWindowConfigureOption(this.AhkStdlibRoot, this._w, args[1], args[2])
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[2])
+            throw TypeError("object of type '" AhkStdlibPyTypeName(args[2]) "' has no len()", -1)
+
+        this.AhkStdlibRoot.eval(this._w " window configure " AhkStdlibTkinterTclWord(args[1]) AhkStdlibTkinterOptionsToScript(args[2], false, this.AhkStdlibRoot))
+        return stdlib.None
+    }
+
+    window_config(args*)
+    {
+        return this.window_configure(args*)
+    }
+
     tag_remove(args*)
     {
         if args.Length = 0
@@ -4014,6 +6376,15 @@ class Text extends AhkStdlibTkinterWidget
         if args.Length > 2
             throw TypeError("YView.yview_scroll() takes 3 positional arguments but " args.Length + 1 " were given", -1)
         this.AhkStdlibRoot.eval(this._w " yview scroll " AhkStdlibTkinterTclWord(args[1]) " " AhkStdlibTkinterTclWord(args[2]))
+        return stdlib.None
+    }
+
+    yview_pickplace(args*)
+    {
+        script := this._w " yview -pickplace"
+        for value in args
+            script .= " " AhkStdlibTkinterTclWord(value)
+        this.AhkStdlibRoot.eval(script)
         return stdlib.None
     }
 }
@@ -4419,6 +6790,16 @@ class Listbox extends AhkStdlibTkinterWidget
             throw TypeError("Listbox.activate() takes 2 positional arguments but " args.Length + 1 " were given", -1)
         this.AhkStdlibRoot.eval(this._w " activate " AhkStdlibTkinterTclWord(args[1]))
         return stdlib.None
+    }
+
+    bbox(args*)
+    {
+        if args.Length = 0
+            throw TypeError("Listbox.bbox() missing 1 required positional argument: 'index'", -1)
+        if args.Length > 1
+            throw TypeError("Listbox.bbox() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+        value := this.AhkStdlibRoot.eval(this._w " bbox " AhkStdlibTkinterTclWord(args[1]))
+        return value = "" ? stdlib.None : AhkStdlibTkinterIntegerTuple(value)
     }
 
     insert(args*)
@@ -4862,6 +7243,77 @@ AhkStdlibTkinterIsPlainKeywordObject(value)
     return IsObject(value) && Type(value) = "Object"
 }
 
+AhkStdlibTkinterPublicWidgetNew(instance, className, args*)
+{
+    if args.Length = 0
+        throw TypeError("BaseWidget.__init__() missing 2 required positional arguments: 'master' and 'widgetName'", -1)
+    if args.Length = 1
+        throw TypeError("BaseWidget.__init__() missing 1 required positional argument: 'widgetName'", -1)
+    if args.Length > 5
+        throw TypeError("BaseWidget.__init__() takes from 3 to 6 positional arguments but " args.Length + 1 " were given", -1)
+
+    master := args[1]
+    widgetName := args[2]
+    cnf := {}
+    kw := {}
+    extra := []
+    if args.Length >= 3 {
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[3])
+            throw AttributeError("'" AhkStdlibPyTypeName(args[3]) "' object has no attribute 'items'", -1)
+        cnf := args[3]
+    }
+    if args.Length >= 4 {
+        if !AhkStdlibTkinterIsPlainKeywordObject(args[4]) {
+            if args[4] is String
+                throw ValueError("dictionary update sequence element #0 has length 1; 2 is required", -1)
+            throw AttributeError("'" AhkStdlibPyTypeName(args[4]) "' object has no attribute 'items'", -1)
+        }
+        kw := args[4]
+    }
+    if args.Length >= 5
+        extra := args[5]
+
+    if !IsObject(master) || !HasProp(master, "tk")
+        throw AttributeError("'" AhkStdlibPyTypeName(master) "' object has no attribute 'tk'", -1)
+
+    options := AhkStdlibTkinterMergeKeywordObjects(cnf, kw)
+    instance.master := master
+    instance.tk := master.tk
+    instance.AhkStdlibRoot := master._root()
+    instance.widgetName := widgetName
+    instance.AhkStdlibTkCommand := widgetName
+    instance._w := AhkStdlibTkinterResolveWidgetPath(instance.AhkStdlibRoot, String(master), StrLower(className), options)
+
+    script := AhkStdlibTkinterValueToString(widgetName) " " instance._w
+    script .= AhkStdlibTkinterWidgetExtraToScript(extra)
+    script .= AhkStdlibTkinterOptionsToScript(options, false, instance.AhkStdlibRoot)
+    instance.AhkStdlibRoot.eval(script)
+    instance.AhkStdlibRoot.AhkStdlibWidgetsByPath[instance._w] := instance
+}
+
+AhkStdlibTkinterMergeKeywordObjects(cnf, kw)
+{
+    options := {}
+    for key, value in cnf.OwnProps()
+        options.%key% := value
+    for key, value in kw.OwnProps()
+        options.%key% := value
+    return options
+}
+
+AhkStdlibTkinterWidgetExtraToScript(extra)
+{
+    if extra is Array {
+        script := ""
+        for value in extra
+            script .= " " AhkStdlibTkinterTclWord(value)
+        return script
+    }
+    if extra is String
+        throw TypeError("can only concatenate tuple (not " Chr(34) "str" Chr(34) ") to tuple", -1)
+    return ""
+}
+
 AhkStdlibTkinterRegisterDefaultRoot(root)
 {
     return AhkStdlibTkinterDefaultRootState("register", root)
@@ -4875,6 +7327,16 @@ AhkStdlibTkinterForgetDefaultRoot(root)
 AhkStdlibTkinterGetDefaultRoot(what)
 {
     return AhkStdlibTkinterDefaultRootState("get", what)
+}
+
+AhkStdlibTkinterReadprofileTcl(root, name)
+{
+    home := EnvGet("HOME")
+    if home = ""
+        home := "."
+    path := RTrim(home, "\/") "\." AhkStdlibTkinterValueToString(name) ".tcl"
+    if FileExist(path)
+        root.eval("source " AhkStdlibTkinterTclWord(path))
 }
 
 AhkStdlibTkinterCancelPendingThemeChanged(interp)
@@ -4892,9 +7354,16 @@ AhkStdlibTkinterSilenceDestroyBackgroundErrors(interp)
 AhkStdlibTkinterDefaultRootState(action, value := unset)
 {
     static defaultRoot := stdlib.None
+    static supportDefaultRoot := true
 
     switch action {
+        case "disable":
+            supportDefaultRoot := false
+            defaultRoot := stdlib.None
+            return stdlib.None
         case "register":
+            if !supportDefaultRoot
+                return stdlib.None
             if AhkStdlibIsNone(defaultRoot)
                 defaultRoot := value
             return stdlib.None
@@ -4903,6 +7372,8 @@ AhkStdlibTkinterDefaultRootState(action, value := unset)
                 defaultRoot := stdlib.None
             return stdlib.None
         case "get":
+            if !supportDefaultRoot
+                throw RuntimeError("No master specified and tkinter is configured to not support default root", -1)
             if AhkStdlibIsNone(defaultRoot)
                 throw RuntimeError("Too early to " value ": no default root window", -1)
             return defaultRoot
@@ -5040,14 +7511,14 @@ AhkStdlibTkinterInitInterp(interp)
 {
     result := DllCall("tcl86t\Tcl_Init", "Ptr", interp, "Int")
     if result != 0
-        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp))
 }
 
 AhkStdlibTkinterInitTk(interp)
 {
     result := DllCall("tk86t\Tk_Init", "Ptr", interp, "Int")
     if result != 0
-        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp))
 }
 
 AhkStdlibTkinterUtf8Buffer(value)
@@ -5069,7 +7540,7 @@ AhkStdlibTkinterSetVar(interp, name, value)
     valueBuffer := AhkStdlibTkinterUtf8Buffer(AhkStdlibTkinterValueToString(value))
     result := DllCall("tcl86t\Tcl_SetVar", "Ptr", interp, "Ptr", nameBuffer.Ptr, "Ptr", valueBuffer.Ptr, "Int", 0, "Ptr")
     if !result
-        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp))
 }
 
 AhkStdlibTkinterGetVar(interp, name)
@@ -5113,12 +7584,21 @@ AhkStdlibTkinterResolveWidgetPath(root, parentPath, tkCommand, options)
             return AhkStdlibTkinterJoinWidgetPath(parentPath, name)
     }
 
-    key := parentPath "|" tkCommand
+    childName := AhkStdlibTkinterWidgetChildName(tkCommand)
+    key := parentPath "|" childName
     counter := root.AhkStdlibChildCounters.Has(key) ? root.AhkStdlibChildCounters[key] : 0
     index := counter + 1
     root.AhkStdlibChildCounters[key] := index
-    name := "!" tkCommand (index = 1 ? "" : index)
+    name := "!" childName (index = 1 ? "" : index)
     return AhkStdlibTkinterJoinWidgetPath(parentPath, name)
+}
+
+AhkStdlibTkinterWidgetChildName(tkCommand)
+{
+    delimiter := InStr(tkCommand, "::", false, -1)
+    if delimiter
+        return SubStr(tkCommand, delimiter + 2)
+    return tkCommand
 }
 
 AhkStdlibTkinterJoinWidgetPath(parentPath, name)
@@ -5366,6 +7846,58 @@ AhkStdlibTkinterClipboardOptionsToScript(options, window, includeDefaultDisplayo
     if includeDefaultDisplayof && !hasDisplayof
         script .= " -displayof " AhkStdlibTkinterTclWord(window)
     return script
+}
+
+AhkStdlibTkinterSelectionClear(root, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.selection_clear() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    root.eval("selection clear")
+    return stdlib.None
+}
+
+AhkStdlibTkinterSelectionOwn(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.selection_own() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    root.eval("selection own " AhkStdlibTkinterTclWord(window))
+    return stdlib.None
+}
+
+AhkStdlibTkinterSelectionOwnGet(root, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.selection_own_get() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    path := root.eval("selection own")
+    if path = ""
+        return stdlib.None
+    return AhkStdlibTkinterWidgetFromPath(root, path)
+}
+
+AhkStdlibTkinterSelectionHandle(root, window, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.selection_handle() missing 1 required positional argument: 'command'", -1)
+    if args.Length > 2 || (args.Length = 2 && !AhkStdlibTkinterIsPlainKeywordObject(args[2]))
+        throw TypeError("Misc.selection_handle() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+    options := args.Length = 2 ? args[2] : {}
+    commandName := AhkStdlibTkinterMaybeRegisterCommand(root, args[1])
+    root.eval("selection handle" AhkStdlibTkinterOptionsToScript(options, false, root) " " AhkStdlibTkinterTclWord(window) " " AhkStdlibTkinterTclWord(commandName))
+    return stdlib.None
+}
+
+AhkStdlibTkinterSend(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.send() missing 2 required positional arguments: 'interp' and 'cmd'", -1)
+    if args.Length = 1
+        throw TypeError("Misc.send() missing 1 required positional argument: 'cmd'", -1)
+
+    script := "send"
+    for value in args
+        script .= " " AhkStdlibTkinterTclWord(value)
+    return root.eval(script)
 }
 
 AhkStdlibTkinterOptionAdd(root, args*)
@@ -5805,11 +8337,226 @@ AhkStdlibTkinterWmResizable(root, window, args*)
     if args.Length > 2
         throw TypeError("Wm.wm_resizable() takes from 1 to 3 positional arguments but " args.Length + 1 " were given", -1)
     script := "wm resizable " window
-    if args.Length = 0
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
         return AhkStdlibTkinterIntegerTuple(root.eval(script))
+    script .= " " AhkStdlibTkinterTclWord(args[1])
+    if args.Length = 2 && !AhkStdlibIsNone(args[2])
+        script .= " " AhkStdlibTkinterTclWord(args[2])
+    return root.eval(script)
+}
+
+AhkStdlibTkinterWmAspect(root, window, args*)
+{
+    if args.Length > 4
+        throw TypeError("Wm.wm_aspect() takes from 1 to 5 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "wm aspect " window
+    index := 1
+    while index <= args.Length {
+        if AhkStdlibIsNone(args[index])
+            break
+        script .= " " AhkStdlibTkinterTclWord(args[index])
+        index += 1
+    }
+    value := root.eval(script)
+    return value = "" ? stdlib.None : AhkStdlibTkinterIntegerTuple(value)
+}
+
+AhkStdlibTkinterWmGrid(root, window, args*)
+{
+    if args.Length > 4
+        throw TypeError("Wm.wm_grid() takes from 1 to 5 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "wm grid " window
+    index := 1
+    while index <= args.Length {
+        if AhkStdlibIsNone(args[index])
+            break
+        script .= " " AhkStdlibTkinterTclWord(args[index])
+        index += 1
+    }
+    value := root.eval(script)
+    return value = "" ? stdlib.None : AhkStdlibTkinterIntegerTuple(value)
+}
+
+AhkStdlibTkinterWmGroup(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Wm.wm_group() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    script := "wm group " window
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
+        return root.eval(script)
+    return root.eval(script " " AhkStdlibTkinterTclWord(args[1]))
+}
+
+AhkStdlibTkinterWmCommand(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Wm.wm_command() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    script := "wm command " window
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
+        return root.eval(script)
+    return root.eval(script " " AhkStdlibTkinterWmCommandValue(args[1]))
+}
+
+AhkStdlibTkinterWmCommandValue(value)
+{
+    if value is Array
+        return AhkStdlibTkinterTclListCommandWord(value)
+    return AhkStdlibTkinterTclWord(value)
+}
+
+AhkStdlibTkinterWmAttributes(root, window, args*)
+{
+    script := "wm attributes " window
     for value in args
         script .= " " AhkStdlibTkinterTclWord(value)
-    return root.eval(script)
+    result := root.eval(script)
+    if args.Length = 0
+        return AhkStdlibTkinterWmAttributesTuple(root, result)
+    if args.Length = 1
+        return AhkStdlibTkinterWmAttributeValue(args[1], result)
+    return result
+}
+
+AhkStdlibTkinterWmAttributesTuple(root, value)
+{
+    parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, value)
+    result := []
+    index := 1
+    while index <= parts.Length {
+        option := parts[index]
+        result.Push(option)
+        if index < parts.Length
+            result.Push(AhkStdlibTkinterWmAttributeValue(option, parts[index + 1]))
+        index += 2
+    }
+    return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterWmAttributeValue(option, value)
+{
+    optionName := AhkStdlibTkinterValueToString(option)
+    switch optionName {
+        case "-alpha":
+            return Float(value)
+        case "-disabled", "-fullscreen", "-toolwindow", "-topmost":
+            return Integer(value)
+        default:
+            return value
+    }
+}
+
+AhkStdlibTkinterWmManage(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Wm.wm_manage() missing 1 required positional argument: 'widget'", -1)
+    if args.Length > 1
+        throw TypeError("Wm.wm_manage() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+    root.eval("wm manage " AhkStdlibTkinterTclWord(args[1]))
+    return stdlib.None
+}
+
+AhkStdlibTkinterWmForget(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Wm.wm_forget() missing 1 required positional argument: 'window'", -1)
+    if args.Length > 1
+        throw TypeError("Wm.wm_forget() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+    root.eval("wm forget " AhkStdlibTkinterTclWord(args[1]))
+    return stdlib.None
+}
+
+AhkStdlibTkinterWmColormapwindows(root, window, args*)
+{
+    script := "wm colormapwindows " window
+    if args.Length = 0
+        return AhkStdlibTkinterWidgetListFromPathList(root, root.eval(script))
+
+    root.eval(script " " AhkStdlibTkinterWmColormapwindowsValue(args*))
+    return stdlib.None
+}
+
+AhkStdlibTkinterWmColormapwindowsValue(args*)
+{
+    if args.Length = 1 {
+        if AhkStdlibIsNone(args[1])
+            return AhkStdlibTkinterTclWord("")
+        if args[1] is Array
+            return AhkStdlibTkinterTclListCommandWord(args[1])
+        return AhkStdlibTkinterTclWord(args[1])
+    }
+    return AhkStdlibTkinterTclListCommandWord(args)
+}
+
+AhkStdlibTkinterWmIconposition(root, window, args*)
+{
+    if args.Length > 2
+        throw TypeError("Wm.wm_iconposition() takes from 1 to 3 positional arguments but " args.Length + 1 " were given", -1)
+
+    script := "wm iconposition " window
+    if args.Length > 0 && !AhkStdlibIsNone(args[1]) {
+        script .= " " AhkStdlibTkinterTclWord(args[1])
+        if args.Length = 2 && !AhkStdlibIsNone(args[2])
+            script .= " " AhkStdlibTkinterTclWord(args[2])
+    }
+    value := root.eval(script)
+    return value = "" ? stdlib.None : AhkStdlibTkinterIntegerTuple(value)
+}
+
+AhkStdlibTkinterWmIconwindow(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Wm.wm_iconwindow() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    script := "wm iconwindow " window
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
+        return root.eval(script)
+    return root.eval(script " " AhkStdlibTkinterTclWord(args[1]))
+}
+
+AhkStdlibTkinterWmIconmask(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Wm.wm_iconmask() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    script := "wm iconmask " window
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
+        return root.eval(script)
+    return root.eval(script " " AhkStdlibTkinterTclWord(args[1]))
+}
+
+AhkStdlibTkinterWmIconbitmap(root, window, args*)
+{
+    if args.Length > 2
+        throw TypeError("Wm.wm_iconbitmap() takes from 1 to 3 positional arguments but " args.Length + 1 " were given", -1)
+    script := "wm iconbitmap " window
+    if args.Length = 2 && AhkStdlibTruthValue(args[2])
+        return root.eval(script " -default " AhkStdlibTkinterTclWord(args[2]))
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
+        return root.eval(script)
+    return root.eval(script " " AhkStdlibTkinterTclWord(args[1]))
+}
+
+AhkStdlibTkinterWmIconphoto(root, window, args*)
+{
+    script := "wm iconphoto " window
+    if args.Length >= 1 && AhkStdlibTruthValue(args[1])
+        script .= " -default"
+    index := 2
+    while index <= args.Length {
+        if AhkStdlibIsNone(args[index])
+            break
+        script .= " " AhkStdlibTkinterWmIconphotoImageWord(args[index])
+        index += 1
+    }
+    root.eval(script)
+    return stdlib.None
+}
+
+AhkStdlibTkinterWmIconphotoImageWord(value)
+{
+    if value is Array
+        return AhkStdlibTkinterTclListCommandWord(value)
+    return AhkStdlibTkinterTclWord(value)
 }
 
 AhkStdlibTkinterWmSize(root, window, command, args*)
@@ -5817,10 +8564,11 @@ AhkStdlibTkinterWmSize(root, window, command, args*)
     if args.Length > 2
         throw TypeError("Wm.wm_" command "() takes from 1 to 3 positional arguments but " args.Length + 1 " were given", -1)
     script := "wm " command " " window
-    if args.Length = 0
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
         return AhkStdlibTkinterIntegerTuple(root.eval(script))
-    for value in args
-        script .= " " AhkStdlibTkinterTclWord(value)
+    script .= " " AhkStdlibTkinterTclWord(args[1])
+    if args.Length = 2 && !AhkStdlibIsNone(args[2])
+        script .= " " AhkStdlibTkinterTclWord(args[2])
     root.eval(script)
     return stdlib.None
 }
@@ -6039,6 +8787,14 @@ AhkStdlibTkinterGrabSet(root, window, methodName, args*)
     return stdlib.None
 }
 
+AhkStdlibTkinterGrabSetGlobal(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.grab_set_global() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    root.eval("grab set -global " window)
+    return stdlib.None
+}
+
 AhkStdlibTkinterGrabRelease(root, window, args*)
 {
     if args.Length != 0
@@ -6114,6 +8870,42 @@ AhkStdlibTkinterFocusQuery(root, script, methodName, args*)
     return AhkStdlibTkinterWidgetFromPath(root, window)
 }
 
+AhkStdlibTkinterFocusLastfor(root, window, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.focus_lastfor() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    lastWindow := root.eval("focus -lastfor " AhkStdlibTkinterTclWord(window))
+    if lastWindow = ""
+        return stdlib.None
+    return AhkStdlibTkinterWidgetFromPath(root, lastWindow)
+}
+
+AhkStdlibTkinterFocusTraversal(root, window, methodName, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc." methodName "() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    nextWindow := root.eval(methodName " " AhkStdlibTkinterTclWord(window))
+    if nextWindow = ""
+        return stdlib.None
+    return AhkStdlibTkinterWidgetFromPath(root, nextWindow)
+}
+
+AhkStdlibTkinterFocusFollowsMouse(root, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.tk_focusFollowsMouse() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    root.eval("tk_focusFollowsMouse")
+    return stdlib.None
+}
+
+AhkStdlibTkinterBell(root, window, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc.bell() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    root.eval("bell" AhkStdlibTkinterWinfoDisplayScript(window, args.Length = 1, args.Length = 1 ? args[1] : 0))
+    return stdlib.None
+}
+
 AhkStdlibTkinterEntrySelectionClear(entry, methodName, args*)
 {
     if args.Length != 0
@@ -6162,10 +8954,19 @@ AhkStdlibTkinterOptionsToScript(options, includeName, root := unset)
         optionName := key = "from_" ? "from" : key
         if key = "command" && IsSet(root)
             value := AhkStdlibTkinterMaybeRegisterCommand(root, value)
-        optionValue := (optionName = "data" || optionName = "maskdata") ? AhkStdlibTkinterTclQuotedWord(value) : AhkStdlibTkinterTclWord(value)
+        optionValue := AhkStdlibTkinterOptionValueToScript(optionName, value)
         script .= " -" optionName " " optionValue
     }
     return script
+}
+
+AhkStdlibTkinterOptionValueToScript(optionName, value)
+{
+    if optionName = "values" && IsObject(value) && HasMethod(value, "__Enum")
+        return AhkStdlibTkinterTclListCommandWord(value)
+    if optionName = "padding" && IsObject(value) && HasMethod(value, "__Enum")
+        return AhkStdlibTkinterTclListCommandWord(value)
+    return (optionName = "data" || optionName = "maskdata") ? AhkStdlibTkinterTclQuotedWord(value) : AhkStdlibTkinterTclWord(value)
 }
 
 AhkStdlibTkinterMaybeRegisterCommand(root, value)
@@ -6176,18 +8977,53 @@ AhkStdlibTkinterMaybeRegisterCommand(root, value)
     return AhkStdlibTkinterRegisterCommand(root, value)
 }
 
-AhkStdlibTkinterRegisterCommand(root, callback, callbackArgs := unset)
+AhkStdlibTkinterRegisterPublic(root, args*)
 {
-    if !IsObject(callback) || !HasMethod(callback, "Call")
-        return callback
+    if args.Length = 0
+        throw TypeError("Misc._register() missing 1 required positional argument: 'func'", -1)
+    if args.Length > 3
+        throw TypeError("Misc._register() takes from 2 to 4 positional arguments but " args.Length + 1 " were given", -1)
 
-    entry := IsSet(callbackArgs) ? { Callback: callback, Args: callbackArgs } : callback
+    if args.Length >= 2 && !AhkStdlibIsNone(args[2])
+        return AhkStdlibTkinterCreateCommand(root, { Kind: "Register", Callback: args[1], Subst: args[2] })
+    return AhkStdlibTkinterCreateCommand(root, { Kind: "Register", Callback: args[1] })
+}
+
+AhkStdlibTkinterDeleteCommandPublic(root, args*)
+{
+    if args.Length = 0
+        throw TypeError("Misc.deletecommand() missing 1 required positional argument: 'name'", -1)
+    if args.Length > 1
+        throw TypeError("Misc.deletecommand() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+    AhkStdlibTkinterDeleteCommand(root, args[1], "can't delete Tcl command")
+    return stdlib.None
+}
+
+AhkStdlibTkinterCreateCommand(root, entry)
+{
+    entry := AhkStdlibTkinterRootedCommandEntry(root, entry)
     id := AhkStdlibTkinterRegisterCommandCallback(entry)
     commandName := "ahkstdlib_tkinter_command_" id
     nameBuffer := AhkStdlibTkinterUtf8Buffer(commandName)
     result := DllCall("tcl86t\Tcl_CreateCommand", "Ptr", root.AhkStdlibInterp, "Ptr", nameBuffer.Ptr, "Ptr", AhkStdlibTkinterCommandProcPtr(), "Ptr", id, "Ptr", 0, "Ptr")
     if !result
-        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp), -1)
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp))
+    root.AhkStdlibCommandCallbacks[commandName] := entry
+    return commandName
+}
+
+AhkStdlibTkinterRegisterCommand(root, callback, callbackArgs := unset)
+{
+    if !IsObject(callback) || !HasMethod(callback, "Call")
+        return callback
+
+    entry := IsSet(callbackArgs) ? { Kind: "Command", Root: root, Callback: callback, Args: callbackArgs } : { Kind: "Command", Root: root, Callback: callback }
+    id := AhkStdlibTkinterRegisterCommandCallback(entry)
+    commandName := "ahkstdlib_tkinter_command_" id
+    nameBuffer := AhkStdlibTkinterUtf8Buffer(commandName)
+    result := DllCall("tcl86t\Tcl_CreateCommand", "Ptr", root.AhkStdlibInterp, "Ptr", nameBuffer.Ptr, "Ptr", AhkStdlibTkinterCommandProcPtr(), "Ptr", id, "Ptr", 0, "Ptr")
+    if !result
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp))
     root.AhkStdlibCommandCallbacks[commandName] := entry
     return commandName
 }
@@ -6200,20 +9036,21 @@ AhkStdlibTkinterRegisterEventCommand(root, widget, callback, sequence)
     nameBuffer := AhkStdlibTkinterUtf8Buffer(commandName)
     result := DllCall("tcl86t\Tcl_CreateCommand", "Ptr", root.AhkStdlibInterp, "Ptr", nameBuffer.Ptr, "Ptr", AhkStdlibTkinterCommandProcPtr(), "Ptr", id, "Ptr", 0, "Ptr")
     if !result
-        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp), -1)
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp))
     root.AhkStdlibCommandCallbacks[commandName] := entry
     return commandName
 }
 
 AhkStdlibTkinterRegisterTraceCommand(root, callback)
 {
-    id := AhkStdlibTkinterRegisterCommandCallback(callback)
+    entry := { Kind: "Command", Root: root, Callback: callback }
+    id := AhkStdlibTkinterRegisterCommandCallback(entry)
     commandName := "ahkstdlib_tkinter_command_" id
     nameBuffer := AhkStdlibTkinterUtf8Buffer(commandName)
     result := DllCall("tcl86t\Tcl_CreateCommand", "Ptr", root.AhkStdlibInterp, "Ptr", nameBuffer.Ptr, "Ptr", AhkStdlibTkinterCommandProcPtr(), "Ptr", id, "Ptr", 0, "Ptr")
     if !result
-        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp), -1)
-    root.AhkStdlibCommandCallbacks[commandName] := callback
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(root.AhkStdlibInterp))
+    root.AhkStdlibCommandCallbacks[commandName] := entry
     return commandName
 }
 
@@ -6226,7 +9063,7 @@ AhkStdlibTkinterDeleteCommand(root, commandName, missingMessage := "")
         root.eval("rename " AhkStdlibTkinterTclWord(commandName) " {}")
     } catch as err {
         if missingMessage != "" && err is AhkStdlibTkinter.TclError
-            throw AhkStdlibTkinter.TclError(missingMessage, -1)
+            throw AhkStdlibTkinter.TclError(missingMessage)
         throw err
     }
     if root.AhkStdlibCommandCallbacks.Has(commandName)
@@ -6255,6 +9092,10 @@ AhkStdlibTkinterCommandProc(clientData, interp, argc, argv)
         AhkStdlibTkinterSetResult(interp, AhkStdlibTkinterValueToString(result))
         return 0
     } catch as err {
+        if IsSet(entry) && AhkStdlibTkinterReportCommandException(entry, err) {
+            AhkStdlibTkinterSetResult(interp, "None")
+            return 0
+        }
         AhkStdlibTkinterSetResult(interp, err.Message)
         return 1
     }
@@ -6290,9 +9131,40 @@ AhkStdlibTkinterCallCommandCallback(entry, args)
         }
         return entry.Callback.Call(Event(eventWidget, args, entry.Sequence))
     }
+    if IsObject(entry) && entry.HasOwnProp("Kind") && entry.Kind = "Register" {
+        callbackArgs := args
+        if entry.HasOwnProp("Subst") {
+            transformed := entry.Subst.Call(args*)
+            callbackArgs := transformed is Array ? transformed : [transformed]
+        }
+        return entry.Callback.Call(callbackArgs*)
+    }
+    if IsObject(entry) && entry.HasOwnProp("Kind") && entry.Kind = "Command" {
+        if entry.HasOwnProp("Args")
+            return entry.Callback.Call(entry.Args*)
+        return entry.Callback.Call(args*)
+    }
     if IsObject(entry) && entry.HasOwnProp("Callback")
         return entry.Callback.Call(entry.Args*)
     return entry.Call(args*)
+}
+
+AhkStdlibTkinterRootedCommandEntry(root, entry)
+{
+    if IsObject(entry) {
+        if !entry.HasOwnProp("Root")
+            entry.Root := root
+        return entry
+    }
+    return { Kind: "Command", Root: root, Callback: entry }
+}
+
+AhkStdlibTkinterReportCommandException(entry, err)
+{
+    if !IsObject(entry) || !entry.HasOwnProp("Root")
+        return false
+    entry.Root.report_callback_exception(Type(err), err, err.Stack)
+    return true
 }
 
 AhkStdlibTkinterSetResult(interp, value)
@@ -6371,10 +9243,21 @@ AhkStdlibTkinterCanvasCoordList(value)
     return result
 }
 
-AhkStdlibTkinterCgetValue(key, value)
+AhkStdlibTkinterCgetValue(key, value, root := unset)
 {
-    switch key {
-        case "width", "height", "length", "tearoff", "aspect", "borderwidth", "bd", "highlightthickness", "indicatoron", "sashwidth", "showhandle", "minsize", "padx", "pady", "handlepad", "handlesize", "sashpad", "opaqueresize":
+    optionName := AhkStdlibTkinterWidgetOptionName(key)
+    switch optionName {
+        case "values":
+            if IsSet(root) && value != ""
+                return stdlib.tuple(AhkStdlibTkinterSplitList(root.AhkStdlibInterp, value))
+            return value
+        case "padding":
+            if IsSet(root) && value != ""
+                return stdlib.tuple(AhkStdlibTkinterSplitList(root.AhkStdlibInterp, value))
+            return value
+        case "width", "height", "length", "tearoff", "aspect", "borderwidth", "bd", "highlightthickness", "indicatoron", "sashwidth", "showhandle", "minsize", "padx", "pady", "handlepad", "handlesize", "sashpad", "opaqueresize", "stretch", "takefocus":
+            try return Integer(value)
+        case "underline", "columnbreak", "hidemargin":
             try return Integer(value)
         case "from", "to", "resolution":
             try return Float(value)
@@ -6382,11 +9265,184 @@ AhkStdlibTkinterCgetValue(key, value)
     return value
 }
 
+AhkStdlibTkinterIntOrFloatValue(value)
+{
+    if value is Integer || value is Float
+        return value
+    try {
+        text := value ""
+        if RegExMatch(text, "^[+-]?\d+$")
+            return Integer(text)
+        return Float(text)
+    }
+    return value
+}
+
+AhkStdlibTkinterWidgetOptionName(option)
+{
+    optionName := AhkStdlibTkinterValueToString(option)
+    if SubStr(optionName, 1, 1) = "-"
+        optionName := SubStr(optionName, 2)
+    if SubStr(optionName, -1) = "_"
+        optionName := SubStr(optionName, 1, StrLen(optionName) - 1)
+    return optionName
+}
+
+AhkStdlibTkinterWidgetConfigureOption(root, window, option)
+{
+    optionName := AhkStdlibTkinterWidgetOptionName(option)
+    parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval(window " configure -" optionName))
+    return AhkStdlibTkinterWidgetConfigureTuple(optionName, parts, root)
+}
+
+AhkStdlibTkinterWidgetConfigureTuple(optionName, parts, root := unset)
+{
+    result := []
+    for index, value in parts {
+        if index = 1 && SubStr(value, 1, 1) = "-"
+            value := SubStr(value, 2)
+        else if index = parts.Length
+            value := IsSet(root) ? AhkStdlibTkinterCgetValue(optionName, value, root) : AhkStdlibTkinterCgetValue(optionName, value)
+        result.Push(value)
+    }
+    return stdlib.tuple(result)
+}
+
 AhkStdlibTkinterPaneChildPath(value)
 {
     if IsObject(value) && HasProp(value, "_w")
         return value._w
     return AhkStdlibTkinterValueToString(value)
+}
+
+AhkStdlibTkinterTagOptionName(option)
+{
+    optionName := AhkStdlibTkinterValueToString(option)
+    if SubStr(optionName, 1, 1) = "-"
+        optionName := SubStr(optionName, 2)
+    if SubStr(optionName, -1) = "_"
+        optionName := SubStr(optionName, 1, StrLen(optionName) - 1)
+    return optionName
+}
+
+AhkStdlibTkinterTextTagConfigureOption(root, window, tagName, option)
+{
+    optionName := AhkStdlibTkinterTagOptionName(option)
+    parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval(window " tag configure " AhkStdlibTkinterTclWord(tagName) " -" optionName))
+    return AhkStdlibTkinterTextTagConfigureTuple(optionName, parts)
+}
+
+AhkStdlibTkinterTextTagConfigureDict(root, window, tagName)
+{
+    result := Map()
+    raw := root.eval(window " tag configure " AhkStdlibTkinterTclWord(tagName))
+    for entryText in AhkStdlibTkinterSplitList(root.AhkStdlibInterp, raw) {
+        parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, entryText)
+        if parts.Length = 0
+            continue
+        optionName := AhkStdlibTkinterTagOptionName(parts[1])
+        result[optionName] := AhkStdlibTkinterTextTagConfigureTuple(optionName, parts)
+    }
+    return result
+}
+
+AhkStdlibTkinterTextTagConfigureTuple(optionName, parts)
+{
+    result := []
+    for index, value in parts {
+        if index = 1 && SubStr(value, 1, 1) = "-"
+            value := SubStr(value, 2)
+        result.Push(value)
+    }
+    return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterTextImageOptionName(option)
+{
+    optionName := AhkStdlibTkinterValueToString(option)
+    if SubStr(optionName, 1, 1) = "-"
+        optionName := SubStr(optionName, 2)
+    if SubStr(optionName, -1) = "_"
+        optionName := SubStr(optionName, 1, StrLen(optionName) - 1)
+    return optionName
+}
+
+AhkStdlibTkinterTextImageConfigureOption(root, window, index, option)
+{
+    optionName := AhkStdlibTkinterTextImageOptionName(option)
+    parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval(window " image configure " AhkStdlibTkinterTclWord(index) " -" optionName))
+    return AhkStdlibTkinterTextImageConfigureTuple(optionName, parts)
+}
+
+AhkStdlibTkinterTextImageConfigureDict(root, window, index)
+{
+    result := Map()
+    raw := root.eval(window " image configure " AhkStdlibTkinterTclWord(index))
+    for entryText in AhkStdlibTkinterSplitList(root.AhkStdlibInterp, raw) {
+        parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, entryText)
+        if parts.Length = 0
+            continue
+        optionName := AhkStdlibTkinterTextImageOptionName(parts[1])
+        result[optionName] := AhkStdlibTkinterTextImageConfigureTuple(optionName, parts)
+    }
+    return result
+}
+
+AhkStdlibTkinterTextImageConfigureTuple(optionName, parts)
+{
+    result := []
+    for index, value in parts {
+        if index = 1 && SubStr(value, 1, 1) = "-"
+            value := SubStr(value, 2)
+        else if index = parts.Length
+            value := AhkStdlibTkinterCgetValue(optionName, value)
+        result.Push(value)
+    }
+    return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterTextWindowOptionName(option)
+{
+    optionName := AhkStdlibTkinterValueToString(option)
+    if SubStr(optionName, 1, 1) = "-"
+        optionName := SubStr(optionName, 2)
+    if SubStr(optionName, -1) = "_"
+        optionName := SubStr(optionName, 1, StrLen(optionName) - 1)
+    return optionName
+}
+
+AhkStdlibTkinterTextWindowConfigureOption(root, window, index, option)
+{
+    optionName := AhkStdlibTkinterTextWindowOptionName(option)
+    parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval(window " window configure " AhkStdlibTkinterTclWord(index) " -" optionName))
+    return AhkStdlibTkinterTextWindowConfigureTuple(optionName, parts)
+}
+
+AhkStdlibTkinterTextWindowConfigureDict(root, window, index)
+{
+    result := Map()
+    raw := root.eval(window " window configure " AhkStdlibTkinterTclWord(index))
+    for entryText in AhkStdlibTkinterSplitList(root.AhkStdlibInterp, raw) {
+        parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, entryText)
+        if parts.Length = 0
+            continue
+        optionName := AhkStdlibTkinterTextWindowOptionName(parts[1])
+        result[optionName] := AhkStdlibTkinterTextWindowConfigureTuple(optionName, parts)
+    }
+    return result
+}
+
+AhkStdlibTkinterTextWindowConfigureTuple(optionName, parts)
+{
+    result := []
+    for index, value in parts {
+        if index = 1 && SubStr(value, 1, 1) = "-"
+            value := SubStr(value, 2)
+        else if index = parts.Length
+            value := AhkStdlibTkinterCgetValue(optionName, value)
+        result.Push(value)
+    }
+    return stdlib.tuple(result)
 }
 
 AhkStdlibTkinterListboxItemConfigureOption(root, window, index, option)
@@ -6421,6 +9477,42 @@ AhkStdlibTkinterListboxItemConfigureTuple(optionName, parts)
         if index = 1 && SubStr(value, 1, 1) = "-"
             value := SubStr(value, 2)
         else if index = parts.Length
+            value := AhkStdlibTkinterCgetValue(optionName, value)
+        result.Push(value)
+    }
+    return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterMenuEntryConfigureOption(root, window, index, option)
+{
+    optionName := AhkStdlibTkinterValueToString(option)
+    parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval(window " entryconfigure " AhkStdlibTkinterTclWord(index) " -" optionName))
+    return AhkStdlibTkinterMenuEntryConfigureTuple(optionName, parts)
+}
+
+AhkStdlibTkinterMenuEntryConfigureDict(root, window, index)
+{
+    result := Map()
+    raw := root.eval(window " entryconfigure " AhkStdlibTkinterTclWord(index))
+    for entryText in AhkStdlibTkinterSplitList(root.AhkStdlibInterp, raw) {
+        parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, entryText)
+        if parts.Length = 0
+            continue
+        optionName := parts[1]
+        if SubStr(optionName, 1, 1) = "-"
+            optionName := SubStr(optionName, 2)
+        result[optionName] := AhkStdlibTkinterMenuEntryConfigureTuple(optionName, parts)
+    }
+    return result
+}
+
+AhkStdlibTkinterMenuEntryConfigureTuple(optionName, parts)
+{
+    result := []
+    for index, value in parts {
+        if index = 1 && SubStr(value, 1, 1) = "-"
+            value := SubStr(value, 2)
+        else if index >= 4
             value := AhkStdlibTkinterCgetValue(optionName, value)
         result.Push(value)
     }
@@ -6463,6 +9555,58 @@ AhkStdlibTkinterPaneConfigureTuple(optionName, parts)
     return stdlib.tuple(result)
 }
 
+AhkStdlibTkinterNotebookConfigureOption(root, window, option)
+{
+    optionName := AhkStdlibTkinterWidgetOptionName(option)
+    parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval(window " configure -" optionName))
+    result := []
+    for index, value in parts {
+        if index = 1 && SubStr(value, 1, 1) = "-"
+            value := SubStr(value, 2)
+        else if optionName = "padding" && index = parts.Length
+            value := value = "" ? "" : stdlib.tuple(AhkStdlibTkinterSplitList(root.AhkStdlibInterp, value))
+        else if index = parts.Length
+            value := AhkStdlibTkinterCgetValue(optionName, value, root)
+        result.Push(value)
+    }
+    return stdlib.tuple(result)
+}
+
+AhkStdlibTkinterNotebookTabDict(root, window, tabId)
+{
+    result := Map()
+    raw := root.eval(window " tab " AhkStdlibTkinterTclWord(tabId))
+    parts := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, raw)
+    index := 1
+    while index <= parts.Length {
+        optionName := parts[index]
+        if SubStr(optionName, 1, 1) = "-"
+            optionName := SubStr(optionName, 2)
+        value := index + 1 <= parts.Length ? parts[index + 1] : ""
+        result[optionName] := AhkStdlibTkinterNotebookTabValue(root, optionName, value, true)
+        index += 2
+    }
+    return result
+}
+
+AhkStdlibTkinterNotebookTabValue(root, optionName, value, asDict)
+{
+    optionName := AhkStdlibTkinterWidgetOptionName(optionName)
+    switch optionName {
+        case "padding":
+            values := AhkStdlibTkinterSplitList(root.AhkStdlibInterp, value)
+            if !asDict
+                return stdlib.tuple(values)
+            result := []
+            for item in values
+                result.Push(AhkStdlibTkinterIntOrFloatValue(item))
+            return result
+        case "underline":
+            try return Integer(value)
+    }
+    return AhkStdlibTkinterCgetValue(optionName, value, root)
+}
+
 AhkStdlibTkinterOptionMenuSetit(variable, value, callback)
 {
     variable.set(value)
@@ -6502,6 +9646,45 @@ AhkStdlibTkinterKeys(root, window, args*)
     return result
 }
 
+AhkStdlibTkinterExceptionArgToString(value)
+{
+    if AhkStdlibIsNone(value)
+        return "None"
+    if AhkStdlibIsBool(value)
+        return value.Value ? "True" : "False"
+    return String(value)
+}
+
+AhkStdlibTkinterExceptionArgsTupleString(values)
+{
+    text := "("
+    for index, value in values {
+        if index > 1
+            text .= ", "
+        text .= AhkStdlibTkinterExceptionArgRepr(value)
+    }
+    if values.Length = 1
+        text .= ","
+    return text ")"
+}
+
+AhkStdlibTkinterExceptionArgRepr(value)
+{
+    if AhkStdlibIsNone(value)
+        return "None"
+    if AhkStdlibIsBool(value)
+        return value.Value ? "True" : "False"
+    if value is String {
+        text := StrReplace(value, "\", "\\")
+        text := StrReplace(text, "'", "\'")
+        text := StrReplace(text, "`r", "\r")
+        text := StrReplace(text, "`n", "\n")
+        text := StrReplace(text, "`t", "\t")
+        return "'" text "'"
+    }
+    return String(value)
+}
+
 AhkStdlibTkinterValueToString(value)
 {
     if AhkStdlibIsNone(value)
@@ -6511,6 +9694,48 @@ AhkStdlibTkinterValueToString(value)
     if IsObject(value) && HasMethod(value, "ToString")
         return String(value)
     return value ""
+}
+
+AhkStdlibTkinterModuleGetInt(args*)
+{
+    if args.Length = 0
+        return 0
+    if args.Length > 1
+        throw TypeError("int() takes at most 1 argument (" args.Length " given)", -1)
+    value := args[1]
+    if AhkStdlibIsBool(value)
+        return value.Value ? 1 : 0
+    if AhkStdlibIsNone(value) || IsObject(value)
+        throw TypeError("int() argument must be a string, a bytes-like object or a real number, not '" AhkStdlibPythonTypeName(value) "'", -1)
+    if value is Integer
+        return value
+    if value is Float
+        return Integer(value)
+    if value is String {
+        text := Trim(value)
+        if RegExMatch(text, "^[+-]?\d+$")
+            return Integer(text)
+        throw ValueError("invalid literal for int() with base 10: '" value "'", -1)
+    }
+    throw TypeError("int() argument must be a string, a bytes-like object or a real number, not '" AhkStdlibPythonTypeName(value) "'", -1)
+}
+
+AhkStdlibTkinterModuleGetDouble(args*)
+{
+    if args.Length = 0
+        return 0.0
+    if args.Length > 1
+        throw TypeError("float expected at most 1 argument, got " args.Length, -1)
+    value := args[1]
+    if AhkStdlibIsBool(value)
+        return value.Value ? 1.0 : 0.0
+    if AhkStdlibIsNone(value) || IsObject(value)
+        throw TypeError("float() argument must be a string or a real number, not '" AhkStdlibPythonTypeName(value) "'", -1)
+    if (value is Integer) || (value is Float)
+        return Float(value)
+    if value is String
+        return Float(Trim(value))
+    throw TypeError("float() argument must be a string or a real number, not '" AhkStdlibPythonTypeName(value) "'", -1)
 }
 
 AhkStdlibTkinterGetIntMethod(root, args*)
@@ -6541,6 +9766,44 @@ AhkStdlibTkinterGetBooleanMethod(root, args*)
         throw TypeError("Misc.getboolean() takes 2 positional arguments but " args.Length + 1 " were given", -1)
 
     return AhkStdlibTkinterGetBooleanPublic(root.AhkStdlibInterp, args[1])
+}
+
+AhkStdlibTkinterStrictMotif(root, args*)
+{
+    if args.Length > 1
+        throw TypeError("Misc.tk_strictMotif() takes from 1 to 2 positional arguments but " args.Length + 1 " were given", -1)
+    if args.Length = 0 || AhkStdlibIsNone(args[1])
+        return AhkStdlibTkinterGetBoolean(root.AhkStdlibInterp, root.eval("set tk_strictMotif"))
+    return AhkStdlibTkinterGetBoolean(root.AhkStdlibInterp, root.eval("set tk_strictMotif " AhkStdlibTkinterTclWord(args[1])))
+}
+
+AhkStdlibTkinterBisque(root, args*)
+{
+    if args.Length != 0
+        throw TypeError("Misc.tk_bisque() takes 1 positional argument but " args.Length + 1 " were given", -1)
+    root.eval("tk_bisque")
+    return stdlib.None
+}
+
+AhkStdlibTkinterSetPalette(root, args*)
+{
+    script := "tk_setPalette"
+    for value in args {
+        if AhkStdlibTkinterIsPlainKeywordObject(value)
+            script .= AhkStdlibTkinterPaletteOptionsToScript(value)
+        else
+            script .= " " AhkStdlibTkinterTclWord(value)
+    }
+    root.eval(script)
+    return stdlib.None
+}
+
+AhkStdlibTkinterPaletteOptionsToScript(options)
+{
+    script := ""
+    for key, value in options.OwnProps()
+        script .= " " AhkStdlibTkinterTclWord(key) " " AhkStdlibTkinterTclWord(value)
+    return script
 }
 
 AhkStdlibTkinterGetIntPublic(interp, value)
@@ -6640,6 +9903,35 @@ AhkStdlibTkinterTclListCommandWord(values)
     return script "]"
 }
 
+AhkStdlibTkinterStateSpecWord(statespec)
+{
+    if statespec is String {
+        parts := []
+        Loop Parse, statespec
+            parts.Push(A_LoopField)
+        return AhkStdlibTkinterTclWord(AhkStdlibTkinterJoinStateSpec(parts))
+    }
+
+    if !IsObject(statespec) || !HasMethod(statespec, "__Enum")
+        throw TypeError("can only join an iterable", -1)
+
+    parts := []
+    for value in statespec
+        parts.Push(value)
+    return AhkStdlibTkinterTclWord(AhkStdlibTkinterJoinStateSpec(parts))
+}
+
+AhkStdlibTkinterJoinStateSpec(parts)
+{
+    text := ""
+    for part in parts {
+        if A_Index > 1
+            text .= " "
+        text .= part ""
+    }
+    return text
+}
+
 AhkStdlibTkinterIntVarValueToString(value)
 {
     if AhkStdlibIsNone(value)
@@ -6655,7 +9947,7 @@ AhkStdlibTkinterGetDouble(interp, value)
     doubleBuffer := Buffer(8, 0)
     result := DllCall("tcl86t\Tcl_GetDouble", "Ptr", interp, "Ptr", valueBuffer.Ptr, "Ptr", doubleBuffer.Ptr, "Int")
     if result != 0
-        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp))
     return NumGet(doubleBuffer, 0, "Double")
 }
 
@@ -6670,7 +9962,7 @@ AhkStdlibTkinterGetBoolean(interp, value)
     boolBuffer := Buffer(4, 0)
     result := DllCall("tcl86t\Tcl_GetBoolean", "Ptr", interp, "Ptr", valueBuffer.Ptr, "Ptr", boolBuffer.Ptr, "Int")
     if result != 0
-        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp))
     return NumGet(boolBuffer, 0, "Int") ? stdlib.True : stdlib.False
 }
 
@@ -6713,7 +10005,7 @@ AhkStdlibTkinterSplitList(interp, value)
     valueBuffer := AhkStdlibTkinterUtf8Buffer(value)
     resultCode := DllCall("tcl86t\Tcl_SplitList", "Ptr", interp, "Ptr", valueBuffer.Ptr, "Ptr", argcBuffer.Ptr, "Ptr", argvBuffer.Ptr, "Int")
     if resultCode != 0
-        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp), -1)
+        throw AhkStdlibTkinter.TclError(AhkStdlibTkinterGetStringResult(interp))
 
     count := NumGet(argcBuffer, 0, "Int")
     argv := NumGet(argvBuffer, 0, "Ptr")
@@ -6730,16 +10022,7 @@ AhkStdlibTkinterSplitList(interp, value)
 
 AhkStdlibTkinterEventTypeName(value, sequence)
 {
-    switch value {
-        case "4":
-            return "ButtonPress"
-        case "5":
-            return "ButtonRelease"
-        case "2":
-            return "KeyPress"
-        case "3":
-            return "KeyRelease"
-    }
+    try return AhkStdlibTkinterEventTypeValueToName(value)
     if value != "" && value != "??"
         return value
     if InStr(sequence, "Button")
@@ -6747,6 +10030,204 @@ AhkStdlibTkinterEventTypeName(value, sequence)
     if InStr(sequence, "Key")
         return "KeyPress"
     return value
+}
+
+AhkStdlibTkinterEventTypeInternalValue(value, name)
+{
+    if value != "" && value != "??"
+        return value
+    nameValue := AhkStdlibTkinterEventTypeNameToValue(name)
+    if nameValue != ""
+        return nameValue
+    return value
+}
+
+AhkStdlibTkinterEventTypeValueToName(value)
+{
+    if !(value is String)
+        throw ValueError(AhkStdlibTkinterEventTypeInvalidMessage(value), -1)
+    switch value {
+        case "2":
+            return "KeyPress"
+        case "3":
+            return "KeyRelease"
+        case "4":
+            return "ButtonPress"
+        case "5":
+            return "ButtonRelease"
+        case "6":
+            return "Motion"
+        case "7":
+            return "Enter"
+        case "8":
+            return "Leave"
+        case "9":
+            return "FocusIn"
+        case "10":
+            return "FocusOut"
+        case "11":
+            return "Keymap"
+        case "12":
+            return "Expose"
+        case "13":
+            return "GraphicsExpose"
+        case "14":
+            return "NoExpose"
+        case "15":
+            return "Visibility"
+        case "16":
+            return "Create"
+        case "17":
+            return "Destroy"
+        case "18":
+            return "Unmap"
+        case "19":
+            return "Map"
+        case "20":
+            return "MapRequest"
+        case "21":
+            return "Reparent"
+        case "22":
+            return "Configure"
+        case "23":
+            return "ConfigureRequest"
+        case "24":
+            return "Gravity"
+        case "25":
+            return "ResizeRequest"
+        case "26":
+            return "Circulate"
+        case "27":
+            return "CirculateRequest"
+        case "28":
+            return "Property"
+        case "29":
+            return "SelectionClear"
+        case "30":
+            return "SelectionRequest"
+        case "31":
+            return "Selection"
+        case "32":
+            return "Colormap"
+        case "33":
+            return "ClientMessage"
+        case "34":
+            return "Mapping"
+        case "35":
+            return "VirtualEvent"
+        case "36":
+            return "Activate"
+        case "37":
+            return "Deactivate"
+        case "38":
+            return "MouseWheel"
+    }
+    throw ValueError(AhkStdlibTkinterEventTypeInvalidMessage(value), -1)
+}
+
+AhkStdlibTkinterEventTypeNameToValue(name)
+{
+    switch name {
+        case "KeyPress", "Key":
+            return "2"
+        case "KeyRelease":
+            return "3"
+        case "ButtonPress", "Button":
+            return "4"
+        case "ButtonRelease":
+            return "5"
+        case "Motion":
+            return "6"
+        case "Enter":
+            return "7"
+        case "Leave":
+            return "8"
+        case "FocusIn":
+            return "9"
+        case "FocusOut":
+            return "10"
+        case "Keymap":
+            return "11"
+        case "Expose":
+            return "12"
+        case "GraphicsExpose":
+            return "13"
+        case "NoExpose":
+            return "14"
+        case "Visibility":
+            return "15"
+        case "Create":
+            return "16"
+        case "Destroy":
+            return "17"
+        case "Unmap":
+            return "18"
+        case "Map":
+            return "19"
+        case "MapRequest":
+            return "20"
+        case "Reparent":
+            return "21"
+        case "Configure":
+            return "22"
+        case "ConfigureRequest":
+            return "23"
+        case "Gravity":
+            return "24"
+        case "ResizeRequest":
+            return "25"
+        case "Circulate":
+            return "26"
+        case "CirculateRequest":
+            return "27"
+        case "Property":
+            return "28"
+        case "SelectionClear":
+            return "29"
+        case "SelectionRequest":
+            return "30"
+        case "Selection":
+            return "31"
+        case "Colormap":
+            return "32"
+        case "ClientMessage":
+            return "33"
+        case "Mapping":
+            return "34"
+        case "VirtualEvent":
+            return "35"
+        case "Activate":
+            return "36"
+        case "Deactivate":
+            return "37"
+        case "MouseWheel":
+            return "38"
+    }
+    return ""
+}
+
+AhkStdlibTkinterEventTypeInvalidMessage(value)
+{
+    if value is String
+        return "'" value "' is not a valid EventType"
+    if AhkStdlibIsNone(value)
+        return "None is not a valid EventType"
+    if AhkStdlibIsBool(value)
+        return (value.Value ? "True" : "False") " is not a valid EventType"
+    return AhkStdlibTkinterValueToString(value) " is not a valid EventType"
+}
+
+AhkStdlibTkinterCallWrapperArgs(value)
+{
+    if value is Array
+        return value
+    if value is String {
+        args := []
+        loop parse value
+            args.Push(A_LoopField)
+        return args
+    }
+    return [value]
 }
 
 AhkStdlibTkinterEventInteger(value)
