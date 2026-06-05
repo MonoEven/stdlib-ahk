@@ -16,6 +16,12 @@ array_example_iterated := []
 for value in array_example_ints
     array_example_iterated.Push(value)
 array_example_buffer_info := array_example_ints.buffer_info()
+array_example_count_5 := array_example_ints.count(5)
+array_example_index_5 := array_example_ints.index(5)
+array_example_pop_last := array_example_ints.pop()
+array_example_remove_5 := array_example_ints.remove(5)
+array_example_reverse := array_example_ints.reverse()
+array_example_after_mutations := array_example_ints.tolist()
 array_example_bytes_repr := stdlib.array.array("b", [1, -2, 3]).__Repr()
 array_example_bad_typecode_error := ""
 try {

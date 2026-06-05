@@ -5,6 +5,7 @@
 class AhkStdlibAbc
 {
     static ABC := AhkStdlibAbcBase
+    static AhkStdlibCacheToken := 0
 
     static abstractmethod(args*)
     {
@@ -32,16 +33,36 @@ class AhkStdlibAbc
     {
         return instance is cls
     }
+
+    static get_cache_token(args*)
+    {
+        if args.Length != 0
+            throw TypeError("_abc.get_cache_token() takes no arguments (" args.Length " given)", -1)
+        return AhkStdlibAbc.AhkStdlibCacheToken
+    }
 }
 
 class AhkStdlibAbcBase
 {
-    static register(subclass)
+    static register(args*)
     {
+        if args.Length = 0
+            throw TypeError("ABCMeta.register() missing 1 required positional argument: 'subclass'", -1)
+        if args.Length > 1
+            throw TypeError("ABCMeta.register() takes 2 positional arguments but " args.Length + 1 " were given", -1)
+
+        subclass := args[1]
         if !IsObject(subclass) || !HasProp(subclass, "Prototype")
             throw TypeError("Can only register classes", -1)
 
+        if subclass = this
+            return subclass
+
+        if subclass.Prototype.Base = this.Prototype
+            return subclass
+
         subclass.Prototype.Base := this.Prototype
+        AhkStdlibAbc.AhkStdlibCacheToken += 1
         return subclass
     }
 }

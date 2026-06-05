@@ -85,6 +85,85 @@ class AhkStdlibArrayValue
         return ""
     }
 
+    count(args*)
+    {
+        if args.Length != 1
+            throw TypeError("array.count() takes exactly one argument (" args.Length " given)", -1)
+        needle := args[1]
+        total := 0
+        loop this.AhkStdlibLength {
+            if AhkStdlibArrayValuesEqual(this[A_Index - 1], needle)
+                total += 1
+        }
+        return total
+    }
+
+    index(args*)
+    {
+        if args.Length = 0
+            throw TypeError("array.index() takes exactly one argument (0 given)", -1)
+        if args.Length > 1
+            throw TypeError("array.index() takes exactly one argument (" args.Length " given)", -1)
+        needle := args[1]
+        loop this.AhkStdlibLength {
+            index := A_Index - 1
+            if AhkStdlibArrayValuesEqual(this[index], needle)
+                return index
+        }
+        throw ValueError("array.index(x): x not in array", -1)
+    }
+
+    remove(args*)
+    {
+        if args.Length = 0
+            throw TypeError("array.remove() takes exactly one argument (0 given)", -1)
+        if args.Length > 1
+            throw TypeError("array.remove() takes exactly one argument (" args.Length " given)", -1)
+        needle := args[1]
+        loop this.AhkStdlibLength {
+            index := A_Index - 1
+            if AhkStdlibArrayValuesEqual(this[index], needle) {
+                this.AhkStdlibDeleteIndex(index)
+                return stdlib.None
+            }
+        }
+        throw ValueError("array.remove(x): x not in array", -1)
+    }
+
+    pop(args*)
+    {
+        if args.Length > 1
+            throw TypeError("pop expected at most 1 argument, got " args.Length, -1)
+        if this.AhkStdlibLength = 0
+            throw IndexError("pop from empty array", -1)
+        index := args.Length = 0 ? this.AhkStdlibLength - 1 : args[1]
+        if !(index is Integer)
+            throw TypeError("'" AhkStdlibPythonTypeName(index) "' object cannot be interpreted as an integer", -1)
+        if index < 0
+            index += this.AhkStdlibLength
+        if index < 0 || index >= this.AhkStdlibLength
+            throw IndexError("pop index out of range", -1)
+        value := this[index]
+        this.AhkStdlibDeleteIndex(index)
+        return value
+    }
+
+    reverse(args*)
+    {
+        if args.Length != 0
+            throw TypeError("array.reverse() takes no arguments (" args.Length " given)", -1)
+        left := 0
+        right := this.AhkStdlibLength - 1
+        while left < right {
+            leftValue := this[left]
+            this[left] := this[right]
+            this[right] := leftValue
+            left += 1
+            right -= 1
+        }
+        return stdlib.None
+    }
+
     tolist()
     {
         values := []
@@ -141,6 +220,22 @@ class AhkStdlibArrayValue
         if index < 0 || index >= this.AhkStdlibLength
             throw IndexError("array index out of range", -1)
         return index * this.itemsize
+    }
+
+    AhkStdlibDeleteIndex(index)
+    {
+        newBuffer := Buffer((this.AhkStdlibLength - 1) * this.itemsize)
+        targetIndex := 0
+        loop this.AhkStdlibLength {
+            sourceIndex := A_Index - 1
+            if sourceIndex = index
+                continue
+            value := NumGet(this.AhkStdlibBuffer, sourceIndex * this.itemsize, this.AhkStdlibStorageType)
+            NumPut(this.AhkStdlibStorageType, value, newBuffer, targetIndex * this.itemsize)
+            targetIndex += 1
+        }
+        this.AhkStdlibLength -= 1
+        this.AhkStdlibBuffer := newBuffer
     }
 }
 
@@ -216,6 +311,13 @@ AhkStdlibArrayValueRepr(values)
     for value in values
         parts.Push(AhkStdlibArrayScalarRepr(value))
     return "[" AhkStdlibArrayJoin(parts, ", ") "]"
+}
+
+AhkStdlibArrayValuesEqual(left, right)
+{
+    if IsObject(left) || IsObject(right)
+        return left = right
+    return left == right
 }
 
 AhkStdlibArrayScalarRepr(value)

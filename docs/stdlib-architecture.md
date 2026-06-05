@@ -5307,15 +5307,26 @@ Python-style binary-operator TypeErrors.
 
 `stdlib.array` is now direct as a first slice of Python 3.10.11's `array`
 module, migrated from the old `bufferarray` source material but exposed on the
-public Python-path root as `stdlib.array.array(...)`. The current slice covers
-module-level `typecodes`, constructor-style `stdlib.array.array(typecode,
-initializer?)`, observable `.typecode` and `.itemsize` properties, zero-based
-index get/set semantics, `.append(...)`, `.extend(...)`, `.tolist()`,
-`.buffer_info()`, iteration, and Python-style `__Repr()` output for covered
-numeric arrays. Covered invalid branches now also match the local Python 3.10.11
-baseline for bad typecodes, non-iterable initializers and `extend(...)`
-payloads, non-integer-compatible `append(...)` payloads, and out-of-range
-indexes.
+public Python-path root as `stdlib.array.array(...)`. The latest alphabetical
+pass slice adds covered sequence mutation/query methods `.count(x)`,
+`.index(x)`, `.remove(x)`, `.pop(i=-1)`, and `.reverse()`. Fresh Python
+3.10.11 evidence from `.codex/array_sequence_mutation_probe.py` confirmed the
+covered return values and mutations for duplicate counts, first index lookup,
+removing the first matching value, default / zero / negative pop, and in-place
+reverse; it also confirmed the covered errors for missing values, empty or
+out-of-range pop, non-integer pop indices, extra `.count(...)` arguments, and
+extra `.reverse(...)` arguments. Fresh AHK evidence includes focused red
+`array sequence mutation methods match local 3.10 baseline` failing because
+`AhkStdlibArrayValue.count` was absent, focused green passing 1/1 in 0 ms,
+full `stdlib/tests/array.test.ahk` passing 4/4 in 0 ms, and
+`run-ahk-validate -Path stdlib/examples/array.ahk -TimeoutSeconds 90`
+passing. The earlier `array` slice continues to cover module-level
+`typecodes`, constructor-style `stdlib.array.array(typecode, initializer?)`,
+observable `.typecode` and `.itemsize` properties, zero-based index get/set
+semantics, `.append(...)`, `.extend(...)`, `.tolist()`, `.buffer_info()`,
+iteration, Python-style `__Repr()` output for covered numeric arrays, bad
+typecodes, non-iterable initializers and `extend(...)` payloads,
+non-integer-compatible `append(...)` payloads, and out-of-range indexes.
 
 `stdlib.pprint` is now direct as a first slice of Python 3.10.11's `pprint`
 module, migrated from the old `print` source material but exposed on the
@@ -5545,17 +5556,28 @@ keyword construction, `fileno() == -1` after close, and the observed
 `_socket.gethostname()` arity wording plus unexpected-keyword wording for the
 covered AHK keyword-object adapter.
 
-`stdlib.abc` is now direct as a first abstract-base-class slice of Python
-3.10.11 `abc`, promoted from the old `std` candidate slot but exposed on the
-public Python-path root as `stdlib.abc.*`. The current slice covers
-`ABC.register(subclass)`, `abstractmethod(funcobj)`, and covered helper
-predicates `isabstract(value)` and `isinstance(instance, cls)` for the minimal
-AHK expression of the observed Python semantics. Covered behavior currently
-matches the local Python 3.10.11 probe for `abstractmethod()` arity wording,
-callable decoration via `__isabstractmethod__`, `ABC.register(...)` returning
-the same subclass object, virtual subclass `isinstance` truth after
-registration, and the observed fact that a registered subclass without
-abstract members remains non-abstract.
+`stdlib.abc` is direct as a Python 3.10.11 `abc` slice, promoted from the old
+`std` candidate slot but exposed on the public Python-path root as
+`stdlib.abc.*`. The latest alphabetical pass slice covers
+`get_cache_token()` and the cache-token invalidation behavior of
+`ABC.register(subclass)` for the current AHK virtual-subclass model. Fresh
+Python 3.10.11 evidence from `.codex/abc_cache_register_probe.py` confirmed
+that `get_cache_token()` returns an `int`, rejects positional arguments as
+`_abc.get_cache_token() takes no arguments (1 given)`, first registration of a
+new virtual subclass increments the token by one, duplicate registration leaves
+the token unchanged, registering a second distinct subclass increments it
+again, `ABC.register(ABC)` returns the ABC itself without token invalidation,
+and missing / extra / non-class register calls use the probed Python error
+text. Fresh AHK evidence includes focused red
+`TestGetCacheTokenAndRegisterInvalidationMatchLocal310` failing because
+`stdlib.abc.get_cache_token` was absent, focused green passing 1/1 in 0 ms,
+full `stdlib/tests/abc.test.ahk` passing 3/3 in 0 ms, `run-ahk-validate -Path
+stdlib/examples/abc.ahk -TimeoutSeconds 90` passing, and
+`tools/test-stdlib-layout.ps1` passing. The earlier `abc` slice continues to
+cover `abstractmethod(funcobj)`, `ABC.register(subclass)` returning the same
+subclass object, virtual subclass `isinstance` truth after registration, and
+covered helper predicates `isabstract(value)` and `isinstance(instance, cls)`
+for the minimal AHK expression of the observed Python semantics.
 
 `ahktest` is the first-class stdlib test framework. It must grow toward
 pytest 7.4.3 capability parity under AHK v2 constraints before broad module
