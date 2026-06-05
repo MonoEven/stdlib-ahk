@@ -100,14 +100,3079 @@ small TDD slices. Current direct modules:
 The framework manifest currently tracks `57` total module slots: `57` direct,
 `0` candidate, and `0` native-quarantine.
 
-Current verified wrapper baseline is `stdlib/tests: 1025 passed, 0 failed, 0 errors`,
-with the existing `plain fallback` stderr line from the logging bootstrap smoke
-still treated as expected output rather than a failure. The latest aggregate
-gate completed with `run-ahktest stdlib/tests -TimeoutSeconds 70`, reporting
-1025 passed, 0 failed, and 0 errors with the known `plain fallback` stderr
+Current verified wrapper baseline is
+`stdlib/tests: 1140 passed, 0 failed, 0 errors` from
+`run-ahktest stdlib/tests -TimeoutSeconds 90`, with the existing
+`plain fallback` stderr line from the logging bootstrap smoke still treated as
+expected output rather than a failure. This raises the aggregate evidence from
+the previous 90-second 1139-test baseline; it uses the current 90-second
+default aggregate gate and does not claim lower-timeout aggregate stability.
+
+The latest classic tkinter work-in-progress slice tightens grouped root and
+public-widget option `keyword=None` behavior for `Tk.configure(...)`,
+`Widget(...)`, `BaseWidget(...)`, `Menubutton(...)`, `clipboard_clear(...)`,
+`clipboard_append(...)`, `clipboard_get(...)`, and the covered
+`option_add(..., priority=None)` path. A fresh Python 3.10.11 probe confirmed
+that root configure, public-widget constructors, classic `Menubutton`, and
+clipboard keyword options skip covered `None` values before reaching Tcl, while
+`option_add(pattern=None, ...)` and `option_add(..., value=None)` keep the
+observed Tcl wrong-arity error and `tk_setPalette(...)` `None` paths remain
+non-skip behavior. The AHK root configure and clipboard option writers now use
+skip-`None` semantics for the covered paths, and `option_add(...)` preserves
+the observed `priority=None` default-priority behavior while shaping
+pattern/value `None` to the covered TclError. Fresh evidence includes
+`.codex/tkinter_classic_root_public_option_none_probe.py` plus JSON output, a
+focused red report where
+`TestClassicRootPublicOptionKeywordNoneMatchesLocal310` failed because
+`Tk.configure({ missing: stdlib.None })` reached Tcl as
+`unknown option "-missing"`, focused green passing 1/1 in 282 ms, adjacent
+serial gates passing for `Clipboard` 1/1 in 266 ms and `OptionDatabase` 1/1
+in 297 ms, plus the full `stdlib/tests/tkinter.test.ahk` file gate passing
+280/280 in 54797 ms at `-TimeoutSeconds 90`. This slice does not promote the
+verified aggregate baseline beyond 1140/1140 because no fresh aggregate
+`stdlib/tests` gate was run for it. At this point the tkinter / ttk surface is
+treated as sufficient for rich example GUI work, with remaining tkinter parity
+handled as maintenance rather than blocking the alphabetical stdlib pass.
+Fresh example evidence for this handoff point includes
+`.codex/tkinter_gui_example_capture.test.ahk` passing 1/1 in 766 ms for the
+new standalone `stdlib/examples/tkinter_gui.ahk` live dashboard example,
+README en/zh tkinter examples passing through ahktest capture with pollution
+assertions in 1547 ms, README LabeledScale probes passing 2/2 in 1719 ms, and
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk -TimeoutSeconds 90`
+passing for the existing coverage-style tkinter example.
+
+The preceding classic tkinter work-in-progress slice tightens grouped classic
+constructor keyword-`None` no-op behavior for `Label(...)`, `Frame(...)`,
+`PanedWindow(...)`, `Canvas(...)`, `Text(...)`, and `Entry(...)`, while
+preserving the probed `PhotoImage(width=None)` exception path. Fresh Python
+3.10.11 probes confirmed that covered classic widget constructors skip single,
+multiple, and unknown `keyword=None` option values before reaching Tcl, create
+usable widgets with default option values, and support follow-on configure /
+layout calls. A separate image-constructor probe confirmed that
+`PhotoImage(width=None)` does not use this skip-`None` behavior and instead
+raises `TclError("value for \"-width\" missing")` before the covered
+`height=None` or unknown-option paths are reached. The AHK classic public
+widget constructor helpers now use the local skip-`None` option formatter, and
+the image constructor retains normal option forwarding with a covered
+`PhotoImage` missing-value error shim for `width=None` / `height=None`. Fresh
+evidence includes `.codex/tkinter_classic_constructor_kwargs_none_probe.py`,
+`.codex/tkinter_image_constructor_kwargs_none_probe.py`, and JSON outputs, a
+focused red report where
+`TestClassicConstructorKeywordNoneNoopMatchesLocal310` failed because
+`Label(..., { missing: stdlib.None })` reached Tcl as
+`unknown color name "-missing"`, focused green passing 1/1 in 407 ms,
+adjacent serial gates passing for `Classic` 22/22 in 2453 ms, `Widget` 22/22
+in 4000 ms, and `PhotoImage` 3/3 in 438 ms, plus the full
+`stdlib/tests/tkinter.test.ahk` file gate passing 279/279 in 69000 ms at
+`-TimeoutSeconds 90`. This slice does not promote the verified aggregate
+baseline beyond 1140/1140 because no fresh aggregate `stdlib/tests` gate was
+run for it.
+
+The preceding classic tkinter work-in-progress slice tightens grouped classic
+creation/registration keyword-`None` no-op behavior for
+`Canvas.create_line(...)`, `Canvas.create_text(...)`,
+`Canvas.create_window(...)`, `Text.image_create(...)`,
+`Text.window_create(...)`, and `Misc.selection_handle(...)`. A fresh Python
+3.10.11 probe confirmed that covered single, multiple, and unknown
+`keyword=None` option values are skipped before reaching Tcl; canvas creation
+returns new item ids with default `SystemButtonText` fill / default geometry
+options, `Text.image_create(...)` returns the generated image name with default
+`align="center"` and `padx=0`, `Text.window_create(...)` returns `None` with
+default window options, and `selection_handle(...)` returns `None`. The AHK
+covered create/registration paths now use the local skip-`None` option
+formatter while leaving unprobed constructor and ttk query-style paths
+unchanged. Fresh evidence includes
+`.codex/tkinter_classic_create_kwargs_none_probe.py` plus JSON output, a
+focused red report where
+`TestClassicCreateKeywordNoneNoopMatchesLocal310` failed because
+`Canvas.create_line(..., { fill: stdlib.None, missing: stdlib.None })`
+reached Tcl as `unknown color name "-missing"`, focused green passing 1/1 in
+234 ms, adjacent serial gates passing for `Canvas` 15/15 in 1859 ms, `Text`
+9/9 in 1032 ms, `Selection` 9/9 in 2188 ms, and `Classic` 21/21 in 2782 ms,
+plus the full `stdlib/tests/tkinter.test.ahk` file gate passing 278/278 in
+58109 ms at `-TimeoutSeconds 90`. This slice does not promote the verified
+aggregate baseline beyond 1140/1140 because no fresh aggregate `stdlib/tests`
+gate was run for it.
+
+The preceding classic tkinter work-in-progress slice tightens grouped classic
+mutation keyword-`None` no-op behavior for `Misc.configure(...)`,
+`Pack.pack_configure(...)`, `Grid.grid_configure(...)`,
+`Place.place_configure(...)`, `PhotoImage.configure(...)`,
+`PanedWindow.add(...)`, `PanedWindow.paneconfigure(...)`,
+`Menu.add_command(...)`, and `Menu.insert_command(...)`. A fresh Python
+3.10.11 probe confirmed that covered single, multiple, and unknown
+`keyword=None` values are skipped before reaching Tcl, return `None`, and leave
+existing widget, geometry-manager, image, and pane option values unchanged;
+the covered menu add/insert calls create the same default empty-label command
+entries Python creates when all supplied entry kwargs are skipped. The AHK
+mutation paths now use the local skip-`None` option formatter for these
+covered calls, without changing constructor or ttk query-style behavior. Fresh
+evidence includes `.codex/tkinter_classic_mutation_kwargs_none_probe.py` plus
+JSON output, a focused red report where
+`TestClassicMutationKeywordNoneNoopMatchesLocal310` failed because
+`Label.configure(..., { missing: stdlib.None })` reached Tcl as
+`unknown option "-missing"`, focused green passing 1/1 in 282 ms, adjacent
+serial gates passing for `Classic` 20/20 in 1860 ms, `Menu` 8/8 in 1390 ms,
+`PanedWindow` 6/6 in 860 ms, `PhotoImage` 3/3 in 297 ms, and `Layout` 5/5 in
+765 ms, plus the full `stdlib/tests/tkinter.test.ahk` file gate passing
+277/277 in 57156 ms at `-TimeoutSeconds 90`. This slice does not promote the
+verified aggregate baseline beyond 1140/1140 because no fresh aggregate
+`stdlib/tests` gate was run for it.
+
+The preceding classic tkinter work-in-progress slice tightens embedded `Text`
+image/window configuration keyword-`None` no-op behavior for
+`Text.image_configure(...)` and `Text.window_configure(...)`. A fresh Python
+3.10.11 probe confirmed that covered `padx=None`, `align=None`,
+`stretch=None`, multiple `keyword=None` values, and unknown option names such
+as `missing=None` all return `None` and leave the existing embedded image or
+window option values unchanged. The AHK `Text` embedded configure mutation
+paths now use the same local skip-`None` option formatter as the covered
+classic widget configuration paths. Fresh evidence includes
+`.codex/tkinter_classic_text_embed_config_kwargs_none_probe.py` plus JSON
+output, a focused red report where
+`TestClassicTextEmbedConfigureKeywordNoneNoopMatchesLocal310` failed because
+`Text.image_configure(..., { missing: stdlib.None })` reached Tcl as
+`unknown option "-missing"`, focused green passing 1/1 in 218 ms, and adjacent
+serial gates passing for `Text` 9/9 in 1016 ms and `Classic` 19/19 in
+2079 ms at `-TimeoutSeconds 90`. This slice does not promote the verified
+aggregate baseline beyond 1140/1140 because no fresh aggregate gate was run
+for it.
+
+The preceding classic tkinter work-in-progress slice tightens classic widget
+configuration keyword-`None` no-op behavior for `Menu.entryconfigure(...)`,
+`Canvas.itemconfigure(...)`, `Listbox.itemconfigure(...)`, and
+`Text.tag_configure(...)`. A fresh Python 3.10.11 probe confirmed that covered
+single and multiple `keyword=None` calls, including unknown option names such
+as `missing=None`, return `None` and leave existing option values unchanged
+rather than querying or forwarding a bare `-option` token to Tcl. The AHK
+classic configure paths now use a local skip-`None` option formatter for these
+covered mutation-style calls, while existing ttk explicit-`None` query paths
+continue to use their dedicated query handling. Fresh evidence includes
+`.codex/tkinter_classic_config_kwargs_none_probe.py` plus JSON output, a
+focused red report where
+`TestClassicWidgetConfigureKeywordNoneNoopMatchesLocal310` failed because
+`Text.tag_configure(..., { missing: stdlib.None })` reached Tcl as
+`unknown option "-missing"`, focused green passing 1/1 in 219 ms, and adjacent
+serial gates passing for `Menu` 8/8 in 1562 ms, `Canvas` 15/15 in 2031 ms,
+`Text` 8/8 in 1156 ms, `Listbox` 2/2 in 578 ms, and `Classic` 18/18 in
+2203 ms at `-TimeoutSeconds 90`. This slice does not promote the verified
+aggregate baseline beyond 1140/1140 because no fresh aggregate gate was run
+for it.
+
+The preceding tkinter.ttk work-in-progress slice tightens
+`ttk.Style.theme_settings(..., {"element create": ...})` value-shape and
+script-formatting behavior for style element factories. A fresh Python 3.10.11
+probe confirmed CPython's `_script_from_settings(...)` /
+`_format_elemcreate(..., script=True)` behavior for covered `element create`
+settings: `None` and empty lists are skipped as falsey settings, string values
+are indexed and iterated character-by-character before Tcl reports
+`TclError("No such element type f")`, scalar integer settings raise
+`TypeError("'int' object is not subscriptable")`, `vsapi` settings missing
+class/part arguments raise the same wrapper `ValueError` messages as direct
+`Style.element_create(...)`, `image` settings missing the image name raise
+`IndexError("tuple index out of range")`, bad image map entries raise the
+covered Python unpacking errors, and script-mode image/vsapi specs are emitted
+as one braced Tcl word rather than nesting a direct-call `[list ...]` command.
+The AHK `theme_settings` element-create path now mirrors the covered Python
+sequence/subscript and script-formatting behavior while leaving the public
+direct `Style.element_create(...)` path unchanged. Fresh evidence includes
+`.codex/tkinter_ttk_theme_settings_element_create_probe.py` plus JSON output, a
+focused red report where
+`TestTtkStyleThemeSettingsElementCreateValueShapesMatchLocal310` failed
+because `"element create": "from"` raised AHK `TypeError` instead of the
+Python-observed TclError path, focused green passing 1/1 in 172 ms, adjacent
+`TtkStyle` passing 23/23 in 2266 ms, and broader `Ttk` filtering passing
+195/195 in 32204 ms at `-TimeoutSeconds 90`. This slice does not promote the
+verified aggregate baseline beyond 1140/1140 because no fresh aggregate gate
+was run for it.
+
+The preceding tkinter.ttk work-in-progress slice tightens
+`ttk.Style.element_create(..., "vsapi", ...)` missing required factory-argument
+unpacking. A fresh Python 3.10.11 probe confirmed that CPython's
+`_format_elemcreate("vsapi", ...)` raises
+`ValueError("not enough values to unpack (expected 2, got 0)")` when no
+`class_name` / `part_id` arguments are supplied, and
+`ValueError("not enough values to unpack (expected 2, got 1)")` when only the
+class name is supplied. The AHK `vsapi` element-create formatter now raises the
+same wrapper-level `ValueError` messages before Tcl evaluation instead of the
+previous generic `IndexError("tuple index out of range")`. Fresh evidence
+includes `.codex/tkinter_ttk_element_create_vsapi_probe.py` plus JSON output,
+a focused red report where
+`TestTtkStyleElementCreateVsapiMissingArgsMatchLocal310` failed because the
+zero-argument `vsapi` path raised `"tuple index out of range"`, focused green
+passing 1/1 in 234 ms, adjacent `TtkStyle` passing 22/22 in 4188 ms,
+`Winfo` focused stability passing 6/6 in 1406 ms after replacing a
+window-manager-sensitive border coordinate with a content-widget coordinate,
+README en/zh capture passing 1/1 in 1718 ms with pollution assertions, example
+validation passing, and the broader `Ttk` filter passing 194/194 in 74390 ms.
+The full `tkinter.test.ahk` and aggregate `stdlib/tests` gates were attempted
+with `-TimeoutSeconds 90` during this slice but timed out, so this slice does
+not promote the verified aggregate baseline beyond 1140/1140 yet.
+
+The preceding tkinter.ttk implementation slice tightens
+`ttk.Style.element_create(..., "image", ...)` map-entry unpacking and value
+formatting behavior. A fresh Python 3.10.11 probe confirmed CPython's covered
+`_format_elemcreate(...)` behavior for image state/value entry shapes: scalar
+entries such as `1` raise Python wrapper
+`TypeError("cannot unpack non-iterable int object")`, strings remain iterable
+and therefore reach the observed wrapper/Tcl path, single-state entries stay
+legal, and covered list/tuple final image values are formatted into one Tcl
+list word. The AHK element-create image formatter now performs the covered
+Python unpacking checks before Tcl evaluation while preserving CPython's
+string-iteration behavior. This slice did not require new visible
+README/example code, but the existing tkinter example and extracted README
+snippets were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_element_create_map_shapes_probe.py` plus JSON output, a
+focused red report where
+`TestTtkStyleElementCreateImageMapEntryShapesMatchLocal310` failed because
+`style.element_create(..., "image", ..., 1)` raised TclError instead of
+Python's wrapper `TypeError`, focused green passing 1/1 in 141 ms, adjacent
+`TtkStyle` passing 21/21 in 1422 ms, full tkinter filter passing 272/272 in
+40625 ms, example validation passing, README en/zh capture passing 1/1 in
+1313 ms with pollution assertions, and aggregate `stdlib/tests` passing
+1140/1140 in 49797 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line.
+
+The preceding tkinter.ttk implementation slice tightens `ttk.Scale.configure(...)`
+`<<RangeChanged>>` virtual-event behavior. A fresh Python 3.10.11 probe
+confirmed that successful `Scale.configure(...)` calls touching `from`,
+`from_`, or `to` generate exactly one `<<RangeChanged>>` event after the
+configuration succeeds, including a combined `from_`/`to` update in one call.
+The same probe confirmed that configuring only `value`, querying one option,
+querying the full option dictionary with `None`, and failed range
+configuration do not add a `<<RangeChanged>>` event. The AHK
+`AhkStdlibTkinterScale.configure(...)` override now delegates to the shared
+widget configure path, then generates the virtual event only after a
+successful covered range-option update. This slice did not require new visible
+README/example code, but the existing tkinter example and extracted README
+snippets were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_scale_range_changed_probe.py` plus JSON output, a focused
+red report where `TestTtkScaleConfigureRangeChangedEventMatchesLocal310`
+failed because `scale.configure({ from_: 1.0 })` left the event list empty,
+focused green passing 1/1 in 172 ms, adjacent `TtkScale` passing 5/5 in
+516 ms, full tkinter filter passing 271/271 in 41453 ms, example validation
+passing, README en/zh capture passing 1/1 in 1079 ms with pollution
+assertions, and aggregate `stdlib/tests` passing 1139/1139 in 49859 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter.ttk implementation slice tightens `ttk.Style.map(...)`
+map-entry unpacking and value formatting behavior. A fresh Python 3.10.11
+probe confirmed CPython's `_mapdict_values(...)` behavior for covered entry
+shapes: empty list/tuple entries raise
+`ValueError("not enough values to unpack (expected at least 1, got 0)")`,
+scalar entry values such as `1` or `None` raise Python's
+`cannot unpack non-iterable ... object` `TypeError`, non-string members in
+multi-state specs raise Python's `sequence item ... expected str instance`
+`TypeError`, single-state-only entries remain legal, `None` final values omit
+the value word and continue to delegate Tcl's local odd-element error, and
+list/tuple final values are joined into one Tcl list word. The AHK style-map
+formatter now performs the covered Python unpacking checks before Tcl
+evaluation and formats covered list/tuple final values through the same
+joined-value path used by CPython's option formatting. This slice did not
+require new visible README/example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+evidence includes `.codex/tkinter_ttk_style_map_entry_shapes_probe.py` plus
+JSON output, a focused red report where
+`TestTtkStyleMapEntryShapesMatchLocal310` failed because an empty entry raised
+TclError instead of Python's `ValueError`, focused green passing 1/1 in
+141 ms, adjacent `TtkStyle` passing 20/20 in 1469 ms, full tkinter filter
+passing 270/270 in 41000 ms, example validation passing, README en/zh capture
+passing 1/1 in 1078 ms with pollution assertions, and aggregate
+`stdlib/tests` passing 1138/1138 in 50203 ms at `-TimeoutSeconds 90` with the
+existing `plain fallback` stderr line.
+
+The preceding tkinter.ttk implementation slice tightens `ttk.Style.map(...)`
+map-dictionary value iteration behavior. A fresh Python 3.10.11 probe
+confirmed CPython's `_mapdict_values(...)` behavior: `foreground=None`,
+`foreground=1`, and boolean map values raise
+`TypeError("'NoneType' object is not iterable")`,
+`TypeError("'int' object is not iterable")`, and
+`TypeError("'bool' object is not iterable")`; empty string and empty list map
+values remain legal no-op map updates; and scalar string values are iterated
+character by character into normal-state entries. The AHK implementation now
+validates covered map values before Tcl mutation and expands string map values
+through the same character iteration path while preserving legal empty
+sequence behavior. This slice did not require new visible README/example code,
+but the existing tkinter example and extracted README snippets were
+revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_style_map_values_probe.py` plus JSON output, a focused red
+report where `TestTtkStyleMapValueIterationMatchesLocal310` failed because
+`style.map(styleName, { foreground: 1 })` threw nothing instead of Python's
+`TypeError`, focused green passing 1/1 in 156 ms, adjacent `TtkStyle` passing
+19/19 in 1359 ms, full tkinter filter passing 269/269 in 40343 ms, example
+validation passing, README en/zh capture passing 1/1 in 1016 ms with
+pollution assertions, and aggregate `stdlib/tests` passing 1137/1137 in
+50281 ms at `-TimeoutSeconds 90` with the existing `plain fallback` stderr
 line.
 
-The latest tkinter.ttk promotion extends the covered themed-widget submodule
+The preceding tkinter.ttk implementation slice tightens `ttk.Style.configure(...)`
+and `ttk.Style.map(...)` keyword-`None` behavior. A fresh Python 3.10.11 probe
+confirmed that `Style.configure(style, background=None)` and
+`padding=None` query the current option value through CPython's
+`_val_or_dict(...)`, that missing or empty queried configure values return
+`None`, and that `Style.map(style, foreground=None)` raises
+`TypeError("'NoneType' object is not iterable")` before Tcl mutation rather
+than acting as an option query. The AHK implementation now routes the covered
+single-keyword `None` configure path through the existing style-value
+conversion, normalizes empty keyword-query results to `stdlib.None`, and
+prevalidates covered `Style.map(...)` keyword settings so `stdlib.None`
+matches Python's iterable error. This slice did not require new visible
+README/example code, but the existing tkinter example and extracted README
+snippets were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_style_kwargs_none_probe.py` plus JSON output, a focused
+red report where `TestTtkStyleConfigureAndMapKwargsNoneMatchLocal310` failed
+because `style.configure(styleName, { background: stdlib.None })` returned an
+object instead of Python's `"red"`, focused green passing 1/1 in 141 ms,
+adjacent `TtkStyle` passing 18/18 in 1391 ms, full tkinter filter passing
+268/268 in 40438 ms, example validation passing, README en/zh capture passing
+1/1 in 1109 ms with pollution assertions, and aggregate `stdlib/tests`
+passing 1136/1136 in 49750 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line.
+
+The preceding tkinter.ttk implementation slice tightens the shared themed-widget
+subcommand explicit-`None` keyword query behavior for `ttk.Panedwindow.pane`,
+`ttk.Treeview.column`, `heading`, `item`, and `tag_configure`. A fresh Python
+3.10.11 probe confirmed that a single keyword value of `None` in these
+subcommands queries the corresponding option rather than configuring it:
+covered values include Panedwindow `weight`, Treeview column `width`/`anchor`,
+heading `text`/`anchor`, item `text`/`open`/`tags`/`values`, and tag
+`foreground`/`font`. The AHK implementation now uses a shared
+`AhkStdlibTkinterSingleNoneKeywordQueryOption(...)` helper so these
+subcommands, plus the previously covered Notebook tab path, return the same
+converted values as their positional option-query forms while ordinary
+multi-option configuration still returns `Map()`. This slice did not require
+new visible README/example code, but the existing tkinter example and extracted
+README snippets were revalidated through the capture harness. Fresh evidence
+includes `.codex/tkinter_ttk_subcommand_kwargs_none_probe.py` plus JSON
+output, a focused red report where
+`TestTtkSubcommandKwargsNoneQueryMethodsMatchLocal310` failed because
+`pane(paneOne, { weight: stdlib.None })` returned `Map()` instead of the
+Python-observed `2`, focused green passing 1/1 in 172 ms, adjacent
+`TtkSubcommand` passing 2/2 in 297 ms, adjacent `TtkPanedwindow` passing 4/4
+in 500 ms, adjacent `TtkTreeview` passing 22/22 in 2047 ms, adjacent
+`TtkNotebook` passing 5/5 in 781 ms, adjacent `TtkStyle` passing 17/17 in
+1516 ms, full tkinter filter passing 267/267 in 41610 ms, example validation
+passing, README en/zh capture passing 1/1 in 1125 ms with pollution
+assertions, and aggregate `stdlib/tests` passing 1135/1135 in 50359 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter.ttk implementation slice tightens the shared themed-widget
+`ttk.Notebook.tab(tab_id, **kw)` explicit-`None` keyword query behavior. A
+fresh Python 3.10.11 probe confirmed that a single keyword value of `None`,
+such as `state=None`, `text=None`, `padding=None`, `compound=None`,
+`underline=None`, or `image=None`, queries that tab option rather than
+configuring it, and that multiple `None` keywords retain Tcl's local missing
+value / bad-state errors without changing the tab's existing values. The AHK
+`AhkStdlibTkinterNotebook.tab(...)` implementation now recognizes the covered
+single-keyword `None` query case after Tcl evaluation and returns the same
+Notebook tab-option conversion used by the positional option query path, while
+leaving multi-option Tcl error behavior delegated to Tk. This slice did not
+require new visible README/example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+evidence includes
+`.codex/tkinter_ttk_notebook_tab_kwargs_none_probe.py` plus JSON output, a
+focused red report where
+`TestTtkNotebookTabKwargsNoneQueryMatchesLocal310` failed because
+`tab(first, { state: stdlib.None })` returned `Map()` instead of the
+Python-observed `"normal"`, focused green passing 1/1 in 156 ms, adjacent
+`TtkNotebook` passing 5/5 in 703 ms, adjacent `TtkStyle` passing 17/17 in
+1234 ms, adjacent `TtkTreeview` passing 22/22 in 2422 ms, adjacent
+`TtkPanedwindow` passing 4/4 in 578 ms, full tkinter filter passing 266/266
+in 41609 ms, example validation passing, README en/zh capture passing 1/1 in
+1079 ms with pollution assertions, and aggregate `stdlib/tests` passing
+1134/1134 in 51875 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line.
+
+The preceding tkinter.ttk implementation slice tightens the shared themed-widget
+`ttk.Notebook.add(...)` and `insert(...)` child, position, and tab-option
+sequence behavior. A fresh Python 3.10.11 probe confirmed that tab option
+values of `None` omit the Tcl value word and therefore reach local wrong-args
+errors, general list/tuple option values are joined into one Tcl word, empty
+tuple `padding` queries return `""`, list/tuple child identifiers fold into a
+single child path word, and list/tuple insert positions fold into a single
+index word before Tcl validates them. The AHK implementation now lets
+`AhkStdlibTkinterOptionsToScript(...)` omit `None` option values and join
+general list/tuple option values, while `Notebook.add(...)` / `insert(...)`
+stop covered argument emission at `None` and route child/position operands
+through Notebook-specific Tcl-word helpers. This slice did not require new
+visible README/example code, but the existing tkinter example and extracted
+README snippets were revalidated through the capture harness. Fresh evidence
+includes
+`.codex/tkinter_ttk_notebook_add_insert_options_sequence_probe.py` plus JSON
+output, a focused red report where
+`TestTtkNotebookAddInsertOptionsNoneAndSequenceWordsMatchLocal310` failed
+because `add(..., sticky=["n", "s"])` raised an AHK `TypeError` instead of the
+Python-observed Tcl `Bad -sticky specification n s` error, focused green
+passing 1/1 in 203 ms, adjacent `TtkNotebook` passing 4/4 in 672 ms, adjacent
+`TtkPanedwindow` passing 4/4 in 687 ms, adjacent `TtkTreeview` passing 22/22
+in 2000 ms, full tkinter filter passing 265/265 in 40579 ms, example
+validation passing, README en/zh capture passing 1/1 in 1266 ms with pollution
+assertions, and aggregate `stdlib/tests` passing 1133/1133 in 49219 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter.ttk implementation slice tightens the shared themed-widget
+`ttk.Treeview.set(...)`, `selection_add(...)`, `selection_remove(...)`,
+`selection_set(...)`, `selection_toggle(...)`, and `tag_bind(...)`
+None/list/tuple/bool sequence behavior. A fresh Python 3.10.11 probe confirmed
+that `Treeview.set(item, column, None)` queries the current column value rather
+than writing `"None"`, list/tuple values are stored as Tcl joined words,
+selection nested sequence operands become single item words before Tcl item
+validation, and `tag_bind(...)` list/tuple tag and sequence operands use the
+same single Tcl-word behavior observed through raw Tcl binding queries. The AHK
+implementation now routes covered `Treeview.set` values, selection item lists,
+and tag-bind sequence operands through Treeview-specific Tcl-word helpers while
+leaving the existing public API shape unchanged. This slice did not require new
+visible README/example code, but the existing tkinter example and extracted
+README snippets were revalidated through the capture harness. Fresh evidence
+includes
+`.codex/tkinter_ttk_treeview_set_selection_bind_sequence_probe.py` plus JSON
+output, a focused red report where
+`TestTtkTreeviewSetValueAndTagBindSequenceMethodsMatchLocal310` failed because
+`Treeview.set(first, "name", None)` returned `""` instead of Python's current
+`"alpha"` value, focused green passing 1/1 in 219 ms, adjacent `TtkTreeview`
+passing 22/22 in 2094 ms, full tkinter filter passing 264/264 in 40922 ms,
+example validation passing, README en/zh capture passing 1/1 in 1203 ms with
+pollution assertions, and aggregate `stdlib/tests` passing 1132/1132 in
+49766 ms at `-TimeoutSeconds 90` with the existing `plain fallback` stderr
+line.
+
+The preceding tkinter.ttk implementation slice tightens the shared themed-widget
+subcommand option-query behavior for `ttk.Notebook.tab(...)`,
+`ttk.Panedwindow.pane(...)`, inherited unsupported
+`ttk.Panedwindow.panecget(...)` / `paneconfigure(...)`, and
+`ttk.Treeview.column(...)`, `heading(...)`, `item(...)`, and
+`tag_configure(...)`. A fresh Python 3.10.11 probe confirmed that these
+subcommand wrappers preserve Python's raw `"-" + option` query construction:
+leading-dash option names produce double-dash Tcl errors, trailing-underscore
+names are not normalized away, bool options stringify as `True` / `False`,
+list options raise `unhashable type: 'list'`, empty tuple options raise
+`not enough arguments for format string`, and single-item tuple options follow
+Python's wrapper formatting behavior. The AHK implementation now uses a
+dedicated ttk subcommand query helper so return-value conversion receives a
+clean option name while the Tcl call still receives the raw Python-style dash
+word; the ttk Panedwindow inherited unsupported commands retain Python's
+wrapper-level non-string option errors before reaching Tcl. This slice did not
+require new visible README/example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+evidence includes
+`.codex/tkinter_ttk_subcommand_option_sequence_probe.py` plus JSON output, a
+focused red report where
+`TestTtkSubcommandOptionSequenceMethodsMatchLocal310` errored on the old
+`Notebook.tab(...)` normalized option path with an AHK tuple conversion error
+instead of Python's observed tuple option behavior, focused green passing 1/1
+in 156 ms, adjacent `TtkNotebook` passing 3/3 in 531 ms, adjacent
+`TtkPanedwindow` passing 4/4 in 484 ms, adjacent `TtkTreeview` passing 21/21
+in 2047 ms, full tkinter filter passing 263/263 in 40375 ms, example
+validation passing, README en/zh capture passing 1/1 in 1125 ms with pollution
+assertions, and aggregate `stdlib/tests` passing 1131/1131 in 49016 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter.ttk implementation slice tightens the shared themed-widget
+configuration query behavior for specialized ttk widget wrappers that override
+`cget(...)` or single-option `configure(...)`: `ttk.Combobox`,
+`ttk.Spinbox`, `ttk.Menubutton`, `ttk.Progressbar`, `ttk.Notebook`, and
+`ttk.Treeview`. A fresh Python 3.10.11 probe confirmed that these specialized
+paths still preserve Python's `"-" + cnf` query construction for leading-dash
+and trailing-underscore option names, raise Python's non-string `cget(...)`
+`TypeError` messages, return dicts for `configure()` and `configure(None)`,
+treat empty list/tuple `cnf` values as no-op updates, and raise the Python
+`dict(...)` `ValueError` for non-empty list/tuple `cnf` updates. The AHK
+specialized wrappers now use the shared dash-query helper for Tcl calls while
+retaining normalized option names only for AHK-side return-value conversion.
+This slice did not require new visible README/example code, but the existing
+tkinter example and extracted README snippets were revalidated through the
+capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_specialized_configure_sequence_probe.py` plus JSON output,
+a focused red report where
+`TestTtkSpecializedConfigureCgetSequenceMethodsMatchLocal310` failed because a
+specialized `configure("-values")` path normalized the option and did not raise
+the Python-observed TclError, focused green passing 1/1 in 172 ms, adjacent
+`TtkSpinbox` passing 2/2 in 859 ms, adjacent `TtkMenubutton` passing 2/2 in
+297 ms, adjacent `TtkProgressbar` passing 3/3 in 1390 ms, adjacent
+`TtkNotebook` passing 3/3 in 750 ms, adjacent `TtkCombobox` passing 3/3 in
+406 ms, adjacent `TtkTreeview` passing 21/21 in 2125 ms, full tkinter filter
+passing 262/262 in 40797 ms, example validation passing, README en/zh capture
+passing 1/1 in 1141 ms with pollution assertions, and aggregate `stdlib/tests`
+passing 1130/1130 in 49953 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line.
+
+The preceding tkinter.ttk implementation slice tightens the shared
+themed-widget
+`Widget.cget(...)`, `Widget.configure(...)`, `Widget.config(...)`, and
+`Widget.keys(...)` configuration query surface. A fresh Python 3.10.11 probe
+confirmed that `configure()`, `config()`, and `configure(None)` return the same
+option dictionary, that empty list/tuple `cnf` values are no-op update paths,
+that non-empty list/tuple `cnf` values raise the Python `dict(...)`
+`ValueError`, and that queried options preserve Python's `"-" + cnf` behavior
+for `cget("-text")` / `configure("-text")` and non-string `cget(...)`
+`TypeError` messages. The AHK shared widget implementation now returns a
+configure `Map` built from Tcl's option list, keeps keyword-object writes on the
+existing normalized option path, and routes string query options through the
+Python-style dash concatenation path so covered leading-dash and trailing
+underscore query errors match CPython/Tk. This slice did not require new
+visible README/example code, but the existing tkinter example and extracted
+README snippets were revalidated through the capture harness. Fresh evidence
+includes `.codex/tkinter_ttk_widget_configure_sequence_probe.py` plus JSON
+output, a focused red report where
+`TestTtkWidgetConfigureCgetSequenceMethodsMatchLocal310` failed because
+`configure(None)` was sent to Tcl as an invalid `-__AhkStdlibNone` option,
+focused green passing 1/1 in 157 ms, adjacent `TtkWidget` passing 11/11 in
+1343 ms, adjacent `TtkButton` passing 3/3 in 516 ms, adjacent `TtkStyle`
+passing 17/17 in 1625 ms, full tkinter filter passing 261/261 in 42360 ms,
+example validation passing, README en/zh capture passing 1/1 in 1062 ms with
+pollution assertions, and aggregate `stdlib/tests` passing 1129/1129 in
+49625 ms at `-TimeoutSeconds 90` with the existing `plain fallback` stderr
+line.
+
+The preceding tkinter.ttk implementation slice tightens the shared
+themed-widget
+`Widget.state(...)` and `Widget.instate(...)` state-spec sequence handling. A
+fresh Python 3.10.11 probe confirmed that `state(None)` is the same query path
+as `state()`, empty list/tuple state specs are valid no-op / true-match paths,
+multiple string states are joined into one Tcl state spec, and non-string
+sequence elements fail in the Python wrapper with `sequence item 0: expected
+str instance, ... found` instead of leaking AHK object conversion errors or Tcl
+messages. The AHK implementation now validates state-spec sequence elements in
+`AhkStdlibTkinterJoinStateSpec(...)`, preserving the existing string iterable
+behavior where `"disabled"` is split character-by-character before Tcl rejects
+state `d`. This slice did not require new visible README/example code, but the
+existing tkinter example and extracted README snippets were revalidated through
+the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_widget_state_sequence_probe.py` plus JSON output, a focused
+red report where `TestTtkWidgetStateSpecSequenceTypeErrorsMatchLocal310` failed
+because `state([None])` raised the host `"Expected a String but got an Object."`
+message instead of Python's sequence-item `TypeError`, focused green passing
+1/1 in 187 ms, adjacent `TtkWidget` passing 10/10 in 1031 ms, adjacent
+`TtkButton` passing 3/3 in 484 ms, adjacent `TtkStyle` passing 17/17 in 1297 ms,
+full tkinter filter passing 260/260 in 41016 ms, example validation passing,
+README en/zh capture passing 1/1 in 1203 ms with pollution assertions, and
+aggregate `stdlib/tests` passing 1128/1128 in 48813 ms at `-TimeoutSeconds 90`
+with the existing `plain fallback` stderr line.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule with inherited classic command sequence behavior for
+`ttk.Scrollbar.activate(...)` and `ttk.Panedwindow.proxy(...)`,
+`proxy_place(...)`, `sash(...)`, `sash_coord(...)`, `sash_mark(...)`,
+`sash_place(...)`, and `sashpos(...)`. A fresh Python 3.10.11 probe confirmed
+that `ttk::scrollbar` rejects inherited `activate` calls with the local ttk
+bad-command message, that `ttk::panedwindow` rejects inherited `proxy` calls
+with the local ttk bad-command message, and that inherited `sash` wrappers on
+`ttk::panedwindow` route through Tcl's `sashpos` command with CPython's
+`None` truncation and list/tuple single-word behavior. The AHK ttk wrappers now
+use `AhkStdlibTkinterTtkInheritedCommandWord(...)` for covered list/tuple words,
+and the covered ttk `sash` / `sashpos` paths stop argument emission at
+`None`, matching `_tkinter.tk.call` for the probed cases. This slice did not
+require new visible README/example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+evidence includes `.codex/tkinter_ttk_inherited_command_sequence_probe.py` plus
+JSON output, a focused red report where
+`TestTtkInheritedClassicCommandSequenceMethodsMatchLocal310` failed because the
+covered ttk inherited command path raised AHK `TypeError` instead of the
+Python-observed TclError path, focused green passing 1/1 in 156 ms, adjacent
+`TtkScrollbar` passing 3/3 in 391 ms, adjacent `TtkPanedwindow` passing 4/4 in
+563 ms, full tkinter filter passing 259/259 in 40937 ms, example validation
+passing, README en/zh capture passing 1/1 in 1109 ms with pollution
+assertions, and aggregate `stdlib/tests` passing 1127/1127 in 49734 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic
+Canvas text-edit and selection command family with batched `None`/list/tuple
+Tcl-word handling for `Canvas.dchars(...)`, `Canvas.focus(...)`,
+`Canvas.icursor(...)`, `Canvas.index(...)`, `Canvas.insert(...)`,
+`Canvas.select_adjust(...)`, `Canvas.select_from(...)`, and
+`Canvas.select_to(...)`. A fresh Python 3.10.11 probe confirmed that covered
+required `None` operands truncate the remaining Tcl argument vector into local
+wrong-args paths, while list/tuple operands are folded into a single Tcl word
+for covered item id, index, and inserted-text paths. The probe also confirmed
+that `Canvas.focus(None)` preserves the no-argument/current-focus query shape
+rather than clearing focus. The AHK Canvas wrapper now routes these covered
+edit and selection operands through `AhkStdlibTkinterCanvasScript(...)` and
+`AhkStdlibTkinterCanvasValueWord(...)`, while preserving existing return
+normalization for focus, index, and selection queries. This slice did not
+require new visible README/example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+evidence includes `.codex/tkinter_classic_canvas_edit_sequence_probe.py` plus
+JSON output, a focused red report failing because `Canvas.dchars(None, 1)` did
+not raise the Python-observed Tcl wrong-args error, focused green
+`TestClassicCanvasTextEditSelectionSequenceMethodsMatchLocal310` passing 1/1
+in 156 ms, adjacent `Canvas` filter passing 15/15 in 1219 ms, full tkinter
+filter passing 258/258 in 41406 ms, example validation passing, README en/zh
+capture passing 1/1 in 1219 ms with pollution assertions, and aggregate
+`stdlib/tests` passing 1126/1126 in 49375 ms at `-TimeoutSeconds 90` with the
+existing `plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic
+PhotoImage command family with batched `None`/list/tuple Tcl-word handling for
+`PhotoImage.get(x, y)`, `PhotoImage.zoom(x, y=None)`,
+`PhotoImage.subsample(x, y=None)`, `PhotoImage.transparency_get(x, y)`, and
+`PhotoImage.transparency_set(x, y, boolean)`. A fresh Python 3.10.11 probe
+confirmed that covered required `None` coordinate and boolean operands
+truncate the remaining Tcl argument vector into local wrong-args paths, while
+list/tuple operands are folded into a single Tcl word for covered integer and
+boolean validation paths. The probe also confirmed Python's optional
+`zoom`/`subsample` second-coordinate behavior, where `y=None` reuses the
+single-coordinate path. The AHK `PhotoImage` wrapper now routes the covered
+pixel, transform, and transparency operands through PhotoImage-specific
+Tcl-word helpers while preserving returned `PhotoImage` objects and pixel
+state. This slice did not require new visible README/example code, but the
+existing tkinter example and extracted README snippets were revalidated
+through the capture harness. Fresh evidence includes
+`.codex/tkinter_photoimage_sequence_probe.py` plus JSON output, a focused red
+report erroring because a list coordinate reached AHK string conversion as an
+Array, focused green `TestPhotoImageSequenceMethodsMatchLocal310` passing 1/1
+in 156 ms, adjacent `PhotoImage` filter passing 3/3 in 344 ms, adjacent
+`Image` filter passing 8/8 in 703 ms, example validation passing, README en/zh
+capture passing 1/1 in 1063 ms with pollution assertions, and aggregate
+`stdlib/tests` passing 1125/1125 in 49297 ms at `-TimeoutSeconds 90` with the
+existing `plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic
+Scrollbar command family with batched `None`/list/tuple Tcl-word handling for
+`Scrollbar.activate(index=None)`, `Scrollbar.delta(deltax, deltay)`,
+`Scrollbar.fraction(x, y)`, `Scrollbar.identify(x, y)`, and
+`Scrollbar.set(first, last)`. A fresh Python 3.10.11 probe confirmed that
+`activate(None)` performs the same query/no-active path as `activate()`,
+covered required `None` operands in delta/fraction/identify/set truncate the
+remaining Tcl argument vector into local wrong-args paths, and list/tuple
+operands are folded into a single Tcl word for covered element, integer, and
+floating-point validation paths. The AHK classic Scrollbar wrapper now routes
+covered operands through a Scrollbar-specific Tcl-word helper while preserving
+the no-argument `activate()` query path. This slice did not require new visible
+README/example code, but the existing tkinter example and extracted README
+snippets were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_classic_scrollbar_sequence_probe.py` plus JSON output, a
+focused red report erroring because `Scrollbar.activate([])` reached AHK string
+conversion instead of the Python-observed empty Tcl-word/no-active path,
+focused green `TestClassicScrollbarSequenceMethodsMatchLocal310` passing 1/1
+in 157 ms, adjacent `Scrollbar` filter passing 5/5 in 516 ms, example
+validation passing, README en/zh capture passing 1/1 in 1141 ms with pollution
+assertions, and aggregate `stdlib/tests` passing 1124/1124 in 49547 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic
+Scale command family with batched `None`/list/tuple Tcl-word handling for
+`Scale.coords(value=None)`, `Scale.set(value)`, and `Scale.identify(x, y)`.
+A fresh Python 3.10.11 probe confirmed that `coords(None)` performs the same
+query as `coords()`, required `None` operands in `set(...)` and
+`identify(...)` truncate the remaining Tcl argument vector into local
+wrong-args paths, and list/tuple operands are folded into a single Tcl word,
+including empty-string, one-value, and multi-value numeric Tcl validation
+paths. The AHK classic Scale wrapper now routes covered operands through a
+Scale-specific Tcl-word helper while preserving the no-argument `coords()`
+query path. This slice did not require new visible README/example code, but
+the existing tkinter example and extracted README snippets were revalidated
+through the capture harness. Fresh evidence includes
+`.codex/tkinter_classic_scale_sequence_probe.py` plus JSON output, a focused
+red report failing because `Scale.coords(stdlib.None)` reported
+`expected floating-point number but got "None"` instead of the Python-observed
+query result, focused green `TestClassicScaleSequenceMethodsMatchLocal310`
+passing 1/1 in 157 ms, adjacent `Scale` filter passing 9/9 in 859 ms, example
+validation passing, README en/zh capture passing 1/1 in 1094 ms with pollution
+assertions, and aggregate `stdlib/tests` passing 1123/1123 in 48547 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic
+PanedWindow command family with batched `None`/list/tuple Tcl-word handling for
+`PanedWindow.add(...)`, `PanedWindow.remove(...)` / `forget(...)`,
+`PanedWindow.panecget(...)`, `PanedWindow.paneconfigure(...)` /
+`paneconfig(...)`, `PanedWindow.identify(...)`, `PanedWindow.proxy_place(...)`,
+`PanedWindow.sash_coord(...)`, `PanedWindow.sash_mark(...)`, and
+`PanedWindow.sash_place(...)`. A fresh Python 3.10.11 probe confirmed that
+covered required `None` child, index, x, and y operands truncate the remaining
+Tcl argument vector into local wrong-args paths; list/tuple operands are folded
+into a single Tcl word; and list/tuple child operands containing widget objects
+are folded through their widget path names. The probe also confirmed that
+`panecget(child, None)` raises CPython's wrapper-level string-concatenation
+`TypeError`, while `paneconfigure(child, None)` performs the same query as
+`paneconfigure(child)`. The AHK classic PanedWindow wrapper now routes covered
+operands through a PanedWindow-specific Tcl-word helper shared by the covered
+child/path, coordinate, proxy, and sash command paths. This slice did not
+require new visible README/example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+evidence includes `.codex/tkinter_classic_panedwindow_sequence_probe.py` plus
+JSON output, a focused red report failing because
+`PanedWindow.add(stdlib.None)` reported `bad window path name "None"` instead
+of the Python-observed wrong-args TclError, focused green
+`TestClassicPanedWindowSequenceMethodsMatchLocal310` passing 1/1 in 172 ms,
+adjacent `PanedWindow` filter passing 6/6 in 687 ms, example validation
+passing, README en/zh capture passing 1/1 in 1062 ms with pollution
+assertions, and aggregate `stdlib/tests` passing 1122/1122 in 48485 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic Text
+Menu command family with batched `None`/list/tuple Tcl-word handling for
+`Menu.add(...)`, `Menu.insert(...)`, `Menu.insert_command(...)`,
+`Menu.index(...)`, `Menu.type(...)`, `Menu.activate(...)`,
+`Menu.invoke(...)`, `Menu.delete(...)`, `Menu.entrycget(...)`,
+`Menu.entryconfigure(...)`, `Menu.entryconfig(...)`, `Menu.xposition(...)`,
+`Menu.yposition(...)`, and the covered non-posting `Menu.post(...)` error
+paths. A fresh Python 3.10.11 probe confirmed that covered required `None`
+operands truncate the remaining Tcl argument vector into local wrong-args
+paths, list/tuple menu indexes and entry types are folded into a single Tcl
+word, `entryconfigure(index, None)` performs the same query as CPython, and
+`entrycget(index, None)` raises the Python wrapper string-concatenation
+`TypeError`. The probe intentionally avoids a successful `post(...)` call
+because that can enter platform popup UI state under a hidden root; only the
+non-posting `None` error paths are claimed. The AHK classic Menu wrapper now
+routes covered operands through a Menu-specific Tcl-word helper and preserves
+CPython's `delete(...)` wrapper order by validating indexes before dispatching
+the Tcl delete command. This slice did not require new visible README/example
+code, but the existing tkinter example and extracted README snippets were
+revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_classic_menu_sequence_probe.py` plus JSON output, a focused red
+report failing because `Menu.index(stdlib.None)` reported
+`bad menu entry index "None"` instead of the Python-observed wrong-args
+TclError, focused green `TestClassicMenuSequenceMethodsMatchLocal310` passing
+1/1 in 188 ms, adjacent `Menu` filter passing 8/8 in 1063 ms, example
+validation passing, README en/zh capture passing 1/1 in 1172 ms with pollution
+assertions, and aggregate `stdlib/tests` passing 1121/1121 in 49625 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic Text
+Listbox command family with batched `None`/list/tuple Tcl-word handling for
+`Listbox.get(...)`, `Listbox.delete(...)`, `Listbox.index(...)`,
+`Listbox.activate(...)`, `Listbox.bbox(...)`, `Listbox.insert(...)`,
+`Listbox.selection_clear(...)`, `Listbox.selection_includes(...)`,
+`Listbox.selection_anchor(...)`, `Listbox.selection_set(...)`,
+`Listbox.nearest(...)`, `Listbox.see(...)`, `Listbox.itemcget(...)`, and
+`Listbox.itemconfigure(...)`. A fresh Python 3.10.11 probe confirmed that
+covered required `None` operands truncate the remaining Tcl argument vector
+into the local wrong-args path, list/tuple index operands are folded into a
+single Tcl list word, and inserted scalar strings with spaces remain one
+listbox item for the covered path. Nested Python object identity for
+`Listbox.insert(list/tuple)` remains intentionally unclaimed because the current
+AHK Tcl string bridge cannot preserve `_tkinter` object payload identity. The
+AHK classic Listbox wrapper now routes covered operands through the shared
+Listbox Tcl-word helper and uses Tcl list splitting for covered range `get(...)`
+results so item text containing spaces is preserved. This slice did not require
+new visible README/example code, but the existing tkinter example and extracted
+README snippets were revalidated through the capture harness. Fresh evidence
+includes `.codex/tkinter_classic_listbox_sequence_probe.py` plus JSON output, a
+focused red observation where `Listbox.get(stdlib.None)` reached Tcl as the
+literal `"None"` and reported `bad listbox index "None"` instead of the
+Python-observed wrong-args TclError, focused green
+`TestClassicListboxSequenceMethodsMatchLocal310` passing 1/1 in 187 ms, example
+validation passing, README en/zh capture passing 1/1 in 1437 ms with pollution
+assertions, and aggregate `stdlib/tests` passing 1120/1120 in 49031 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic Text
+Entry/Spinbox command family with batched `None`/list/tuple Tcl-word handling
+for `Entry.insert(...)`, `Entry.delete(...)`, `Entry.icursor(...)`,
+`Entry.index(...)`, `Entry.selection_from(...)`, `Entry.selection_to(...)`,
+`Entry.selection_range(...)`, `Spinbox.bbox(...)`, `Spinbox.delete(...)`,
+`Spinbox.icursor(...)`, `Spinbox.identify(...)`, `Spinbox.index(...)`,
+`Spinbox.insert(...)`, `Spinbox.invoke(...)`,
+`Spinbox.selection_element(...)`, and `Spinbox.selection_range(...)`. A fresh
+Python 3.10.11 probe confirmed that covered required `None` operands truncate
+the remaining Tcl argument vector into the local wrong-args path, optional
+`None` operands are omitted where CPython omits them, and list/tuple operands
+are folded into a single Tcl list word for covered indexes, text payloads,
+coordinates, element names, and selection bounds. The AHK classic Entry and
+Spinbox wrappers now route covered operands through the shared Entry Tcl-word
+conversion used by the selection helpers. This slice did not require new
+visible README/example code, but the existing tkinter example and extracted
+README snippets were revalidated through the capture harness. Fresh evidence
+includes `.codex/tkinter_classic_entry_spinbox_sequence_probe.py` plus JSON
+output, a focused red report failing because
+`Entry.insert(stdlib.None, "X")` reported `bad entry index "None"` instead of
+the Python-observed wrong-args TclError, focused green
+`TestClassicEntrySpinboxSequenceMethodsMatchLocal310` passing 1/1 in 156 ms,
+adjacent Entry passing 18/18 in 7516 ms, adjacent Spinbox passing 4/4 in
+782 ms, adjacent Classic passing 10/10 in 922 ms, example validation passing,
+README en/zh capture passing 1/1 in 1172 ms with pollution assertions, and
+aggregate `stdlib/tests` passing 1119/1119 in 49109 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic Text
+miscellaneous edit/bind/view command family with batched `None`/list/tuple
+Tcl-word handling for `Text.debug(...)`, `Text.edit(...)`,
+`Text.yview_pickplace(...)`, `Text.tag_bind(...)`, and
+`Text.tag_unbind(...)`. A fresh Python 3.10.11 probe confirmed that
+`debug(None)` queries, tuple/list boolean values reach Tcl as one word,
+`edit(None)` truncates to the wrong-args path, tuple/list edit options and
+modified values are folded into a single Tcl list word, `yview_pickplace(None)`
+truncates to the wrong-args path, tuple/list text indexes are folded into one
+word, and covered tag bind/unbind tag-name and sequence operands follow the
+same truncation/folding rules. The AHK classic Text wrappers now use the shared
+Text Tcl-word conversion for these covered operands, and `tag_unbind` avoids
+appending the empty script after a truncated tag or sequence operand. This slice
+did not add visible README/example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+evidence includes `.codex/tkinter_classic_text_misc_sequence_probe.py` plus
+JSON output, a focused red report erroring because
+`Text.debug(stdlib.tuple([stdlib.True]))` hit AHK tuple string conversion before
+Tcl, focused green `TestClassicTextMiscSequenceMethodsMatchLocal310` passing
+1/1 in 156 ms, adjacent Text passing 7/7 in 734 ms, adjacent Classic passing
+9/9 in 797 ms, example validation passing, README en/zh capture passing 1/1 in
+1000 ms with pollution assertions, and aggregate `stdlib/tests` passing
+1118/1118 in 48969 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic Text
+edit/peer command family with batched `None`/list/tuple Tcl-word handling for
+`Text.get(...)`, `Text.delete(...)`, `Text.insert(...)`,
+`Text.replace(...)`, and `Text.peer_create(...)`. A fresh Python 3.10.11 probe
+confirmed that covered required `None` operands truncate the remaining Tcl
+argument vector into the local wrong-args path, optional `None` operands are
+omitted where CPython omits them, and list/tuple operands are folded into a
+single Tcl list word for covered text indexes, inserted/replaced character
+payloads, tag lists, and peer path names. The probe also confirmed the covered
+`Text.peer_create(path, None)` error shape as `AttributeError: 'NoneType'
+object has no attribute 'items'`. The AHK classic Text edit and peer wrappers
+now route covered operands through `AhkStdlibTkinterTextScript(...)` and
+`AhkStdlibTkinterTextValueWord(...)`, and `peer_create` avoids appending
+options after a truncated peer path. This slice did not add visible
+README/example code, but the existing tkinter example and extracted README
+snippets were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_classic_text_edit_peer_sequence_probe.py` plus JSON output, a
+focused red report failing because `Text.get(stdlib.None, "end")` reported
+`bad text index "None"` instead of the Python-observed wrong-args TclError,
+focused green `TestClassicTextEditPeerSequenceMethodsMatchLocal310` passing
+1/1 in 156 ms, adjacent Text passing 6/6 in 625 ms, adjacent Classic passing
+8/8 in 719 ms, example validation passing, README en/zh capture passing 1/1 in
+1234 ms with pollution assertions, and aggregate `stdlib/tests` passing
+1117/1117 in 48937 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic Text
+tag/embed/config command family with batched `None`/list/tuple Tcl-word
+handling for `Text.tag_cget(...)`, `Text.tag_configure(...)`,
+`Text.tag_delete(...)`, `Text.image_create(...)`, `Text.image_cget(...)`,
+`Text.image_configure(...)`, `Text.window_create(...)`,
+`Text.window_cget(...)`, and `Text.window_configure(...)`. A fresh Python
+3.10.11 probe confirmed that covered tag-name or index `None` operands truncate
+the remaining Tcl argument vector into the local wrong-args path, while
+list/tuple operands are folded into a single Tcl list word. Covered configure
+wrappers also avoid appending options after a truncated `None`; option
+list/tuple values are not claimed by this slice. The AHK classic Text
+tag/image/window wrappers now route covered tag-name and index operands through
+`AhkStdlibTkinterTextScript(...)` and `AhkStdlibTkinterTextValueWord(...)`,
+with local configure option/dict helpers for tag, image, and window commands.
+This slice did not add visible README/example code, but the existing tkinter
+example and extracted README snippets were revalidated through the capture
+harness. Fresh evidence includes
+`.codex/tkinter_classic_text_embed_config_sequence_probe.py` plus JSON output,
+a focused red report failing because `Text.tag_cget(stdlib.None, "foreground")`
+reported `tag "None" isn't defined in text widget` instead of the
+Python-observed wrong-args TclError, focused green
+`TestClassicTextEmbedConfigSequenceMethodsMatchLocal310` passing 1/1 in
+156 ms, adjacent Text passing 5/5 in 562 ms, adjacent Classic passing 7/7 in
+657 ms, example validation passing, README en/zh capture passing 1/1 in
+1157 ms with pollution assertions, and aggregate `stdlib/tests` passing
+1116/1116 in 48453 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic Text
+query/dump command family with batched `None`/list/tuple sequence handling for
+`Text.count(...)`, `Text.search(...)`, and `Text.dump(...)`. A fresh Python
+3.10.11 probe confirmed that covered `None` index or pattern operands truncate
+the remaining Tcl argument vector into the local wrong-args or bad-index path,
+while list/tuple operands are folded into a single Tcl list word. The covered
+probe also confirms CPython's `Text.count` option-name formatting for a
+single-item tuple, `Text.search(..., count=IntVar)` and
+`count=(IntVar,)` behavior, `Text.search(..., stopindex=None)` omission, and
+`Text.dump(..., index2=None)` omission. The AHK classic Text query methods now
+route Tcl operands through `AhkStdlibTkinterTextScript(...)` and
+`AhkStdlibTkinterTextValueWord(...)`, with local helpers for `count` option
+formatting, `search` dash-prefix detection, and Text sequence joining that
+preserves variable names. This slice did not add visible README/example code,
+but the existing tkinter example and extracted README snippets were revalidated
+through the capture harness. Fresh evidence includes
+`.codex/tkinter_classic_text_query_sequence_probe.py` plus JSON output, a
+focused red report failing because `Text.count(stdlib.None, "end", "chars")`
+reported `bad text index "None"` instead of the Python-observed wrong-args
+TclError, focused green `TestClassicTextQuerySequenceMethodsMatchLocal310`
+passing 1/1 in 141 ms, adjacent Text filter passing 38/38 in 1016 ms, adjacent
+Classic passing 6/6 in 562 ms, example validation passing, README en/zh capture
+passing 1/1 in 1140 ms with pollution assertions, no README/example pollution
+matches for `System.Text.RegularExpressions` or `MatchEvaluator`, Friendly Links
+preserved, class-name collision scan passing, and aggregate `stdlib/tests`
+passing 1115/1115 in 48453 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic Text
+mark/tag/index command family with batched `None`/list/tuple sequence handling
+for `Text.index(...)`, `Text.compare(...)`, `Text.mark_set(...)`,
+`Text.mark_unset(...)`, `Text.mark_gravity(...)`, `Text.mark_next(...)`,
+`Text.mark_previous(...)`, `Text.tag_add(...)`, `Text.tag_remove(...)`,
+`Text.tag_ranges(...)`, `Text.tag_names(...)`, `Text.tag_nextrange(...)`,
+`Text.tag_prevrange(...)`, `Text.tag_raise(...)`, `Text.tag_lower(...)`,
+`Text.bbox(...)`, `Text.dlineinfo(...)`, and `Text.see(...)`. A fresh Python
+3.10.11 probe confirmed that covered `None` operands truncate the remaining Tcl
+argument vector into the local wrong-args path, while list/tuple operands are
+folded into a single Tcl list word. Empty sequences reach Tcl as `""`, one-item
+sequences match their scalar equivalent where Tcl accepts them, and multi-item
+sequences reach Tcl as one space-joined word. The AHK classic Text methods now
+share `AhkStdlibTkinterTextScript(...)` and
+`AhkStdlibTkinterTextValueWord(...)`, stopping operand emission at covered
+`None` and preserving CPython-style Tcl word folding for covered sequence
+operands. This slice did not add visible README/example code, but the existing
+tkinter example and extracted README snippets were revalidated through the
+capture harness. Fresh evidence includes
+`.codex/tkinter_classic_text_mark_tag_sequence_probe.py` plus JSON output, a
+focused red report failing because `Text.index(stdlib.None)` produced
+`bad text index "None"` instead of the Python-observed wrong-args TclError,
+focused green `TestClassicTextMarkTagSequenceMethodsMatchLocal310` passing 1/1
+in 140 ms, adjacent Text passing 3/3 in 406 ms, adjacent Classic passing 5/5 in
+547 ms, example validation passing, README en/zh capture passing 1/1 in
+1157 ms with pollution assertions, no README/example pollution matches for
+`System.Text.RegularExpressions` or `MatchEvaluator`, Friendly Links preserved,
+class-name collision scan passing, and aggregate `stdlib/tests` passing
+1114/1114 in 47563 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line.
+
+The preceding tkinter implementation slice extends the covered classic Canvas
+Tcl-word command family with batched `None`/list/tuple sequence handling for
+`Canvas.coords(...)`, `Canvas.find(...)`, `Canvas.find_withtag(...)`,
+`Canvas.find_closest(...)`, `Canvas.bbox(...)`, `Canvas.move(...)`,
+`Canvas.scale(...)`, `Canvas.addtag(...)`, `Canvas.addtag_all(...)`,
+`Canvas.addtag_withtag(...)`, `Canvas.addtag_closest(...)`, `Canvas.dtag(...)`,
+and `Canvas.gettags(...)`. A fresh Python 3.10.11 probe confirmed both the raw
+`tk.call("list", ...)` argv rule and the Canvas method behavior: a `None`
+operand truncates the remaining Tcl argument vector, while list/tuple operands
+are folded into a single Tcl list word. Empty sequences reach Tcl as `""`,
+one-item sequences such as `(lineId,)` match the same item as the scalar id, and
+multi-item sequences such as `[1, 2]` or `["shape", "round"]` reach Tcl as one
+space-joined word. The AHK classic Canvas methods now share
+`AhkStdlibTkinterCanvasScript(...)` and
+`AhkStdlibTkinterCanvasValueWord(...)`, stopping operand emission at covered
+`None` and preserving CPython-style Tcl word folding for covered sequence
+operands. This slice did not add visible README/example code, but the existing
+tkinter example and extracted README snippets were revalidated through the
+capture harness. Fresh evidence includes
+`.codex/tkinter_classic_canvas_word_sequence_probe.py` plus JSON output, a
+focused red report failing because `Canvas.coords(stdlib.None)` did not raise
+the Python-observed wrong-args TclError, focused green
+`TestClassicCanvasWordSequenceMethodsMatchLocal310` passing 1/1 in 235 ms,
+adjacent Canvas passing 14/14 in 1406 ms, adjacent Classic passing 4/4 in
+718 ms, example validation passing, README en/zh capture passing 1/1 in
+1187 ms with pollution assertions, no README/example pollution matches for
+`System.Text.RegularExpressions` or `MatchEvaluator`, Friendly Links preserved,
+class-name collision scan passing, and aggregate `stdlib/tests` passing
+1113/1113 in 51453 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line.
+
+The latest tkinter implementation slice extends the covered classic-widget scan
+command family with batched `None`/list/tuple sequence handling for
+`Canvas.scan_mark(...)`, `Canvas.scan_dragto(...)`, `Text.scan_mark(...)`,
+`Text.scan_dragto(...)`, `Listbox.scan_mark(...)`, `Listbox.scan_dragto(...)`,
+`Entry.scan_mark(...)`, `Entry.scan_dragto(...)`, `Spinbox.scan_mark(...)`, and
+`Spinbox.scan_dragto(...)`. A fresh Python 3.10.11 probe confirmed that covered
+`None` operands truncate the remaining Tcl argument vector into the local
+wrong-args path, that list/tuple operands are folded into a single Tcl word
+before integer parsing, and that `Canvas.scan_dragto(..., gain=None)` succeeds
+by omitting the optional gain operand. Empty sequences reach Tcl as `""`, while
+multi-item sequences reach Tcl as one space-joined word such as `"5 6"` or
+`"1 2"`. The AHK classic scan methods now share
+`AhkStdlibTkinterScanScript(...)` and `AhkStdlibTkinterScanValueWord(...)`,
+stopping operand emission at covered `None` and preserving CPython-style Tcl
+word folding for covered sequence operands. README en/zh now include classic
+Canvas scan sequence calls, and the tkinter example records classic
+Spinbox/Entry/Listbox/Text/Canvas scan sequence calls without changing the
+visible demo lifetime. Fresh evidence includes
+`.codex/tkinter_classic_scan_sequence_probe.py` plus JSON output, a focused red
+report for `ClassicScan` erroring on an unconverted `AhkStdlibTuple` scan
+operand, focused green passing 1/1 in 313 ms, adjacent Canvas passing 13/13 in
+1640 ms, adjacent Text passing 2/2 in 344 ms, adjacent Listbox passing 1/1 in
+297 ms, adjacent Entry passing 17/17 in 9344 ms, adjacent Spinbox passing 3/3 in
+875 ms, example validation passing, README en/zh capture passing 1/1 in 1610 ms
+with pollution assertions, no README/example pollution matches for
+`System.Text.RegularExpressions` or `MatchEvaluator`, class-name collision scan
+passing, and aggregate `stdlib/tests` passing 1112/1112 in 56437 ms at
+`-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The latest tkinter implementation slice extends the covered classic-widget view
+command family with batched `None`/list/tuple sequence handling for
+`Canvas.xview/yview`, `Text.xview/yview`, `Listbox.xview/yview`,
+`Entry.xview`, and `Spinbox.xview`, including the `xview_moveto(...)`,
+`xview_scroll(...)`, `yview_moveto(...)`, and `yview_scroll(...)` wrappers where
+the class exposes them. A fresh Python 3.10.11 probe confirmed that raw
+`xview(None)` / `yview(None)` truncate to the zero-argument query path, while
+list/tuple operands are folded into a single Tcl word; empty sequences reach Tcl
+as `""`, and multi-item sequences reach Tcl as one space-joined word such as
+`"moveto 0.5"`, `"0.5 0.6"`, `"1 2"`, or `"units pages"`. The AHK classic view
+methods now share `AhkStdlibTkinterViewScript(...)` and
+`AhkStdlibTkinterViewValueWord(...)`, stopping operand emission at covered
+`None` and preserving CPython-style Tcl word folding for covered sequence
+operands. README en/zh and the tkinter example now include classic Canvas view
+sequence calls, and the example also records classic Entry/Listbox/Text/Canvas
+sequence view calls without changing the visible demo lifetime. Fresh evidence
+includes `.codex/tkinter_classic_view_sequence_probe.py` plus JSON output, a
+focused red report for `ClassicView` erroring because `Canvas.xview(stdlib.None)`
+sent `"None"` to Tcl, focused green passing 1/1 in 328 ms, adjacent Canvas
+passing 13/13 in 2875 ms, adjacent Text passing 2/2 in 578 ms, adjacent Listbox
+passing 1/1 in 328 ms, adjacent Entry passing 17/17 in 15531 ms, adjacent
+Spinbox passing 3/3 in 875 ms, example validation passing, README en/zh capture
+passing 1/1 in 1344 ms with pollution assertions, no README/example pollution
+matches for `System.Text.RegularExpressions` or `MatchEvaluator`, class-name
+collision scan passing, and aggregate `stdlib/tests` passing 1111/1111 in
+50937 ms at `-TimeoutSeconds 90` with the existing `plain fallback` stderr line.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with batched `ttk.Treeview` `xview(...)`, `xview_moveto(...)`,
+`xview_scroll(...)`, `yview(...)`, `yview_moveto(...)`, and `yview_scroll(...)`
+`None`/list/tuple sequence handling. A fresh Python 3.10.11 probe confirmed
+that raw `xview(None)` and `yview(None)` truncate to the zero-argument query
+path, that raw command sequences such as `["moveto"]` and `["moveto", "0.5"]`
+are folded into one Tcl word and rejected as integer operands, and that
+`moveto`/`scroll` wrappers fold list/tuple fraction, number, and units/pages
+operands into a single Tcl list word while `None` truncates into local
+`expected integer but got "moveto"` / `"scroll"` or wrong-args TclError paths.
+The AHK prefixed-internal `AhkStdlibTkinterTreeview` view methods now build Tcl
+commands operand by operand, stop on covered `None`, and route covered sequence
+operands through the ttk value-word conversion. The shared ttk join helper no
+longer relies on ambient `A_Index`, preserving empty-sequence Tcl words for this
+and other covered ttk sequence paths. README en/zh and the tkinter example now
+include Treeview view sequence calls without changing the visible demo lifetime.
+Fresh evidence includes `.codex/tkinter_ttk_treeview_view_sequence_probe.py`
+plus JSON output, a focused red report for
+`TtkTreeviewViewNoneAndSequenceWordsMatchLocal310` erroring because `None` was
+sent as `"None"`, focused green passing 1/1 in 297 ms, adjacent `TtkTreeview`
+passing 21/21 in 4891 ms, example validation passing, README en/zh capture
+passing 1/1 in 1593 ms with pollution assertions, and aggregate `stdlib/tests`
+passing 1110/1110 in 75110 ms at `-TimeoutSeconds 90` with the existing
+`plain fallback` stderr line. No 40-second aggregate stability is claimed.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with batched Entry-family `xview_moveto(fraction)` and
+`xview_scroll(number, what)` `None`/list/tuple sequence handling for
+`ttk.Entry`, `ttk.Spinbox`, and `ttk.Combobox`. A fresh Python 3.10.11 probe
+confirmed that list/tuple operands are folded into a single Tcl list word for
+the covered fraction, number, and units/pages arguments, while `None` truncates
+the remaining Tcl argument vector into the local bad-index or wrong-args TclError
+paths. Empty sequences reach Tcl as an empty word, and multi-item sequences
+reach Tcl as one space-joined word such as `"0.5 0.6"` or `"units pages"`. The
+AHK prefixed-internal `AhkStdlibTkinterEntry.xview_moveto` and
+`AhkStdlibTkinterEntry.xview_scroll` now build the Tcl command operand by
+operand, stop on covered `None`, and route covered sequence/scalar operands
+through the same ttk value-word conversion used by the concrete ttk subclasses.
+README en/zh and the tkinter example now include Entry, Spinbox, and Combobox
+sequence xview calls without changing the visible demo lifetime. Fresh evidence
+includes `.codex/tkinter_ttk_entry_xview_sequence_probe.py` plus JSON output, a
+focused red report for `TtkEntryFamilyXviewNoneAndSequenceWordsMatchLocal310`
+erroring on an unconverted Array operand, focused green passing 1/1 in 719 ms,
+adjacent `TtkEntry` passing 13/13 in 10500 ms, adjacent `TtkSpinbox` passing 2/2
+in 719 ms, and adjacent `TtkCombobox` passing 3/3 in 1063 ms. Serial promotion
+gates also include example validation passing and README en/zh capture passing
+1/1 in 2016 ms with pollution assertions. The follow-up aggregate
+`run-ahktest stdlib/tests -TimeoutSeconds 90` passed 1109/1109 in 47860 ms with
+the existing `plain fallback` stderr line, raising the current aggregate
+baseline without claiming 40-second aggregate stability.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with batched `identify` coordinate handling for the raw
+`ttk.Widget` constructor and `ttk.Treeview.identify(...)` convenience wrappers.
+A fresh Python 3.10.11 probe confirmed that `ttk.Widget.identify(x, y)` and
+`ttk.Treeview.identify_row/identify_column/identify_region/identify_element`
+fold list/tuple coordinates into one Tcl list word, while `None` truncates the
+remaining Tcl argument vector and reaches the local Tcl wrong-args or
+expected-integer error path. The AHK prefixed-internal `AhkStdlibTkinterTtkWidget`
+now delegates `identify` through `AhkStdlibTkinterTtkWidgetIdentify`, and
+`AhkStdlibTkinterTreeview.identify` routes coordinate operands through the same
+ttk float value-word conversion while preserving the existing component word
+conversion. README en/zh and the example now include raw `ttk.Widget` and
+`Treeview` sequence-coordinate calls without changing the visible demo lifetime.
+Fresh evidence includes
+`.codex/tkinter_ttk_identify_wrappers_sequence_probe.py` plus JSON output,
+focused red reports for `TtkWidgetIdentifyNoneAndSequenceWordsMatchLocal310`
+failing on `"None"` string conversion and
+`TtkTreeviewIdentifyWrapperCoordinatesNoneAndSequenceWordsMatchLocal310`
+erroring on an unconverted Array coordinate, focused green reports passing 1/1
+for each test, adjacent `TtkWidget` passing 9/9 in 2875 ms, and adjacent
+`TreeviewIdentify` passing 3/3 in 547 ms, example validation passing, README
+en/zh capture passing 1/1 in 1672 ms with pollution assertions, and aggregate
+`stdlib/tests` passing 1108/1108 in 56094 ms at `-TimeoutSeconds 60`.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with a batched shared-widget `identify(x, y)` method and
+`None`/list/tuple sequence pass for `ttk.Button`, `ttk.Checkbutton`,
+`ttk.Radiobutton`, `ttk.Frame`, `ttk.Label`, `ttk.Menubutton`,
+`ttk.Separator`, and `ttk.Progressbar`. A fresh Python 3.10.11 probe confirmed
+that these concrete ttk widget classes expose `identify`, that scalar
+coordinates return the covered element string, and that `None` coordinates
+truncate remaining Tcl operands into the local wrong-args TclError while
+list/tuple coordinate operands are folded into one Tcl word. Empty sequences
+raise `expected integer but got ""`, one-item sequences behave like scalar
+coordinates in the covered geometry, and multi-item sequences such as `["5",
+"6"]` raise `expected integer but got "5 6"`. The AHK prefixed-internal
+concrete ttk classes now expose `identify` and delegate to the new
+`AhkStdlibTkinterTtkWidgetIdentify` helper, preserving the existing concrete
+class hierarchy while routing covered coordinates through the ttk float
+value-word helper. This batch did not add visible README or example code, but
+the existing tkinter example and extracted README snippets were revalidated
+through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_widget_identify_sequence_probe.py` and its output JSON, a
+batched focused red report erroring for all eight new tests because the AHK
+concrete ttk widgets had no `identify` method, batched focused green passing
+8/8 in 1093 ms, adjacent button/checkbutton/radiobutton report passing 7/7 in
+750 ms, adjacent frame/label family report passing 8/8 in 1125 ms, adjacent
+`TtkMenubutton` passing 2/2 in 250 ms, adjacent `TtkSeparator` passing 2/2 in
+250 ms, adjacent `TtkProgressbar` passing 3/3 in 3969 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1860 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered
+themed-widget submodule slice with a batched `identify(x, y)` `None` and
+list/tuple sequence pass for `ttk.Notebook`, `ttk.Panedwindow`, `ttk.Sizegrip`, and
+`ttk.LabelFrame`. Fresh Python 3.10.11 probes confirmed for each covered widget
+that a `None` coordinate truncates remaining Tcl operands and reaches the local
+wrong-args TclError, while list/tuple coordinate operands are folded into one
+Tcl word: empty sequences raise `expected integer but got ""`, one-item
+sequences behave like scalar coordinates in the covered geometry, and multi-item
+sequences such as `["5", "6"]` raise `expected integer but got "5 6"`. The AHK
+prefixed-internal `AhkStdlibTkinterNotebook.identify`,
+`AhkStdlibTkinterPanedwindow.identify`, `AhkStdlibTkinterSizegrip.identify`,
+and `AhkStdlibTkinterLabelFrame.identify` now truncate on the first covered
+`None` and route covered coordinate sequences through the ttk float value-word
+helper. This batch does not raise a Notebook element-geometry parity claim
+beyond the covered parameter semantics. It did not add visible README or example
+code, but the existing tkinter example and extracted README snippets were
+revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_notebook_identify_sequence_probe.py`,
+`.codex/tkinter_ttk_panedwindow_identify_sequence_probe.py`,
+`.codex/tkinter_ttk_sizegrip_identify_sequence_probe.py`, and
+`.codex/tkinter_ttk_labelframe_identify_sequence_probe.py` plus their output
+JSON files; a batched focused red report failing all four new tests because
+covered `identify(stdlib.None, 5)` paths reported `expected integer but got
+"None"` instead of the Python-observed wrong-args TclErrors; batched focused
+green passing 4/4 in 453 ms; adjacent `TtkNotebook` passing 3/3 in 828 ms,
+`TtkPanedwindow` passing 4/4 in 1172 ms, `TtkSizegrip` passing 2/2 in 453 ms,
+and `TtkLabelFrame` passing 2/2 in 500 ms; explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing; and README en/zh
+examples passing through ahktest capture with pollution assertions in 1828 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered
+themed-widget submodule slice with `ttk.LabeledScale.identify(x, y)` `None` and
+list/tuple sequence handling. A fresh Python 3.10.11 probe confirmed that scalar
+`identify(5, 5)` returns the empty string in the covered geometry, a `None`
+argument truncates the remaining Tcl operands, and the covered
+`identify(None, 5)`, `identify(5, None)`, and `identify(None, None)` paths
+therefore raise the local wrong-args TclError from the underlying frame command.
+List/tuple coordinate operands are folded into one Tcl word, so empty sequences
+raise `expected integer but got ""`, one-item sequences behave like scalar
+coordinates, and multi-item sequences such as `["5", "6"]` raise `expected
+integer but got "5 6"`. The AHK prefixed-internal
+`AhkStdlibTkinterTtkLabeledScale.identify` now truncates on the first covered
+`None` and routes covered coordinate sequences through the ttk float value-word
+helper. This slice did not add visible README or example code, but the existing
+tkinter example and extracted README snippets were revalidated through the
+capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_labeledscale_identify_sequence_probe.py` and
+`.codex/tkinter_ttk_labeledscale_identify_sequence_probe.output.json`, a focused
+red test failing because `labeled.identify(stdlib.None, 5)` reported `expected
+integer but got "None"` instead of the Python-observed wrong-args TclError,
+focused green `TtkLabeledScaleIdentifyNoneAndSequenceWordsMatchLocal310`
+passing 1/1 in 140 ms, adjacent `TtkLabeledScale` report passing 2/2 in 375 ms,
+explicit `run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and
+README en/zh examples passing through ahktest capture with pollution assertions
+in 1250 ms. No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered
+themed-widget submodule slice with `ttk.Scrollbar.identify(x, y)` `None` and
+list/tuple sequence handling. A fresh Python 3.10.11 probe confirmed that scalar
+`identify(5, 5)` returns the empty string in the covered geometry, a `None`
+argument truncates the remaining Tcl operands, and the covered
+`identify(None, 5)`, `identify(5, None)`, and `identify(None, None)` paths
+therefore raise the local wrong-args TclError. List/tuple coordinate operands
+are folded into one Tcl word, so empty sequences raise `expected integer but
+got ""`, one-item sequences behave like scalar coordinates, and multi-item
+sequences such as `["5", "6"]` raise `expected integer but got "5 6"`. The AHK
+prefixed-internal `AhkStdlibTkinterScrollbar.identify` now truncates on the
+first covered `None` and routes covered coordinate sequences through the ttk
+float value-word helper. This slice did not add visible README or example code,
+but the existing tkinter example and extracted README snippets were revalidated
+through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_scrollbar_identify_sequence_probe.py` and
+`.codex/tkinter_ttk_scrollbar_identify_sequence_probe.output.json`, a focused
+red test failing because `scrollbar.identify(stdlib.None, 5)` reported
+`expected integer but got "None"` instead of the Python-observed wrong-args
+TclError, focused green `TtkScrollbarIdentifyNoneAndSequenceWordsMatchLocal310`
+passing 1/1 in 125 ms, adjacent `TtkScrollbar` report passing 3/3 in 328 ms,
+explicit `run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and
+README en/zh examples passing through ahktest capture with pollution assertions
+in 1172 ms. No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered
+themed-widget submodule slice with `ttk.Scale.identify(x, y)` `None` and
+list/tuple sequence handling. A fresh Python 3.10.11 probe confirmed that scalar
+`identify(5, 5)` returns the empty string in the covered geometry, a `None`
+argument truncates the remaining Tcl operands, and the covered
+`identify(None, 5)`, `identify(5, None)`, and `identify(None, None)` paths
+therefore raise the local wrong-args TclError. List/tuple coordinate operands
+are folded into one Tcl word, so empty sequences raise `expected integer but
+got ""`, one-item sequences behave like scalar coordinates, and multi-item
+sequences such as `["5", "6"]` raise `expected integer but got "5 6"`. The AHK
+prefixed-internal `AhkStdlibTkinterScale.identify` now truncates on the first
+covered `None` and routes covered coordinate sequences through the ttk scale
+value-word helper. This slice did not add visible README or example code, but
+the existing tkinter example and extracted README snippets were revalidated
+through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_scale_identify_sequence_probe.py` and
+`.codex/tkinter_ttk_scale_identify_sequence_probe.output.json`, a focused red
+test failing because `scale.identify(stdlib.None, 5)` reported `expected
+integer but got "None"` instead of the Python-observed wrong-args TclError,
+focused green `TtkScaleIdentifyNoneAndSequenceWordsMatchLocal310` passing 1/1
+in 328 ms, adjacent `TtkScale` report passing 4/4 in 875 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1875 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered
+themed-widget submodule slice with `ttk.Scale.get(*args)` `None` and list/tuple
+sequence handling. A fresh Python 3.10.11 probe confirmed that no-arg `get()` returns
+the current scale value as a number, coordinate arguments return Tcl's computed
+scale value string, and a `None` argument truncates the remaining Tcl operands:
+`get(None, 5)` and `get(None, None)` return the current value, while
+`get(10, None)` reaches Tk as one coordinate and raises the local wrong-args
+TclError. List/tuple coordinate operands are folded into one Tcl word, so empty
+sequences raise `expected integer but got ""`, one-item sequences behave like
+scalar coordinates, and multi-item sequences such as `["10", "11"]` raise
+`expected integer but got "10 11"`. The AHK prefixed-internal
+`AhkStdlibTkinterScale.get` now truncates on the first covered `None` and routes
+sequence coordinates through the ttk scale value-word helper while preserving
+the Python return rule for no-argument calls. This slice did not add visible
+README or example code, but the existing tkinter example and extracted README
+snippets were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_scale_get_sequence_probe.py` and
+`.codex/tkinter_ttk_scale_get_sequence_probe.output.json`, a focused red test
+erroring because `scale.get(stdlib.None, 5)` reported `expected integer but got
+"None"` instead of returning the current value, focused green
+`TtkScaleGetNoneAndSequenceWordsMatchLocal310` passing 1/1 in 109 ms, adjacent
+`TtkScale` report passing 3/3 in 297 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1188 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Combobox` inherited `ttk.Entry` public methods. A
+fresh Python 3.10.11 probe confirmed that `ttk.Combobox.__mro__` includes
+`Entry`, that entry methods such as `bbox`, `delete`, `insert`, `index`,
+`icursor`, `selection_range`, `validate`, and `xview` are present, and that
+the underlying `ttk::combobox` command supports the same core edit/index
+operations while still reporting local `bad command` errors for inherited
+`scan` and unsupported `selection from/to/adjust` paths. The AHK
+prefixed-internal `AhkStdlibTkinterCombobox` now extends the prefixed ttk Entry
+class and bypasses the Entry constructor with the shared widget constructor so
+its command remains `ttk::combobox`, preserving existing `current`, `set`, and
+configuration behavior while inheriting the covered Entry method surface. This
+slice did not add visible README or example code, but the existing tkinter
+example and extracted README snippets were revalidated through the capture
+harness. Fresh evidence includes
+`.codex/tkinter_ttk_combobox_inherited_entry_probe.py` and
+`.codex/tkinter_ttk_combobox_inherited_entry_probe.output.json`, a focused red
+test failing because `ttk.Combobox` lacked inherited Entry methods such as
+`delete`, focused green `TtkComboboxInheritedEntryMethodsMatchLocal310`
+passing 1/1 in 140 ms, adjacent `TtkCombobox` report passing 3/3 in 281 ms,
+adjacent `TtkEntry` report passing 12/12 in 7938 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 2188 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Entry.xview(*args)` `None` and list/tuple sequence
+handling. A fresh Python 3.10.11 probe confirmed that no-arg `xview()` returns
+the visible fraction tuple, but any Python argument makes the method return
+`None`; a `None` argument truncates the remaining Tcl operands, so
+`xview(None)` becomes a no-op returning `None`, `xview("moveto", None)` reaches
+Tk as `xview moveto` and raises `bad entry index "moveto"`, and
+`xview("scroll", 1, None)` reaches Tk as `xview scroll 1` and raises the local
+wrong-args TclError. List/tuple operands are folded into one Tcl word, with
+empty sequences becoming the empty word and multi-item indexes such as
+`["1", "2"]` raising `bad entry index "1 2"`. The AHK prefixed-internal
+`AhkStdlibTkinterEntry.xview` now preserves the Python return rule, truncates
+on the first covered `None`, and routes sequence operands through the ttk entry
+index-word helper. This slice did not add visible README or example code, but
+the existing tkinter example and extracted README snippets were revalidated
+through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_entry_xview_sequence_probe.py` and
+`.codex/tkinter_ttk_entry_xview_sequence_probe.output.json`, a focused red test
+erroring because `entry.xview(stdlib.None)` reported `bad entry index "None"`
+instead of returning `None`, focused green
+`TtkEntryXviewNoneAndSequenceWordsMatchLocal310` passing 1/1 in 1984 ms,
+adjacent `TtkEntry` report passing 12/12 in 7984 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1235 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Entry.selection_range(start, end)` / `select_range`
+`None` and list/tuple sequence handling. A fresh Python 3.10.11 probe confirmed
+that `selection_range(None, ...)` and `selection_range(..., None)` omit covered
+operands and raise the local wrong-args TclError, empty list/tuple start values
+select no text, empty list/tuple end values extend through the widget end,
+one-item list/tuple indexes behave like scalar values, and multi-item indexes
+such as `["1", "2"]` raise `bad entry index "1 2"`. The same probe confirmed
+that themed `selection_from`, `selection_to`, and `selection_adjust` still fail
+through the local `ttk::entry` command as unsupported `bad command` paths, so
+this slice does not promote them as working ttk functionality. The shared AHK
+entry selection-range helper now builds the Tcl command operand by operand,
+omitting covered `None` operands and using the ttk entry index-word helper for
+sequence operands; focused classic `Entry` and `Spinbox` gates cover the shared
+helper risk. This slice did not add visible README or example code, but the
+existing tkinter example and extracted README snippets were revalidated through
+the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_entry_selection_sequence_probe.py` and
+`.codex/tkinter_ttk_entry_selection_sequence_probe.output.json`, a focused red
+test failing because `entry.selection_range(stdlib.None, 3)` reported `bad
+entry index "None"` instead of the local wrong-args TclError, focused green
+`TtkEntrySelectionRangeNoneAndSequenceWordsMatchLocal310` passing 1/1 in
+2406 ms, adjacent `TtkEntry` report passing 11/11 in 19656 ms, shared
+classic `Entry`/`Spinbox` report passing 2/2 in 218 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1172 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Entry.icursor(index)` `None` and list/tuple sequence
+handling. A fresh Python 3.10.11 probe confirmed that `icursor(None)` omits the
+required position operand and raises the local wrong-args TclError, empty
+list/tuple indexes position the insert cursor like `icursor("end")`, one-item
+list/tuple indexes behave like their scalar value, and multi-item indexes such
+as `["1", "2"]` raise `bad entry index "1 2"`. The AHK prefixed-internal
+`AhkStdlibTkinterEntry` now builds the `icursor` Tcl command operand by
+operand, omitting covered `None` operands and using the ttk entry index-word
+helper for sequence operands while preserving `stdlib.None` return semantics.
+This slice did not add visible README or example code, but the existing
+tkinter example and extracted README snippets were revalidated through the
+capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_entry_icursor_sequence_probe.py` and
+`.codex/tkinter_ttk_entry_icursor_sequence_probe.output.json`, a focused red
+test failing because `entry.icursor(stdlib.None)` reported `bad entry index
+"None"` instead of the local wrong-args TclError, focused green
+`TtkEntryIcursorNoneAndSequenceWordsMatchLocal310` passing 1/1 in 1703 ms,
+adjacent `TtkEntry` report passing 10/10 in 13234 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1047 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Entry.index(index)` `None` and list/tuple sequence
+handling. A fresh Python 3.10.11 probe confirmed that `index(None)` omits the
+required index operand and raises the local wrong-args TclError, empty
+list/tuple indexes map to the same integer as `index("end")`, one-item
+list/tuple indexes behave like their scalar value, and multi-item indexes such
+as `["1", "2"]` raise `bad entry index "1 2"`. The AHK prefixed-internal
+`AhkStdlibTkinterEntry` now builds the `index` Tcl command operand by operand,
+omitting covered `None` operands and using the ttk entry index-word helper for
+sequence operands while preserving scalar integer conversion. This slice did
+not add visible README or example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+evidence includes `.codex/tkinter_ttk_entry_index_sequence_probe.py` and
+`.codex/tkinter_ttk_entry_index_sequence_probe.output.json`, a focused red test
+failing because `entry.index(stdlib.None)` reported `bad entry index "None"`
+instead of the local wrong-args TclError, focused green
+`TtkEntryIndexNoneAndSequenceWordsMatchLocal310` passing 1/1 in 1735 ms,
+adjacent `TtkEntry` report passing 9/9 in 11891 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1672 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Entry.identify(x, y)` `None` and list/tuple sequence
+handling. A fresh Python 3.10.11 probe confirmed that covered `None` operands
+are omitted and raise the local wrong-args TclError, empty list/tuple
+coordinates become the empty Tcl word and raise `expected integer but got ""`,
+one-item list/tuple coordinates behave like scalar integer strings, and
+multi-item coordinate sequences such as `["1", "2"]` raise `expected integer
+but got "1 2"`. The AHK prefixed-internal `AhkStdlibTkinterEntry` now builds
+the `identify` Tcl command operand by operand, omitting covered `None`
+operands and using the ttk entry index-word helper for sequence operands while
+preserving scalar behavior. This slice did not add visible README or example
+code, but the existing tkinter example and extracted README snippets were
+revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_entry_identify_sequence_probe.py` and
+`.codex/tkinter_ttk_entry_identify_sequence_probe.output.json`, a focused red
+test failing because `entry.identify(stdlib.None, 1)` reported `expected
+integer but got "None"` instead of the local wrong-args TclError, focused green
+`TtkEntryIdentifyNoneAndSequenceWordsMatchLocal310` passing 1/1 in 2781 ms,
+adjacent `TtkEntry` report passing 8/8 in 10609 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1844 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Entry.bbox(index)` `None` and list/tuple sequence
+handling. A fresh Python 3.10.11 probe confirmed that `bbox(None)` omits the
+required index operand and raises the local wrong-args TclError, list/tuple
+index operands join into one Tcl index word, empty list/tuple indexes map to
+the same result as `bbox("end")`, and multi-item indexes such as `["0", "1"]`
+raise `bad entry index "0 1"`. The AHK prefixed-internal
+`AhkStdlibTkinterEntry` now builds the `bbox` Tcl command operand by operand,
+omitting covered `None` operands and using the ttk entry index-word helper for
+sequence operands while preserving scalar tuple conversion. This slice did not
+add visible README or example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+evidence includes `.codex/tkinter_ttk_entry_bbox_sequence_probe.py` and
+`.codex/tkinter_ttk_entry_bbox_sequence_probe.output.json`, a focused red test
+failing because `entry.bbox(stdlib.None)` reported `bad entry index "None"`
+instead of the local wrong-args TclError, focused green
+`TtkEntryBboxNoneAndSequenceWordsMatchLocal310` passing 1/1 in 1860 ms,
+adjacent `TtkEntry` report passing 7/7 in 7547 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 2204 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered
+themed-widget submodule slice with `ttk.Entry.delete(first, last=None)` `None` and list/tuple
+sequence handling. A fresh Python 3.10.11 probe confirmed that
+`delete(None)` omits the required first index operand and raises the local
+wrong-args TclError, list/tuple index operands join into one Tcl index word,
+empty list/tuple index words are accepted by Tk, and `last=None` behaves like
+the default one-character delete for the covered path. The AHK
+prefixed-internal `AhkStdlibTkinterEntry` now builds the `delete` Tcl command
+operand by operand, omitting covered `None` operands and using the ttk entry
+index-word helper for sequence operands while preserving scalar behavior. This
+slice did not add visible README or example code, but the existing tkinter
+example and extracted README snippets were revalidated through the capture
+harness. Fresh evidence includes
+`.codex/tkinter_ttk_entry_delete_sequence_probe.py` and
+`.codex/tkinter_ttk_entry_delete_sequence_probe.output.json`, a focused red
+test failing because `entry.delete(stdlib.None)` reported `bad entry index
+"None"` instead of the local wrong-args TclError, focused green
+`TtkEntryDeleteNoneAndSequenceWordsMatchLocal310` passing 1/1 in 1235 ms,
+adjacent `TtkEntry` report passing 6/6 in 6047 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1828 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered
+themed-widget submodule slice with `ttk.Entry.insert(index, string)` `None` and list/tuple
+sequence handling. A fresh Python 3.10.11 probe confirmed that `None` for the
+covered `index` or `string` operand is omitted and raises the local wrong-args
+TclError, index list/tuple operands join into one index word such as `0 1`,
+string list/tuple operands are passed as Tcl list values, and nested string
+sequences such as `[["alpha", "delta"]]` insert `{alpha delta}`. The AHK
+prefixed-internal `AhkStdlibTkinterEntry` now builds the `insert` Tcl command
+operand by operand, using a ttk entry index-word helper for index operands and
+a recursive Tcl list-word helper for sequence string values while preserving
+scalar behavior. This slice did not add visible README or example code, but the
+existing tkinter example and extracted README snippets were revalidated through
+the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_entry_insert_sequence_probe.py` and
+`.codex/tkinter_ttk_entry_insert_sequence_probe.output.json`, a focused red
+test failing because `entry.insert(stdlib.None, "X")` reported `bad entry index
+"None"` instead of the local wrong-args TclError, focused green
+`TtkEntryInsertNoneAndSequenceWordsMatchLocal310` passing 1/1 in 3218 ms,
+adjacent `TtkEntry` JSON passing 5/5 in 4046 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1828 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Spinbox.set(value)` `None` and list/tuple sequence
+handling. A fresh Python 3.10.11 probe confirmed that `set(None)` omits the Tcl
+value operand and raises the local wrong-args TclError, empty list/tuple values
+set the widget and linked variable to the empty string, one-item list/tuple
+values are passed as one Tcl list value, multi-item sequences such as
+`["alpha", "delta"]` set `alpha delta`, and nested sequences such as
+`[["alpha", "delta"]]` set `{alpha delta}`. The AHK prefixed-internal
+`AhkStdlibTkinterSpinbox` now omits covered `None` operands and routes sequence
+values through a Spinbox-specific recursive Tcl list-word helper while
+preserving scalar behavior. This slice did not add visible README or example
+code, but the existing tkinter example and extracted README snippets were
+revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_spinbox_set_sequence_probe.py` and
+`.codex/tkinter_ttk_spinbox_set_sequence_probe.output.json`, a focused red
+test failing because `spin.set(stdlib.None)` did not raise the local wrong-args
+TclError, focused green `TtkSpinboxSetNoneAndSequenceWordsMatchLocal310`
+passing 1/1 in 1703 ms, adjacent `TtkSpinbox` JSON passing 2/2 in 1937 ms,
+explicit `run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and
+README en/zh examples passing through ahktest capture with pollution assertions
+in 1938 ms. No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Panedwindow` inherited `tkinter.PanedWindow` public
+methods: `panecget`, `paneconfigure`/`paneconfig`, `proxy*`, and `sash*`.
+A fresh Python 3.10.11 probe confirmed that these names exist on
+`ttk.Panedwindow` through the CPython MRO, while most calls still fail through
+the underlying `ttk::panedwindow` command with local `bad command`, `sashpos`,
+or Python helper TypeError/ValueError text. The AHK prefixed-internal
+`AhkStdlibTkinterPanedwindow` now exposes those inherited method names, uses
+CPython-like `'-' + option` TypeError behavior for non-string pane options,
+formats list/tuple child operands as one Tcl word, and preserves the observed
+ttk command failures rather than turning these inherited methods into extra
+working ttk functionality. This slice did not add visible README or example
+code, but the existing tkinter example and extracted README snippets were
+revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_panedwindow_inherited_methods_probe.py` and
+`.codex/tkinter_ttk_panedwindow_inherited_methods_probe.output.json`, a
+focused red test failing because inherited method presence was missing,
+focused green `TtkPanedwindowInheritedPanedWindowMethodsMatchLocal310` passing
+1/1 in 281 ms, adjacent `TtkPanedwindow` JSON passing 3/3 in 1016 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1953 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Progressbar.start(interval=None)` and
+`ttk.Progressbar.step(amount=None)` `None` and list/tuple sequence handling. A
+fresh Python 3.10.11 probe confirmed that `start(None)` and `step(None)` both
+omit the optional Tcl operand, empty list/tuple values reach Tcl as the empty
+word, one-item list/tuple values are accepted as a single interval/amount word,
+and multi-item list/tuple values join into one Tcl word such as `5 6` before
+Tk reports the local bad-argument or floating-point error. The AHK
+prefixed-internal `AhkStdlibTkinterProgressbar` now omits covered `None`
+operands, routes `start(...)` interval values through a Progressbar interval
+word helper, and routes `step(...)` amounts through the shared ttk float-value
+word helper. This slice did not add visible README or example code, but the
+existing tkinter example and extracted README snippets were revalidated through
+the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_progressbar_sequence_probe.py` and
+`.codex/tkinter_ttk_progressbar_sequence_probe.output.json`, a focused red
+test failing because `progress.start([])` raised host `TypeError` instead of
+the local Tk `bad argument ""` TclError, focused green
+`TtkProgressbarStartStepNoneAndSequenceWordsMatchLocal310` passing 1/1 in
+3906 ms, adjacent `TtkProgressbar` JSON passing 2/2 in 4141 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1953 ms.
+No aggregate baseline is raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Scrollbar.delta(deltax, deltay)`,
+`ttk.Scrollbar.fraction(x, y)`, and `ttk.Scrollbar.set(first, last)` `None`
+and list/tuple sequence handling. A fresh Python 3.10.11 probe confirmed that
+`None` in any covered numeric operand is omitted from the Tcl command and
+raises the local wrong-args error, empty list/tuple operands reach Tcl as the
+empty float word, one-item list/tuple numeric operands are accepted, and
+multi-item list/tuple operands join into one float word such as `10 11` or
+`0.25 0.5`. The AHK prefixed-internal `AhkStdlibTkinterScrollbar` now builds
+these Tcl commands operand by operand and routes covered numeric values through
+the shared ttk float-value word helper while preserving scalar behavior. This
+slice did not add visible README or example code, but the existing tkinter
+example and extracted README snippets were revalidated through the capture
+harness. Fresh evidence includes `.codex/tkinter_ttk_scrollbar_sequence_probe.py`
+and `.codex/tkinter_ttk_scrollbar_sequence_probe.output.json`, a focused red
+test failing because `scrollbar.delta(stdlib.None, 5)` reported
+`expected floating-point number but got "None"`, focused green
+`TtkScrollbarDeltaFractionSetNoneAndSequenceWords` passing 1/1 in 203 ms,
+adjacent `TtkScrollbar` JSON passing 2/2 in 609 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, and README en/zh
+examples passing through ahktest capture with pollution assertions in 1875 ms.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Scale.coords(value=None)` plus `ttk.Scale.set(value)`
+`None` and list/tuple sequence handling. A fresh Python 3.10.11 probe
+confirmed that `coords()` and `coords(None)` both query the slider coordinates,
+empty list/tuple values reach Tcl as the empty float word and raise
+`expected floating-point number but got ""`, one-item list/tuple numeric values
+are accepted, and multi-item list/tuple values join into one float word such
+as `5 6`. The same probe confirmed that `set(None)` omits the Tcl value
+operand and raises the local wrong-args error, while list/tuple values follow
+the same joined float-word behavior. The AHK prefixed-internal
+`AhkStdlibTkinterScale` now exposes the public ttk `coords(...)` method and
+routes covered `coords(...)` / `set(...)` values through a Scale value-word
+helper while preserving scalar behavior. This slice did not add visible README
+or example code, but the existing tkinter example and extracted README snippets
+were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_scale_coords_sequence_probe.py` and
+`.codex/tkinter_ttk_scale_coords_sequence_probe.output.json`, a focused red
+test erroring because `ttk.Scale` had no `coords` method, focused green
+`TtkScaleCoordsSetNoneAndSequenceWords` passing 1/1 in 140 ms, adjacent
+`TtkScale` JSON passing 2/2 in 250 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, and README en/zh examples passing
+through ahktest capture with pollution assertions in 1203 ms.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Combobox.current(newindex=None)` and
+`ttk.Combobox.set(value)` `None` and list/tuple sequence handling. A fresh
+Python 3.10.11 probe confirmed that `current(None)` is the same current-index
+query as `current()`, empty list/tuple indexes reach Tcl as the empty index and
+raise `Incorrect index `, one-item list/tuple numeric indexes select the
+matching row, and multi-item list/tuple indexes join into one index word such
+as `1 2`. The same probe confirmed that `set(None)` omits the Tcl value
+operand and raises the local wrong-args error, while list/tuple values are
+passed as Tcl list values rather than plain joined strings, so `["beta gamma"]`
+writes `{beta gamma}` and `["beta", "gamma"]` writes `beta gamma`. The AHK
+prefixed-internal `AhkStdlibTkinterCombobox` now routes `current(...)` through
+a sequence index-word helper and routes `set(...)` through a Tcl-list value
+helper while preserving scalar behavior. This negative edge-behavior slice did
+not add visible README or example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+evidence includes `.codex/tkinter_ttk_combobox_current_sequence_probe.py` and
+`.codex/tkinter_ttk_combobox_current_sequence_probe.output.json`, a focused red
+test erroring because `combo.current(stdlib.None)` reported
+`Incorrect index None`, focused green
+`TtkComboboxCurrentSetNoneAndSequenceWords` passing 1/1 in 282 ms, adjacent
+`TtkCombobox` JSON passing 2/2 in 484 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, and README en/zh examples passing
+through ahktest capture with pollution assertions in 1875 ms.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Panedwindow` pane-id `None` and list/tuple
+sequence-word parity for `pane(pane, option=None)`, `insert(pos, child)`,
+`forget(child)`, and `remove(child)`. A fresh Python 3.10.11 probe confirmed
+that `pane(None)`, `pane(None, "weight")`, `insert(None, child)`,
+`insert("end", None)`, `forget(None)`, and `remove(None)` omit the covered Tcl
+operand and raise the local wrong-args errors; empty list/tuple operands reach
+Tcl as the empty pane/slave specification; one-item list/tuple operands address
+the matching pane path; and multi-item list/tuple operands are joined into one
+Tcl word such as `missing pane`. The AHK prefixed-internal
+`AhkStdlibTkinterPanedwindow` now routes covered pane/index/slave operands
+through `AhkStdlibTkinterTtkPanedwindowPaneWord`, preserving widget-object to
+path conversion for scalar and sequence elements while letting Tk produce the
+observed wrong-args text for omitted `None` operands. This negative
+edge-behavior slice did not add visible README or example code, but the
+existing tkinter example and extracted README snippets were revalidated through
+the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_panedwindow_paneid_sequence_probe.py` and
+`.codex/tkinter_ttk_panedwindow_paneid_sequence_probe.output.json`, a focused
+red test failing because `paned.pane(stdlib.None)` reported
+`Invalid slave specification None`, focused green
+`TtkPanedwindowPaneIdNoneAndSequenceWords` passing 1/1 in 531 ms, adjacent
+`TtkPanedwindow` JSON passing 2/2 in 797 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, and README en/zh examples passing
+through ahktest capture with pollution assertions in 1828 ms.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Notebook` tab-id `None` and list/tuple sequence-word
+parity for `index(tab_id)`, `select(tab_id=None)`, `tab(tab_id, option=None)`,
+`hide(tab_id)`, and `forget(tab_id)`. A fresh Python 3.10.11 probe confirmed
+that `index(None)`, `tab(None)`, `tab(None, "text")`, `hide(None)`, and
+`forget(None)` omit the Tcl tab operand and raise the local wrong-args errors,
+while `select(None)` remains the current-tab query. The same probe confirmed
+that empty list/tuple tab ids reach Tcl as the empty slave specification,
+one-item list/tuple tab ids address the matching page path, multi-item
+list/tuple tab ids are joined into one Tcl word such as `missing tab`, and
+`tab([page], {text: ...})` returns an empty map while updating the tab. The
+AHK prefixed-internal `AhkStdlibTkinterNotebook` now routes covered tab ids
+through `AhkStdlibTkinterTtkNotebookTabWord`, preserving widget-object to path
+conversion for scalar and sequence elements while letting Tk produce the
+observed wrong-args text for omitted `None` operands. This negative
+edge-behavior slice did not add visible README or example code, but the
+existing tkinter example and extracted README snippets were revalidated through
+the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_notebook_tabid_sequence_probe.py` and
+`.codex/tkinter_ttk_notebook_tabid_sequence_probe.output.json`, a focused red
+test failing because `notebook.index(stdlib.None)` reported
+`Invalid slave specification None`, focused green
+`TtkNotebookTabIdNoneAndSequenceWords` passing 1/1 in 656 ms, adjacent
+`TtkNotebook` JSON passing 2/2 in 985 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, and README en/zh examples passing
+through ahktest capture with pollution assertions in 1906 ms.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Treeview.bbox(item, column=None)` and
+`ttk.Treeview.set(item, column=None, value=None)` column `None` and list/tuple
+sequence-word parity. A fresh Python 3.10.11 probe confirmed that
+`bbox(item, None)` omits the Tcl column word and returns the same empty bbox
+as `bbox(item)`; empty list/tuple columns reach Tcl as the empty column id and
+raise `Invalid column index `; and one- or multi-item list/tuple columns are
+joined into one column word, so `["name"]` and `["two", "words"]` address the
+`name` and `two words` columns across bbox, query, and value-set paths. The
+probe also confirmed that `set(item, None, value)` follows CPython's direct
+Tcl-call behavior and returns the raw column/value tuple instead of setting a
+column or returning the Python dict path. The AHK prefixed-internal
+`AhkStdlibTkinterTreeview.bbox(...)` and `.set(...)` now route covered column
+operands through the Treeview column-word helper, distinguish the two-argument
+and three-argument `None` `set` paths, and preserve existing item-word
+handling. This negative edge-behavior slice did not add visible README or
+example code, but the existing tkinter example and extracted README snippets
+were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_treeview_bbox_set_column_probe.py` and
+`.codex/tkinter_ttk_treeview_bbox_set_column_probe.output.json`, a focused red
+test failing because `tree.bbox("first", stdlib.None)` reported
+`Invalid column index None`, a second red check failing because
+`tree.set("first", stdlib.None, "none-updated")` returned the dict path instead
+of `("name", "alpha", "two words", "beta")`, focused green
+`TtkTreeviewBboxSetColumnNoneAndSequenceWords` passing 1/1 in 266 ms, adjacent
+`TtkTreeview` JSON passing 19/19 in 5219 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, and README en/zh examples passing
+through ahktest capture with pollution assertions in 2250 ms. A broader
+`-FilterExpr Ttk` run produced a JSON report where the current Treeview slice
+passed, but the selection also included an unrelated `TestTkWinfo...` identity
+failure, so that run is not used as a passing ttk-subset gate for this slice.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Treeview.identify(component, x, y)` component
+`None` and list/tuple sequence-word parity. A fresh Python 3.10.11 probe
+confirmed that `identify(None, 5, 5)` reaches Tcl as a missing command word
+and raises the local wrong-args error; empty list/tuple components reach Tcl
+as the empty command word and raise `bad command ""`; and one- or multi-item
+list/tuple components are joined into one command word, so `["element"]`
+matches the scalar `element` path while `["element", "extra"]` reaches Tcl as
+the invalid command `element extra`. The AHK prefixed-internal
+`AhkStdlibTkinterTreeview.identify(...)` now routes covered component values
+through a Treeview identify-component helper and uses an explicit wrong-args
+path for `None` instead of falling into Tk's legacy two-coordinate
+`identify x y` form. This negative edge-behavior slice did not add visible
+README or example code, but the existing tkinter example and extracted README
+snippets were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_treeview_identify_component_probe.py` and
+`.codex/tkinter_ttk_treeview_identify_component_probe.output.json`, a focused
+red test failing because `tree.identify(stdlib.None, 5, 5)` reported
+`bad command "None"` instead of Tcl wrong-args, focused green
+`TtkTreeviewIdentifyComponentNoneAndSequenceWords` passing 1/1 in 297 ms,
+adjacent `TtkTreeview` JSON passing 18/18 in 6625 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in 2406 ms,
+and a `Ttk`-filtered `stdlib/tests/tkinter.test.ahk` gate passing 141/141 in
+43797 ms. The `stdlib/tests/tkinter.test.ahk -TimeoutSeconds 70` and default
+aggregate `stdlib/tests -TimeoutSeconds 60 -Quiet -JsonReport
+.codex/ttk-treeview-identify-component-aggregate-60s.json` attempts timed out
+before pass evidence, so neither the tkinter full-file baseline nor the
+aggregate baseline is raised by this slice.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Treeview.tag_configure(...)` and
+`ttk.Treeview.tag_bind(...)` tag-name `None` and list/tuple sequence-word
+parity. A fresh Python 3.10.11 probe confirmed that `tag_configure(None)` and
+`tag_bind(None)` omit the Tcl `tagName` word and raise the local wrong-args
+errors; empty list/tuple tag names reach Tcl as the empty tag; and one- or
+multi-item list/tuple tag names are joined into one Tcl tag word, so
+`["odd"]` addresses tag `odd` and `["all", "rows"]` addresses tag
+`all rows` across query, option-query, keyword configure, and bind configure
+paths. The AHK prefixed-internal `AhkStdlibTkinterTreeview` now routes covered
+Treeview tag names through a Treeview tag-word helper and preserves the
+same `None` omission path. This negative edge-behavior slice did not add
+visible README or example code, but the existing tkinter example and extracted
+README snippets were revalidated through the capture harness. Fresh evidence
+includes `.codex/tkinter_ttk_treeview_tag_sequence_probe.py` and
+`.codex/tkinter_ttk_treeview_tag_sequence_probe.output.json`, a focused red
+test failing because `tree.tag_configure(stdlib.None)` did not raise the Tcl
+wrong-args error, focused green
+`TtkTreeviewTagConfigureBindNoneAndSequenceWords` passing 1/1 in 375 ms,
+adjacent `TtkTreeview` JSON passing 17/17 in 4156 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in 2344 ms,
+and full `stdlib/tests/tkinter.test.ahk` passing 203/203 in 53359 ms. The
+default aggregate `stdlib/tests -TimeoutSeconds 60 -Quiet -JsonReport
+.codex/ttk-treeview-tag-sequence-aggregate-60s.json` attempt timed out before
+producing JSON, so the aggregate baseline is not raised by this slice.
+
+The latest tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Treeview.column(...)` and
+`ttk.Treeview.heading(...)` column-id `None` and list/tuple sequence-word
+parity. A fresh Python 3.10.11 probe confirmed that `column(None)` and
+`heading(None)` omit the Tcl column word and raise the local wrong-args errors;
+empty list/tuple column ids reach Tcl as an empty column id and raise
+`Invalid column index `; and one- or multi-item list/tuple column ids are joined
+into one Tcl column word, so `["name"]` addresses column `name` and
+`["two", "words"]` addresses column `two words` across query, option-query,
+and keyword configure paths. The AHK prefixed-internal
+`AhkStdlibTkinterTreeview.column(...)` and `.heading(...)` now route covered
+column ids through a Treeview column-word helper and preserve the same `None`
+omission path. This negative edge-behavior slice did not add visible README or
+example code, but the existing tkinter example and extracted README snippets
+were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_treeview_column_heading_sequence_probe.py` and
+`.codex/tkinter_ttk_treeview_column_heading_sequence_probe.output.json`, a
+focused red test failing because `tree.column(stdlib.None)` reported
+`Invalid column index None` instead of Tcl wrong-args, focused green
+`TtkTreeviewColumnHeadingNoneAndSequenceWords` passing 1/1 in 344 ms, adjacent
+`TtkTreeview` JSON passing 16/16 in 3609 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, README en/zh examples passing through
+ahktest capture with pollution assertions in 2047 ms, and full
+`stdlib/tests/tkinter.test.ahk` passing 202/202 in 42703 ms. The default
+aggregate `stdlib/tests -TimeoutSeconds 60 -Quiet -JsonReport
+.codex/ttk-treeview-column-heading-sequence-aggregate-60s.json` attempt timed
+out before producing JSON, so the aggregate baseline is not raised by this
+slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with `ttk.Treeview` mutation item/parent/id `None` and
+list/tuple sequence-word parity for `insert`, `move`, `reattach`, and
+`set_children`. A fresh Python 3.10.11 probe confirmed that required
+`None` parent/item operands are omitted at the Tcl call boundary and produce
+the local wrong-args errors; list and tuple parent/item/id operands are joined
+into one Tcl item word, so `["first"]` addresses item `first` and
+`["first", "child"]` addresses the single missing item `"first child"`; and
+optional `iid=None` on `insert` omits `-id` so Tcl generates an `I...` id. The
+AHK prefixed-internal `AhkStdlibTkinterTreeview` now routes covered mutation
+parent/item/id operands through the Treeview item-word helper, uses a
+Treeview child-list helper for `set_children` newchildren, and preserves
+`None` newchildren as the string item id `None` to match CPython. This negative
+edge-behavior slice did not add visible README or example code, but the
+existing tkinter example and extracted README snippets were revalidated through
+the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_treeview_mutation_sequence_probe.py` and
+`.codex/tkinter_ttk_treeview_mutation_sequence_probe.output.json`, a focused
+red test failing because `tree.insert(stdlib.None, "end", ...)` reported
+`Item None not found` instead of Tcl wrong-args, focused green
+`TtkTreeviewMutationNoneAndSequenceWords` passing 1/1 in 343 ms, adjacent
+`TtkTreeview` JSON passing 15/15 in 3610 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, README en/zh examples passing through
+ahktest capture with pollution assertions in 1937 ms, and full
+`stdlib/tests/tkinter.test.ahk` passing 201/201 in 55047 ms. The default
+aggregate `stdlib/tests -TimeoutSeconds 60 -Quiet -JsonReport
+.codex/ttk-treeview-mutation-sequence-aggregate-60s.json` attempt timed out
+before producing JSON, so the aggregate baseline is not raised by this slice.
+
+The preceding tkinter.ttk implementation slice extends the covered themed-widget
+submodule slice with remaining `ttk.Treeview` item-argument `None` and
+list/tuple sequence-word parity for `bbox`, `index`, `item`, `next`, `parent`,
+`prev`, `see`, and `set`. A fresh Python 3.10.11 probe confirmed that
+`None` omits the Tcl item word for these methods and raises the local Tcl
+wrong-args errors, while list and tuple item names are joined into a single Tcl
+item word: empty list/tuple address the root item, `["first"]` addresses item
+`first`, and `["first", "child"]` addresses the single missing item
+`"first child"`. The AHK prefixed-internal `AhkStdlibTkinterTreeview` now
+routes the covered remaining item operands through the Treeview item-word
+helper, preserves the method-specific `None` omission path, and returns the
+local Python-shaped empty root `item([])` `values`/`tags` fields as empty
+strings. This negative edge-behavior slice did not add visible README or
+example code, but the existing tkinter example and extracted README snippets
+were revalidated through the capture harness. Fresh evidence includes
+`.codex/tkinter_ttk_treeview_remaining_item_sequence_probe.py` and
+`.codex/tkinter_ttk_treeview_remaining_item_sequence_probe.output.json`, a
+focused red test failing because `tree.bbox(stdlib.None)` reported `Item None
+not found` instead of Tcl wrong-args, focused green
+`TtkTreeviewRemainingItemNoneAndSequenceWords` passing 1/1 in 188 ms, adjacent
+`TtkTreeview` JSON passing 14/14 in 1609 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, README en/zh examples passing through
+ahktest capture with pollution assertions in 2156 ms, and full
+`stdlib/tests/tkinter.test.ahk` passing 200/200 in 56625 ms. The default
+aggregate `stdlib/tests -TimeoutSeconds 60 -Quiet -JsonReport
+.codex/ttk-treeview-remaining-item-sequence-aggregate-60s.json` attempt timed
+out before producing JSON, so the aggregate baseline is not raised by this
+slice.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Treeview` item/tag `None` and list/tuple sequence-word parity
+for `exists`, `get_children`, `focus`, and `tag_has`. A fresh Python 3.10.11
+probe confirmed that `exists(None)` and `tag_has(None)` omit their Tcl item/tag
+word and raise the local Tcl wrong-args errors, while `get_children(None)` and
+`focus(None)` keep their query/root behavior; list and tuple item or tag names
+are joined into one Tcl word, so `["first"]` addresses item `first`,
+`["first", "child"]` addresses the single missing item `"first child"`, and
+`["all", "rows"]` addresses the tag `"all rows"`. The AHK
+prefixed-internal `AhkStdlibTkinterTreeview.exists(...)`, `.focus(...)`,
+`.get_children(...)`, and `.tag_has(...)` now route covered item/tag operands
+through a Treeview item-word helper while preserving method-specific `None`
+handling. This negative edge-behavior slice did not add visible README or
+example code, but the existing tkinter example and extracted README snippets
+were revalidated through the capture harness. Fresh promotion evidence includes
+`.codex/tkinter_ttk_treeview_item_sequence_probe.py` and
+`.codex/tkinter_ttk_treeview_item_sequence_probe.output.json`, a focused red
+test failing because `tree.exists(stdlib.None)` returned normally instead of
+raising Tcl wrong-args, focused green passing 1/1 in 172 ms, adjacent
+`TtkTreeview` JSON passing 13/13 in 3109 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, README en/zh examples passing through
+ahktest capture with pollution assertions in 1687 ms, full
+`stdlib/tests/tkinter.test.ahk` passing 199/199 in 42985 ms, and aggregate
+`stdlib/tests` passing 1067/1067 with `-TimeoutSeconds 60 -Quiet -JsonReport
+.codex/ttk-treeview-item-tag-sequence-aggregate-60s.json` in 56016 ms with only
+the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style` style-name `None` and list/tuple sequence-word parity
+across `configure`, `lookup`, `map`, and `layout`. A fresh Python 3.10.11 probe
+confirmed that `style=None` is omitted at the `_tkinter` call boundary for
+`configure(None)`, `lookup(None, ...)`, `map(None)`, and `layout(None)`, raising
+the local Tcl wrong-args errors; list and tuple style names are joined into one
+Tcl style-name word; empty list and tuple style names keep CPython's
+method-specific results (`configure([])` returns `None`, `map([])` returns `{}`,
+`layout([])` raises `Layout  not found`, and `lookup([], ...)` resolves through
+the local empty-style/default path). The AHK prefixed-internal
+`AhkStdlibTkinterStyle.configure(...)`, `.lookup(...)`, `.map(...)`, and
+`.layout(...)` now route style names through a shared style-name word helper,
+with `lookup(stdlib.None, ...)` explicitly forcing the same Tcl wrong-args path
+as CPython. This negative edge-behavior slice did not add visible README or
+example code, but the existing tkinter example and extracted README snippets
+were revalidated through the capture harness. Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_style_name_sequence_probe.py` and
+`.codex/tkinter_ttk_style_style_name_sequence_probe.output.json`, a focused red
+test failing because `style.configure(stdlib.None)` returned normally instead
+of raising Tcl wrong-args, focused green passing 1/1 in 328 ms, adjacent
+`TtkStyle` JSON passing 17/17 in 3641 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, README en/zh examples passing through
+ahktest capture with pollution assertions in 1859 ms, full
+`stdlib/tests/tkinter.test.ahk` passing 198/198 in 39641 ms, and aggregate
+`stdlib/tests` passing 1066/1066 with `-TimeoutSeconds 60 -Quiet -JsonReport
+.codex/ttk-style-style-name-sequence-aggregate-60s-final-quiet.json` in
+49000 ms with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.element_create(elementname, etype, *args, **kw)`
+top-level and `from`-factory `None`/sequence word parity. A fresh Python 3.10.11
+probe confirmed that top-level `elementname=None` and `etype=None` are omitted
+at the `_tkinter` call boundary and raise the local style-element wrong-args
+`TclError`; list and tuple element names are passed as one Tcl list word and
+create joined element names; `from` theme/source list and tuple values are
+preserved as one Tcl word; `from` theme `None` raises the local
+`theme ?element?` wrong-args error; and optional source-element `None` is
+omitted so a theme-only clone succeeds. The AHK prefixed-internal
+`AhkStdlibTkinterStyle.element_create(...)` now builds top-level element words
+with the same `None` truncation semantics, treats list/tuple names as Tcl list
+words, keeps factory dispatch keyed to plain string etypes, preserves sequence
+words in `from` specs, and no longer treats trailing `stdlib.None` as keyword
+options. This negative edge-behavior slice did not add visible README or
+example code, but the existing tkinter example and extracted README snippets
+were revalidated through the capture harness. Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_element_create_sequence_probe.py` and
+`.codex/tkinter_ttk_style_element_create_sequence_probe.output.json`, a focused
+red test failing because `style.element_create(stdlib.None, "from", ...)`
+returned normally instead of raising Tcl wrong-args, focused green passing 1/1
+in 250 ms, adjacent `TtkStyle` JSON passing 16/16 in 1875 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in 1703 ms,
+full `stdlib/tests/tkinter.test.ahk` passing 197/197 in 24297 ms, aggregate
+`stdlib/tests` passing 1065/1065 with `-TimeoutSeconds 40` in 34609 ms, and
+follow-up aggregate `stdlib/tests` passing 1065/1065 with `-TimeoutSeconds 70
+-Quiet -JsonReport .codex/ttk-style-element-create-sequence-aggregate-70s.json`
+in 35938 ms with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.element_options(elementname)` element-name `None` and
+sequence parity. A fresh Python 3.10.11 probe confirmed that
+`element_options(None)` omits the element argument at the Tcl boundary and
+raises the local wrong-args `TclError`, while empty strings, numeric and boolean
+values, lists, and tuples all reach Tcl as element names and return empty option
+tuples for the covered cases. The AHK prefixed-internal
+`AhkStdlibTkinterStyle.element_options(...)` now uses an element-options
+name-word helper so `stdlib.None` produces the same Tcl wrong-args path and
+list/tuple names are joined into a single Tcl element-name word instead of
+raising AHK string-conversion errors. This negative edge-behavior slice did not
+add visible README or example code, but the existing tkinter example and
+extracted README snippets were revalidated through the capture harness. Fresh
+promotion evidence includes
+`.codex/tkinter_ttk_style_element_options_sequence_probe.py` and
+`.codex/tkinter_ttk_style_element_options_sequence_probe.output.json`, a
+focused red test failing because `style.element_options(stdlib.None)` returned
+normally instead of raising Tcl wrong-args, focused green passing 1/1 in 250 ms,
+adjacent `TtkStyle` JSON passing 15/15 in 1547 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in 1500 ms,
+full `stdlib/tests/tkinter.test.ahk` passing 196/196 in 24313 ms, aggregate
+`stdlib/tests` passing 1064/1064 with `-TimeoutSeconds 40` in 33954 ms, and
+follow-up aggregate `stdlib/tests` passing 1064/1064 with `-TimeoutSeconds 70
+-Quiet -JsonReport .codex/ttk-style-element-options-sequence-aggregate-70s.json`
+in 33563 ms with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.lookup(style, option, state=None, default=None)` option
+and default sequence parity. A fresh Python 3.10.11 probe confirmed that list
+options are formatted by CPython as Python list text and return `""` for the
+covered style, while tuple options use the old `%` formatting behavior: empty
+tuples raise `TypeError("not enough arguments for format string")`, one-item
+tuples query that option, and multi-item tuples raise `TypeError("not all
+arguments converted during string formatting")`. The same probe confirmed that
+list and tuple defaults round-trip through Tcl as tuple-shaped values, while
+`False` and `0` defaults return Python integer `0`. The AHK prefixed-internal
+`AhkStdlibTkinterStyle.lookup(...)` now routes option names through a
+lookup-specific helper, quotes the full `-option` Tcl word so list repr strings
+cannot trigger Tcl command substitution, and converts sequence defaults through
+Tcl list argv semantics with tuple-shaped readback. This negative edge-behavior
+slice did not add visible README or example code, but the existing tkinter
+example and extracted README snippets were revalidated through the capture
+harness. Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_lookup_option_sequence_probe.py` and
+`.codex/tkinter_ttk_style_lookup_option_sequence_probe.output.json`, a focused
+red test erroring because `style.lookup(styleName, [])` attempted to convert an
+AHK Array to a string, focused green passing 1/1 in 219 ms, adjacent `TtkStyle`
+JSON passing 14/14 in 1671 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing, README en/zh examples passing through
+ahktest capture with pollution assertions in 1375 ms, full
+`stdlib/tests/tkinter.test.ahk` passing 195/195 in 23718 ms, aggregate
+`stdlib/tests` passing 1063/1063 with `-TimeoutSeconds 40` in 34032 ms, and
+follow-up aggregate `stdlib/tests` passing 1063/1063 with `-TimeoutSeconds 70
+-Quiet -JsonReport .codex/ttk-style-lookup-sequence-options-aggregate-70s.json`
+in 34359 ms with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.configure(style, query_opt=None)` sequence query-option
+parity. A fresh Python 3.10.11 probe confirmed that list query options are
+handled by CPython as unhashable dict keys and raise `TypeError("unhashable
+type: 'list'")`, while tuple query options follow the old `%` formatting path:
+empty tuples raise `TypeError("not enough arguments for format string")`,
+one-item tuples query that option and return the scalar value or `""`, and
+multi-item tuples raise `TypeError("not all arguments converted during string
+formatting")`. The AHK prefixed-internal
+`AhkStdlibTkinterStyle.configure(...)` now routes non-dict query options through
+a configure-specific helper so list and tuple behavior matches the local
+CPython observations without changing the existing map/query or settings
+branches. This negative edge-behavior slice did not add visible README or
+example code, but the existing tkinter example and extracted README snippets
+were revalidated through the capture harness. Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_configure_sequence_query_probe.py` and
+`.codex/tkinter_ttk_style_configure_sequence_query_probe.output.json`, a
+focused red test failing because list query options raised the AHK
+`Expected a String but got an Array.` path, focused green passing 1/1 in 235 ms,
+adjacent `TtkStyle` JSON passing 13/13 in 1422 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in 1360 ms,
+full `stdlib/tests/tkinter.test.ahk` passing 194/194 in 22937 ms, aggregate
+`stdlib/tests` passing 1062/1062 with `-TimeoutSeconds 40` in 33797 ms, and
+follow-up aggregate `stdlib/tests` passing 1062/1062 with `-TimeoutSeconds 70
+-Quiet -JsonReport .codex/ttk-style-configure-sequence-query-aggregate-70s.json`
+in 34047 ms with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.theme_settings(themename, settings)` settings-key parity
+for tuple keys and keys containing spaces. A fresh Python 3.10.11 probe
+confirmed that CPython interpolates settings dict keys raw into the generated
+Tcl script: tuple style keys such as `("suffix", "Treeview")` and plain string
+style keys containing spaces both reach Tcl and raise the local wrong-args
+`TclError`, while tuple element keys in `"element create"` reach Tcl as the
+Python tuple string and raise `TclError("No such element type 'field')")` in the
+covered case. The AHK prefixed-internal theme-settings script builder now uses a
+settings-key-only formatter so stdlib tuple keys are represented with
+Python-like tuple text inside generated Tcl, while ordinary string style and
+element names remain raw. This negative edge-behavior slice did not add visible
+README or example code, but the existing tkinter example and extracted README
+snippets were revalidated through the capture harness. Fresh promotion evidence
+includes `.codex/tkinter_ttk_style_theme_settings_key_probe.py` and
+`.codex/tkinter_ttk_style_theme_settings_key_probe.output.json`, a focused red
+test failing because tuple settings keys raised an AHK `TypeError` before Tcl,
+focused green passing 1/1 in 235 ms, adjacent `TtkStyle` JSON passing 12/12 in
+1515 ms, explicit `run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing,
+README en/zh examples passing through ahktest capture with pollution assertions
+in 1297 ms, full `stdlib/tests/tkinter.test.ahk` passing 193/193 in 23531 ms,
+aggregate `stdlib/tests` passing 1061/1061 with `-TimeoutSeconds 40` in 33953
+ms, and follow-up aggregate `stdlib/tests` passing 1061/1061 with
+`-TimeoutSeconds 70 -Quiet -JsonReport
+.codex/ttk-style-theme-settings-tuple-keys-aggregate-70s.json` in 33093 ms with
+only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.theme_create(...)` and `ttk.Style.theme_settings(...)`
+sequence theme-name parity. A fresh Python 3.10.11 probe confirmed that
+`theme_create([name], [parent])` creates the theme named by tkinter/Tcl list
+stringification, that multi-item names such as `[name, "space"]` create and
+switch to `"name space"`, that an empty string item creates names ending in
+`"{}"`, and that `theme_settings([current_theme], settings)` applies settings
+to the current theme. The AHK prefixed-internal
+`AhkStdlibTkinterStyle.theme_create(...)` and `theme_settings(...)` now reuse
+the same style theme-name word conversion used by `theme_use(...)` for theme and
+parent arguments, leaving settings script generation unchanged.
+`stdlib/examples/tkinter.ahk` and the language-specific README tkinter examples
+now exercise sequence `theme_create(...)` and sequence `theme_settings(...)`
+without changing the visible demo window. Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_theme_create_sequence_probe.py`, a focused red test
+failing because `theme_create([name], [parent])` attempted to stringify an AHK
+Array, focused green passing 1/1 in 219 ms, adjacent `TtkStyle` JSON passing
+11/11 in 1359 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing after example sync, README en/zh examples
+passing through ahktest capture with pollution assertions in 1.437 seconds, full
+`stdlib/tests/tkinter.test.ahk` passing 192/192 in 22.953 seconds, aggregate
+`stdlib/tests` passing 1060/1060 with `-TimeoutSeconds 40` in 32171 ms, and
+follow-up aggregate `stdlib/tests` passing 1060/1060 with `-TimeoutSeconds 70
+-Quiet -JsonReport .codex/ttk-style-theme-create-sequence-aggregate-70s.json`
+in 32625 ms with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.theme_use(themename=None)` sequence theme-name parity. A
+fresh Python 3.10.11 probe confirmed that omitted and explicit `None` query the
+current theme, while `""`, `0`, `False`, `True`, empty lists, and empty tuples
+are passed as theme names and raise the local Tcl missing-theme errors. The same
+probe confirmed that one-item list/tuple theme names such as `[base_theme]`
+switch themes successfully, multi-item lists/tuples join to Tcl theme names like
+`"missing theme"`, and list items containing spaces are preserved as Tcl-list
+words such as `"{missing theme}"`. The AHK prefixed-internal
+`AhkStdlibTkinterStyle.theme_use(...)` now preserves query behavior only for
+omitted/`None` and routes list/tuple theme names through a Tcl `[list ...]`
+argument word so Python-observed sequence stringification reaches
+`ttk::setTheme`. `stdlib/examples/tkinter.ahk` and the language-specific README
+tkinter examples now exercise `style.theme_use([themeName])` alongside the
+existing scalar theme switch without changing the visible demo window. Fresh
+promotion evidence includes `.codex/tkinter_ttk_style_theme_use_probe.py`,
+focused red reports showing list/tuple theme names previously errored during
+AHK stringification or lost Tcl-list braces, focused green passing 1/1 in
+281 ms, adjacent `TtkStyle` JSON passing 10/10 in 1078 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after example sync,
+README en/zh examples passing through ahktest capture with pollution assertions
+in 1.344 seconds, full `stdlib/tests/tkinter.test.ahk` passing 191/191 in
+23.234 seconds, aggregate `stdlib/tests` passing 1059/1059 with
+`-TimeoutSeconds 40` in 32625 ms, and follow-up aggregate `stdlib/tests` passing
+1059/1059 with `-TimeoutSeconds 70 -Quiet -JsonReport
+.codex/ttk-style-theme-use-aggregate-70s.json` in 33657 ms with only the known
+`plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.map(style, query_opt=None)` explicit-`None`, scalar query,
+and list/tuple query-option parity. A fresh Python 3.10.11 probe confirmed that
+local `style.map(style_name, None)` returns the same map dict as an omitted
+query option, that string, integer, boolean, and list query options are treated
+as option lookups returning a state map list, that empty and single-item lists
+return `[]` for the probed style, that a single-item tuple such as
+`("foreground",)` is unpacked as the option name, and that empty or multi-item
+tuples preserve CPython's old `%`-formatting `TypeError` messages. The AHK
+prefixed-internal `AhkStdlibTkinterStyle.map(...)` now routes query options
+through a map-scoped helper so arrays, stdlib tuples, booleans, and scalar values
+follow the Python-observed query semantics while the existing Map/object
+settings branch remains unchanged. `stdlib/examples/tkinter.ahk` and the
+language-specific README tkinter examples now exercise `style.map(...,
+stdlib.None)` and `style.map(..., [])` alongside the existing map-setting demo
+without changing the visible demo window. Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_map_option_none_bool_probe.py`, a focused red test
+failing because `style.map(styleName, [])` attempted to stringify an Array
+instead of returning Python's empty state map list, focused green passing 1/1 in
+234 ms, the adjacent `TtkStyle` filter passing 9/9 in 921 ms, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after example sync,
+README en/zh examples passing through ahktest capture with pollution assertions
+in 1.406 seconds, full `stdlib/tests/tkinter.test.ahk` passing 190/190 in
+21.922 seconds, aggregate `stdlib/tests` passing 1058/1058 with
+`-TimeoutSeconds 40` in 32110 ms, and follow-up aggregate `stdlib/tests` passing
+1058/1058 with `-TimeoutSeconds 70 -Quiet -JsonReport
+.codex/ttk-style-map-scalar-query-aggregate-70s.json` in 32563 ms with only the
+known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.configure(style, query_opt=None)` scalar falsy query
+option parity. A fresh Python 3.10.11 probe confirmed that local
+`style.configure(style_name, None)` returns the same config dict as an omitted
+query option, that `""`, `0`, and `False` return Python `None`, that `True`
+returns `""`, and that missing styles queried with `None`, `""`, `0`, or
+`False` return Python `None`. The same probe also recorded the adjacent
+`Style.map(...)` and `Style.lookup(...)` scalar behaviors so this configure fix
+stays scoped rather than generalizing falsy iterables or unrelated query APIs.
+The AHK prefixed-internal `AhkStdlibTkinterStyle.configure(...)` now treats
+scalar falsy non-`None` query options as Python's `None` result while leaving
+`stdlib.True` on the observed option-name lookup path. `stdlib/examples/tkinter.ahk`
+and the language-specific README tkinter examples now exercise
+`style.configure(..., "")` alongside the existing explicit-`None` query without
+changing the visible demo window. Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_option_none_bool_probe.py`, a focused red test failing
+because `style.configure(styleName, "")` returned `""` instead of
+`stdlib.None`, focused green passing 1/1 in 234 ms, the adjacent `TtkStyle`
+filter passing 8/8 in 812 ms, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing after example sync, README en/zh examples
+passing through ahktest capture with pollution assertions in 1.157 seconds,
+full `stdlib/tests/tkinter.test.ahk` passing 189/189 in 30.938 seconds,
+aggregate `stdlib/tests` passing 1057/1057 with `-TimeoutSeconds 70 -Quiet`
+plus JSON artifact in 40.750 seconds with only the known `plain fallback`
+stderr line, and renewed aggregate 40-second evidence after the threshold
+timeout: one plain `-TimeoutSeconds 40` run passing 1057/1057 in 32141 ms plus
+two quiet JSON 40-second reruns passing 1057/1057 with JSON durations of
+32281 ms and 32218 ms. The earlier same-slice 40062 ms timeout remains recorded
+as evidence that this aggregate gate is threshold-sensitive rather than a
+reason to claim long-term 40-second stability from one run.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Treeview.column/heading/item(..., option=None, **kw)` explicit
+`None` and boolean option-name parity. A fresh Python 3.10.11 probe confirmed
+that local `Treeview.column`, `Treeview.heading`, and `Treeview.item` have
+signatures `(column, option=None, **kw)` / `(item, option=None, **kw)`, treat an
+explicit `None` option exactly like an omitted option by returning the metadata
+dict, return individual option values for string option names, return an empty
+dict for keyword updates, and treat `""`, `0`, `False`, and `True` as explicit
+option names that raise Tcl errors for `"-"`, `"-0"`, `"-False"`, and
+`"-True"`. The AHK prefixed-internal `AhkStdlibTkinterTreeview` now uses a
+Treeview-scoped option-name helper for the `column(...)`, `heading(...)`, and
+`item(...)` lookup paths so stdlib booleans become `True` / `False` only in
+those Python-observed option-name contexts, while existing value conversion for
+Treeview options such as `open`, `stretch`, and `values` remains unchanged.
+`stdlib/examples/tkinter.ahk` and the language-specific README tkinter examples
+now exercise `tree.heading(..., stdlib.None)`, `tree.column(..., stdlib.None)`,
+and `tree.item(..., stdlib.None)` without changing the visible demo window.
+Fresh promotion evidence includes
+`.codex/tkinter_ttk_treeview_option_none_bool_probe.py`, a focused red test
+failing because `tree.heading("name", stdlib.False)` produced Tcl option
+`-0` instead of Python's `-False`, focused green passing 1/1 in 187 ms, the
+adjacent `TtkTreeview` filter passing 12/12 in 1.344 seconds, full
+`stdlib/tests/tkinter.test.ahk` passing 189/189 in 21.015 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after example
+sync, and README en/zh examples passing through ahktest capture with pollution
+assertions in 1.203 seconds after README sync. Aggregate `stdlib/tests` passed
+1057/1057 with `-TimeoutSeconds 40` in 31.297 seconds with only the known
+`plain fallback` stderr line, and a follow-up `stdlib/tests` aggregate with
+`-TimeoutSeconds 70 -Quiet` exited 0 with only the same known stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Notebook.tab(tab_id, option=None, **kw)` explicit-None and
+boolean option-name parity. A fresh Python 3.10.11 probe confirmed the local
+signature `(tab_id, option=None, **kw)`, that `notebook.tab(page)` and
+`notebook.tab(page, None)` return the same tab metadata dict, that
+`notebook.tab(page, "text")` returns the option value, that `""`, `0`, `False`,
+and `True` are treated as explicit option names and raise Tcl errors for
+`"-"`, `"-0"`, `"-False"`, and `"-True"`, and that keyword tab updates return
+an empty dict before changing the stored tab metadata. The AHK prefixed-internal
+`AhkStdlibTkinterNotebook` now treats `stdlib.None` as the tab-info query
+sentinel and keeps Notebook tab option-name conversion scoped so stdlib
+booleans become `True` / `False` only for the observed `tab(..., option)`
+lookup path. `stdlib/examples/tkinter.ahk` and the language-specific README
+tkinter examples now exercise a live `ttk.Notebook` and the explicit
+`notebook.tab(page, stdlib.None)` query path without immediately destroying the
+displayed window. Fresh promotion evidence includes
+`.codex/tkinter_ttk_notebook_tab_explicit_none_probe.py`, a focused red test
+failing because explicit `stdlib.None` was forwarded as Tcl option
+`-__AhkStdlibNone`, focused green passing 1/1 in 187 ms, the adjacent
+`TtkPublicAliases` filter passing 1/1 in 203 ms, full
+`stdlib/tests/tkinter.test.ahk` passing 189/189 in 21.438 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after example
+sync, README en/zh examples passing through ahktest capture with pollution
+assertions in 1.235 seconds after README sync, aggregate `stdlib/tests`
+passing 1057/1057 with `-TimeoutSeconds 40` in 32.422 seconds, and a follow-up
+aggregate `stdlib/tests` run with `-TimeoutSeconds 70 -Quiet` exiting 0 with
+only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Panedwindow.remove(child)` alias parity. A fresh Python 3.10.11
+probe confirmed that local `ttk.Panedwindow.remove` exists, is the same class
+function object as `ttk.Panedwindow.forget`, has signature `(child)`, returns
+`None`, removes the child from the managed panes while leaving the child widget
+alive with an empty manager, and preserves the `PanedWindow.remove(...)` arity
+messages plus Tcl's invalid-slave error. The AHK prefixed-internal
+`AhkStdlibTkinterPanedwindow` now exposes `remove(args*)` as a direct delegate
+to `forget(args*)`, preserving the existing Tcl call path and Python-observed
+error text. `stdlib/examples/tkinter.ahk` and the language-specific README
+tkinter examples now add and remove a temporary scratch pane through
+`paned.remove(...)` while keeping the visible demo panes alive. Fresh promotion
+evidence includes `.codex/tkinter_ttk_panedwindow_remove_alias_probe.py`, a
+focused red test failing because `HasMethod(paned, "remove")` was false,
+focused green passing 1/1 in 219 ms, the adjacent `TtkPublicAliases` filter
+passing 1/1 in 157 ms, full `stdlib/tests/tkinter.test.ahk` passing 189/189
+in 22.063 seconds, explicit `run-ahk-validate -Path
+stdlib/examples/tkinter.ahk` passing after example sync, README en/zh examples
+passing through ahktest capture with pollution assertions in 1.281 seconds
+after README sync, aggregate `stdlib/tests` passing 1057/1057 with
+`-TimeoutSeconds 40` in 30.359 seconds, and a follow-up aggregate
+`stdlib/tests` run with `-TimeoutSeconds 70 -Quiet` exiting 0 with only the
+known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.layout(style, layoutspec=None)` falsy/None layoutspec
+parity. A fresh Python 3.10.11 probe confirmed that local
+`style.layout("Treeview", None)` is a query path identical to omitting the
+second argument, missing styles still raise `TclError`, falsy layout specs
+`[]`, `()`, `""`, `0`, and `False` return `[]` while installing a queryable
+`[("null", {"sticky": "nswe"})]` layout, and truthy invalid specs preserve
+CPython's `TypeError` / `ValueError` distinctions. The AHK `Style.layout(...)`
+implementation now treats `stdlib.None` as a query sentinel, emits the Tcl
+`null -sticky nswe` layout for falsy non-None specs, and keeps malformed
+top-level strings and entries on the Python-observed unpacking error paths.
+`stdlib/examples/tkinter.ahk` and the language-specific README tkinter examples
+now record both the `layout("Treeview", stdlib.None)` query branch and an empty
+scratch layout. Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_layout_falsy_probe.py`, a focused red test failing
+because `layout(emptyListStyle, [])` did not create a queryable null layout,
+focused green rerun passing 1/1 in 172 ms, `TtkStyle` filter passing 8/8 in
+688 ms, full `stdlib/tests/tkinter.test.ahk` passing 189/189 in 20.578
+seconds, explicit `run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing
+after example sync, README en/zh examples passing through ahktest capture with
+pollution assertions in 1.125 seconds after README sync, aggregate
+`stdlib/tests` passing 1057/1057 with `-TimeoutSeconds 40` in 31.282 seconds,
+and a follow-up aggregate `stdlib/tests` run with `-TimeoutSeconds 70 -Quiet`
+exiting 0 with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Widget.instate(statespec, callback=None, *args)` callback-None
+parity. A fresh Python 3.10.11 probe confirmed that local
+`Widget.instate(...)` returns the boolean state match when `callback` is
+`None`, still ignores callback arguments in that branch, skips callbacks when
+the state does not match, and still invokes falsey callable objects. The AHK
+shared widget implementation now treats `stdlib.None` as the no-callback
+sentinel before attempting `callback.Call(...)`; other non-callable AHK values
+continue to surface native AHK call errors. `stdlib/examples/tkinter.ahk` and
+the language-specific README tkinter examples now record the `instate(...,
+stdlib.None, ...)` no-callback branch, and the host-class-collision regression
+test now avoids redeclaring AHK's built-in `Menu` while still validating
+`Menu` plus additional ttk/classic public names against prefixed internal
+classes. Fresh promotion evidence includes
+`.codex/tkinter_ttk_widget_instate_callback_none_probe.py`, a focused red test
+failing because `stdlib.None` was invoked as a callback, focused green passing
+1/1 in 156 ms, `TtkButton` filter passing 2/2 in 297 ms, the repaired
+host-class-collision focused test passing 1/1 in 250 ms, full
+`stdlib/tests/tkinter.test.ahk` passing 188/188 in 20.562 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after example
+sync, README en/zh examples passing through ahktest capture with pollution
+assertions in 1.062 seconds after README sync, aggregate `stdlib/tests`
+passing 1056/1056 with `-TimeoutSeconds 40` in 30.297 seconds, and a follow-up
+aggregate `stdlib/tests` run with `-TimeoutSeconds 70 -Quiet` completing
+successfully with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.theme_settings(themename, settings)` element-create
+settings parity. A fresh Python 3.10.11 probe confirmed that local
+`theme_settings(...)` accepts the same `"element create"` setting syntax as
+`theme_create(...)`, creates elements through `("from", theme, element)` and
+`("from", theme)`, skips an empty element-create setting, leaves the active
+theme unchanged, and preserves CPython errors for missing element-create tuple
+entries, invalid style settings entries, and missing themes. The AHK settings
+script builder now emits `ttk::style element create ...` statements for
+truthy `"element create"` entries while reusing the existing element-create
+formatter. `stdlib/examples/tkinter.ahk` and the language-specific README
+tkinter examples record an element created through `theme_settings(...)`.
+Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_theme_settings_element_create_probe.py`, a focused
+red test failing because the element was not created by `theme_settings(...)`,
+focused green passing 1/1 in 141 ms, `TtkStyle` filter passing 7/7 in 610 ms,
+full `stdlib/tests/tkinter.test.ahk` passing 187/187 in 20.172 seconds,
+explicit `run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after
+the example sync, README en/zh examples passing through ahktest capture with
+pollution assertions in 1.031 seconds, aggregate `stdlib/tests` passing
+1055/1055 with `-TimeoutSeconds 40` in 30.500 seconds, and a follow-up
+aggregate `stdlib/tests` run with `-TimeoutSeconds 70 -Quiet` completing
+successfully with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.OptionMenu.set_menu(...)` menu-entry kind parity. A fresh
+Python 3.10.11 probe confirmed that local `ttk.OptionMenu(...)` and
+`set_menu(default, *values)` populate the attached classic `Menu` with
+`radiobutton` entries, each carrying the associated Tcl variable name and
+per-entry `value`, and that invoking an entry updates the variable before the
+public callback runs. The AHK surface now uses `Menu.add_radiobutton(...)` in
+the internal `AhkStdlibTkinterTtkOptionMenuPopulate(...)` helper while
+preserving the existing `_setit` callback wrapper. `stdlib/examples/tkinter.ahk`
+records the entry type, variable, and value metadata before and after
+`set_menu(...)` rebuilds. Fresh promotion evidence includes
+`.codex/tkinter_ttk_optionmenu_radiobutton_entries_probe.py`, a focused red
+test failing because the attached menu returned `command` instead of
+`radiobutton`, focused green passing 1/1 in 187 ms, `TtkOptionMenu` filter
+passing 3/3 in 343 ms, full `stdlib/tests/tkinter.test.ahk` passing 186/186 in
+20.188 seconds, explicit `run-ahk-validate -Path stdlib/examples/tkinter.ahk`
+passing after the example sync, README en/zh examples passing through ahktest
+capture with pollution assertions in 1.188 seconds, aggregate `stdlib/tests`
+passing 1054/1054 with `-TimeoutSeconds 40` in 30.390 seconds, and a follow-up
+aggregate `stdlib/tests` run with `-TimeoutSeconds 70 -Quiet` completing
+successfully with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.OptionMenu` constructor and `set_menu(default=None, *values)`
+default truthiness parity. A fresh Python 3.10.11 probe confirmed that local
+`ttk.OptionMenu(...)` and `set_menu(...)` rebuild menu entries while
+leaving the associated variable unchanged when `default` is omitted, `None`,
+`""`, `0`, or `False`, and set the variable only for truthy defaults such as
+`"default"`. The AHK surface now uses Python-style `AhkStdlibTruthValue(...)`
+for both the public `stdlib.tkinter.ttk.OptionMenu(...)` constructor default
+and `set_menu(...)` default branches. `stdlib/examples/tkinter.ahk` records an
+empty-string `set_menu` rebuild that preserves the invoked variable value
+before resetting the demo menu, and the language-specific README tkinter
+examples call `choiceMenu.set_menu("", "draft", "review")` before restoring the
+live menu with a truthy `"one"` default. Fresh promotion evidence includes
+`.codex/tkinter_ttk_optionmenu_default_truthiness_probe.py`, a focused red test
+failing because `default=""` changed the variable to an empty string, focused
+green passing 1/1 in 203 ms, `TtkOptionMenu` filter passing 2/2 in 297 ms, full
+`stdlib/tests/tkinter.test.ahk` passing 185/185 in 20.250 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after the example
+sync, README en/zh examples passing through ahktest capture with pollution
+assertions in 1.125 seconds after the README sync, aggregate `stdlib/tests`
+passing 1053/1053 with `-TimeoutSeconds 40` in 30.016 seconds, and a follow-up
+aggregate `stdlib/tests` run with `-TimeoutSeconds 70 -Quiet` completing
+successfully with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.lookup(style, option, state=None, default=None)` falsy
+`state` parity. A fresh Python 3.10.11 probe confirmed that local
+`Style.lookup(...)` treats `state=None`, empty list/tuple/string, `0`, and
+`False` as an empty state, returning the fallback for a missing option and the
+configured static value for a mapped option, while truthy non-iterable
+`state=1` still raises `TypeError: can only join an iterable`. The AHK surface
+now uses Python-style `AhkStdlibTruthValue(...)` before joining the public
+`stdlib.tkinter.ttk.Style(...).lookup(...)` state argument, preserving the
+existing `stdlib.None` default conversion. `stdlib/examples/tkinter.ahk`
+records `lookup("Example.Treeview", "foreground", 0, "fallback")`, and the
+language-specific README tkinter examples query
+`style.lookup("Demo.Treeview", "foreground", 0, "navy")` without changing the
+live window. Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_lookup_state_truthiness_probe.py`, a focused red test
+failing with `can only join an iterable`, focused green passing 1/1 in 156 ms,
+`TtkStyle` filter passing 6/6 in 547 ms, full
+`stdlib/tests/tkinter.test.ahk` passing 184/184 in 19.891 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after the example
+sync, README en/zh examples passing through ahktest capture with pollution
+assertions in 1.063 seconds after the README sync, aggregate `stdlib/tests`
+passing 1052/1052 with `-TimeoutSeconds 40` in 29.672 seconds, and a follow-up
+aggregate `stdlib/tests` run with `-TimeoutSeconds 70 -Quiet` completing
+successfully with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.theme_create(themename, parent=None, settings=None)`
+truthiness parity for `parent` and `settings`. A fresh Python 3.10.11 probe
+confirmed that local `Style.theme_create(...)` returns Python `None`, creates
+the requested theme, and leaves the current theme unchanged when `parent` is
+omitted, `None`, `""`, `0`, or `False`, and when `settings` is `None`, an empty
+dict, `""`, `0`, or `False`. The AHK surface now uses Python-style
+`AhkStdlibTruthValue(...)` guards for the public
+`stdlib.tkinter.ttk.Style(...).theme_create(...)` parent/settings branches, so
+falsy parents do not emit `-parent` and falsy settings do not call the settings
+script builder. `stdlib/examples/tkinter.ahk` records a scratch theme created
+with an empty-string parent, and the language-specific README tkinter examples
+create a scratch theme the same way before switching the live demo theme. Fresh
+promotion evidence includes
+`.codex/tkinter_ttk_style_theme_create_truthiness_probe.py`, a focused red test
+failing with `theme "" doesn't exist`, focused green passing 1/1 in 172 ms,
+`TtkStyle` filter passing 5/5 in 484 ms, full
+`stdlib/tests/tkinter.test.ahk` passing 183/183 in 20.000 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after the example
+sync, README en/zh examples passing through ahktest capture with pollution
+assertions in 1.078 seconds after the README sync, aggregate `stdlib/tests`
+passing 1051/1051 with `-TimeoutSeconds 40` in 29.906 seconds, and a follow-up
+aggregate `stdlib/tests` run with `-TimeoutSeconds 70 -Quiet` completing
+successfully with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.configure(style, query_opt=None)` explicit-`None`
+query parity. A fresh Python 3.10.11 probe confirmed that local
+`Style.configure(style_name, None)` returns the same dict as an omitted
+`query_opt`, that option queries such as `"background"` still return scalar
+values, and that a missing style queried with explicit `None` returns Python
+`None`. The AHK surface now treats `stdlib.None` as the explicit query sentinel
+for `stdlib.tkinter.ttk.Style(...).configure(...)`, returning the style config
+Map when options exist and `stdlib.None` when the explicit-None query yields no
+settings. `stdlib/examples/tkinter.ahk` records
+`style.configure("Example.Treeview", stdlib.None)`, and the language-specific
+README tkinter examples query `style.configure("Demo.Treeview", stdlib.None)`
+without changing the live window. Fresh promotion evidence includes
+`.codex/tkinter_ttk_style_explicit_none_probe.py`, a focused red test failing
+because explicit `stdlib.None` did not return a Map, focused green passing 1/1
+in 172 ms, `TtkStyle` filter passing 4/4 in 375 ms, full
+`stdlib/tests/tkinter.test.ahk` passing 182/182 in 19.875 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after the example
+sync, and README en/zh examples passing through ahktest capture with pollution
+assertions in 1.078 seconds after the README sync. The fresh aggregate
+promotion gate `run-ahktest stdlib/tests -TimeoutSeconds 40` passed 1050/1050
+in 29.953 seconds with only the known `plain fallback` stderr line; the
+follow-up `run-ahktest stdlib/tests -TimeoutSeconds 70 -Quiet` aggregate also
+completed successfully with only the same known stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Treeview.delete(*items)` and `ttk.Treeview.detach(*items)`
+sequence-operand parity. A fresh Python 3.10.11 probe confirmed that local
+`Treeview.delete()` and `Treeview.detach()` return `None` with zero positional
+items, that multiple positional item ids are deleted as a Tcl list operand, and
+that a single Python list/tuple argument is not flattened for these commands:
+`delete([first, second])` raises `Item first second not found`, `delete([])`
+raises `Cannot delete root item`, `detach((third, fourth))` raises
+`Item third fourth not found`, and `detach(())` raises `Cannot detach root
+item`. The AHK helper now builds the same list-of-items operand for
+`delete`/`detach`, including one nested enumerable item converted to a Tcl list
+string, while leaving the earlier `selection_*` single-sequence flattening
+helper separate. `stdlib/examples/tkinter.ahk` records safe captured
+single-sequence error messages and then exercises successful multi-positional
+delete, while the language-specific README tkinter examples keep a live
+Treeview demo with temporary scratch rows removed through `tree.delete(a, b)`.
+Fresh promotion evidence includes
+`.codex/tkinter_ttk_treeview_delete_detach_sequences_probe.py`, a focused red
+test failing because `delete([first, second])` raised host `TypeError` instead
+of TclError, focused green passing 1/1 in 172 ms, `TtkTreeview` filter passing
+12/12 in 1.360 seconds, full `stdlib/tests/tkinter.test.ahk` passing 181/181 in
+19.813 seconds, explicit `run-ahk-validate -Path stdlib/examples/tkinter.ahk`
+passing after the example sync, and README en/zh examples passing through
+ahktest capture with pollution assertions in 1.047 seconds after the README
+sync. The fresh aggregate promotion gate
+`run-ahktest stdlib/tests -TimeoutSeconds 40` passed 1049/1049 in 29.500
+seconds with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Treeview.selection_set(*items)`,
+`selection_add(*items)`, `selection_remove(*items)`, and
+`selection_toggle(*items)` single-sequence parity. A fresh Python 3.10.11 probe
+confirmed that local `Treeview._selection(...)` flattens one list/tuple
+argument before calling Tcl, that zero-argument `selection_set()` returns
+`None` and clears the selection, that list/tuple operands work for set/remove
+and toggle, that varargs work for add, that an empty list is a no-op, and that
+missing items still raise `Item missing not found`. The AHK helper now mirrors
+that single-sequence flattening and always passes a Tcl list for the `items`
+operand, so public `stdlib.tkinter.ttk.Treeview(...).selection_*` calls match
+the CPython varargs shape while preserving the existing tuple-returning
+`selection()` query. `stdlib/examples/tkinter.ahk` records list-based
+`selection_toggle` and restore behavior, and the language-specific README
+tkinter examples use list-based `selection_set`/`selection_toggle` on the live
+Treeview. Fresh promotion evidence includes
+`.codex/tkinter_ttk_treeview_selection_ops_probe.py`, a focused red test
+failing because zero-argument `selection_set()` generated the wrong Tcl arity,
+focused green passing 1/1 in 172 ms, `TtkTreeview` filter passing 11/11 in
+1.704 seconds, full `stdlib/tests/tkinter.test.ahk` passing 180/180 in
+19.375 seconds, explicit `run-ahk-validate -Path stdlib/examples/tkinter.ahk`
+passing after the example sync, README en/zh examples passing through ahktest
+capture with pollution assertions in 1.265 seconds after the README sync,
+aggregate `stdlib/tests` passing 1048/1048 with `-TimeoutSeconds 40` in
+29.703 seconds, and a follow-up aggregate `stdlib/tests` run with
+`-TimeoutSeconds 70 -Quiet` completing successfully with only the known
+`plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Entry.validate()`. A fresh Python 3.10.11 probe confirmed that
+local `Entry.validate` has signature `(self)`, calls the underlying ttk entry
+`validate` subcommand, returns Python booleans through `tk.getboolean`, returns
+`True` with no validatecommand, calls validatecommand callbacks when validation
+is enabled, sets the `invalid` state when the callback returns false, preserves
+that invalid state on repeated failing validation, accepts string truth values
+such as `"1"`, and raises `Entry.validate() takes 1 positional argument but 2
+were given` for extra positional arguments. The AHK surface now implements this
+on the prefixed-internal ttk Entry class by calling the Tcl `validate` command
+and converting the result through the existing Tk boolean conversion path.
+`stdlib/examples/tkinter.ahk` records a default `entry.validate()` result, and
+the language-specific README tkinter examples call `entry.validate()` on the
+live demo Entry without destroying the window. Fresh promotion evidence includes
+`.codex/tkinter_ttk_entry_validate_probe.py`, a focused red test failing because
+`Entry` had no `validate` method, focused green passing 1/1 in 156 ms,
+`TtkEntry` filter passing 4/4 in 578 ms, full `stdlib/tests/tkinter.test.ahk`
+passing 179/179 in 19.125 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after the example
+sync, README en/zh examples passing through ahktest capture with pollution
+assertions in 1.359 seconds after the README sync, aggregate `stdlib/tests`
+passing 1047/1047 with `-TimeoutSeconds 40` in 29.640 seconds, and a follow-up
+aggregate `stdlib/tests` run with `-TimeoutSeconds 70 -Quiet` completing
+successfully with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.element_create(elementname, etype, *args, **kw)`. A fresh
+Python 3.10.11 probe confirmed that local `Style.element_create` has signature
+`(self, elementname, etype, *args, **kw)`, returns `None`, creates new elements
+in the current theme, supports cross-platform `from` element cloning from the
+current theme, accepts `image` element creation with state/image pairs and
+keyword options, ignores extra positional arguments after the optional source
+element for `etype="from"`, and exposes created elements through
+`element_names()` with empty `element_options(...)` tuples for the probed
+elements. The same probe confirmed CPython helper-level errors:
+missing `elementname`/`etype` raises the normal `Style.element_create()`
+TypeErrors, missing tuple entries for `from` and `image` raise `IndexError:
+tuple index out of range`, duplicate names raise `TclError: Duplicate element
+<name>`, missing source themes raise `theme "missing-theme" doesn't exist`, and
+unknown factories raise `No such element type unknown`. The AHK surface now
+implements this on the prefixed-internal `AhkStdlibTkinterStyle` class with
+small element-create formatting helpers for `from`, `image`, and `vsapi`, while
+keeping the public surface at `stdlib.tkinter.ttk.Style(...).element_create(...)`.
+`stdlib/examples/tkinter.ahk` records a unique cloned element and confirms it
+appears in `element_names()`, and the language-specific README tkinter examples
+create a unique clone before building the demo theme. Fresh promotion evidence
+includes `.codex/tkinter_ttk_style_element_create_probe.py`, a focused red test
+failing because `Style` had no `element_create` method, focused green passing
+1/1 in 156 ms, `TtkStyle` filter passing 3/3 in 406 ms, full
+`stdlib/tests/tkinter.test.ahk` passing 178/178 in 19.609 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after the example
+sync, README en/zh examples passing through ahktest capture with pollution
+assertions in 1.078 seconds after the README sync, aggregate `stdlib/tests`
+passing 1046/1046 with `-TimeoutSeconds 40` in 29.813 seconds, and a follow-up
+aggregate `stdlib/tests` run with `-TimeoutSeconds 70 -Quiet` completing
+successfully with only the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style.theme_create(themename, parent=None, settings=None)`. A
+fresh Python 3.10.11 probe confirmed that local `Style.theme_create` has
+signature `(self, themename, parent=None, settings=None)`, returns `None`,
+does not switch away from the current theme after creation, omits `-parent`
+when `parent` is `None`, accepts the same settings shape as `theme_settings`,
+raises `TclError` messages such as `Theme <name> already exists` and
+`theme "missing-parent-theme" doesn't exist`, and raises Python-style
+`AttributeError` text for invalid settings objects without `.items()` or
+setting entries without `.get()`. The AHK surface now implements the method on
+the prefixed-internal `AhkStdlibTkinterStyle` class using the existing ttk style
+settings script builder, while tightening that helper so the public
+`stdlib.tkinter.ttk.Style(...).theme_create(...)` error text matches the local
+Python 3.10.11 probe. `stdlib/examples/tkinter.ahk` records theme creation,
+the unchanged current theme after creation, explicit theme switching, created
+style lookup, and restoration to the previous theme. The language-specific
+README tkinter examples create a unique demo theme before switching to it, so
+the live example exercises `theme_create` without failing on repeated runs.
+Fresh promotion evidence includes `.codex/tkinter_ttk_style_theme_create_probe.py`,
+a focused red test failing because `Style` had no `theme_create` method,
+focused green passing 1/1 in 265 ms, `TtkStyle` filter passing 2/2 in
+266 ms, `Ttk` filter passing 114/114 in 13.360 seconds, full
+`stdlib/tests/tkinter.test.ahk` passing 177/177 in 28.172 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing after the example
+sync, README en/zh examples passing through ahktest capture with pollution
+assertions in 2.407 seconds after the README sync, aggregate `stdlib/tests`
+passing 1045/1045 with `-TimeoutSeconds 40 -Quiet` in 37.734 seconds, and
+aggregate `stdlib/tests` passing 1045/1045 with `-TimeoutSeconds 70 -Quiet` in
+37.343 seconds and the known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Treeview.reattach(item, parent, index)`. A fresh Python 3.10.11
+probe confirmed that local `Treeview.reattach` exists, has signature
+`(self, item, parent, index)`, is the same function object as `Treeview.move`
+with `__name__ == "move"`, returns `None`, reattaches detached items to the root
+or a parent at the requested index, and reports missing/extra positional
+TypeErrors using `Treeview.move()` in the message. The AHK surface now preserves
+that alias shape as a prefixed-internal Treeview method delegating to `move`,
+so the public `stdlib.tkinter.ttk.Treeview(...).reattach(...)` method keeps the
+same behavior and error text as the already-covered `move(...)` implementation.
+`stdlib/examples/tkinter.ahk` records a reattach after detach, and the
+language-specific README tkinter examples now reattach the detached "last" row
+before restoring the visible Treeview children. Fresh promotion evidence
+includes `.codex/tkinter_ttk_treeview_reattach_probe.py`, a focused red test
+failing because `Treeview` had no `reattach` method, focused green passing 1/1
+in 141 ms, `TtkTreeview` filter passing 10/10 in 1.219 seconds, `Ttk` filter
+passing 113/113 in 13.406 seconds, full `stdlib/tests/tkinter.test.ahk`
+passing 176/176 in 27.579 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in 1.094
+seconds, aggregate `stdlib/tests` passing 1044/1044 with `-TimeoutSeconds 40
+-Quiet` in 38.047 seconds, and aggregate `stdlib/tests` passing 1044/1044 with
+`-TimeoutSeconds 70 -Quiet` in 37.531 seconds and the known `plain fallback`
+stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Treeview.tag_bind(tagname, sequence=None, callback=None)`. A
+fresh Python 3.10.11 probe confirmed that local `Treeview.tag_bind` has
+signature `(self, tagname, sequence=None, callback=None)`, returns `None` for
+sequence queries, per-sequence script queries, string-script binding, callable
+binding, `callback=None`, and missing-tag binding because the public method does
+not return the internal `_bind(...)` result. The same probe confirmed that the
+underlying Tcl tag binding state is still updated, that callable bindings route
+real generated button events to tagged rows with `Event.type.name == "ButtonPress"`,
+that no public `Treeview.tag_unbind` exists, and that missing/extra positional
+TypeErrors match local Python. The AHK surface implements this as a
+prefixed-internal Treeview method that delegates to Tcl `tag bind`, uses the
+existing event bridge for callbacks, discards Tcl query/callable return values
+to preserve Python's public `None` behavior, and intentionally leaves
+`tag_unbind` absent. `stdlib/examples/tkinter.ahk` now records public
+`tag_bind` setup, and the language-specific README tkinter examples bind the
+dynamic Treeview tag to a status callback while still showing a real window.
+Fresh promotion evidence includes `.codex/tkinter_ttk_treeview_tag_bind_probe.py`,
+a focused red test failing because `Treeview` had no `tag_bind` method,
+focused green passing 1/1 in 281 ms, `TtkTreeview` filter passing 9/9 in
+1.156 seconds, `Ttk` filter passing 112/112 in 14.297 seconds, full
+`stdlib/tests/tkinter.test.ahk` passing 175/175 in 21.578 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in 1.094
+seconds, aggregate `stdlib/tests` passing 1043/1043 with `-TimeoutSeconds 40
+-Quiet` in 29.328 seconds, and aggregate `stdlib/tests` passing 1043/1043 with
+`-TimeoutSeconds 70 -Quiet` in 29.015 seconds and the known `plain fallback`
+stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Treeview.tag_configure(tagname, option=None, **kw)`. A fresh
+Python 3.10.11 probe confirmed that local `ttk.Treeview` exposes only
+`tag_bind`, `tag_configure`, and `tag_has` among public `tag_*` methods, so the
+nonexistent `tag_names` method remains intentionally unimplemented. The same
+probe confirmed `tag_configure` returns a dict of simple option values for a
+tag query, returns an option's string value when `option` is supplied, returns
+an empty dict for mutation, accepts empty tag names, creates default empty
+values for missing tags, reports Python's missing/extra positional TypeErrors,
+and preserves Python's option formatting behavior where `option="-background"`
+is passed through as the Tcl option `"--background"` and errors accordingly.
+The AHK surface now implements this on the prefixed-internal Treeview class,
+preserving the public `stdlib.tkinter.ttk.Treeview(...).tag_configure(...)`
+shape without adding a public `tag_config` alias that local Python 3.10.11 does
+not expose. `stdlib/examples/tkinter.ahk` now records Treeview tag configure
+set/query behavior, and the language-specific README tkinter examples style a
+live Treeview tag and toggle an alert tag from the update callback. Fresh
+promotion evidence includes `.codex/tkinter_ttk_treeview_tag_configure_probe.py`,
+a focused red test failing because `Treeview` had no `tag_configure` method,
+focused green passing 1/1 in 188 ms with a final rerun passing 1/1 in 172 ms,
+`TtkTreeview` filter passing 8/8 in
+1.360 seconds, `Ttk` filter passing 111/111 in 14.735 seconds, full
+`stdlib/tests/tkinter.test.ahk` passing 174/174 in 21.609 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in 1.235
+seconds, aggregate `stdlib/tests` passing 1042/1042 with `-TimeoutSeconds 40
+-Quiet` in 31.672 seconds, and aggregate `stdlib/tests` passing 1042/1042 with
+`-TimeoutSeconds 70 -Quiet` in 30.657 seconds and the known `plain fallback`
+stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with callable `ttk.Treeview` scrollcommand option registration for
+`xscrollcommand` / `yscrollcommand`. A fresh Python 3.10.11 probe confirmed
+that local `ttk.Treeview.configure(yscrollcommand=callable)` returns `None`,
+stores a string Tcl command name in `cget("yscrollcommand")`, dispatches Tcl
+calls back to the Python callable with string fractions such as `"0.0"` and
+`"1.0"`, returns Python `None` from that registered command as Tcl `"None"`,
+clears the option back to an empty string with `yscrollcommand=""`, preserves
+literal string `xscrollcommand` values such as `"puts"`, and accepts the same
+callable registration on a gridded Treeview. The AHK surface now registers any
+callable widget option value through the existing Tcl command registry whenever
+a Tk root is available, instead of only registering the option literally named
+`command`. This preserves existing string option behavior while making
+`tree.configure({ yscrollcommand: (args*) => treeScroll.set(args*) })` work in
+captured README examples without hanging. Fresh promotion evidence includes
+the CPython 3.10.11 probe in
+`.codex/tkinter_ttk_treeview_scrollcommand_probe.py`, a focused red test
+timing out on the callable `yscrollcommand` configuration path in 4.437
+seconds, focused green passing 1/1 in 421 ms, `TtkTreeview` filter passing
+7/7 in 1.078 seconds, `Ttk` filter passing 110/110 in 13.515 seconds, full
+`stdlib/tests/tkinter.test.ahk` passing 173/173 in 29.515 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in
+1.829 seconds, aggregate `stdlib/tests` passing 1041/1041 with
+`-TimeoutSeconds 40 -Quiet` in 38.969 seconds, and aggregate `stdlib/tests`
+passing 1041/1041 with `-TimeoutSeconds 70 -Quiet` in 39.953 seconds and the
+known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget
+submodule slice with `ttk.Treeview.xview(...)`,
+`ttk.Treeview.xview_moveto(fraction)`, `ttk.Treeview.xview_scroll(number,
+what)`, `ttk.Treeview.yview(...)`, `ttk.Treeview.yview_moveto(fraction)`, and
+`ttk.Treeview.yview_scroll(number, what)`. A fresh Python 3.10.11 probe
+confirmed that local `Treeview` inherits the same XView/YView signatures used
+by other tkinter widgets, query calls return two-float tuples in the probed
+setup, `moveto` / `scroll` helpers and raw `xview("moveto", ...)` /
+`yview("scroll", ...)` calls return `None`, and missing/extra argument plus
+Tk bad-command errors match the observed Python 3.10.11 wording. The AHK
+surface implements the six methods on the prefixed-internal Treeview class and
+converts query results through the existing float tuple helper, preserving the
+public `stdlib.tkinter.ttk.Treeview(...).xview(...)` /
+`yview(...)` shape without adding host class-name collision risk.
+`stdlib/examples/tkinter.ahk` now records Treeview x/y view query, moveto, and
+scroll returns, and the README tkinter examples exercise `yview_moveto(0.0)`
+inside the live update callback while still showing a real window. Fresh
+promotion evidence includes the CPython 3.10.11 probe in
+`.codex/tkinter_ttk_treeview_view_probe.py`, a focused red test failing because
+Treeview had no `xview` method, focused green passing 1/1 in 203 ms with a
+rerun passing 1/1 in 172 ms, `TtkTreeview` filter passing 6/6 in 797 ms,
+`Ttk` filter passing 109/109 in 13.562 seconds, full
+`stdlib/tests/tkinter.test.ahk` passing 172/172 in 20.422 seconds, and the
+later scrollcommand promotion gates above revalidating the expanded Treeview
+surface in the 1041-test aggregate suite.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Treeview.tag_has(tagname, item=None)`. A fresh Python 3.10.11
+probe confirmed that local `tkinter.ttk.Treeview.tag_has` has signature
+`(self, tagname, item=None)`, returns a tuple of item ids when no item is
+supplied, treats `item=None` like the tuple-returning all-items query, returns
+Python booleans when an item id is supplied, handles tags containing spaces,
+returns an empty tuple for missing tags, returns `False` for missing tag/item
+membership, and raises Python's missing/extra argument `TypeError` wording
+plus Tk's missing item `TclError` wording. The AHK surface implements this as
+a prefixed-internal Treeview method that delegates to Tcl `tag has` and
+converts the result into either `stdlib.tuple(...)` or stdlib booleans,
+preserving the public `stdlib.tkinter.ttk.Treeview(...).tag_has(...)` shape
+without adding host class-name collision risk. `stdlib/examples/tkinter.ahk`
+now exercises both tuple and boolean `tag_has` paths, and the language-specific
+README tkinter examples use `tag_has("dynamic")` inside the live update
+callback while still showing a real window. Fresh promotion evidence includes
+the CPython 3.10.11 probe in `.codex/tkinter_ttk_treeview_tag_has_probe.py`,
+a focused red test failing because `Treeview` had no `tag_has` method,
+focused green passing 1/1 in 328 ms, `TtkTreeview` filter passing 5/5 in
+1.078 seconds, `Ttk` filter passing 108/108 in 15.953 seconds, full
+`stdlib/tests/tkinter.test.ahk` passing 171/171 in 20.250 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in
+1.265 seconds, aggregate `stdlib/tests` passing 1039/1039 with
+`-TimeoutSeconds 40 -Quiet` in 30.703 seconds, and aggregate `stdlib/tests`
+passing 1039/1039 with `-TimeoutSeconds 70 -Quiet` in 38.687 seconds and the
+known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget
+submodule slice with `ttk.Treeview.set_children(item, *newchildren)`. A fresh
+Python 3.10.11 probe confirmed that local `tkinter.ttk.Treeview.set_children` has
+signature `(self, item, *newchildren)`, returns `None`, reorders the root item
+children when passed a new sequence, detaches omitted existing children while
+preserving `exists(item) == True`, clears an item's children when only `item`
+is supplied, restores detached children when supplied later, accepts duplicate
+child ids as observed by Tk, and raises Python's missing-argument `TypeError`
+plus Tk's missing item / self-descendant `TclError` wording. The AHK surface
+implements this as a prefixed-internal Treeview method that passes
+`newchildren` as a single Tcl list word, preserving the public
+`stdlib.tkinter.ttk.Treeview(...).set_children(...)` shape without adding host
+class-name collision risk. `stdlib/examples/tkinter.ahk` now exercises
+`set_children` beside Treeview detach/move/see and identify coverage, and the
+language-specific README tkinter examples use it from the live update callback
+while still showing a real window. Fresh promotion evidence includes the
+CPython 3.10.11 probe in `.codex/tkinter_ttk_treeview_set_children_probe.py`,
+a focused red test failing because `Treeview` had no `set_children` method,
+focused green passing 1/1 in 187 ms, `TtkTreeview` filter passing 4/4 in
+484 ms, `Ttk` filter passing 107/107 in 12.625 seconds, full
+`stdlib/tests/tkinter.test.ahk` passing 170/170 in 19.500 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions in
+1.235 seconds, aggregate `stdlib/tests` passing 1038/1038 with
+`-TimeoutSeconds 40 -Quiet` in 30.063 seconds, and aggregate `stdlib/tests`
+passing 1038/1038 with `-TimeoutSeconds 70 -Quiet` in 29.734 seconds and the
+known `plain fallback` stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget
+submodule slice with `ttk.Treeview.identify_element(x, y)`. A fresh Python
+3.10.11 probe confirmed that local `tkinter.ttk.Treeview.identify_element`
+has signature `(self, x, y)`, returns the same result as
+`Treeview.identify("element", x, y)`, returns an empty string for the observed
+off-element coordinates, and raises Python's missing/extra argument `TypeError`
+wording plus Tk's integer conversion `TclError` wording for bad coordinates.
+The AHK surface implements this as a prefixed-internal Treeview method that
+delegates through the existing `identify("element", ...)` behavior, preserving
+the public `stdlib.tkinter.ttk.Treeview(...).identify_element(...)` shape
+without adding host class-name collision risk. `stdlib/examples/tkinter.ahk`
+now exercises `identify_element(5, 5)` beside the existing Treeview identify
+row/column/region and structure-command coverage, and the language-specific
+README tkinter examples call it from the live update callback while still
+showing a real window. Fresh promotion evidence includes the CPython 3.10.11
+probe in `.codex/tkinter_ttk_treeview_identify_element_probe.py`, a focused
+red test failing because `Treeview` had no `identify_element` method, focused
+green passing 1/1 in 156 ms, `TtkTreeview` filter passing 3/3 in 375 ms,
+`Ttk` filter passing 106/106 in 12.984 seconds, full
+`stdlib/tests/tkinter.test.ahk` passing 169/169 in 20.187 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions, aggregate
+`stdlib/tests` passing 1037/1037 with `-TimeoutSeconds 40 -Quiet` in
+29.969 seconds, and aggregate `stdlib/tests` passing 1037/1037 with
+`-TimeoutSeconds 70 -Quiet` in 29.578 seconds and the known `plain fallback`
+stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Treeview.detach(*items)`, `ttk.Treeview.move(item, parent,
+index)`, and `ttk.Treeview.see(item)`. A fresh Python 3.10.11 probe confirmed
+that local `tkinter.ttk.Treeview` exposes signatures `(self, *items)`,
+`(self, item, parent, index)`, and `(self, item)` respectively; `detach()`
+with no items returns `None`; detaching removes an item from its parent while
+preserving `exists(item) == True`; `move(...)` reparents and reorders items;
+`see(...)` returns `None`; and missing/bad item or index paths use the observed
+Python/Tk `TypeError` and `TclError` wording. The AHK surface implements these
+as prefixed-internal Treeview methods, preserving the public
+`stdlib.tkinter.ttk.Treeview(...).detach(...)`, `.move(...)`, and `.see(...)`
+shape without adding host class-name collision risk. `stdlib/examples/tkinter.ahk`
+now exercises Treeview detach/move/see alongside existing item, selection,
+focus, heading, and column coverage, and the language-specific README tkinter
+examples use the same Treeview structure commands while still showing a real
+window. Fresh promotion evidence includes the CPython 3.10.11 probe in
+`.codex/tkinter_ttk_treeview_structure_probe.py`, a focused red test failing
+because `Treeview` had no `detach` method, focused green passing 1/1 in
+218 ms, `TtkTreeview` filter passing 2/2 in 235 ms, `Ttk` filter passing
+105/105 in 14.375 seconds, full `stdlib/tests/tkinter.test.ahk` passing
+168/168 in 21.094 seconds, explicit
+`run-ahk-validate -Path stdlib/examples/tkinter.ahk` passing, README en/zh
+examples passing through ahktest capture with pollution assertions, aggregate
+`stdlib/tests` passing 1036/1036 with `-TimeoutSeconds 40 -Quiet` in
+30.312 seconds, and aggregate `stdlib/tests` passing 1036/1036 with
+`-TimeoutSeconds 70 -Quiet` in 30.609 seconds and the known `plain fallback`
+stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with public `ttk.tclobjs_to_py(adict)`. A fresh Python 3.10.11 probe
+confirmed that `tkinter.ttk.tclobjs_to_py` has signature `(adict)`, imports
+from `tkinter.ttk`, mutates the supplied dict in place, returns the same dict
+object, converts Tcl/list-like values to Python lists, converts integer-looking
+string values inside those lists to `int`, converts nested tuple/list values
+through Python tuple-shaped string representations, leaves scalar strings and
+integers unchanged, and raises Python's missing/extra argument TypeErrors plus
+`AttributeError("'NoneType'/'list'/'str' object has no attribute 'items'")`
+for non-mapping inputs. The AHK surface implements the covered dict-equivalent
+path on `Map`, preserving in-place mutation and same-object return. The
+examples now exercise `tclobjs_to_py` beside the other ttk helper functions.
+Fresh promotion evidence includes the CPython 3.10.11 probe in
+`.codex/tkinter_ttk_tclobjs_to_py_probe.py`, a focused red test failing
+because `stdlib.tkinter.ttk` had no `tclobjs_to_py` method, focused green
+passing 1/1, `Ttk` filter passing 104/104, full
+`stdlib/tests/tkinter.test.ahk` passing 167/167,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passing, README en/zh extracted
+probes passing through ahktest capture, aggregate `stdlib/tests` passing
+1035/1035 with `-TimeoutSeconds 40 -Quiet`, and aggregate `stdlib/tests`
+passing 1035/1035 with `-TimeoutSeconds 70` and the known `plain fallback`
+stderr line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with public `ttk.setup_master(master=None)`. A fresh Python 3.10.11
+probe confirmed that `tkinter.ttk.setup_master` has signature
+`(master=None)`, imports from `tkinter.ttk`, returns a supplied non-`None`
+master without checking for `.tk`, creates and returns the default `Tk` root
+when called before any default root exists, returns the current default root
+for omitted or `None` master once it exists, rejects extra positional
+arguments with `TypeError("setup_master() takes from 0 to 1 positional
+arguments but 2 were given")`, and preserves the `NoDefaultRoot()` runtime
+error path for omitted or `None` master. The AHK surface implements this as a
+static public function on `stdlib.tkinter.ttk`, preserving the fixed public API
+without adding a class-name collision risk. README tkinter examples were
+revalidated unchanged through an ahktest capture wrapper with
+`/ErrorStdOut=UTF-8`, including explicit checks that extracted probes did not
+contain `System.Text.RegularExpressions` or `MatchEvaluator`. Fresh promotion
+evidence includes the CPython 3.10.11 probe in
+`.codex/tkinter_ttk_setup_master_probe.py`, a focused red test failing because
+`stdlib.tkinter.ttk` had no `setup_master` method, focused green passing 1/1,
+`Ttk` filter passing 103/103, full `stdlib/tests/tkinter.test.ahk` passing
+166/166, `run-ahk-validate stdlib/examples/tkinter.ahk` passing, README en/zh
+extracted probes passing through ahktest capture, aggregate `stdlib/tests`
+passing 1034/1034 with `-TimeoutSeconds 70` and the known `plain fallback`
+stderr line, one same-slice `-TimeoutSeconds 40 -Quiet` attempt timing out,
+and a fresh 40-second rerun passing 1034/1034 in 31.406 seconds.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.LabeledScale`. Fresh Python 3.10.11 probes confirmed that
+`tkinter.ttk.LabeledScale` has signature `(master=None, variable=None,
+from_=0, to=10, **kw)`, imports from `tkinter.ttk`, inherits from `ttk.Frame`,
+rejects a string master with `AttributeError("'str' object has no attribute
+'tk'")`, rejects unknown frame options with Tcl `unknown option "-bad"`, uses
+`widgetName == "ttk::frame"` and `winfo_class() == "TFrame"`, creates public
+`.scale` and `.label` child widgets while keeping `variable` private, initializes
+the supplied or internal `IntVar` to `from_`, places the live label above or
+below according to `compound`, exposes a `value` property synchronized with the
+variable, clamps out-of-range values back to the last valid value, and sets
+`.scale` / `.label` to `None` after destroy. The AHK surface implements this as
+a prefixed internal `AhkStdlibTkinterTtkLabeledScale` class bound to public
+`stdlib.tkinter.ttk.LabeledScale`, preserving the fixed public API while
+avoiding raw AHK class-name collisions. The language-specific README tkinter
+examples now include a real `ttk.LabeledScale` in the ttk pane, and
+`stdlib/examples/tkinter.ahk` exercises constructor, child widget, layout,
+`value`, variable sync, and clamp behavior. This pass also prefixed the
+remaining ttk internal `Combobox`, `Separator`, `Progressbar`, and `Notebook`
+classes so their public constructors stay bound through `stdlib.tkinter.ttk.*`
+without colliding with AHK built-ins. Fresh promotion evidence includes a
+CPython 3.10.11 probe in `.codex/tkinter_ttk_labeledscale_clean_probe.py`, a
+focused red test failing because `stdlib.tkinter.ttk` had no `LabeledScale`
+property, focused green passing 1/1, `Ttk` filter passing 102/102, full
+`stdlib/tests/tkinter.test.ahk` passing 165/165,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passing, README tkinter demo
+probes passing through an ahktest capture wrapper with `/ErrorStdOut=UTF-8`,
+and aggregate `stdlib/tests` passing 1033/1033 with `-TimeoutSeconds 70` and
+the known `plain fallback` stderr line. A repeat aggregate also passed
+1033/1033 with `-TimeoutSeconds 80 -Quiet`; post-prefix repeat attempts at
+`-TimeoutSeconds 60 -Quiet` and `-TimeoutSeconds 40 -Quiet` timed out, so they
+are not claimed as final green evidence in this slice.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.OptionMenu`. Fresh Python 3.10.11 probes confirmed that
+`tkinter.ttk.OptionMenu` has signature `(master, variable, default=None,
+*values, **kwargs)`, imports from `tkinter.ttk`, inherits from
+`ttk.Menubutton`, rejects missing `master`/`variable` with Python's
+`OptionMenu.__init__` TypeErrors, rejects invalid masters with
+`AttributeError("'int' object has no attribute 'tk'")`, and passes unknown
+keyword options through as Tcl `unknown option -bad`. The covered behavior
+includes default-value propagation into the supplied variable, `widgetName ==
+"ttk::menubutton"`, `winfo_class() == "TMenubutton"`, attached classic
+`Menu` creation with `tearoff == 0`, menu entry labels for `*values`, menu
+`invoke(...)` updating the variable before calling the command callback,
+`set_menu(default=None, *values)` rebuilding menu entries, and inherited ttk
+`state(...)` / `instate(...)` behavior. The AHK surface implements this as a
+prefixed internal `AhkStdlibTkinterTtkOptionMenu` class bound to public
+`stdlib.tkinter.ttk.OptionMenu`, preserving the fixed public API while avoiding
+raw AHK class-name collisions. The language-specific README tkinter examples
+now include a real `ttk.OptionMenu` choice control, and
+`stdlib/examples/tkinter.ahk` exercises the covered constructor, menu,
+callback, and `set_menu(...)` paths. Fresh promotion evidence includes the
+focused red test failing because `stdlib.tkinter.ttk` had no `OptionMenu`
+property, focused green passing 1/1, `Ttk` filter passing 101/101, full
+`stdlib/tests/tkinter.test.ahk` passing 164/164,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passing, README tkinter demo
+probes passing with `/ErrorStdOut=UTF-8`, and aggregate `stdlib/tests` passing
+1032/1032 with `-TimeoutSeconds 70` and the known `plain fallback` stderr
+line; the same aggregate suite also passed 1032/1032 with
+`-TimeoutSeconds 60 -Quiet`.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Widget`, plus explicit alias coverage for `ttk.Labelframe` and
+`ttk.PanedWindow`. Fresh Python 3.10.11 probes confirmed that
+`tkinter.ttk.Widget` has signature `(master, widgetname, kw=None)`, imports
+from `tkinter.ttk`, rejects missing `master`/`widgetname` with Python's
+`Widget.__init__` TypeErrors, rejects a string master with
+`AttributeError("'str' object has no attribute 'tk'")`, accepts `master=None`
+by creating a default root, preserves `widgetName == "ttk::frame"` when asked
+to construct a raw ttk frame command, reports `winfo_class() == "TFrame"`, and
+exposes ttk `keys()`, `cget(key)`, `configure(...)`, `state(...)`,
+`instate(...)`, and `identify(x, y)` behavior. The same probe confirmed that
+`ttk.LabelFrame is ttk.Labelframe` and `ttk.Panedwindow is ttk.PanedWindow` in
+CPython 3.10.11. The AHK surface implements `ttk.Widget` as a prefixed
+internal `AhkStdlibTkinterTtkWidget` class bound to public
+`stdlib.tkinter.ttk.Widget`, and keeps the alias identities on the public
+`stdlib.tkinter.ttk` object without changing the fixed include/API surface.
+The language-specific README tkinter examples now include a raw ttk widget
+host built with `ttk.Widget(leftPane, "ttk::frame", ...)`, and
+`stdlib/examples/tkinter.ahk` exercises the covered constructor, option,
+state, and instate paths. Fresh promotion evidence includes the focused red
+test failing because `stdlib.tkinter.ttk` had no `Widget` property, focused
+green passing 1/1, alias coverage passing 1/1, `Ttk` filter passing 100/100,
+full `stdlib/tests/tkinter.test.ahk` passing 163/163,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passing, README tkinter demo
+probes passing with `/ErrorStdOut=UTF-8`, and aggregate `stdlib/tests` passing
+1031/1031 with `-TimeoutSeconds 70` and the known `plain fallback` stderr
+line; the same aggregate suite also passed 1031/1031 with
+`-TimeoutSeconds 60 -Quiet`.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Menubutton`. Fresh Python 3.10.11 probes confirmed that
+`tkinter.ttk.Menubutton` has signature `(master=None, **kw)`, imports from
+`tkinter.ttk`, rejects a string master with
+`AttributeError("'str' object has no attribute 'tk'")`, creates default-root
+widgets when no master is supplied, uses `widgetName == "ttk::menubutton"`,
+reports `winfo_class() == "TMenubutton"`, and exposes `text`,
+`textvariable`, `underline`, `width`, `direction`, `menu`, `state`, `cursor`,
+`style`, `takefocus`, and `class` configure keys. The covered behavior
+includes `keys()`, `cget(key)`, `configure(option)`, `configure(options)`,
+`state(statespec=None)`, `instate(...)`, Tcl option errors, and the Python
+`TypeError` wording for non-iterable state specs and arity mismatches. The AHK
+surface implements this as a prefixed internal
+`AhkStdlibTkinterTtkMenubutton` class bound to public
+`stdlib.tkinter.ttk.Menubutton` through `DefineProp(Get, Call)`, preserving the
+fixed public API while avoiding raw AHK class-name collisions. The
+language-specific README tkinter examples now include a real `ttk.Menubutton`
+backed by a classic `Menu`, and `stdlib/examples/tkinter.ahk` exercises the
+covered ttk Menubutton constructor, menu/textvariable options, configure,
+state, and instate paths. Fresh promotion evidence includes the focused red
+test failing because `stdlib.tkinter.ttk` had no `Menubutton` property,
+focused green passing 1/1, `Ttk` filter passing 98/98, full
+`stdlib/tests/tkinter.test.ahk` passing 161/161,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passing, README tkinter demo
+probes passing with `/ErrorStdOut=UTF-8`, and aggregate `stdlib/tests` passing
+1029/1029 with `-TimeoutSeconds 70` and the known `plain fallback` stderr
+line; the same aggregate suite also passed 1029/1029 with
+`-TimeoutSeconds 60 -Quiet`.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Spinbox`. Fresh Python 3.10.11 probes confirmed that
+`tkinter.ttk.Spinbox` has signature `(master=None, **kw)`, imports from
+`tkinter.ttk`, rejects a string master with
+`AttributeError("'str' object has no attribute 'tk'")`, creates default-root
+widgets when no master is supplied, uses `widgetName == "ttk::spinbox"`,
+reports `winfo_class() == "TSpinbox"`, inherits through `ttk.Entry`, and
+exposes `from`, `to`, `increment`, `values`, `textvariable`, `width`, `wrap`,
+`state`, `cursor`, `style`, and `class` configure keys. The covered behavior
+includes `get()`, `set(value)`, `delete(first, last=None)`, `insert(index,
+string)`, `index(index)`, `bbox(index)`, `identify(x, y)`,
+`selection_present()`, `selection_range(start, end)`, `selection_clear()`,
+`state(statespec=None)`, `instate(...)`, `xview(...)`, `xview_moveto(...)`,
+and inherited `scan_mark/scan_dragto` Tcl errors for the unsupported `scan`
+subcommand. The slice also keeps Python's public absence of `invoke` and
+`selection_element` on `ttk.Spinbox`. The AHK surface implements this as a
+prefixed internal `AhkStdlibTkinterSpinbox` class bound to public
+`stdlib.tkinter.ttk.Spinbox` through `DefineProp(Get, Call)`, preserving the
+fixed public API while avoiding raw AHK class-name collisions. The
+language-specific README tkinter examples now include a `ttk.Spinbox`
+controlling the demo update step, and `stdlib/examples/tkinter.ahk` exercises
+the covered ttk Spinbox constructor, option, value, selection, bbox/identify,
+state, and xview paths. Fresh promotion evidence includes the focused red test
+failing because `stdlib.tkinter.ttk` had no `Spinbox` property, focused green
+passing 1/1, `Ttk` filter passing 97/97, full
+`stdlib/tests/tkinter.test.ahk` passing 160/160,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passing, README tkinter demo
+probes passing with `/ErrorStdOut=UTF-8`, and aggregate `stdlib/tests` passing
+1028/1028 with `-TimeoutSeconds 70` and the known `plain fallback` stderr
+line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Style`. Fresh Python 3.10.11 probes confirmed that
+`tkinter.ttk.Style` has signature `(master=None)`, imports from
+`tkinter.ttk`, rejects a string master with
+`AttributeError("'str' object has no attribute 'tk'")`, creates a default
+`Tk` master when needed, and exposes `master`, `tk`, `theme_names()`,
+`theme_use(themename=None)`, `configure(style, query_opt=None, **kw)`,
+`lookup(style, option, state=None, default=None)`, `map(style,
+query_opt=None, **kw)`, `layout(style, layoutspec=None)`,
+`element_names()`, `element_options(elementname)`, and
+`theme_settings(themename, settings)`. The covered behavior includes
+Python-shaped dict/tuple/list readback for style `configure(...)`, state maps,
+layout trees, element-name and element-option queries, theme settings script
+application, Python-observed arity messages, missing-layout Tcl errors, and
+missing-theme Tcl errors passing through unchanged. The AHK surface implements
+this as a prefixed internal `AhkStdlibTkinterStyle` class bound to public
+`stdlib.tkinter.ttk.Style` through `DefineProp(Get, Call)`, preserving the
+fixed public API while avoiding raw AHK class-name collisions. The
+language-specific README tkinter examples now style the demo `ttk.Treeview`
+through `ttk.Style`, and `stdlib/examples/tkinter.ahk` exercises the covered
+Style constructor, theme, configure, lookup, map, layout, element, and
+theme-settings paths. Fresh promotion evidence includes the focused red test
+failing because `stdlib.tkinter.ttk` had no `Style` property, focused green
+passing 1/1, `Ttk` filter passing 96/96, full
+`stdlib/tests/tkinter.test.ahk` passing 159/159,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passing, README tkinter demo
+probes passing with `/ErrorStdOut=UTF-8`, and aggregate `stdlib/tests` passing
+1027/1027 with `-TimeoutSeconds 70` and the known `plain fallback` stderr
+line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
+slice with `ttk.Treeview`. Fresh Python 3.10.11 probes confirmed that
+`tkinter.ttk.Treeview` has signature `(master=None, **kw)`, imports from
+`tkinter.ttk`, rejects a string master with
+`AttributeError("'str' object has no attribute 'tk'")`, creates default-root
+widgets when no master is supplied, uses `widgetName == "ttk::treeview"`,
+reports `winfo_class() == "Treeview"`, and exposes `columns`,
+`displaycolumns`, `height`, `padding`, `selectmode`, `show`, `style`,
+`takefocus`, `cursor`, `class`, `xscrollcommand`, and `yscrollcommand`
+configure keys. The covered behavior includes tuple-shaped `cget(...)` and
+`configure(...)` readback for list options, integer readback for `height` and
+`takefocus`, `heading(...)`, `column(...)`, `insert(...)`, `get_children(...)`,
+`parent(...)`, `index(...)`, `exists(...)`, `item(...)`, `set(...)`,
+`selection(...)`, `selection_set(...)`, `selection_add(...)`,
+`selection_remove(...)`, `focus(...)`, `bbox(...)`, `identify_row(...)`,
+`identify_column(...)`, `identify_region(...)`, `next(...)`, `prev(...)`, and
+`delete(...)`, plus Python-observed arity messages and Tcl bad item/column
+errors passing through unchanged. The AHK surface implements this as a
+prefixed internal `AhkStdlibTkinterTreeview` class bound to public
+`stdlib.tkinter.ttk.Treeview` through `DefineProp(Get, Call)`, preserving the
+fixed public API while avoiding raw AHK class-name collisions. The
+language-specific README tkinter examples now include a real `ttk.Treeview`
+inside the `ttk.Panedwindow` demo area, and `stdlib/examples/tkinter.ahk`
+exercises the covered Treeview constructor, option, item, selection, focus,
+and identify paths. Fresh promotion evidence includes the focused red test
+failing because `stdlib.tkinter.ttk` had no `Treeview` property, focused green
+passing 1/1, `Ttk` filter passing 95/95, full
+`stdlib/tests/tkinter.test.ahk` passing 158/158,
+`run-ahk-validate stdlib/examples/tkinter.ahk` passing, README tkinter demo
+probes passing with `/ErrorStdOut=UTF-8`, and aggregate `stdlib/tests` passing
+1026/1026 with `-TimeoutSeconds 70` and the known `plain fallback` stderr
+line.
+
+The preceding tkinter.ttk promotion extends the covered themed-widget submodule
 slice with `ttk.Sizegrip`. Fresh Python 3.10.11 probes confirmed that
 `tkinter.ttk.Sizegrip` has signature `(master=None, **kw)`, imports from
 `tkinter.ttk`, rejects a string master with
@@ -2729,15 +5794,24 @@ unclaimed because they collide with constructor names in AHK), module functions
 `stdlib.tkinter.PhotoImage(...)`,
 `stdlib.tkinter.Canvas(...)`, and public
 `stdlib.tkinter.TclError`, plus the first covered themed-widget submodule
-surfaces `stdlib.tkinter.ttk.Frame(...)`, `stdlib.tkinter.ttk.Label(...)`,
-`stdlib.tkinter.ttk.Entry(...)`, `stdlib.tkinter.ttk.Combobox(...)`,
+surfaces `stdlib.tkinter.ttk.Widget(...)`,
+`stdlib.tkinter.ttk.Frame(...)`, `stdlib.tkinter.ttk.Label(...)`,
+`stdlib.tkinter.ttk.Entry(...)`, `stdlib.tkinter.ttk.Spinbox(...)`,
+`stdlib.tkinter.ttk.Menubutton(...)`,
+`stdlib.tkinter.ttk.OptionMenu(...)`, `stdlib.tkinter.ttk.Combobox(...)`,
 `stdlib.tkinter.ttk.Button(...)`, `stdlib.tkinter.ttk.Checkbutton(...)`,
 `stdlib.tkinter.ttk.Radiobutton(...)`, `stdlib.tkinter.ttk.Scale(...)`, and
 `stdlib.tkinter.ttk.Scrollbar(...)`,
 plus `stdlib.tkinter.ttk.Separator(...)`,
 `stdlib.tkinter.ttk.Progressbar(...)`, `stdlib.tkinter.ttk.Notebook(...)`,
 `stdlib.tkinter.ttk.LabelFrame(...)`, `stdlib.tkinter.ttk.Panedwindow(...)`,
-and `stdlib.tkinter.ttk.Sizegrip(...)`. The
+`stdlib.tkinter.ttk.Sizegrip(...)`,
+`stdlib.tkinter.ttk.Labelframe(...)`,
+`stdlib.tkinter.ttk.PanedWindow(...)`, and
+`stdlib.tkinter.ttk.Treeview(...)`, plus
+`stdlib.tkinter.ttk.Style(...)` and
+`stdlib.tkinter.ttk.setup_master(...)` and
+`stdlib.tkinter.ttk.tclobjs_to_py(...)`. The
 covered behavior matches local Python 3.10.11 probing for `Tcl()` argument-count
 and keyword/type-error wording, Tcl interpreter creation with explicit local
 Tcl library discovery, `eval(...)`, `setvar(...)`, `getvar(...)`, `_root()`

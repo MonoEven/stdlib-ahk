@@ -20,7 +20,8 @@ AutoHotkey v2.0.5 or later is required. Current local gates run on AutoHotkey v2
 ### Project Notes
 
 - Behavior tests: `stdlib\tests`
-- Examples: `stdlib\examples` and the language-specific READMEs
+- Examples: `stdlib\examples` and the language-specific READMEs.
+  `stdlib\examples\tkinter_gui.ahk` opens a live tkinter / ttk dashboard demo.
 - Architecture and promotion history: `docs\stdlib-architecture.md`
 
 ## 中文
@@ -43,7 +44,8 @@ AutoHotkey v2.0.5 or later is required. Current local gates run on AutoHotkey v2
 ### 项目说明
 
 - 行为测试：`stdlib\tests`
-- 示例：`stdlib\examples` 与对应语言版本 README
+- 示例：`stdlib\examples` 与对应语言版本 README。
+  `stdlib\examples\tkinter_gui.ahk` 会打开一个实时 tkinter / ttk 仪表盘示例窗口。
 - 架构和 promotion 历史：`docs\stdlib-architecture.md`
 
 ## Friendly Links

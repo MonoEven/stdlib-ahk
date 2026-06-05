@@ -412,6 +412,117 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTtkSetupMasterPublicFunctionMatchesLocal310()
+    {
+        AhkTest.AssertTrue(HasMethod(stdlib.tkinter.ttk, "setup_master"))
+        AhkTest.RaisesMatch(TypeError, "^setup_master\(\) takes from 0 to 1 positional arguments but 2 were given$", (*) => stdlib.tkinter.ttk.setup_master(stdlib.None, "extra"))
+        AhkTest.AssertEqual("master", stdlib.tkinter.ttk.setup_master("master"))
+
+        defaultRoot := stdlib.tkinter.ttk.setup_master()
+        try {
+            defaultRoot.withdraw()
+            AhkTest.AssertTrue(defaultRoot is stdlib.tkinter.Tk)
+            AhkTest.AssertEqual(".", String(defaultRoot))
+            AhkTest.AssertEqual("Tk", defaultRoot.winfo_class())
+            AhkTest.AssertSame(defaultRoot, defaultRoot._root())
+            AhkTest.AssertSame(defaultRoot, stdlib.tkinter.ttk.setup_master())
+            AhkTest.AssertSame(defaultRoot, stdlib.tkinter.ttk.setup_master(stdlib.None))
+        } finally {
+            try defaultRoot.update_idletasks()
+            try defaultRoot.destroy()
+        }
+
+        explicit := stdlib.tkinter.Tk()
+        try {
+            explicit.withdraw()
+            AhkTest.AssertSame(explicit, stdlib.tkinter.ttk.setup_master(explicit))
+            AhkTest.AssertSame(explicit, stdlib.tkinter.ttk.setup_master(stdlib.None))
+        } finally {
+            try explicit.update_idletasks()
+            try explicit.destroy()
+        }
+
+        scriptPath := A_Temp "\stdlib-ttk-setup-master-nodefaultroot-" A_TickCount "-" Random(100000, 999999) ".ahk"
+        SplitPath A_LineFile, , &testsDir
+        stdlibDir := RegExReplace(testsDir, "\\tests$")
+        tkinterPath := stdlibDir "\tkinter.ahk"
+        script := '#Requires AutoHotkey v2.0`n'
+            . '#ErrorStdOut "UTF-8"`n'
+            . '#Include "' tkinterPath '"`n'
+            . 'fail(message) {`n'
+            . '    FileAppend "FAIL:" message "``n", "**", "UTF-8"`n'
+            . '    ExitApp 7`n'
+            . '}`n'
+            . 'assert_equal(expected, actual, label) {`n'
+            . '    if expected != actual`n'
+            . '        fail(label ": expected " expected ", got " actual)`n'
+            . '}`n'
+            . 'assert_same(expected, actual, label) {`n'
+            . '    if expected !== actual`n'
+            . '        fail(label ": unexpected object")`n'
+            . '}`n'
+            . 'raises(errorType, pattern, callback, label) {`n'
+            . '    try {`n'
+            . '        callback.Call()`n'
+            . '    } catch as err {`n'
+            . '        if !(err is errorType)`n'
+            . '            fail(label ": wrong error type " Type(err) ": " err.Message)`n'
+            . '        if !RegExMatch(err.Message, pattern)`n'
+            . '            fail(label ": wrong message " err.Message)`n'
+            . '        return`n'
+            . '    }`n'
+            . '    fail(label ": no error")`n'
+            . '}`n'
+            . 'assert_same(stdlib.None, stdlib.tkinter.NoDefaultRoot(), "NoDefaultRoot return")`n'
+            . 'assert_equal("master", stdlib.tkinter.ttk.setup_master("master"), "bad master passthrough")`n'
+            . 'raises(RuntimeError, "^No master specified and tkinter is configured to not support default root$", (*) => stdlib.tkinter.ttk.setup_master(), "missing setup_master")`n'
+            . 'raises(RuntimeError, "^No master specified and tkinter is configured to not support default root$", (*) => stdlib.tkinter.ttk.setup_master(stdlib.None), "none setup_master")`n'
+            . 'FileAppend "ok``n", "*", "UTF-8"`n'
+            . 'ExitApp 0`n'
+        pollutedNamespace := "System.Text." "RegularExpressions"
+        pollutedEvaluator := "Match" "Evaluator"
+        AhkTest.AssertFalse(InStr(script, pollutedNamespace))
+        AhkTest.AssertFalse(InStr(script, pollutedEvaluator))
+        try {
+            FileAppend script, scriptPath, "UTF-8"
+            result := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", scriptPath], { WorkingDir: stdlibDir, TimeoutSeconds: 10 })
+        } finally {
+            try FileDelete scriptPath
+        }
+        diagnostic := "exit=" result.ExitCode " stdout=" result.Out " stderr=" result.Err
+        AhkTest.AssertEqual(0, result.ExitCode, diagnostic)
+        AhkTest.AssertContains("ok", result.Out, diagnostic)
+    }
+
+    static TestTtkTclobjsToPyPublicFunctionMatchesLocal310()
+    {
+        AhkTest.AssertTrue(HasMethod(stdlib.tkinter.ttk, "tclobjs_to_py"))
+        AhkTest.RaisesMatch(TypeError, "^tclobjs_to_py\(\) missing 1 required positional argument: 'adict'$", (*) => stdlib.tkinter.ttk.tclobjs_to_py())
+        AhkTest.RaisesMatch(TypeError, "^tclobjs_to_py\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.ttk.tclobjs_to_py(Map(), "extra"))
+        AhkTest.RaisesMatch(AttributeError, "^'NoneType' object has no attribute 'items'$", (*) => stdlib.tkinter.ttk.tclobjs_to_py(stdlib.None))
+        AhkTest.RaisesMatch(AttributeError, "^'list' object has no attribute 'items'$", (*) => stdlib.tkinter.ttk.tclobjs_to_py([]))
+        AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'items'$", (*) => stdlib.tkinter.ttk.tclobjs_to_py("bad"))
+
+        values := Map(
+            "scalar", "plain",
+            "list", ["one", "two words", "3"],
+            "nested", [stdlib.tuple(["a", "b"]), "c"],
+            "empty", "",
+            "string", "already",
+            "integer", 7,
+            "tuple", stdlib.tuple(["kept", "tuple"])
+        )
+        result := stdlib.tkinter.ttk.tclobjs_to_py(values)
+        AhkTest.AssertSame(values, result)
+        AhkTest.AssertEqual("plain", result["scalar"])
+        AhkTest.AssertEqual(["one", "two words", 3], result["list"])
+        AhkTest.AssertEqual(["('a', 'b')", "c"], result["nested"])
+        AhkTest.AssertEqual("", result["empty"])
+        AhkTest.AssertEqual("already", result["string"])
+        AhkTest.AssertEqual(7, result["integer"])
+        AhkTest.AssertEqual(["kept", "tuple"], result["tuple"])
+    }
+
     static TestTtkButtonPublicSurfaceMatchesLocal310()
     {
         AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
@@ -439,6 +550,7 @@ class StdlibTkinterTest
 
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.ttk.Button(root, { bad: 1 }))
         } finally {
+            try root.attributes("-topmost", stdlib.False)
             try root.update_idletasks()
             try root.destroy()
         }
@@ -470,6 +582,324 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => button.state(1))
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid state name d$", (*) => button.state("disabled"))
             AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => button.instate(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkButtonIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            button := stdlib.tkinter.ttk.Button(root, { text: "Button", name: "ttk_button_identify_sequence" })
+            button.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(button, "ttk_button_identify_sequence")
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkWidgetInstateCallbackNoneMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            calls := []
+            button := stdlib.tkinter.ttk.Button(root, { text: "Hi", name: "ttk_button_instate_callback_none_probe" })
+            button.state(["disabled"])
+
+            AhkTest.AssertSame(stdlib.True, button.instate(["disabled"], stdlib.None))
+            AhkTest.AssertSame(stdlib.True, button.instate(["disabled"], stdlib.None, "x", "y"))
+            AhkTest.AssertEqual(stdlib.tuple(["called", "x", "y"]), button.instate(["disabled"], (args*) => (calls.Push(stdlib.tuple(args)), stdlib.tuple(["called", args[1], args[2]])), "x", "y"))
+            AhkTest.AssertEqual(stdlib.tuple([stdlib.tuple(["x", "y"])]), stdlib.tuple(calls))
+            AhkTest.AssertSame(stdlib.False, button.instate(["!disabled"], stdlib.None))
+            AhkTest.AssertSame(stdlib.False, button.instate(["!disabled"], (*) => (AhkTest.Fail("callback should not run"), "bad")))
+
+            AhkTest.RaisesMatch(MethodError, "This value of type `"Integer`" has no method named `"Call`"", (*) => button.instate(["disabled"], 0))
+            AhkTest.RaisesMatch(MethodError, "This value of type `"String`" has no method named `"Call`"", (*) => button.instate(["disabled"], ""))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkWidgetStateSpecSequenceTypeErrorsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            button := stdlib.tkinter.ttk.Button(root, { text: "Hi", name: "ttk_widget_state_sequence" })
+
+            AhkTest.AssertEqual(stdlib.tuple(), button.state(stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(), button.state([]))
+            AhkTest.AssertEqual(stdlib.tuple(), button.state(stdlib.tuple()))
+            AhkTest.AssertSame(stdlib.True, button.instate([]))
+            AhkTest.AssertSame(stdlib.True, button.instate(stdlib.tuple()))
+
+            AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => button.instate(stdlib.None))
+            AhkTest.RaisesMatch(TypeError, "^sequence item 0: expected str instance, NoneType found$", (*) => button.state([stdlib.None]))
+            AhkTest.RaisesMatch(TypeError, "^sequence item 0: expected str instance, NoneType found$", (*) => button.instate([stdlib.None]))
+            AhkTest.RaisesMatch(TypeError, "^sequence item 0: expected str instance, list found$", (*) => button.state([[]]))
+            AhkTest.RaisesMatch(TypeError, "^sequence item 0: expected str instance, tuple found$", (*) => button.state([stdlib.tuple()]))
+            AhkTest.RaisesMatch(TypeError, "^sequence item 0: expected str instance, list found$", (*) => button.instate([["disabled"]]))
+
+            AhkTest.AssertEqual(stdlib.tuple(["!disabled", "!selected"]), button.state(["disabled", "selected"]))
+            AhkTest.AssertEqual(stdlib.tuple(["disabled", "selected"]), button.state())
+            AhkTest.AssertSame(stdlib.True, button.instate(["disabled", "selected"]))
+            AhkTest.AssertEqual(stdlib.tuple(["disabled", "selected"]), button.state(["!disabled", "!selected"]))
+            AhkTest.AssertEqual(stdlib.tuple(), button.state())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkWidgetConfigureCgetSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            button := stdlib.tkinter.ttk.Button(root, { text: "Hi", width: 12, style: "Probe.TButton", name: "ttk_widget_configure_sequence" })
+
+            omitted := button.configure()
+            aliasOmitted := button.config()
+            explicitNone := button.configure(stdlib.None)
+            AhkTest.AssertTrue(omitted is Map)
+            AhkTest.AssertTrue(aliasOmitted is Map)
+            AhkTest.AssertTrue(explicitNone is Map)
+            AhkTest.AssertEqual(14, omitted.Count)
+            AhkTest.AssertTrue(omitted.Has("text"))
+            AhkTest.AssertTrue(omitted.Has("width"))
+            AhkTest.AssertTrue(omitted.Has("state"))
+            AhkTest.AssertEqual(omitted, aliasOmitted)
+            AhkTest.AssertEqual(omitted, explicitNone)
+            AhkTest.AssertEqual(stdlib.tuple(["text", "text", "Text", "", "Hi"]), omitted["text"])
+            AhkTest.AssertEqual(stdlib.tuple(["text", "text", "Text", "", "Hi"]), button.configure("text"))
+
+            AhkTest.AssertEqual(stdlib.None, button.configure([]))
+            AhkTest.AssertEqual(stdlib.None, button.configure(stdlib.tuple()))
+            AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => button.configure(["text"]))
+            AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => button.configure(stdlib.tuple(["text"])))
+
+            AhkTest.AssertEqual(stdlib.None, button.configure({ text: "There" }))
+            AhkTest.AssertEqual("There", button.cget("text"))
+            AhkTest.AssertEqual(stdlib.tuple(["text", "text", "Text", "", "There"]), button.configure("text"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--text"$', (*) => button.configure("-text"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-text_"$', (*) => button.configure("text_"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--text"$', (*) => button.cget("-text"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-text_"$', (*) => button.cget("text_"))
+
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "NoneType"\) to str$', (*) => button.cget(stdlib.None))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "list"\) to str$', (*) => button.cget([]))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "tuple"\) to str$', (*) => button.cget(stdlib.tuple()))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkSpecializedConfigureCgetSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            combo := stdlib.tkinter.ttk.Combobox(root, { values: ["one", "two words", "3"], width: 14, state: "readonly", name: "ttk_special_combo_configure_sequence" })
+            spin := stdlib.tkinter.ttk.Spinbox(root, { from_: 0, to: 5, increment: 1, values: ["1", "two words", "3"], width: 8, wrap: true, name: "ttk_special_spin_configure_sequence" })
+            button := stdlib.tkinter.ttk.Menubutton(root, { text: "Menu", width: 12, direction: "below", name: "ttk_special_menu_configure_sequence" })
+            progress := stdlib.tkinter.ttk.Progressbar(root, { maximum: 200, value: 10.5, length: 80, mode: "determinate", name: "ttk_special_progress_configure_sequence" })
+            notebook := stdlib.tkinter.ttk.Notebook(root, { padding: 5, width: 120, height: 60, name: "ttk_special_notebook_configure_sequence" })
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["name", "value"], displaycolumns: ["name"], height: 4, padding: 3, show: ["tree", "headings"], name: "ttk_special_tree_configure_sequence" })
+
+            AhkTest.AssertEqual(stdlib.tuple(["one", "two words", "3"]), combo.configure("values")[5])
+            AhkTest.AssertTrue(combo.configure() is Map)
+            AhkTest.AssertTrue(combo.configure(stdlib.None) is Map)
+            AhkTest.AssertEqual(stdlib.None, combo.configure([]))
+            AhkTest.AssertEqual(stdlib.None, combo.configure(stdlib.tuple()))
+            AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => combo.configure(["width"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--values"$', (*) => combo.configure("-values"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-values_"$', (*) => combo.configure("values_"))
+
+            AhkTest.AssertEqual(stdlib.tuple(["1", "two words", "3"]), spin.cget("values"))
+            AhkTest.AssertEqual(stdlib.tuple(["1", "two words", "3"]), spin.configure("values")[5])
+            AhkTest.AssertTrue(spin.configure(stdlib.None) is Map)
+            AhkTest.AssertEqual(stdlib.None, spin.configure([]))
+            AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => spin.configure(["values"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--values"$', (*) => spin.cget("-values"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-values_"$', (*) => spin.configure("values_"))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "NoneType"\) to str$', (*) => spin.cget(stdlib.None))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "list"\) to str$', (*) => spin.cget(["values"]))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "tuple"\) to str$', (*) => spin.cget(stdlib.tuple(["values"])))
+
+            AhkTest.AssertEqual("below", button.cget("direction"))
+            AhkTest.AssertEqual(stdlib.tuple(["direction", "direction", "Direction", "below", "below"]), button.configure("direction"))
+            AhkTest.AssertTrue(button.configure(stdlib.None) is Map)
+            AhkTest.AssertEqual(stdlib.None, button.configure(stdlib.tuple()))
+            AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => button.configure(stdlib.tuple(["direction"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--direction"$', (*) => button.cget("-direction"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-direction_"$', (*) => button.configure("direction_"))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "NoneType"\) to str$', (*) => button.cget(stdlib.None))
+
+            AhkTest.AssertEqual(200, progress.cget("maximum"))
+            AhkTest.AssertEqual(10.5, progress.cget("value"))
+            AhkTest.AssertEqual(stdlib.tuple(["maximum", "maximum", "Maximum", 100, 200]), progress.configure("maximum"))
+            AhkTest.AssertEqual(stdlib.tuple(["value", "value", "Value", 0.0, 10.5]), progress.configure("value"))
+            AhkTest.AssertTrue(progress.configure(stdlib.None) is Map)
+            AhkTest.AssertEqual(stdlib.None, progress.configure([]))
+            AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => progress.configure(["maximum"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--maximum"$', (*) => progress.cget("-maximum"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-value_"$', (*) => progress.configure("value_"))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "tuple"\) to str$', (*) => progress.cget(stdlib.tuple(["value"])))
+
+            AhkTest.AssertEqual(stdlib.tuple(["5"]), notebook.cget("padding"))
+            AhkTest.AssertEqual(stdlib.tuple(["padding", "padding", "Padding", "", stdlib.tuple(["5"])]), notebook.configure("padding"))
+            AhkTest.AssertTrue(notebook.configure(stdlib.None) is Map)
+            AhkTest.AssertEqual(stdlib.None, notebook.configure([]))
+            AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => notebook.configure(["padding"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--padding"$', (*) => notebook.cget("-padding"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-padding_"$', (*) => notebook.configure("padding_"))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "list"\) to str$', (*) => notebook.cget(["padding"]))
+
+            AhkTest.AssertEqual(stdlib.tuple(["name", "value"]), tree.cget("columns"))
+            AhkTest.AssertEqual(stdlib.tuple(["3"]), tree.cget("padding"))
+            AhkTest.AssertEqual(stdlib.tuple(["tree", "headings"]), tree.cget("show"))
+            AhkTest.AssertEqual(stdlib.tuple(["columns", "columns", "Columns", "", stdlib.tuple(["name", "value"])]), tree.configure("columns"))
+            AhkTest.AssertEqual(stdlib.tuple(["padding", "padding", "Pad", "", stdlib.tuple(["3"])]), tree.configure("padding"))
+            AhkTest.AssertEqual(stdlib.tuple(["show", "show", "Show", "tree headings", stdlib.tuple(["tree", "headings"])]), tree.configure("show"))
+            AhkTest.AssertTrue(tree.configure(stdlib.None) is Map)
+            AhkTest.AssertEqual(stdlib.None, tree.configure(stdlib.tuple()))
+            AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => tree.configure(["columns"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--columns"$', (*) => tree.cget("-columns"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-show_"$', (*) => tree.configure("show_"))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "NoneType"\) to str$', (*) => tree.cget(stdlib.None))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "tuple"\) to str$', (*) => tree.cget(stdlib.tuple(["columns"])))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkSubcommandOptionSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+
+            notebook := stdlib.tkinter.ttk.Notebook(root, { name: "ttk_subcommand_option_notebook" })
+            notebookPage := stdlib.tkinter.ttk.Frame(notebook, { name: "page" })
+            AhkTest.AssertEqual(stdlib.None, notebook.add(notebookPage, { text: "Page One", padding: 4, sticky: "nsew" }))
+            AhkTest.AssertEqual("Page One", notebook.tab(notebookPage, "text"))
+            AhkTest.AssertEqual("Page One", notebook.tab(notebookPage, stdlib.tuple(["text"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--text"$', (*) => notebook.tab(notebookPage, "-text"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-text_"$', (*) => notebook.tab(notebookPage, "text_"))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => notebook.tab(notebookPage, []))
+            AhkTest.RaisesMatch(TypeError, "^not enough arguments for format string$", (*) => notebook.tab(notebookPage, stdlib.tuple()))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => notebook.tab(notebookPage, ["text"]))
+
+            paned := stdlib.tkinter.ttk.Panedwindow(root, { name: "ttk_subcommand_option_paned" })
+            pane := stdlib.tkinter.ttk.Frame(paned, { name: "pane" })
+            AhkTest.AssertEqual(stdlib.None, paned.add(pane, { weight: 2 }))
+            AhkTest.AssertEqual(2, paned.pane(pane, "weight"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--weight"$', (*) => paned.pane(pane, "-weight"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-weight_"$', (*) => paned.pane(pane, "weight_"))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => paned.pane(pane, []))
+            AhkTest.RaisesMatch(TypeError, "^not enough arguments for format string$", (*) => paned.pane(pane, stdlib.tuple()))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "NoneType"\) to str$', (*) => paned.panecget(pane, stdlib.None))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "list"\) to str$', (*) => paned.panecget(pane, []))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "tuple"\) to str$', (*) => paned.panecget(pane, stdlib.tuple()))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "panecget": must be add, configure, cget, forget, identify, insert, instate, pane, panes, sashpos, or state$', (*) => paned.panecget(pane, "weight"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "panecget": must be add, configure, cget, forget, identify, insert, instate, pane, panes, sashpos, or state$', (*) => paned.panecget(pane, "-weight"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "paneconfigure": must be add, configure, cget, forget, identify, insert, instate, pane, panes, sashpos, or state$', (*) => paned.paneconfigure(pane, "weight"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "paneconfigure": must be add, configure, cget, forget, identify, insert, instate, pane, panes, sashpos, or state$', (*) => paned.paneconfigure(pane, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "paneconfigure": must be add, configure, cget, forget, identify, insert, instate, pane, panes, sashpos, or state$', (*) => paned.paneconfigure(pane, []))
+            AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => paned.paneconfigure(pane, ["weight"]))
+
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["name", "two words"], show: ["tree", "headings"], name: "ttk_subcommand_option_tree" })
+            tree.heading("#0", { text: "Tree" })
+            tree.heading("name", { text: "Name" })
+            tree.heading("two words", { text: "Two Words" })
+            tree.column("name", { width: 120, minwidth: 20, stretch: 0, anchor: "center" })
+            item := tree.insert("", "end", "first", { text: "First", values: ["alpha", "beta"], tags: ["odd", "all rows"] })
+            tree.tag_configure("odd", { foreground: "red" })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual(120, tree.column("name", "width"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--width"$', (*) => tree.column("name", "-width"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-width_"$', (*) => tree.column("name", "width_"))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => tree.column("name", []))
+            AhkTest.RaisesMatch(TypeError, "^not enough arguments for format string$", (*) => tree.column("name", stdlib.tuple()))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-text"$', (*) => tree.column("name", stdlib.tuple(["text"])))
+
+            AhkTest.AssertEqual("Name", tree.heading("name", "text"))
+            AhkTest.AssertEqual("Name", tree.heading("name", stdlib.tuple(["text"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--text"$', (*) => tree.heading("name", "-text"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-text_"$', (*) => tree.heading("name", "text_"))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => tree.heading("name", []))
+            AhkTest.RaisesMatch(TypeError, "^not enough arguments for format string$", (*) => tree.heading("name", stdlib.tuple()))
+
+            AhkTest.AssertEqual("First", tree.item(item, "text"))
+            AhkTest.AssertEqual("First", tree.item(item, stdlib.tuple(["text"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--text"$', (*) => tree.item(item, "-text"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-text_"$', (*) => tree.item(item, "text_"))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => tree.item(item, []))
+            AhkTest.RaisesMatch(TypeError, "^not enough arguments for format string$", (*) => tree.item(item, stdlib.tuple()))
+
+            AhkTest.AssertEqual("red", tree.tag_configure("odd", "foreground"))
+            AhkTest.AssertEqual("", tree.tag_configure("odd", stdlib.tuple(["text"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--foreground"$', (*) => tree.tag_configure("odd", "-foreground"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-foreground_"$', (*) => tree.tag_configure("odd", "foreground_"))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => tree.tag_configure("odd", []))
+            AhkTest.RaisesMatch(TypeError, "^not enough arguments for format string$", (*) => tree.tag_configure("odd", stdlib.tuple()))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkSubcommandKwargsNoneQueryMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+
+            paned := stdlib.tkinter.ttk.Panedwindow(root, { name: "ttk_kw_none_paned", orient: "horizontal" })
+            paneOne := stdlib.tkinter.ttk.Frame(paned, { name: "pane_one", width: 50, height: 40 })
+            paneTwo := stdlib.tkinter.ttk.Frame(paned, { name: "pane_two", width: 50, height: 40 })
+            paned.add(paneOne, { weight: 2 })
+            paned.add(paneTwo, { weight: 3 })
+            paned.pack()
+
+            tree := stdlib.tkinter.ttk.Treeview(root, { name: "ttk_kw_none_tree", columns: ["name", "score"], displaycolumns: ["name", "score"] })
+            tree.column("name", { width: 120, minwidth: 40, stretch: 0, anchor: "center" })
+            tree.heading("name", { text: "Name", anchor: "w" })
+            item := tree.insert("", "end", "item_a", { text: "Alpha", values: ["A", "10"], tags: ["tag_a"] })
+            tree.item(item, { text: "Alpha", open: 1, tags: ["tag_a"], values: ["A", "10"] })
+            tree.tag_configure("tag_a", { foreground: "red", font: ["TkDefaultFont", 10] })
+            tree.pack()
+            root.update_idletasks()
+
+            AhkTest.AssertEqual(2, paned.pane(paneOne, { weight: stdlib.None }))
+            AhkTest.AssertEqual(3, paned.pane(paneTwo, { weight: stdlib.None }))
+
+            AhkTest.AssertEqual(120, tree.column("name", { width: stdlib.None }))
+            AhkTest.AssertEqual("center", tree.column("name", { anchor: stdlib.None }))
+            AhkTest.AssertEqual("Name", tree.heading("name", { text: stdlib.None }))
+            AhkTest.AssertEqual("w", tree.heading("name", { anchor: stdlib.None }))
+            AhkTest.AssertEqual("Alpha", tree.item(item, { text: stdlib.None }))
+            AhkTest.AssertEqual(1, tree.item(item, { open: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.tuple(["tag_a"]), tree.item(item, { tags: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.tuple(["A", "10"]), tree.item(item, { values: stdlib.None }))
+            AhkTest.AssertEqual("red", tree.tag_configure("tag_a", { foreground: stdlib.None }))
+            AhkTest.AssertEqual("TkDefaultFont 10", tree.tag_configure("tag_a", { font: stdlib.None }))
+
+            AhkTest.AssertEqual(120, tree.column("name", "width"))
+            AhkTest.AssertEqual("Name", tree.heading("name", "text"))
+            AhkTest.AssertEqual("Alpha", tree.item(item, "text"))
+            AhkTest.AssertEqual("red", tree.tag_configure("tag_a", "foreground"))
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -555,6 +985,22 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTtkCheckbuttonIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            checkbutton := stdlib.tkinter.ttk.Checkbutton(root, { text: "Check", name: "ttk_checkbutton_identify_sequence" })
+            checkbutton.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(checkbutton, "ttk_checkbutton_identify_sequence")
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTtkRadiobuttonPublicSurfaceMatchesLocal310()
     {
         AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
@@ -628,6 +1074,22 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTtkRadiobuttonIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            radiobutton := stdlib.tkinter.ttk.Radiobutton(root, { text: "Radio", name: "ttk_radiobutton_identify_sequence" })
+            radiobutton.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(radiobutton, "ttk_radiobutton_identify_sequence")
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTtkFramePublicSurfaceMatchesLocal310()
     {
         AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
@@ -653,6 +1115,22 @@ class StdlibTkinterTest
             AhkTest.AssertSame(frame, root.nametowidget("ttk_frame_probe"))
 
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.ttk.Frame(root, { bad: 1 }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkFrameIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            frame := stdlib.tkinter.ttk.Frame(root, { width: 40, height: 20, name: "ttk_frame_identify_sequence" })
+            frame.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(frame, "ttk_frame_identify_sequence")
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -688,6 +1166,22 @@ class StdlibTkinterTest
             AhkTest.AssertSame(label, root.nametowidget("ttk_label_probe"))
 
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.ttk.Label(root, { bad: 1 }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkLabelIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            label := stdlib.tkinter.ttk.Label(root, { text: "Label", name: "ttk_label_identify_sequence" })
+            label.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(label, "ttk_label_identify_sequence")
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -824,6 +1318,293 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTtkEntryValidateMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            calls := []
+            entry := stdlib.tkinter.ttk.Entry(root, { name: "ttk_entry_validate_default" })
+            trueEntry := stdlib.tkinter.ttk.Entry(root, { validate: "all", validatecommand: (*) => (calls.Push("true"), stdlib.True), name: "ttk_entry_validate_true" })
+            falseEntry := stdlib.tkinter.ttk.Entry(root, { validate: "all", validatecommand: (*) => (calls.Push("false"), stdlib.False), name: "ttk_entry_validate_false" })
+            stringEntry := stdlib.tkinter.ttk.Entry(root, { validate: "all", validatecommand: (*) => (calls.Push("one"), "1"), name: "ttk_entry_validate_string" })
+
+            AhkTest.AssertTrue(HasMethod(entry, "validate"))
+            AhkTest.AssertEqual(stdlib.tuple(), entry.state())
+            AhkTest.AssertEqual(stdlib.True, entry.validate())
+            AhkTest.AssertEqual(stdlib.tuple(), entry.state())
+
+            AhkTest.AssertEqual(stdlib.True, trueEntry.validate())
+            AhkTest.AssertEqual(stdlib.tuple(), trueEntry.state())
+            AhkTest.AssertEqual(stdlib.False, falseEntry.validate())
+            AhkTest.AssertEqual(stdlib.tuple(["invalid"]), falseEntry.state())
+            AhkTest.AssertEqual(stdlib.False, falseEntry.validate())
+            AhkTest.AssertEqual(stdlib.tuple(["invalid"]), falseEntry.state())
+            AhkTest.AssertEqual(stdlib.True, stringEntry.validate())
+            AhkTest.AssertEqual(stdlib.tuple(), stringEntry.state())
+            AhkTest.AssertEqual(["true", "false", "false", "one"], calls)
+            AhkTest.RaisesMatch(TypeError, "^Entry\.validate\(\) takes 1 positional argument but 2 were given$", (*) => entry.validate("extra"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkEntryInsertNoneAndSequenceWordsMatchLocal310()
+    {
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_insert_sequence insert index text"$', (*) => StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => entry.insert(stdlib.None, "X")))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "seedX", "seedX"]), StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => (entry.insert([], "X"), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "seedX", "seedX"]), StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => (entry.insert(stdlib.tuple(), "X"), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "Xseed", "Xseed"]), StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => (entry.insert(["0"], "X"), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "seedX", "seedX"]), StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => (entry.insert(stdlib.tuple(["end"]), "X"), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "0 1"$', (*) => StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => entry.insert(["0", "1"], "X")))
+
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_insert_sequence insert index text"$', (*) => StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => entry.insert(0, stdlib.None)))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "seed", "seed"]), StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => (entry.insert(0, []), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "seed", "seed"]), StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => (entry.insert(0, stdlib.tuple()), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "alphaseed", "alphaseed"]), StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => (entry.insert(0, ["alpha"]), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "{beta gamma}seed", "{beta gamma}seed"]), StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => (entry.insert(0, stdlib.tuple(["beta gamma"])), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "alpha deltaseed", "alpha deltaseed"]), StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => (entry.insert(0, ["alpha", "delta"]), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "{alpha delta}seed", "{alpha delta}seed"]), StdlibTkinterTest.WithTtkEntryInsertSequence((entry, variable) => (entry.insert(0, [["alpha", "delta"]]), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+    }
+
+    static TestTtkEntryDeleteNoneAndSequenceWordsMatchLocal310()
+    {
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "acdef", "acdef"]), StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => (entry.delete(1), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_delete_sequence delete firstIndex \?lastIndex\?"$', (*) => StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => entry.delete(stdlib.None)))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "abcdef", "abcdef"]), StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => (entry.delete([]), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "abcdef", "abcdef"]), StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => (entry.delete(stdlib.tuple()), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "acdef", "acdef"]), StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => (entry.delete(["1"]), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "abcdef", "abcdef"]), StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => (entry.delete(stdlib.tuple(["end"])), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "1 2"$', (*) => StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => entry.delete(["1", "2"])))
+
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "acdef", "acdef"]), StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => (entry.delete(1, stdlib.None), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "a", "a"]), StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => (entry.delete(1, []), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "a", "a"]), StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => (entry.delete(1, stdlib.tuple()), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "adef", "adef"]), StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => (entry.delete(1, ["3"]), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "a", "a"]), StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => (entry.delete(1, stdlib.tuple(["end"])), stdlib.tuple([stdlib.None, entry.get(), variable.get()]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "3 4"$', (*) => StdlibTkinterTest.WithTtkEntryDeleteSequence((entry, variable) => entry.delete(1, ["3", "4"])))
+    }
+
+    static TestTtkEntryBboxNoneAndSequenceWordsMatchLocal310()
+    {
+        AhkTest.AssertEqual(4, StdlibTkinterTest.WithTtkEntryBboxSequence((entry) => entry.bbox(0).Length))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_bbox_sequence bbox index"$', (*) => StdlibTkinterTest.WithTtkEntryBboxSequence((entry) => entry.bbox(stdlib.None)))
+
+        endBox := StdlibTkinterTest.WithTtkEntryBboxSequence((entry) => entry.bbox("end"))
+        AhkTest.AssertEqual(endBox, StdlibTkinterTest.WithTtkEntryBboxSequence((entry) => entry.bbox([])))
+        AhkTest.AssertEqual(endBox, StdlibTkinterTest.WithTtkEntryBboxSequence((entry) => entry.bbox(stdlib.tuple())))
+        AhkTest.AssertEqual(StdlibTkinterTest.WithTtkEntryBboxSequence((entry) => entry.bbox(0)), StdlibTkinterTest.WithTtkEntryBboxSequence((entry) => entry.bbox(["0"])))
+        AhkTest.AssertEqual(endBox, StdlibTkinterTest.WithTtkEntryBboxSequence((entry) => entry.bbox(stdlib.tuple(["end"]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "0 1"$', (*) => StdlibTkinterTest.WithTtkEntryBboxSequence((entry) => entry.bbox(["0", "1"])))
+    }
+
+    static TestTtkEntryIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        AhkTest.AssertEqual("", StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(1, 1)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_identify_sequence identify \?what\? x y"$', (*) => StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(stdlib.None, 1)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_identify_sequence identify \?what\? x y"$', (*) => StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(1, stdlib.None)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_identify_sequence identify \?what\? x y"$', (*) => StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(stdlib.None, stdlib.None)))
+
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify([], 1)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(stdlib.tuple(), 1)))
+        AhkTest.AssertEqual("", StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(["1"], 1)))
+        AhkTest.AssertEqual("", StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(stdlib.tuple(["1"]), 1)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "1 2"$', (*) => StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(["1", "2"], 1)))
+
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(1, [])))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(1, stdlib.tuple())))
+        AhkTest.AssertEqual("", StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(1, ["1"])))
+        AhkTest.AssertEqual("", StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(1, stdlib.tuple(["1"]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "1 2"$', (*) => StdlibTkinterTest.WithTtkEntryIdentifySequence((entry) => entry.identify(1, ["1", "2"])))
+    }
+
+    static TestTtkEntryIndexNoneAndSequenceWordsMatchLocal310()
+    {
+        AhkTest.AssertEqual(0, StdlibTkinterTest.WithTtkEntryIndexSequence((entry) => entry.index(0)))
+        AhkTest.AssertEqual(6, StdlibTkinterTest.WithTtkEntryIndexSequence((entry) => entry.index("end")))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_index_sequence index string"$', (*) => StdlibTkinterTest.WithTtkEntryIndexSequence((entry) => entry.index(stdlib.None)))
+        AhkTest.AssertEqual(6, StdlibTkinterTest.WithTtkEntryIndexSequence((entry) => entry.index([])))
+        AhkTest.AssertEqual(6, StdlibTkinterTest.WithTtkEntryIndexSequence((entry) => entry.index(stdlib.tuple())))
+        AhkTest.AssertEqual(1, StdlibTkinterTest.WithTtkEntryIndexSequence((entry) => entry.index(["1"])))
+        AhkTest.AssertEqual(6, StdlibTkinterTest.WithTtkEntryIndexSequence((entry) => entry.index(stdlib.tuple(["end"]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "1 2"$', (*) => StdlibTkinterTest.WithTtkEntryIndexSequence((entry) => entry.index(["1", "2"])))
+    }
+
+    static TestTtkEntryIcursorNoneAndSequenceWordsMatchLocal310()
+    {
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, 0]), StdlibTkinterTest.WithTtkEntryIcursorSequence((entry) => (entry.icursor(0), stdlib.tuple([stdlib.None, entry.index("insert")]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, 6]), StdlibTkinterTest.WithTtkEntryIcursorSequence((entry) => (entry.icursor("end"), stdlib.tuple([stdlib.None, entry.index("insert")]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_icursor_sequence icursor pos"$', (*) => StdlibTkinterTest.WithTtkEntryIcursorSequence((entry) => entry.icursor(stdlib.None)))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, 6]), StdlibTkinterTest.WithTtkEntryIcursorSequence((entry) => (entry.icursor([]), stdlib.tuple([stdlib.None, entry.index("insert")]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, 6]), StdlibTkinterTest.WithTtkEntryIcursorSequence((entry) => (entry.icursor(stdlib.tuple()), stdlib.tuple([stdlib.None, entry.index("insert")]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, 1]), StdlibTkinterTest.WithTtkEntryIcursorSequence((entry) => (entry.icursor(["1"]), stdlib.tuple([stdlib.None, entry.index("insert")]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, 6]), StdlibTkinterTest.WithTtkEntryIcursorSequence((entry) => (entry.icursor(stdlib.tuple(["end"])), stdlib.tuple([stdlib.None, entry.index("insert")]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "1 2"$', (*) => StdlibTkinterTest.WithTtkEntryIcursorSequence((entry) => entry.icursor(["1", "2"])))
+    }
+
+    static TestTtkEntrySelectionRangeNoneAndSequenceWordsMatchLocal310()
+    {
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, stdlib.True, "bc"]), StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => (entry.selection_range(1, 3), stdlib.tuple([stdlib.None, entry.selection_present(), entry.selection_get()]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_selection_sequence selection range start end"$', (*) => StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => entry.selection_range(stdlib.None, 3)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_selection_sequence selection range start end"$', (*) => StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => entry.selection_range(1, stdlib.None)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_selection_sequence selection range start end"$', (*) => StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => entry.selection_range(stdlib.None, stdlib.None)))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, stdlib.False]), StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => (entry.selection_range([], 3), stdlib.tuple([stdlib.None, entry.selection_present()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, stdlib.False]), StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => (entry.selection_range(stdlib.tuple(), 3), stdlib.tuple([stdlib.None, entry.selection_present()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, stdlib.True, "bcdef"]), StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => (entry.selection_range(1, []), stdlib.tuple([stdlib.None, entry.selection_present(), entry.selection_get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, stdlib.True, "bcdef"]), StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => (entry.selection_range(1, stdlib.tuple()), stdlib.tuple([stdlib.None, entry.selection_present(), entry.selection_get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, stdlib.True, "bc"]), StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => (entry.selection_range(["1"], ["3"]), stdlib.tuple([stdlib.None, entry.selection_present(), entry.selection_get()]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "1 2"$', (*) => StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => entry.selection_range(["1", "2"], 3)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "3 4"$', (*) => StdlibTkinterTest.WithTtkEntrySelectionRangeSequence((entry) => entry.selection_range(1, ["3", "4"])))
+    }
+
+    static TestTtkEntryXviewNoneAndSequenceWordsMatchLocal310()
+    {
+        AhkTest.AssertEqual(2, StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview().Length))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview(stdlib.None)))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview([])))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview(stdlib.tuple())))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview(["1"])))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview(stdlib.tuple(["end"]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "1 2"$', (*) => StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview(["1", "2"])))
+
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview("moveto", 0.25)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "moveto"$', (*) => StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview("moveto", stdlib.None)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview("moveto", [])))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview("moveto", ["0.25"])))
+
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview("scroll", 1, "units")))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "scroll"$', (*) => StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview("scroll", stdlib.None, "units")))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview("scroll", [], "units")))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_entry_xview_sequence xview scroll number units\|pages"$', (*) => StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview("scroll", 1, stdlib.None)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad argument "": must be units or pages$', (*) => StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview("scroll", 1, [])))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => entry.xview("scroll", 1, ["units"])))
+    }
+
+    static TestTtkSpinboxPublicSurfaceMatchesLocal310()
+    {
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter.ttk, "Spinbox"))
+        AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'tk'$", (*) => stdlib.tkinter.ttk.Spinbox("master"))
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            defaultSpin := stdlib.tkinter.ttk.Spinbox({ name: "ttk_spin_default_probe" })
+            AhkTest.AssertTrue(defaultSpin is stdlib.tkinter.ttk.Spinbox)
+            AhkTest.AssertEqual(".ttk_spin_default_probe", String(defaultSpin))
+            AhkTest.AssertEqual("TSpinbox", defaultSpin.winfo_class())
+            defaultSpin.destroy()
+
+            text := stdlib.tkinter.StringVar(root, "2", "ttk_spin_var")
+            spin := stdlib.tkinter.ttk.Spinbox(root, { from_: 0, to: 5, increment: 1, values: ["1", "2", "3"], textvariable: text, width: 8, wrap: true, state: "normal", cursor: "arrow", style: "Probe.TSpinbox", name: "ttk_spin_probe" })
+            AhkTest.AssertTrue(spin is stdlib.tkinter.ttk.Spinbox)
+            AhkTest.AssertEqual(".ttk_spin_probe", String(spin))
+            AhkTest.AssertEqual("ttk::spinbox", spin.widgetName)
+            AhkTest.AssertSame(root, spin.master)
+            AhkTest.AssertSame(root.tk, spin.tk)
+            AhkTest.AssertEqual("TSpinbox", spin.winfo_class())
+            AhkTest.AssertEqual(0, spin.cget("from"))
+            AhkTest.AssertEqual(5, spin.cget("to"))
+            AhkTest.AssertEqual(1, spin.cget("increment"))
+            AhkTest.AssertEqual(stdlib.tuple(["1", "2", "3"]), spin.cget("values"))
+            AhkTest.AssertEqual("ttk_spin_var", spin.cget("textvariable"))
+            AhkTest.AssertEqual(8, spin.cget("width"))
+            AhkTest.AssertEqual(1, spin.cget("wrap"))
+            AhkTest.AssertEqual("normal", spin.cget("state"))
+            AhkTest.AssertEqual("arrow", spin.cget("cursor"))
+            AhkTest.AssertEqual("Probe.TSpinbox", spin.cget("style"))
+            AhkTest.AssertEqual("", spin.cget("class"))
+            AhkTest.AssertContains("from", spin.keys())
+            AhkTest.AssertContains("to", spin.keys())
+            AhkTest.AssertContains("increment", spin.keys())
+            AhkTest.AssertContains("values", spin.keys())
+            AhkTest.AssertContains("textvariable", spin.keys())
+            AhkTest.AssertContains("width", spin.keys())
+            AhkTest.AssertContains("wrap", spin.keys())
+            AhkTest.AssertContains("state", spin.keys())
+            AhkTest.AssertContains("cursor", spin.keys())
+            AhkTest.AssertContains("style", spin.keys())
+            AhkTest.AssertContains("class", spin.keys())
+            AhkTest.AssertEqual(stdlib.tuple(["width", "width", "Width", 20, 8]), spin.configure("width"))
+            AhkTest.AssertEqual(stdlib.tuple(["values", "values", "Values", "", stdlib.tuple(["1", "2", "3"])]), spin.configure("values"))
+            AhkTest.AssertEqual(stdlib.tuple(["style", "style", "Style", "", "Probe.TSpinbox"]), spin.configure("style"))
+
+            AhkTest.AssertEqual("2", spin.get())
+            AhkTest.AssertEqual(stdlib.None, spin.set("3"))
+            AhkTest.AssertEqual("3", spin.get())
+            AhkTest.AssertEqual("3", text.get())
+            AhkTest.AssertEqual(stdlib.None, spin.delete(0, "end"))
+            AhkTest.AssertEqual(stdlib.None, spin.insert(0, "42"))
+            AhkTest.AssertEqual("42", spin.get())
+            AhkTest.AssertEqual(2, spin.index("end"))
+            bbox := spin.bbox(0)
+            AhkTest.AssertEqual(4, bbox.Length)
+            AhkTest.AssertEqual("", spin.identify(5, 5))
+            AhkTest.AssertSame(stdlib.False, spin.selection_present())
+            AhkTest.AssertEqual(stdlib.None, spin.selection_range(0, 1))
+            AhkTest.AssertSame(stdlib.True, spin.selection_present())
+            AhkTest.AssertEqual(stdlib.None, spin.selection_clear())
+            AhkTest.AssertSame(stdlib.False, spin.selection_present())
+            AhkTest.AssertEqual(stdlib.tuple(), spin.state())
+            AhkTest.AssertEqual(stdlib.tuple(["!disabled"]), spin.state(["disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(["disabled"]), spin.state())
+            AhkTest.AssertSame(stdlib.True, spin.instate(["disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(["disabled"]), spin.state(["!disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(), spin.state())
+            AhkTest.AssertFalse(HasMethod(spin, "invoke"))
+            AhkTest.AssertFalse(HasMethod(spin, "selection_element"))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 0.0]), spin.xview())
+            AhkTest.AssertEqual(stdlib.None, spin.xview_moveto(0.5))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.ttk.Spinbox(root, { bad: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Spinbox\.__init__\(\) takes from 1 to 2 positional arguments but 4 were given$", (*) => stdlib.tkinter.ttk.Spinbox(root, {}, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.get\(\) takes 1 positional argument but 2 were given$", (*) => spin.get(1))
+            AhkTest.RaisesMatch(TypeError, "^Spinbox\.set\(\) missing 1 required positional argument: 'value'$", (*) => spin.set())
+            AhkTest.RaisesMatch(TypeError, "^Spinbox\.set\(\) takes 2 positional arguments but 3 were given$", (*) => spin.set("1", "2"))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.delete\(\) missing 1 required positional argument: 'first'$", (*) => spin.delete())
+            AhkTest.RaisesMatch(TypeError, "^Entry\.delete\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => spin.delete(0, 1, 2))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.insert\(\) missing 2 required positional arguments: 'index' and 'string'$", (*) => spin.insert())
+            AhkTest.RaisesMatch(TypeError, "^Entry\.insert\(\) missing 1 required positional argument: 'string'$", (*) => spin.insert(0))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.insert\(\) takes 3 positional arguments but 4 were given$", (*) => spin.insert(0, "x", "y"))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.bbox\(\) missing 1 required positional argument: 'index'$", (*) => spin.bbox())
+            AhkTest.RaisesMatch(TypeError, "^Entry\.bbox\(\) takes 2 positional arguments but 3 were given$", (*) => spin.bbox(0, 1))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.identify\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => spin.identify())
+            AhkTest.RaisesMatch(TypeError, "^Entry\.identify\(\) missing 1 required positional argument: 'y'$", (*) => spin.identify(1))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.identify\(\) takes 3 positional arguments but 4 were given$", (*) => spin.identify(1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.index\(\) missing 1 required positional argument: 'index'$", (*) => spin.index())
+            AhkTest.RaisesMatch(TypeError, "^Entry\.index\(\) takes 2 positional arguments but 3 were given$", (*) => spin.index(0, 1))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.scan_mark\(\) missing 1 required positional argument: 'x'$", (*) => spin.scan_mark())
+            AhkTest.RaisesMatch(TypeError, "^Entry\.scan_mark\(\) takes 2 positional arguments but 3 were given$", (*) => spin.scan_mark(1, 2))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.scan_dragto\(\) missing 1 required positional argument: 'x'$", (*) => spin.scan_dragto())
+            AhkTest.RaisesMatch(TypeError, "^Entry\.scan_dragto\(\) takes 2 positional arguments but 3 were given$", (*) => spin.scan_dragto(1, 2))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "scan": must be bbox, cget, configure, delete, get, icursor, identify, index, insert, instate, selection, state, set, validate, or xview$', (*) => spin.scan_mark(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "scan": must be bbox, cget, configure, delete, get, icursor, identify, index, insert, instate, selection, state, set, validate, or xview$', (*) => spin.scan_dragto(2))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.selection_clear\(\) takes 1 positional argument but 2 were given$", (*) => spin.selection_clear(1))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.selection_present\(\) takes 1 positional argument but 2 were given$", (*) => spin.selection_present(1))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.selection_range\(\) missing 2 required positional arguments: 'start' and 'end'$", (*) => spin.selection_range())
+            AhkTest.RaisesMatch(TypeError, "^Entry\.selection_range\(\) missing 1 required positional argument: 'end'$", (*) => spin.selection_range(1))
+            AhkTest.RaisesMatch(TypeError, "^Entry\.selection_range\(\) takes 3 positional arguments but 4 were given$", (*) => spin.selection_range(1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => spin.state(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid state name d$", (*) => spin.state("disabled"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkSpinboxSetNoneAndSequenceWordsMatchLocal310()
+    {
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_spin_set_sequence set value"$', (*) => StdlibTkinterTest.WithTtkSpinboxSetSequence((spin, variable) => spin.set(stdlib.None)))
+
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "", ""]), StdlibTkinterTest.WithTtkSpinboxSetSequence((spin, variable) => (spin.set([]), stdlib.tuple([stdlib.None, spin.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "", ""]), StdlibTkinterTest.WithTtkSpinboxSetSequence((spin, variable) => (spin.set(stdlib.tuple()), stdlib.tuple([stdlib.None, spin.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "alpha", "alpha"]), StdlibTkinterTest.WithTtkSpinboxSetSequence((spin, variable) => (spin.set(["alpha"]), stdlib.tuple([stdlib.None, spin.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "{beta gamma}", "{beta gamma}"]), StdlibTkinterTest.WithTtkSpinboxSetSequence((spin, variable) => (spin.set(stdlib.tuple(["beta gamma"])), stdlib.tuple([stdlib.None, spin.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "alpha delta", "alpha delta"]), StdlibTkinterTest.WithTtkSpinboxSetSequence((spin, variable) => (spin.set(["alpha", "delta"]), stdlib.tuple([stdlib.None, spin.get(), variable.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, "{alpha delta}", "{alpha delta}"]), StdlibTkinterTest.WithTtkSpinboxSetSequence((spin, variable) => (spin.set([["alpha", "delta"]]), stdlib.tuple([stdlib.None, spin.get(), variable.get()]))))
+    }
+
     static TestTtkComboboxPublicSurfaceMatchesLocal310()
     {
         AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
@@ -893,6 +1674,1325 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTtkComboboxCurrentSetNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            text := stdlib.tkinter.StringVar(root, "", "ttk_combo_sequence_var")
+            combo := stdlib.tkinter.ttk.Combobox(root, { values: ["alpha", "beta gamma", "delta"], textvariable: text, name: "ttk_combo_sequence" })
+            combo.pack()
+            root.update_idletasks()
+
+            AhkTest.AssertEqual(-1, combo.current())
+            AhkTest.AssertEqual(-1, combo.current(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Incorrect index $", (*) => combo.current([]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Incorrect index $", (*) => combo.current(stdlib.tuple()))
+            AhkTest.AssertEqual(stdlib.None, combo.current(["1"]))
+            AhkTest.AssertEqual(1, combo.current())
+            AhkTest.AssertEqual("beta gamma", text.get())
+            AhkTest.AssertEqual(stdlib.None, combo.current(stdlib.tuple(["2"])))
+            AhkTest.AssertEqual(2, combo.current())
+            AhkTest.AssertEqual("delta", text.get())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Incorrect index 1 2$", (*) => combo.current(["1", "2"]))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_combo_sequence set value"$', (*) => combo.set(stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, combo.set([]))
+            AhkTest.AssertEqual("", text.get())
+            AhkTest.AssertEqual(stdlib.None, combo.set(["beta gamma"]))
+            AhkTest.AssertEqual("{beta gamma}", text.get())
+            AhkTest.AssertEqual(stdlib.None, combo.set(["beta", "gamma"]))
+            AhkTest.AssertEqual("beta gamma", text.get())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkComboboxInheritedEntryMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            text := stdlib.tkinter.StringVar(root, "seed", "ttk_combo_inherited_var")
+            combo := stdlib.tkinter.ttk.Combobox(root, { values: ["alpha", "beta gamma", "delta"], textvariable: text, width: 5, name: "ttk_combo_inherited" })
+            combo.pack()
+            root.update_idletasks()
+
+            for methodName in ["bbox", "delete", "get", "icursor", "identify", "index", "insert", "scan_dragto", "scan_mark", "select_adjust", "select_clear", "select_from", "select_present", "select_range", "select_to", "selection_adjust", "selection_clear", "selection_from", "selection_present", "selection_range", "selection_to", "validate", "xview", "xview_moveto", "xview_scroll"]
+                AhkTest.AssertTrue(HasMethod(combo, methodName), methodName)
+
+            AhkTest.AssertEqual(stdlib.None, combo.insert(0, "X"))
+            AhkTest.AssertEqual("Xseed", combo.get())
+            AhkTest.AssertEqual("Xseed", text.get())
+            AhkTest.AssertEqual(stdlib.None, combo.delete(1, 3))
+            AhkTest.AssertEqual("Xed", combo.get())
+            AhkTest.AssertEqual("Xed", text.get())
+            AhkTest.AssertEqual(3, combo.index("end"))
+            AhkTest.AssertEqual(stdlib.None, combo.icursor(2))
+            AhkTest.AssertEqual(2, combo.index("insert"))
+            AhkTest.AssertEqual(stdlib.None, combo.selection_range(1, 3))
+            AhkTest.AssertSame(stdlib.True, combo.selection_present())
+            AhkTest.AssertEqual("ed", combo.selection_get())
+            AhkTest.AssertEqual(stdlib.None, combo.selection_clear())
+            AhkTest.AssertSame(stdlib.False, combo.selection_present())
+            AhkTest.AssertSame(stdlib.True, combo.validate())
+            AhkTest.AssertEqual(2, combo.xview().Length)
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "scan": must be bbox, cget, configure, current, delete, get, icursor, identify, index, insert, instate, selection, state, set, validate, or xview$', (*) => combo.scan_mark(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "from": must be clear, present, or range$', (*) => combo.selection_from(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkEntryFamilyXviewNoneAndSequenceWordsMatchLocal310()
+    {
+        StdlibTkinterTest.WithTtkEntryXviewSequence((entry) => StdlibTkinterTest.AssertTtkEntryFamilyXviewSequenceWords(entry, "ttk_entry_xview_sequence"))
+        StdlibTkinterTest.WithTtkEntryXviewSequence((spin) => StdlibTkinterTest.AssertTtkEntryFamilyXviewSequenceWords(spin, "ttk_spinbox_xview_sequence"), "ttk_spinbox_xview_sequence", (root, options) => stdlib.tkinter.ttk.Spinbox(root, options))
+        StdlibTkinterTest.WithTtkEntryXviewSequence((combo) => StdlibTkinterTest.AssertTtkEntryFamilyXviewSequenceWords(combo, "ttk_combobox_xview_sequence"), "ttk_combobox_xview_sequence", (root, options) => stdlib.tkinter.ttk.Combobox(root, options))
+    }
+
+    static TestClassicViewNoneAndSequenceWordsMatchLocal310()
+    {
+        StdlibTkinterTest.WithClassicViewSequence((widgets) => (
+            StdlibTkinterTest.AssertClassicViewAxisSequenceWords(widgets["canvas"], "classic_view_seq_canvas", "xview",
+                '^unknown option "": must be moveto or scroll$',
+                '^wrong # args: should be "\.classic_view_seq_canvas xview moveto fraction"$',
+                '^unknown option "moveto 0\.5": must be moveto or scroll$',
+                '^wrong # args: should be "\.classic_view_seq_canvas xview moveto fraction"$',
+                '^wrong # args: should be "\.classic_view_seq_canvas xview scroll number units\|pages"$',
+                '^bad argument "units pages": must be units or pages$'),
+            StdlibTkinterTest.AssertClassicViewAxisSequenceWords(widgets["canvas"], "classic_view_seq_canvas", "yview",
+                '^unknown option "": must be moveto or scroll$',
+                '^wrong # args: should be "\.classic_view_seq_canvas yview moveto fraction"$',
+                '^unknown option "moveto 0\.5": must be moveto or scroll$',
+                '^wrong # args: should be "\.classic_view_seq_canvas yview moveto fraction"$',
+                '^wrong # args: should be "\.classic_view_seq_canvas yview scroll number units\|pages"$',
+                '^bad argument "units pages": must be units or pages$'),
+            StdlibTkinterTest.AssertClassicViewAxisSequenceWords(widgets["text"], "classic_view_seq_text", "xview",
+                '^ambiguous option "": must be moveto or scroll$',
+                '^wrong # args: should be "\.classic_view_seq_text xview moveto fraction"$',
+                '^bad option "moveto 0\.5": must be moveto or scroll$',
+                '^wrong # args: should be "\.classic_view_seq_text xview moveto fraction"$',
+                '^wrong # args: should be "\.classic_view_seq_text xview scroll number units\|pages\|pixels"$',
+                '^bad argument "units pages": must be units, pages, or pixels$'),
+            StdlibTkinterTest.AssertClassicViewAxisSequenceWords(widgets["text"], "classic_view_seq_text", "yview",
+                '^bad text index ""$',
+                '^bad text index "moveto"$',
+                '^bad text index "moveto 0\.5"$',
+                '^bad text index "moveto"$',
+                '^bad text index "scroll"$',
+                '^bad argument "units pages": must be units, pages, or pixels$'),
+            StdlibTkinterTest.AssertClassicViewAxisSequenceWords(widgets["listbox"], "classic_view_seq_listbox", "xview",
+                '^expected integer but got ""$',
+                '^expected integer but got "moveto"$',
+                '^expected integer but got "moveto 0\.5"$',
+                '^expected integer but got "moveto"$',
+                '^expected integer but got "scroll"$',
+                '^bad argument "units pages": must be units or pages$'),
+            StdlibTkinterTest.AssertClassicViewAxisSequenceWords(widgets["listbox"], "classic_view_seq_listbox", "yview",
+                '^bad listbox index "": must be active, anchor, end, @x,y, or a number$',
+                '^bad listbox index "moveto": must be active, anchor, end, @x,y, or a number$',
+                '^bad listbox index "moveto 0\.5": must be active, anchor, end, @x,y, or a number$',
+                '^bad listbox index "moveto": must be active, anchor, end, @x,y, or a number$',
+                '^bad listbox index "scroll": must be active, anchor, end, @x,y, or a number$',
+                '^bad argument "units pages": must be units or pages$'),
+            StdlibTkinterTest.AssertClassicViewAxisSequenceWords(widgets["entry"], "classic_view_seq_entry", "xview",
+                '^bad entry index ""$',
+                '^bad entry index "moveto"$',
+                '^bad entry index "moveto 0\.5"$',
+                '^bad entry index "moveto"$',
+                "^selection isn't in widget \.classic_view_seq_entry$",
+                '^bad argument "units pages": must be units or pages$'),
+            StdlibTkinterTest.AssertClassicViewAxisSequenceWords(widgets["spinbox"], "classic_view_seq_spinbox", "xview",
+                '^bad spinbox index ""$',
+                '^bad spinbox index "moveto"$',
+                '^bad spinbox index "moveto 0\.5"$',
+                '^bad spinbox index "moveto"$',
+                "^selection isn't in widget \.classic_view_seq_spinbox$",
+                '^bad argument "units pages": must be units or pages$')
+        ))
+    }
+
+    static TestClassicScanNoneAndSequenceWordsMatchLocal310()
+    {
+        StdlibTkinterTest.WithClassicViewSequence((widgets) => (
+            StdlibTkinterTest.AssertClassicScan2DSequenceWords(widgets["canvas"],
+                '^wrong # args: should be "\.classic_view_seq_canvas scan mark\|dragto x y \?dragGain\?"$'),
+            StdlibTkinterTest.AssertClassicScan2DSequenceWords(widgets["text"],
+                '^wrong # args: should be "\.classic_view_seq_text scan mark x y" or "\.classic_view_seq_text scan dragto x y \?gain\?"$'),
+            StdlibTkinterTest.AssertClassicScan2DSequenceWords(widgets["listbox"],
+                '^wrong # args: should be "\.classic_view_seq_listbox scan mark\|dragto x y"$'),
+            StdlibTkinterTest.AssertClassicScan1DSequenceWords(widgets["entry"],
+                '^wrong # args: should be "\.classic_view_seq_entry scan mark\|dragto x"$',
+                stdlib.None),
+            StdlibTkinterTest.AssertClassicScan1DSequenceWords(widgets["spinbox"],
+                '^wrong # args: should be "\.classic_view_seq_spinbox scan mark\|dragto x"$',
+                stdlib.tuple()),
+            AhkTest.AssertEqual(stdlib.None, widgets["canvas"].scan_dragto(1, 1, stdlib.None)),
+            AhkTest.AssertEqual(stdlib.None, widgets["canvas"].scan_dragto(1, 1, stdlib.tuple(["1"]))),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', widgets["canvas"], "scan_dragto", 1, 1, []),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "1 2"$', widgets["canvas"], "scan_dragto", 1, 1, ["1", "2"])
+        ))
+    }
+
+    static TestClassicCanvasWordSequenceMethodsMatchLocal310()
+    {
+        StdlibTkinterTest.WithClassicCanvasWordSequence((canvas, lineId, rectId, ovalId) => (
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq coords tagOrId \?x y x y \.\.\.\?"$', canvas, "coords", stdlib.None),
+            AhkTest.AssertEqual([0.0, 0.0, 10.0, 10.0], canvas.coords(stdlib.tuple([lineId]))),
+            AhkTest.AssertEqual([], canvas.coords([])),
+            AhkTest.AssertEqual([], canvas.coords([lineId, rectId])),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq bbox tagOrId \?tagOrId \.\.\.\?"$', canvas, "bbox", stdlib.None),
+            AhkTest.AssertEqual(stdlib.tuple([-2, -2, 12, 12]), canvas.bbox(stdlib.tuple([lineId]))),
+            AhkTest.AssertEqual(stdlib.None, canvas.bbox([])),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq find searchCommand \?arg \.\.\.\?"$', canvas, "find", stdlib.None),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq find withtag tagOrId"$', canvas, "find_withtag", stdlib.None),
+            AhkTest.AssertEqual(stdlib.tuple([lineId, rectId]), canvas.find_withtag(stdlib.tuple(["shape"]))),
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.find_withtag([])),
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.find_withtag(["shape", "round"])),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq gettags tagOrId"$', canvas, "gettags", stdlib.None),
+            AhkTest.AssertEqual(stdlib.tuple(["path", "shape"]), canvas.gettags(stdlib.tuple([lineId]))),
+            AhkTest.AssertEqual(stdlib.tuple([]), canvas.gettags([])),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq move tagOrId xAmount yAmount"$', canvas, "move", stdlib.None, 1, 1),
+            AhkTest.AssertEqual(stdlib.None, canvas.move(stdlib.tuple([lineId]), 1, 1)),
+            AhkTest.AssertEqual([1.0, 1.0, 11.0, 11.0], canvas.coords(lineId)),
+            AhkTest.AssertEqual(stdlib.None, canvas.move([], 1, 1)),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad screen distance "1 2"$', canvas, "move", lineId, [1, 2], 1),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq scale tagOrId xOrigin yOrigin xScale yScale"$', canvas, "scale", stdlib.None, 0, 0, 2, 2),
+            AhkTest.AssertEqual(stdlib.None, canvas.scale(stdlib.tuple(["shape"]), 0, 0, 1.0, 1.0)),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad screen distance ""$', canvas, "scale", lineId, [], 0, 2, 2),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got "2 3"$', canvas, "scale", lineId, 0, 0, [2, 3], 2),
+
+            AhkTest.AssertEqual(stdlib.tuple([lineId]), canvas.find_closest(2, 2, stdlib.None)),
+            AhkTest.AssertEqual(stdlib.tuple([ovalId]), canvas.find_closest(65, 65, stdlib.None, ovalId)),
+            AhkTest.AssertEqual(stdlib.tuple([lineId]), canvas.find_closest(stdlib.tuple([2]), stdlib.tuple([2]))),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad screen distance "2 3"$', canvas, "find_closest", [2, 3], 2),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq addtag tag searchCommand \?arg \.\.\.\?"$', canvas, "addtag", stdlib.None),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq addtag tag searchCommand \?arg \.\.\.\?"$', canvas, "addtag_all", stdlib.None),
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_withtag(stdlib.tuple(["tupletag"]), stdlib.tuple(["shape"]))),
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_withtag([], "shape")),
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_closest("near_none_halo", 2, 2, stdlib.None)),
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_closest("near_start", 65, 65, stdlib.None, ovalId)),
+            AhkTest.AssertEqual(stdlib.None, canvas.addtag_closest("near_tuple", stdlib.tuple([2]), stdlib.tuple([2]))),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad screen distance "2 3"$', canvas, "addtag_closest", "near_multi", [2, 3], 2),
+            AhkTest.AssertEqual(stdlib.tuple(["path", "shape", "tupletag", "", "near_none_halo", "near_tuple"]), canvas.gettags(lineId)),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq dtag tagOrId \?tagToDelete\?"$', canvas, "dtag", stdlib.None),
+            AhkTest.AssertEqual(stdlib.None, canvas.dtag(stdlib.tuple([lineId]), stdlib.tuple(["shape"]))),
+            AhkTest.AssertEqual(stdlib.None, canvas.dtag([], "path"))
+        ))
+    }
+
+    static TestClassicCanvasTextEditSelectionSequenceMethodsMatchLocal310()
+    {
+        StdlibTkinterTest.WithClassicCanvasWordSequence((canvas, lineId, rectId, ovalId) => (
+            textId := canvas.create_text(10, 10, { text: "abcdef", anchor: "nw", tags: "caption editable" }),
+            canvas.focus(textId),
+            AhkTest.AssertEqual(textId, canvas.focus()),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq dchars tagOrId first \?last\?"$', canvas, "dchars", stdlib.None, 1),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq dchars tagOrId first \?last\?"$', canvas, "dchars", textId, stdlib.None),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index ""$', canvas, "dchars", textId, []),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index "1 2"$', canvas, "dchars", textId, [1, 2]),
+            AhkTest.AssertEqual(stdlib.None, canvas.dchars(stdlib.tuple([textId]), 1)),
+            AhkTest.AssertEqual("acdef", canvas.itemcget(textId, "text")),
+
+            AhkTest.AssertEqual(textId, canvas.focus(stdlib.None)),
+            AhkTest.AssertEqual("", canvas.focus([])),
+            AhkTest.AssertEqual("", canvas.focus([textId, rectId])),
+            AhkTest.AssertEqual("", canvas.focus(stdlib.tuple([textId]))),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq icursor tagOrId index"$', canvas, "icursor", stdlib.None, 1),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq icursor tagOrId index"$', canvas, "icursor", textId, stdlib.None),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index ""$', canvas, "icursor", textId, []),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index "1 2"$', canvas, "icursor", textId, [1, 2]),
+            AhkTest.AssertEqual(stdlib.None, canvas.icursor(stdlib.tuple([textId]), 1)),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq index tagOrId string"$', canvas, "index", stdlib.None, 1),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq index tagOrId string"$', canvas, "index", textId, stdlib.None),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index ""$', canvas, "index", textId, []),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index "1 2"$', canvas, "index", textId, [1, 2]),
+            AhkTest.AssertEqual(1, canvas.index(stdlib.tuple([textId]), 1)),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq insert tagOrId beforeThis string"$', canvas, "insert", stdlib.None, 1, "X"),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq insert tagOrId beforeThis string"$', canvas, "insert", textId, stdlib.None, "X"),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq insert tagOrId beforeThis string"$', canvas, "insert", textId, 1, stdlib.None),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index ""$', canvas, "insert", textId, [] , "X"),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index "1 2"$', canvas, "insert", textId, [1, 2], "X"),
+            AhkTest.AssertEqual(stdlib.None, canvas.insert(stdlib.tuple([textId]), 1, "Z")),
+            AhkTest.AssertEqual("aZcdef", canvas.itemcget(textId, "text")),
+            AhkTest.AssertEqual(stdlib.None, canvas.insert(textId, 1, [])),
+            AhkTest.AssertEqual(stdlib.None, canvas.insert(textId, 1, ["X", "Y"])),
+            AhkTest.AssertEqual("aX YZcdef", canvas.itemcget(textId, "text")),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq select adjust tagOrId index"$', canvas, "select_adjust", stdlib.None, 1),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq select adjust tagOrId index"$', canvas, "select_adjust", textId, stdlib.None),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index ""$', canvas, "select_adjust", textId, []),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index "1 2"$', canvas, "select_adjust", textId, [1, 2]),
+            AhkTest.AssertEqual(stdlib.None, canvas.select_adjust(stdlib.tuple([textId]), 1)),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq select from tagOrId index"$', canvas, "select_from", stdlib.None, 1),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq select from tagOrId index"$', canvas, "select_from", textId, stdlib.None),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index ""$', canvas, "select_from", textId, []),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index "1 2"$', canvas, "select_from", textId, [1, 2]),
+            AhkTest.AssertEqual(stdlib.None, canvas.select_from(stdlib.tuple([textId]), 1)),
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq select tagOrId index"$', canvas, "select_to", stdlib.None, 2),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_canvas_word_seq select tagOrId index"$', canvas, "select_to", textId, stdlib.None),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index ""$', canvas, "select_to", textId, []),
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad index "1 2"$', canvas, "select_to", textId, [1, 2]),
+            AhkTest.AssertEqual(stdlib.None, canvas.select_to(stdlib.tuple([textId]), 2)),
+            AhkTest.AssertEqual(textId, canvas.select_item())
+        ))
+    }
+
+    static TestClassicTextMarkTagSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            text := stdlib.tkinter.Text(root, { name: "classic_text_mark_tag_seq", width: 24, height: 6, wrap: "none" })
+            text.pack()
+            text.insert("1.0", "alpha beta gamma`nsecond line`nthird line")
+            text.tag_add("emphasis", "1.0", "1.5")
+            text.tag_add("phrase", "1.6", "1.10", "2.0", "2.6")
+            text.mark_set("m1", "1.2")
+            text.mark_set("m2", "2.0")
+            root.update_idletasks()
+            root.update()
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_mark_tag_seq index index"$', text, "index", stdlib.None)
+            AhkTest.AssertEqual("1.0", text.index(stdlib.tuple(["1.0"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad text index ""$', text, "index", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad text index "1\.0 1\.1"$', text, "index", ["1.0", "1.1"])
+            AhkTest.AssertEqual(4, text.bbox(stdlib.tuple(["1.0"])).Length)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad text index ""$', text, "bbox", [])
+            AhkTest.AssertEqual(5, text.dlineinfo(stdlib.tuple(["1.0"])).Length)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_mark_tag_seq see index"$', text, "see", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, text.see(stdlib.tuple(["2.0"])))
+
+            AhkTest.AssertSame(stdlib.True, text.compare(stdlib.tuple(["1.0"]), stdlib.tuple(["<"]), stdlib.tuple(["1.1"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_mark_tag_seq compare index1 op index2"$', text, "compare", "1.0", stdlib.None, "1.1")
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad comparison operator "< =": must be <, <=, ==, >=, >, or !=$', text, "compare", "1.0", ["<", "="], "1.1")
+
+            AhkTest.AssertEqual(stdlib.None, text.mark_set(stdlib.tuple(["m3"]), stdlib.tuple(["1.3"])))
+            AhkTest.AssertEqual("m1", text.mark_next(stdlib.tuple(["1.0"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad text index ""$', text, "mark_previous", [])
+            AhkTest.AssertEqual("right", text.mark_gravity("m1", stdlib.None))
+            AhkTest.AssertEqual("", text.mark_gravity("m1", stdlib.tuple(["left"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad mark gravity "left right": must be left or right$', text, "mark_gravity", "m1", ["left", "right"])
+            AhkTest.AssertEqual(stdlib.None, text.mark_unset(stdlib.None, "m2"))
+            AhkTest.AssertContains("m2", text.mark_names())
+
+            AhkTest.AssertEqual(stdlib.None, text.tag_add(stdlib.tuple(["tupletag"]), stdlib.tuple(["1.0"]), stdlib.tuple(["1.1"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad text index "1\.0 1\.1"$', text, "tag_add", "badindex", ["1.0", "1.1"])
+            AhkTest.AssertEqual(stdlib.None, text.tag_remove("emphasis", "1.0", stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(["1.6", "1.10", "2.0", "2.6"]), text.tag_ranges(stdlib.tuple(["phrase"])))
+            AhkTest.AssertContains("phrase", text.tag_names(stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(["tupletag"]), text.tag_names(stdlib.tuple(["1.0"])))
+            AhkTest.AssertEqual(stdlib.tuple(["1.6", "1.10"]), text.tag_nextrange(stdlib.tuple(["phrase"]), stdlib.tuple(["1.0"]), stdlib.tuple(["end"])))
+            AhkTest.AssertEqual(stdlib.tuple(["1.6", "1.10"]), text.tag_nextrange("phrase", "1.0", stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(["2.0", "2.6"]), text.tag_prevrange("phrase", "end", stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, text.tag_raise("phrase", stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, text.tag_lower(stdlib.tuple(["phrase"]), stdlib.tuple(["emphasis"])))
+            AhkTest.AssertEqual(stdlib.tuple(["1.0", "1.1"]), text.tag_ranges("tupletag"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicTextQuerySequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            text := stdlib.tkinter.Text(root, { name: "classic_text_query_seq", width: 24, height: 6, wrap: "none" })
+            text.pack()
+            text.insert("1.0", "alpha beta`nalpha gamma")
+            text.tag_add("tagone", "1.0", "1.5")
+            searchCount := stdlib.tkinter.IntVar(root, 0, "classic_text_query_count")
+            root.update_idletasks()
+            root.update()
+
+            AhkTest.AssertEqual(stdlib.tuple([23]), text.count("1.0", "end", "chars"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_query_seq count \?-option value \.\.\.\? index1 index2"$', text, "count", stdlib.None, "end", "chars")
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad text index "-chars"$', text, "count", "1.0", stdlib.None, "chars")
+            AhkTest.AssertEqual(stdlib.tuple([23]), text.count(stdlib.tuple(["1.0"]), stdlib.tuple(["end"]), "chars"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad text index "1\.0 1\.1"$', text, "count", ["1.0", "1.1"], "end", "chars")
+            AhkTest.AssertEqual(stdlib.tuple([23]), text.count("1.0", "end", stdlib.tuple(["chars"])))
+
+            AhkTest.AssertEqual("1.0", text.search("alpha", "1.0"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_query_seq search \?switches\? pattern index \?stopIndex\?"$', text, "search", stdlib.None, "1.0")
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_query_seq search \?switches\? pattern index \?stopIndex\?"$', text, "search", "alpha", stdlib.None)
+            AhkTest.AssertEqual("1.0", text.search(stdlib.tuple(["alpha"]), stdlib.tuple(["1.0"])))
+            AhkTest.AssertEqual("1.0", text.search("alpha", "1.0", stdlib.tuple(["end"])))
+            AhkTest.AssertEqual("1.0", text.search("alpha", "1.0", stdlib.None))
+            AhkTest.AssertEqual("1.0", text.search("alpha", "1.0", { count: searchCount }))
+            AhkTest.AssertEqual(5, searchCount.get())
+            AhkTest.AssertEqual("1.0", text.search("alpha", "1.0", { count: stdlib.tuple([searchCount]) }))
+
+            AhkTest.AssertEqual(stdlib.tuple([stdlib.tuple(["text", "al", "1.0"])]), stdlib.tuple(text.dump("1.0", "1.2", { text: stdlib.True })))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^Usage: \.classic_text_query_seq dump \?-all -image -text -mark -tag -window\? \?-command script\? index \?index2\?$', text, "dump", stdlib.None, "end", { text: stdlib.True })
+            AhkTest.AssertEqual(stdlib.tuple([stdlib.tuple(["text", "a", "1.0"])]), stdlib.tuple(text.dump("1.0", stdlib.None, { text: stdlib.True })))
+            AhkTest.AssertEqual(stdlib.tuple([stdlib.tuple(["text", "al", "1.0"])]), stdlib.tuple(text.dump(stdlib.tuple(["1.0"]), stdlib.tuple(["1.2"]), { text: stdlib.True })))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad text index "1\.0 1\.1"$', text, "dump", ["1.0", "1.1"], "1.2", { text: stdlib.True })
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicTextEmbedConfigSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            text := stdlib.tkinter.Text(root, { name: "classic_text_embed_config_seq", width: 24, height: 6, wrap: "none" })
+            text.pack()
+            text.insert("1.0", "alpha beta")
+            text.tag_add("emphasis", "1.0", "1.5")
+            text.tag_configure("emphasis", { foreground: "red", underline: 1 })
+            photo := stdlib.tkinter.PhotoImage({ master: root, name: "classic_text_embed_photo_ahk", width: 2, height: 2 })
+            imageName := text.image_create("1.1", { image: photo, align: "center", padx: 3, pady: 4 })
+            embeddedLabel := stdlib.tkinter.Label(root, { name: "classic_text_embed_label_ahk", text: "Inside" })
+            text.window_create("1.2", { window: embeddedLabel, align: "center", padx: 3, pady: 4, stretch: 1 })
+            root.update_idletasks()
+            root.update()
+
+            AhkTest.AssertEqual("red", text.tag_cget("emphasis", "foreground"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_embed_config_seq tag cget tagName option"$', text, "tag_cget", stdlib.None, "foreground")
+            AhkTest.AssertEqual("red", text.tag_cget(stdlib.tuple(["emphasis"]), "foreground"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_embed_config_seq tag configure tagName \?-option\? \?value\? \?-option value \.\.\.\?"$', text, "tag_configure", stdlib.None)
+            AhkTest.AssertEqual(stdlib.tuple(["foreground", "", "", "", "red"]), text.tag_configure(stdlib.tuple(["emphasis"]), "foreground"))
+            AhkTest.AssertEqual(stdlib.None, text.tag_configure(stdlib.tuple(["emphasis"]), { foreground: "blue" }))
+            AhkTest.AssertEqual("blue", text.tag_cget("emphasis", "foreground"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_embed_config_seq tag delete tagName \?tagName \.\.\.\?"$', text, "tag_delete", stdlib.None, "missing")
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_embed_config_seq image create index \?-option value \.\.\.\?"$', text, "image_create", stdlib.None, { image: photo })
+            AhkTest.AssertEqual("classic_text_embed_photo_ahk#1", text.image_create(stdlib.tuple(["1.3"]), { image: photo }))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_embed_config_seq image cget index option"$', text, "image_cget", stdlib.None, "image")
+            AhkTest.AssertEqual("classic_text_embed_photo_ahk", text.image_cget(stdlib.tuple([imageName]), "image"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_embed_config_seq image configure index \?-option value \.\.\.\?"$', text, "image_configure", stdlib.None)
+            imageConfig := text.image_configure(stdlib.tuple([imageName]))
+            AhkTest.AssertEqual(stdlib.tuple(["align", "", "", "center", "center"]), imageConfig["align"])
+            AhkTest.AssertEqual(stdlib.tuple(["align", "", "", "center", "center"]), text.image_configure(stdlib.tuple([imageName]), "align"))
+            AhkTest.AssertEqual(stdlib.None, text.image_configure(stdlib.tuple([imageName]), { padx: 5 }))
+            AhkTest.AssertEqual(5, text.image_cget(imageName, "padx"))
+
+            extraLabel := stdlib.tkinter.Label(root, { name: "classic_text_embed_label_two_ahk", text: "Second" })
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_embed_config_seq window create index \?-option value \.\.\.\?"$', text, "window_create", stdlib.None, { window: extraLabel })
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_embed_config_seq window cget index option"$', text, "window_cget", stdlib.None, "window")
+            AhkTest.AssertEqual(".classic_text_embed_label_ahk", text.window_cget(stdlib.tuple(["1.2"]), "window"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_embed_config_seq window configure index \?-option value \.\.\.\?"$', text, "window_configure", stdlib.None)
+            windowConfig := text.window_configure(stdlib.tuple(["1.2"]))
+            AhkTest.AssertEqual(stdlib.tuple(["align", "", "", "center", "center"]), windowConfig["align"])
+            AhkTest.AssertEqual(stdlib.tuple(["align", "", "", "center", "center"]), text.window_configure(stdlib.tuple(["1.2"]), "align"))
+            AhkTest.AssertEqual(stdlib.None, text.window_configure(stdlib.tuple(["1.2"]), { padx: 5 }))
+            AhkTest.AssertEqual(5, text.window_cget("1.2", "padx"))
+            AhkTest.AssertEqual(stdlib.None, text.window_create(stdlib.tuple(["1.4"]), { window: extraLabel }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicTextEditPeerSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            text := stdlib.tkinter.Text(root, { name: "classic_text_edit_peer_sequence", width: 24, height: 6, wrap: "none", undo: true })
+            text.pack()
+            text.insert("1.0", "abcdef")
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_edit_peer_sequence get \?-displaychars\? \?--\? index1 \?index2 \.\.\.\?"$', text, "get", stdlib.None, "end")
+            AhkTest.AssertEqual("abc", text.get(stdlib.tuple(["1.0"]), stdlib.tuple(["1.3"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad text index "1\.0 1\.1"$', text, "get", ["1.0", "1.1"], "end")
+            AhkTest.AssertEqual("a", text.get("1.0", stdlib.None))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_edit_peer_sequence delete index1 \?index2 \.\.\.\?"$', text, "delete", stdlib.None, "end")
+            AhkTest.AssertEqual(stdlib.None, text.delete(stdlib.tuple(["1.0"]), stdlib.tuple(["1.2"])))
+            AhkTest.AssertEqual("cdef", text.get("1.0", "end-1c"))
+            AhkTest.AssertEqual(stdlib.None, text.delete("1.0", stdlib.None))
+            AhkTest.AssertEqual("def", text.get("1.0", "end-1c"))
+
+            text.delete("1.0", "end")
+            text.insert("1.0", "abcdef")
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_edit_peer_sequence insert index chars \?tagList chars tagList \.\.\.\?"$', text, "insert", stdlib.None, "X")
+            AhkTest.AssertEqual(stdlib.None, text.insert(stdlib.tuple(["1.0"]), "X"))
+            AhkTest.AssertEqual("Xabcdef", text.get("1.0", "end-1c"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_edit_peer_sequence insert index chars \?tagList chars tagList \.\.\.\?"$', text, "insert", "1.0", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, text.insert("1.0", ["Y", "Z"]))
+            AhkTest.AssertEqual("Y ZXabcdef", text.get("1.0", "end-1c"))
+            text.tag_configure("emphasis")
+            AhkTest.AssertEqual(stdlib.None, text.insert("1.0", "N", stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(), text.tag_names("1.0"))
+            AhkTest.AssertEqual(stdlib.None, text.insert("1.0", "T", stdlib.tuple(["emphasis"])))
+            AhkTest.AssertEqual(stdlib.tuple(["emphasis"]), text.tag_names("1.0"))
+
+            text.delete("1.0", "end")
+            text.insert("1.0", "abcdef")
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_edit_peer_sequence replace index1 index2 chars \?tagList chars tagList \.\.\.\?"$', text, "replace", stdlib.None, "1.1", "X")
+            AhkTest.AssertEqual(stdlib.None, text.replace(stdlib.tuple(["1.0"]), stdlib.tuple(["1.2"]), "XY"))
+            AhkTest.AssertEqual("XYcdef", text.get("1.0", "end-1c"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_edit_peer_sequence replace index1 index2 chars \?tagList chars tagList \.\.\.\?"$', text, "replace", "1.0", stdlib.None, "X")
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_edit_peer_sequence replace index1 index2 chars \?tagList chars tagList \.\.\.\?"$', text, "replace", "1.0", "1.1", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, text.replace("1.0", "1.1", ["R", "S"]))
+            AhkTest.AssertEqual("R SYcdef", text.get("1.0", "end-1c"))
+            AhkTest.AssertEqual(stdlib.None, text.replace("1.0", "1.1", "N", stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(), text.tag_names("1.0"))
+            AhkTest.AssertEqual(stdlib.None, text.replace("1.0", "1.1", "T", stdlib.tuple(["emphasis"])))
+            AhkTest.AssertEqual(stdlib.tuple(["emphasis"]), text.tag_names("1.0"))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_edit_peer_sequence peer create pathName \?-option value \.\.\.\?"$', text, "peer_create", stdlib.None, { width: 12 })
+            AhkTest.AssertEqual(stdlib.None, text.peer_create(stdlib.tuple([".classic_text_edit_peer"]), { width: 12 }))
+            AhkTest.AssertEqual(stdlib.tuple([".classic_text_edit_peer"]), text.peer_names())
+            AhkTest.RaisesMatch(AttributeError, "^'NoneType' object has no attribute 'items'$", (*) => text.peer_create(".classic_text_edit_peer_none", stdlib.None))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicTextMiscSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            text := stdlib.tkinter.Text(root, { name: "classic_text_misc_sequence", width: 12, height: 3, undo: true })
+            text.pack()
+            text.insert("1.0", "alpha`nbeta`ngamma`n")
+            text.tag_configure("emphasis")
+            text.tag_add("emphasis", "1.0", "1.5")
+            root.update_idletasks()
+
+            AhkTest.AssertSame(stdlib.False, text.debug(stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, text.debug(stdlib.tuple([stdlib.True])))
+            AhkTest.AssertSame(stdlib.True, text.debug())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected boolean value but got "1 0"$', text, "debug", [stdlib.True, stdlib.False])
+            AhkTest.AssertEqual(stdlib.None, text.debug(stdlib.False))
+            AhkTest.AssertSame(stdlib.False, text.debug())
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_misc_sequence edit option \?arg \.\.\.\?"$', text, "edit", stdlib.None)
+            AhkTest.AssertEqual(1, text.edit(stdlib.tuple(["canundo"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad edit option "canundo canredo": must be canundo, canredo, modified, redo, reset, separator, or undo$', text, "edit", ["canundo", "canredo"])
+            AhkTest.AssertEqual(1, text.edit("modified", stdlib.None))
+            AhkTest.AssertEqual("", text.edit("modified", stdlib.tuple([stdlib.True])))
+            AhkTest.AssertEqual(1, text.edit("modified"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected boolean value but got "1 0"$', text, "edit", "modified", [stdlib.True, stdlib.False])
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_misc_sequence yview -pickplace lineNum\|index"$', text, "yview_pickplace", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, text.yview_pickplace(stdlib.tuple(["2.0"])))
+            AhkTest.AssertEqual("2.0", text.index("@0,0"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad text index "2\.0 3\.0"$', text, "yview_pickplace", ["2.0", "3.0"])
+
+            AhkTest.AssertEqual(stdlib.None, text.tag_bind(stdlib.tuple(["emphasis"]), "<Button-1>", "break"))
+            AhkTest.AssertEqual("break", text.tag_bind("emphasis", "<Button-1>", stdlib.None))
+            AhkTest.AssertEqual("", text.tag_bind("emphasis", "<Button-2>", stdlib.None))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_text_misc_sequence tag bind tagName \?sequence\? \?command\?"$', text, "tag_unbind", stdlib.None, "<Button-1>")
+            AhkTest.AssertEqual(stdlib.None, text.tag_unbind(stdlib.tuple(["emphasis"]), "<Button-1>"))
+            AhkTest.AssertEqual("", text.tag_bind("emphasis", "<Button-1>", stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, text.tag_unbind("emphasis", stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, text.tag_unbind("emphasis", stdlib.tuple(["<Button-1>"])))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicEntrySpinboxSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+
+            entryValue := stdlib.tkinter.StringVar(root, "abcdef", "classic_entry_sequence_var")
+            entry := stdlib.tkinter.Entry(root, { name: "classic_entry_sequence", width: 8, textvariable: entryValue })
+            entry.pack()
+            root.update_idletasks()
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_entry_sequence insert index text"$', entry, "insert", stdlib.None, "X")
+            AhkTest.AssertEqual(stdlib.None, entry.insert(stdlib.tuple(["0"]), "X"))
+            AhkTest.AssertEqual("Xabcdef", entry.get())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_entry_sequence insert index text"$', entry, "insert", 0, stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, entry.insert(0, ["Y", "Z"]))
+            AhkTest.AssertEqual("Y ZXabcdef", entry.get())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_entry_sequence delete firstIndex \?lastIndex\?"$', entry, "delete", stdlib.None, "end")
+            AhkTest.AssertEqual(stdlib.None, entry.delete(stdlib.tuple(["1"]), stdlib.tuple(["3"])))
+            AhkTest.AssertEqual("YXabcdef", entry.get())
+            AhkTest.AssertEqual(stdlib.None, entry.delete(1, stdlib.None))
+            AhkTest.AssertEqual("Yabcdef", entry.get())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_entry_sequence index string"$', entry, "index", stdlib.None)
+            AhkTest.AssertEqual(7, entry.index(stdlib.tuple(["end"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_entry_sequence icursor pos"$', entry, "icursor", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, entry.icursor(stdlib.tuple(["end"])))
+            AhkTest.AssertEqual(7, entry.index("insert"))
+            entry.delete(0, "end")
+            entry.insert(0, "abcdef")
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_entry_sequence selection from index"$', entry, "selection_from", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, entry.selection_from(stdlib.tuple(["1"])))
+            AhkTest.AssertEqual(stdlib.None, entry.selection_to(stdlib.tuple(["3"])))
+            AhkTest.AssertEqual("bc", entry.selection_get())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_entry_sequence selection range start end"$', entry, "selection_range", stdlib.None, 3)
+            AhkTest.AssertEqual(stdlib.None, entry.selection_range(stdlib.tuple(["1"]), stdlib.tuple(["3"])))
+            AhkTest.AssertEqual("bc", entry.selection_get())
+
+            spinValue := stdlib.tkinter.StringVar(root, "abcdef", "classic_spinbox_sequence_var")
+            spin := stdlib.tkinter.Spinbox(root, { name: "classic_spinbox_sequence", width: 8, textvariable: spinValue, values: ["abcdef", "beta", "gamma"] })
+            spin.pack()
+            root.update_idletasks()
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_spinbox_sequence bbox index"$', spin, "bbox", stdlib.None)
+            AhkTest.AssertEqual(4, spin.bbox(stdlib.tuple(["0"])).Length)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_spinbox_sequence delete firstIndex \?lastIndex\?"$', spin, "delete", stdlib.None, "end")
+            AhkTest.AssertEqual(stdlib.None, spin.delete(stdlib.tuple(["1"]), stdlib.tuple(["3"])))
+            AhkTest.AssertEqual("adef", spin.get())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_spinbox_sequence index string"$', spin, "index", stdlib.None)
+            AhkTest.AssertEqual(4, spin.index(stdlib.tuple(["end"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_spinbox_sequence insert index text"$', spin, "insert", stdlib.None, "X")
+            AhkTest.AssertEqual(stdlib.None, spin.insert(stdlib.tuple(["0"]), "X"))
+            AhkTest.AssertEqual("Xadef", spin.get())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_spinbox_sequence insert index text"$', spin, "insert", 0, stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, spin.insert(0, ["Y", "Z"]))
+            AhkTest.AssertEqual("Y ZXadef", spin.get())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_spinbox_sequence identify x y"$', spin, "identify", stdlib.None, 1)
+            AhkTest.AssertEqual("buttondown", spin.identify(stdlib.tuple([1]), stdlib.tuple([1])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_spinbox_sequence invoke elemName"$', spin, "invoke", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, spin.invoke(stdlib.tuple(["buttonup"])))
+            AhkTest.AssertEqual(stdlib.None, spin.selection_element(stdlib.None))
+            AhkTest.AssertEqual("none", spin.selection_element())
+            AhkTest.AssertEqual(stdlib.None, spin.selection_element(stdlib.tuple(["buttonup"])))
+            AhkTest.AssertEqual("buttonup", spin.selection_element())
+            AhkTest.AssertEqual(stdlib.None, spin.selection_range(stdlib.tuple(["1"]), stdlib.tuple(["3"])))
+            AhkTest.AssertSame(stdlib.True, spin.selection_present())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicListboxSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            listbox := stdlib.tkinter.Listbox(root, { name: "classic_listbox_sequence", height: 5, width: 20, selectmode: "extended" })
+            listbox.pack()
+            listbox.insert("end", "alpha", "beta", "gamma", "delta", "epsilon")
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence get firstIndex \?lastIndex\?"$', listbox, "get", stdlib.None)
+            AhkTest.AssertEqual("alpha", listbox.get(stdlib.tuple(["0"])))
+            AhkTest.AssertEqual(stdlib.tuple(["beta", "gamma", "delta"]), listbox.get(["1"], ["3"]))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence delete firstIndex \?lastIndex\?"$', listbox, "delete", stdlib.None, "end")
+            AhkTest.AssertEqual(stdlib.None, listbox.delete(stdlib.tuple(["1"]), stdlib.tuple(["2"])))
+            AhkTest.AssertEqual(stdlib.tuple(["alpha", "delta", "epsilon"]), listbox.get(0, "end"))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence insert index \?element \.\.\.\?"$', listbox, "insert", stdlib.None, "X")
+            AhkTest.AssertEqual(stdlib.None, listbox.insert(stdlib.tuple(["1"]), "Y Z"))
+            AhkTest.AssertEqual(stdlib.tuple(["alpha", "Y Z", "delta", "epsilon"]), listbox.get(0, "end"))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence index index"$', listbox, "index", stdlib.None)
+            AhkTest.AssertEqual(4, listbox.index(stdlib.tuple(["end"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence activate index"$', listbox, "activate", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, listbox.activate(stdlib.tuple(["0"])))
+            AhkTest.AssertEqual(0, listbox.index("active"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence bbox index"$', listbox, "bbox", stdlib.None)
+            AhkTest.AssertEqual(4, listbox.bbox(stdlib.tuple(["0"])).Length)
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence selection option index \?index\?"$', listbox, "selection_set", stdlib.None, "end")
+            AhkTest.AssertEqual(stdlib.None, listbox.selection_set(stdlib.tuple(["0"]), stdlib.tuple(["1"])))
+            AhkTest.AssertEqual(stdlib.tuple([0, 1]), listbox.curselection())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence selection option index \?index\?"$', listbox, "selection_includes", stdlib.None)
+            AhkTest.AssertSame(stdlib.True, listbox.selection_includes(stdlib.tuple(["0"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence selection option index \?index\?"$', listbox, "selection_clear", stdlib.None, "end")
+            AhkTest.AssertEqual(stdlib.None, listbox.selection_clear(stdlib.tuple(["0"]), stdlib.tuple(["1"])))
+            AhkTest.AssertEqual(stdlib.tuple(), listbox.curselection())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence selection option index \?index\?"$', listbox, "selection_anchor", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, listbox.selection_anchor(stdlib.tuple(["2"])))
+            AhkTest.AssertEqual(2, listbox.index("anchor"))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence nearest y"$', listbox, "nearest", stdlib.None)
+            AhkTest.AssertEqual(0, listbox.nearest(stdlib.tuple(["0"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence see index"$', listbox, "see", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, listbox.see(stdlib.tuple(["0"])))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence itemcget index option"$', listbox, "itemcget", stdlib.None, "background")
+            AhkTest.AssertEqual("", listbox.itemcget(stdlib.tuple(["0"]), "background"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_listbox_sequence itemconfigure index \?-option\? \?value\? \?-option value \.\.\.\?"$', listbox, "itemconfigure", stdlib.None)
+            tupleConfig := listbox.itemconfigure(stdlib.tuple(["0"]))
+            AhkTest.AssertEqual(stdlib.tuple(["background", "background", "Background", "", ""]), tupleConfig["background"])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^bad listbox index "-foreground": must be active, anchor, end, @x,y, or a number$', listbox, "itemconfigure", stdlib.None, { foreground: "blue" })
+            AhkTest.AssertEqual(stdlib.None, listbox.itemconfigure(stdlib.tuple(["0"]), { foreground: "blue" }))
+            AhkTest.AssertEqual("blue", listbox.itemcget(stdlib.tuple(["0"]), "foreground"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicMenuSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            calls := []
+            command := (*) => (calls.Push("cmd"), "done")
+            menu := stdlib.tkinter.Menu(root, { name: "classic_menu_sequence", tearoff: 0 })
+            menu.add_command({ label: "Open", command: command, accelerator: "Ctrl+O" })
+            menu.add_separator()
+            menu.add_command({ label: "Save" })
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence index string"$', menu, "index", stdlib.None)
+            AhkTest.AssertEqual(2, menu.index(stdlib.tuple(["end"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence type index"$', menu, "type", stdlib.None)
+            AhkTest.AssertEqual("command", menu.type(["0"]))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence activate index"$', menu, "activate", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, menu.activate(stdlib.tuple(["0"])))
+            AhkTest.AssertEqual(0, menu.index("active"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence invoke index"$', menu, "invoke", stdlib.None)
+            AhkTest.AssertEqual("done", menu.invoke(stdlib.tuple(["0"])))
+            AhkTest.AssertEqual(["cmd"], calls)
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence entrycget index option"$', menu, "entrycget", stdlib.None, "label")
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "NoneType"\) to str$', (*) => menu.entrycget(0, stdlib.None))
+            AhkTest.AssertEqual("Open", menu.entrycget(stdlib.tuple(["0"]), "label"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence entryconfigure index \?-option value \.\.\.\?"$', menu, "entryconfigure", stdlib.None)
+            AhkTest.AssertEqual(stdlib.tuple(["label", "", "", "", "Open"]), menu.entryconfigure(stdlib.tuple(["0"]), "label"))
+            AhkTest.AssertEqual(stdlib.tuple(["label", "", "", "", "Open"]), menu.entryconfigure(stdlib.tuple(["0"]))["label"])
+            AhkTest.AssertEqual(stdlib.None, menu.entryconfigure(stdlib.tuple(["0"]), { label: "Open tuple" }))
+            AhkTest.AssertEqual("Open tuple", menu.entrycget(0, "label"))
+            AhkTest.AssertEqual(stdlib.tuple(["label", "", "", "", "Open tuple"]), menu.entryconfigure(0, stdlib.None)["label"])
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence xposition index"$', menu, "xposition", stdlib.None)
+            AhkTest.AssertTrue(menu.xposition(stdlib.tuple(["0"])) is Integer)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence yposition index"$', menu, "yposition", stdlib.None)
+            AhkTest.AssertTrue(menu.yposition(stdlib.tuple(["0"])) is Integer)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence post x y \?index\?"$', menu, "post", stdlib.None, 20)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence post x y \?index\?"$', menu, "post", 10, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence index string"$', menu, "delete", stdlib.None, "end")
+
+            deleteMenu := stdlib.tkinter.Menu(root, { name: "classic_menu_sequence_delete", tearoff: 0 })
+            deleteMenu.add_command({ label: "A" })
+            deleteMenu.add_command({ label: "B" })
+            deleteMenu.add_command({ label: "C" })
+            AhkTest.AssertEqual(stdlib.None, deleteMenu.delete(stdlib.tuple(["1"]), ["1"]))
+            AhkTest.AssertEqual("A", deleteMenu.entrycget(0, "label"))
+            AhkTest.AssertEqual("C", deleteMenu.entrycget(1, "label"))
+
+            addMenu := stdlib.tkinter.Menu(root, { name: "classic_menu_sequence_add", tearoff: 0 })
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence_add add type \?-option value \.\.\.\?"$', addMenu, "add", stdlib.None, { label: "Bad" })
+            AhkTest.AssertEqual(stdlib.None, addMenu.add(stdlib.tuple(["command"]), { label: "Tuple add" }))
+            AhkTest.AssertEqual("command", addMenu.type(0))
+            AhkTest.AssertEqual("Tuple add", addMenu.entrycget(0, "label"))
+
+            insertMenu := stdlib.tkinter.Menu(root, { name: "classic_menu_sequence_insert", tearoff: 0 })
+            insertMenu.add_command({ label: "Tail" })
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence_insert insert index type \?-option value \.\.\.\?"$', insertMenu, "insert", stdlib.None, "command", { label: "Bad" })
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence_insert insert index type \?-option value \.\.\.\?"$', insertMenu, "insert", 0, stdlib.None, { label: "Bad" })
+            AhkTest.AssertEqual(stdlib.None, insertMenu.insert(stdlib.tuple(["0"]), ["command"], { label: "First" }))
+            AhkTest.AssertEqual("command", insertMenu.type(0))
+            AhkTest.AssertEqual("First", insertMenu.entrycget(0, "label"))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_menu_sequence_insert insert index type \?-option value \.\.\.\?"$', insertMenu, "insert_command", stdlib.None, { label: "Bad" })
+            AhkTest.AssertEqual(stdlib.None, insertMenu.insert_command(stdlib.tuple(["end"]), { label: "Inserted command" }))
+            AhkTest.AssertEqual("command", insertMenu.type("end"))
+            AhkTest.AssertEqual("Inserted command", insertMenu.entrycget("end", "label"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicWidgetConfigureKeywordNoneNoopMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+
+            menu := stdlib.tkinter.Menu(root, { tearoff: 0, name: "classic_keyword_none_menu" })
+            AhkTest.AssertEqual(stdlib.None, menu.add_command({ label: "Open", state: "normal", underline: 0 }))
+            AhkTest.AssertEqual(stdlib.None, menu.entryconfigure(0, { label: stdlib.None }))
+            AhkTest.AssertEqual("Open", menu.entrycget(0, "label"))
+            AhkTest.AssertEqual(stdlib.None, menu.entryconfigure(0, { missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, menu.entryconfigure(0, { label: stdlib.None, state: stdlib.None }))
+            AhkTest.AssertEqual("Open", menu.entrycget(0, "label"))
+            AhkTest.AssertEqual("normal", menu.entrycget(0, "state"))
+
+            canvas := stdlib.tkinter.Canvas(root, { width: 80, height: 60, bg: "white", name: "classic_keyword_none_canvas" })
+            lineId := canvas.create_line(0, 0, 10, 10, { fill: "red", width: 2, tags: "shape" })
+            AhkTest.AssertEqual(stdlib.None, canvas.itemconfigure(lineId, { fill: stdlib.None }))
+            AhkTest.AssertEqual("red", canvas.itemcget(lineId, "fill"))
+            AhkTest.AssertEqual(stdlib.None, canvas.itemconfigure(lineId, { missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, canvas.itemconfigure(lineId, { fill: stdlib.None, width: stdlib.None }))
+            AhkTest.AssertEqual("red", canvas.itemcget(lineId, "fill"))
+            AhkTest.AssertEqual("2.0", canvas.itemcget(lineId, "width"))
+
+            listbox := stdlib.tkinter.Listbox(root, { name: "classic_keyword_none_listbox" })
+            listbox.insert("end", "one")
+            AhkTest.AssertEqual(stdlib.None, listbox.itemconfigure(0, { foreground: "blue", background: "white", selectforeground: "green" }))
+            AhkTest.AssertEqual(stdlib.None, listbox.itemconfigure(0, { foreground: stdlib.None }))
+            AhkTest.AssertEqual("blue", listbox.itemcget(0, "foreground"))
+            AhkTest.AssertEqual(stdlib.None, listbox.itemconfigure(0, { missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, listbox.itemconfigure(0, { foreground: stdlib.None, background: stdlib.None }))
+            AhkTest.AssertEqual("blue", listbox.itemcget(0, "foreground"))
+            AhkTest.AssertEqual("white", listbox.itemcget(0, "background"))
+
+            text := stdlib.tkinter.Text(root, { width: 20, height: 4, name: "classic_keyword_none_text" })
+            text.insert("end", "hello")
+            text.tag_add("tag_a", "1.0", "1.2")
+            AhkTest.AssertEqual(stdlib.None, text.tag_configure("tag_a", { foreground: "purple", underline: 1 }))
+            AhkTest.AssertEqual(stdlib.None, text.tag_configure("tag_a", { foreground: stdlib.None }))
+            AhkTest.AssertEqual("purple", text.tag_cget("tag_a", "foreground"))
+            AhkTest.AssertEqual(stdlib.None, text.tag_configure("tag_a", { missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, text.tag_configure("tag_a", { foreground: stdlib.None, underline: stdlib.None }))
+            AhkTest.AssertEqual("purple", text.tag_cget("tag_a", "foreground"))
+            AhkTest.AssertEqual("1", text.tag_cget("tag_a", "underline"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicTextEmbedConfigureKeywordNoneNoopMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+
+            text := stdlib.tkinter.Text(root, { width: 20, height: 4, name: "classic_text_embed_keyword_none" })
+            text.insert("1.0", "alpha beta")
+            photo := stdlib.tkinter.PhotoImage({ master: root, name: "classic_text_embed_keyword_none_photo", width: 2, height: 2 })
+            imageName := text.image_create("1.1", { image: photo, align: "center", padx: 3, pady: 4 })
+            embeddedLabel := stdlib.tkinter.Label(root, { name: "classic_text_embed_keyword_none_label", text: "Inside" })
+            text.window_create("1.2", { window: embeddedLabel, align: "center", padx: 3, pady: 4, stretch: 1 })
+
+            AhkTest.AssertEqual(stdlib.None, text.image_configure(imageName, { padx: stdlib.None }))
+            AhkTest.AssertEqual(3, text.image_cget(imageName, "padx"))
+            AhkTest.AssertEqual(stdlib.None, text.image_configure(imageName, { align: stdlib.None }))
+            AhkTest.AssertEqual("center", text.image_cget(imageName, "align"))
+            AhkTest.AssertEqual(stdlib.None, text.image_configure(imageName, { missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, text.image_configure(imageName, { padx: stdlib.None, align: stdlib.None }))
+            AhkTest.AssertEqual(3, text.image_cget(imageName, "padx"))
+            AhkTest.AssertEqual("center", text.image_cget(imageName, "align"))
+
+            AhkTest.AssertEqual(stdlib.None, text.window_configure("1.2", { padx: stdlib.None }))
+            AhkTest.AssertEqual(3, text.window_cget("1.2", "padx"))
+            AhkTest.AssertEqual(stdlib.None, text.window_configure("1.2", { align: stdlib.None }))
+            AhkTest.AssertEqual("center", text.window_cget("1.2", "align"))
+            AhkTest.AssertEqual(stdlib.None, text.window_configure("1.2", { stretch: stdlib.None }))
+            AhkTest.AssertEqual(1, text.window_cget("1.2", "stretch"))
+            AhkTest.AssertEqual(stdlib.None, text.window_configure("1.2", { missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, text.window_configure("1.2", { padx: stdlib.None, stretch: stdlib.None }))
+            AhkTest.AssertEqual(3, text.window_cget("1.2", "padx"))
+            AhkTest.AssertEqual(1, text.window_cget("1.2", "stretch"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicMutationKeywordNoneNoopMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+
+            label := stdlib.tkinter.Label(root, { name: "classic_mut_keyword_none_label", text: "Alpha", background: "white" })
+            AhkTest.AssertEqual(stdlib.None, label.configure({ text: stdlib.None }))
+            AhkTest.AssertEqual("Alpha", label.cget("text"))
+            AhkTest.AssertEqual(stdlib.None, label.configure({ background: stdlib.None }))
+            AhkTest.AssertEqual("white", label.cget("background"))
+            AhkTest.AssertEqual(stdlib.None, label.configure({ missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, label.configure({ text: stdlib.None, background: stdlib.None }))
+            AhkTest.AssertEqual("Alpha", label.cget("text"))
+            AhkTest.AssertEqual("white", label.cget("background"))
+
+            packHost := stdlib.tkinter.Frame(root, { name: "classic_mut_keyword_none_pack_host" })
+            packHost.pack()
+            packed := stdlib.tkinter.Label(packHost, { name: "packed", text: "Packed" })
+            packed.pack({ side: "left", padx: 3, pady: 4, anchor: "n" })
+            AhkTest.AssertEqual(stdlib.None, packed.pack_configure({ side: stdlib.None }))
+            AhkTest.AssertEqual("left", packed.pack_info()["side"])
+            AhkTest.AssertEqual(stdlib.None, packed.pack_configure({ missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, packed.pack_configure({ side: stdlib.None, padx: stdlib.None }))
+            AhkTest.AssertEqual("left", packed.pack_info()["side"])
+            AhkTest.AssertEqual(3, packed.pack_info()["padx"])
+
+            gridHost := stdlib.tkinter.Frame(root, { name: "classic_mut_keyword_none_grid_host" })
+            gridHost.pack()
+            gridded := stdlib.tkinter.Label(gridHost, { name: "gridded", text: "Grid" })
+            gridded.grid({ row: 1, column: 2, padx: 5, pady: 6, sticky: "nsew" })
+            AhkTest.AssertEqual(stdlib.None, gridded.grid_configure({ row: stdlib.None }))
+            AhkTest.AssertEqual(1, gridded.grid_info()["row"])
+            AhkTest.AssertEqual(stdlib.None, gridded.grid_configure({ missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, gridded.grid_configure({ row: stdlib.None, sticky: stdlib.None }))
+            AhkTest.AssertEqual(1, gridded.grid_info()["row"])
+            AhkTest.AssertEqual("nesw", gridded.grid_info()["sticky"])
+
+            placeHost := stdlib.tkinter.Frame(root, { name: "classic_mut_keyword_none_place_host", width: 100, height: 80 })
+            placeHost.pack()
+            placed := stdlib.tkinter.Label(placeHost, { name: "placed", text: "Place" })
+            placed.place({ x: 7, y: 8, width: 60, height: 20, anchor: "nw" })
+            AhkTest.AssertEqual(stdlib.None, placed.place_configure({ x: stdlib.None }))
+            AhkTest.AssertEqual("7", placed.place_info()["x"])
+            AhkTest.AssertEqual(stdlib.None, placed.place_configure({ missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, placed.place_configure({ x: stdlib.None, anchor: stdlib.None }))
+            AhkTest.AssertEqual("7", placed.place_info()["x"])
+            AhkTest.AssertEqual("nw", placed.place_info()["anchor"])
+
+            image := stdlib.tkinter.PhotoImage({ master: root, name: "classic_mut_keyword_none_photo", width: 2, height: 3 })
+            AhkTest.AssertEqual(stdlib.None, image.configure({ width: stdlib.None }))
+            AhkTest.AssertEqual(2, image.width())
+            AhkTest.AssertEqual(stdlib.None, image.configure({ missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, image.configure({ width: stdlib.None, height: stdlib.None }))
+            AhkTest.AssertEqual(2, image.width())
+            AhkTest.AssertEqual(3, image.height())
+
+            panes := stdlib.tkinter.PanedWindow(root, { name: "classic_mut_keyword_none_pane" })
+            panes.pack()
+            paneChild := stdlib.tkinter.Frame(panes, { name: "pane_child", width: 20, height: 20 })
+            paneAdded := stdlib.tkinter.Frame(panes, { name: "pane_child_added", width: 20, height: 20 })
+            panes.add(paneChild, { minsize: 12, padx: 3, pady: 4, sticky: "n" })
+            AhkTest.AssertEqual(stdlib.None, panes.add(paneAdded, { minsize: stdlib.None, missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.tuple([".classic_mut_keyword_none_pane.pane_child", ".classic_mut_keyword_none_pane.pane_child_added"]), panes.panes())
+            AhkTest.AssertEqual(stdlib.None, panes.paneconfigure(paneChild, { minsize: stdlib.None }))
+            AhkTest.AssertEqual(12, panes.panecget(paneChild, "minsize"))
+            AhkTest.AssertEqual(stdlib.None, panes.paneconfigure(paneChild, { missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, panes.paneconfigure(paneChild, { minsize: stdlib.None, padx: stdlib.None }))
+            AhkTest.AssertEqual(12, panes.panecget(paneChild, "minsize"))
+            AhkTest.AssertEqual(3, panes.panecget(paneChild, "padx"))
+
+            menu := stdlib.tkinter.Menu(root, { name: "classic_mut_keyword_none_menu", tearoff: 0 })
+            menu.add_command({ label: "Open", state: "normal" })
+            AhkTest.AssertEqual(stdlib.None, menu.add_command({ label: stdlib.None, missing: stdlib.None }))
+            AhkTest.AssertEqual(1, menu.index("end"))
+            AhkTest.AssertEqual("", menu.entrycget(1, "label"))
+            AhkTest.AssertEqual(stdlib.None, menu.insert_command(0, { label: stdlib.None, missing: stdlib.None }))
+            AhkTest.AssertEqual(2, menu.index("end"))
+            AhkTest.AssertEqual("", menu.entrycget(0, "label"))
+            AhkTest.AssertEqual("Open", menu.entrycget(1, "label"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicCreateKeywordNoneNoopMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+
+            canvas := stdlib.tkinter.Canvas(root, { width: 120, height: 80, name: "classic_create_keyword_none_canvas" })
+            embeddedLabel := stdlib.tkinter.Label(root, { name: "classic_create_keyword_none_canvas_label", text: "Inside" })
+
+            lineId := canvas.create_line(15, 15, 25, 25, { fill: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual("SystemButtonText", canvas.itemcget(lineId, "fill"))
+            AhkTest.AssertEqual("1.0", canvas.itemcget(lineId, "width"))
+            textId := canvas.create_text(30, 30, { text: stdlib.None, fill: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual("", canvas.itemcget(textId, "text"))
+            AhkTest.AssertEqual("SystemButtonText", canvas.itemcget(textId, "fill"))
+            windowId := canvas.create_window(40, 40, { window: embeddedLabel, width: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual(String(embeddedLabel), canvas.itemcget(windowId, "window"))
+            AhkTest.AssertEqual("0", canvas.itemcget(windowId, "width"))
+
+            text := stdlib.tkinter.Text(root, { width: 20, height: 4, name: "classic_create_keyword_none_text" })
+            text.insert("1.0", "alpha beta")
+            photo := stdlib.tkinter.PhotoImage({ master: root, name: "classic_create_keyword_none_photo", width: 2, height: 2 })
+            imageName := text.image_create("1.1", { image: photo, align: stdlib.None, padx: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual("classic_create_keyword_none_photo", imageName)
+            AhkTest.AssertEqual("center", text.image_cget(imageName, "align"))
+            AhkTest.AssertEqual(0, text.image_cget(imageName, "padx"))
+            textLabel := stdlib.tkinter.Label(root, { name: "classic_create_keyword_none_text_label", text: "Text window" })
+            AhkTest.AssertEqual(stdlib.None, text.window_create("1.2", { window: textLabel, align: stdlib.None, padx: stdlib.None, missing: stdlib.None }))
+            AhkTest.AssertEqual(String(textLabel), text.window_cget("1.2", "window"))
+            AhkTest.AssertEqual("center", text.window_cget("1.2", "align"))
+            AhkTest.AssertEqual(0, text.window_cget("1.2", "padx"))
+
+            AhkTest.AssertEqual(stdlib.None, root.selection_handle((offset, length) => "data", { selection: stdlib.None, type: stdlib.None, format: stdlib.None, missing: stdlib.None }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicConstructorKeywordNoneNoopMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+
+            label := stdlib.tkinter.Label(root, { name: "classic_ctor_keyword_none_label", text: stdlib.None, background: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual(".classic_ctor_keyword_none_label", String(label))
+            AhkTest.AssertEqual("", label.cget("text"))
+            AhkTest.AssertEqual("SystemButtonFace", label.cget("background"))
+
+            frame := stdlib.tkinter.Frame(root, { name: "classic_ctor_keyword_none_frame", width: stdlib.None, height: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual(".classic_ctor_keyword_none_frame", String(frame))
+            AhkTest.AssertEqual(0, frame.cget("width"))
+            AhkTest.AssertEqual(0, frame.cget("height"))
+
+            panes := stdlib.tkinter.PanedWindow(root, { name: "classic_ctor_keyword_none_paned", sashwidth: stdlib.None, showhandle: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual(".classic_ctor_keyword_none_paned", String(panes))
+            AhkTest.AssertEqual(3, panes.cget("sashwidth"))
+            AhkTest.AssertEqual(0, panes.cget("showhandle"))
+
+            canvas := stdlib.tkinter.Canvas(root, { name: "classic_ctor_keyword_none_canvas", width: stdlib.None, height: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual(".classic_ctor_keyword_none_canvas", String(canvas))
+            AhkTest.AssertTrue(Integer(canvas.cget("width")) > 0)
+            AhkTest.AssertTrue(Integer(canvas.cget("height")) > 0)
+
+            text := stdlib.tkinter.Text(root, { name: "classic_ctor_keyword_none_text", width: stdlib.None, height: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual(".classic_ctor_keyword_none_text", String(text))
+            AhkTest.AssertEqual(80, text.cget("width"))
+            AhkTest.AssertEqual(24, text.cget("height"))
+
+            entry := stdlib.tkinter.Entry(root, { name: "classic_ctor_keyword_none_entry", width: stdlib.None, show: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual(".classic_ctor_keyword_none_entry", String(entry))
+            AhkTest.AssertEqual(20, entry.cget("width"))
+            AhkTest.AssertEqual("", entry.cget("show"))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^value for "-width" missing$', (*) => stdlib.tkinter.PhotoImage({ master: root, name: "classic_ctor_keyword_none_photo", width: stdlib.None, height: stdlib.None, missing: stdlib.None }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicRootPublicOptionKeywordNoneMatchesLocal310()
+    {
+        oldClipboardWasRead := false
+        try {
+            oldClipboard := StdlibTkinterTest.ReadClipboardWithRetry()
+            oldClipboardWasRead := true
+        }
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+
+            root.configure({ background: "white" })
+            AhkTest.AssertEqual(stdlib.None, root.configure({ background: stdlib.None }))
+            AhkTest.AssertEqual("white", root.cget("background"))
+            AhkTest.AssertEqual(stdlib.None, root.configure({ missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, root.configure({ background: stdlib.None, cursor: stdlib.None, missing: stdlib.None }))
+            AhkTest.AssertEqual("white", root.cget("background"))
+            AhkTest.AssertEqual("", root.cget("cursor"))
+
+            widget := stdlib.tkinter.Widget(root, "label", { name: "classic_public_widget_keyword_none", text: stdlib.None, background: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual(".classic_public_widget_keyword_none", String(widget))
+            AhkTest.AssertEqual("Label", widget.winfo_class())
+            AhkTest.AssertEqual("", widget.cget("text"))
+            AhkTest.AssertEqual("SystemButtonFace", widget.cget("background"))
+
+            baseWidget := stdlib.tkinter.BaseWidget(root, "label", { name: "classic_public_basewidget_keyword_none", text: stdlib.None, background: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual(".classic_public_basewidget_keyword_none", String(baseWidget))
+            AhkTest.AssertEqual("Label", baseWidget.winfo_class())
+            AhkTest.AssertEqual("", baseWidget.cget("text"))
+            AhkTest.AssertEqual("SystemButtonFace", baseWidget.cget("background"))
+
+            menubutton := stdlib.tkinter.Menubutton(root, { name: "classic_menubutton_keyword_none", text: stdlib.None, background: stdlib.None, missing: stdlib.None })
+            AhkTest.AssertEqual(".classic_menubutton_keyword_none", String(menubutton))
+            AhkTest.AssertEqual("Menubutton", menubutton.winfo_class())
+            AhkTest.AssertEqual("", menubutton.cget("text"))
+            AhkTest.AssertEqual("SystemButtonFace", menubutton.cget("background"))
+
+            AhkTest.AssertEqual(stdlib.None, root.clipboard_clear({ displayof: stdlib.None, missing: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, root.clipboard_append("alpha", { type: stdlib.None, format: stdlib.None, displayof: stdlib.None, missing: stdlib.None }))
+            AhkTest.AssertEqual("alpha", root.clipboard_get({ type: stdlib.None, displayof: stdlib.None, missing: stdlib.None }))
+
+            AhkTest.AssertEqual(stdlib.None, root.option_add("*Label.foreground", "red", stdlib.None))
+            optionLabel := stdlib.tkinter.Label(root, { name: "classic_option_priority_none_label" })
+            AhkTest.AssertEqual("red", optionLabel.option_get("foreground", "Foreground"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "option add pattern value \?priority\?"$', (*) => root.option_add(stdlib.None, "red"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "option add pattern value \?priority\?"$', (*) => root.option_add("*Label.background", stdlib.None))
+        } finally {
+            try root.clipboard_clear()
+            try root.update_idletasks()
+            try root.destroy()
+            if oldClipboardWasRead
+                StdlibTkinterTest.WriteClipboardWithRetry(oldClipboard)
+        }
+    }
+
+    static TestTtkMenubuttonPublicSurfaceMatchesLocal310()
+    {
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter.ttk, "Menubutton"))
+        AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'tk'$", (*) => stdlib.tkinter.ttk.Menubutton("master"))
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            defaultButton := stdlib.tkinter.ttk.Menubutton({ name: "ttk_menu_default_probe" })
+            AhkTest.AssertTrue(defaultButton is stdlib.tkinter.ttk.Menubutton)
+            AhkTest.AssertEqual(".ttk_menu_default_probe", String(defaultButton))
+            AhkTest.AssertEqual("ttk::menubutton", defaultButton.widgetName)
+            AhkTest.AssertEqual("TMenubutton", defaultButton.winfo_class())
+            defaultButton.destroy()
+
+            textValue := stdlib.tkinter.StringVar(root, "seed", "ttk_menu_var")
+            menu := stdlib.tkinter.Menu(root, { tearoff: false, name: "ttk_menu_attached" })
+            menu.add_command({ label: "One" })
+            button := stdlib.tkinter.ttk.Menubutton(root, { text: "Menu", textvariable: textValue, underline: 1, width: 12, direction: "below", menu: menu, state: "normal", cursor: "arrow", style: "Probe.TMenubutton", takefocus: 1, name: "ttk_menu_probe" })
+            AhkTest.AssertTrue(button is stdlib.tkinter.ttk.Menubutton)
+            AhkTest.AssertEqual(".ttk_menu_probe", String(button))
+            AhkTest.AssertEqual("ttk::menubutton", button.widgetName)
+            AhkTest.AssertSame(root, button.master)
+            AhkTest.AssertSame(root.tk, button.tk)
+            AhkTest.AssertEqual("TMenubutton", button.winfo_class())
+            AhkTest.AssertEqual("seed", button.cget("text"))
+            AhkTest.AssertEqual("ttk_menu_var", button.cget("textvariable"))
+            AhkTest.AssertEqual(1, button.cget("underline"))
+            AhkTest.AssertEqual(12, button.cget("width"))
+            AhkTest.AssertEqual("below", button.cget("direction"))
+            AhkTest.AssertEqual(".ttk_menu_attached", button.cget("menu"))
+            AhkTest.AssertEqual("normal", button.cget("state"))
+            AhkTest.AssertEqual("arrow", button.cget("cursor"))
+            AhkTest.AssertEqual("Probe.TMenubutton", button.cget("style"))
+            AhkTest.AssertEqual(1, button.cget("takefocus"))
+            AhkTest.AssertEqual("", button.cget("class"))
+            AhkTest.AssertContains("text", button.keys())
+            AhkTest.AssertContains("textvariable", button.keys())
+            AhkTest.AssertContains("underline", button.keys())
+            AhkTest.AssertContains("width", button.keys())
+            AhkTest.AssertContains("direction", button.keys())
+            AhkTest.AssertContains("menu", button.keys())
+            AhkTest.AssertContains("state", button.keys())
+            AhkTest.AssertContains("cursor", button.keys())
+            AhkTest.AssertContains("style", button.keys())
+            AhkTest.AssertContains("takefocus", button.keys())
+            AhkTest.AssertContains("class", button.keys())
+            AhkTest.AssertEqual(stdlib.tuple(["text", "text", "Text", "", "seed"]), button.configure("text"))
+            AhkTest.AssertEqual(stdlib.tuple(["textvariable", "textVariable", "Variable", "", "ttk_menu_var"]), button.configure("textvariable"))
+            AhkTest.AssertEqual(stdlib.tuple(["underline", "underline", "Underline", -1, 1]), button.configure("underline"))
+            AhkTest.AssertEqual(stdlib.tuple(["width", "width", "Width", "", 12]), button.configure("width"))
+            AhkTest.AssertEqual(stdlib.tuple(["direction", "direction", "Direction", "below", "below"]), button.configure("direction"))
+            AhkTest.AssertEqual(stdlib.tuple(["menu", "menu", "Menu", "", ".ttk_menu_attached"]), button.configure("menu"))
+            AhkTest.AssertEqual(stdlib.tuple(["state", "state", "State", "normal", "normal"]), button.configure("state"))
+            AhkTest.AssertEqual(stdlib.tuple(["cursor", "cursor", "Cursor", "", "arrow"]), button.configure("cursor"))
+            AhkTest.AssertEqual(stdlib.tuple(["style", "style", "Style", "", "Probe.TMenubutton"]), button.configure("style"))
+            AhkTest.AssertEqual(stdlib.tuple(["takefocus", "takeFocus", "TakeFocus", "ttk::takefocus", 1]), button.configure("takefocus"))
+            AhkTest.AssertEqual(stdlib.tuple(["class", "", "", "", ""]), button.configure("class"))
+            AhkTest.AssertEqual(stdlib.None, button.configure({ text: "Changed", width: 10, direction: "right" }))
+            AhkTest.AssertEqual("seed", button.cget("text"))
+            AhkTest.AssertEqual(10, button.cget("width"))
+            AhkTest.AssertEqual("right", button.cget("direction"))
+            AhkTest.AssertEqual(stdlib.tuple(), button.state())
+            AhkTest.AssertEqual(stdlib.tuple(["!disabled"]), button.state(["disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(["disabled"]), button.state())
+            AhkTest.AssertSame(stdlib.True, button.instate(["disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(["disabled"]), button.state(["!disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(), button.state())
+            AhkTest.AssertEqual(stdlib.tuple(["callback", "x", "y"]), button.instate(["!disabled"], (args*) => stdlib.tuple(["callback", args[1], args[2]]), "x", "y"))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.ttk.Menubutton(root, { bad: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Menubutton\.__init__\(\) takes from 1 to 2 positional arguments but 4 were given$", (*) => stdlib.tkinter.ttk.Menubutton(root, {}, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => button.state(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid state name d$", (*) => button.state("disabled"))
+            AhkTest.RaisesMatch(TypeError, "^Widget\.instate\(\) missing 1 required positional argument: 'statespec'$", (*) => button.instate())
+            AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => button.instate(1))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.configure\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => button.configure("text", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.cget\(\) missing 1 required positional argument: 'key'$", (*) => button.cget())
+            AhkTest.RaisesMatch(TypeError, "^Misc\.cget\(\) takes 2 positional arguments but 3 were given$", (*) => button.cget("text", "extra"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkMenubuttonIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            menubutton := stdlib.tkinter.ttk.Menubutton(root, { text: "Menu", name: "ttk_menubutton_identify_sequence" })
+            menubutton.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(menubutton, "ttk_menubutton_identify_sequence")
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkOptionMenuPublicSurfaceMatchesLocal310()
+    {
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter.ttk, "OptionMenu"))
+        AhkTest.RaisesMatch(TypeError, "^OptionMenu\.__init__\(\) missing 2 required positional arguments: 'master' and 'variable'$", (*) => stdlib.tkinter.ttk.OptionMenu())
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            value := stdlib.tkinter.StringVar(root, "seed", "ttk_option_var")
+            calls := []
+            AhkTest.RaisesMatch(TypeError, "^OptionMenu\.__init__\(\) missing 1 required positional argument: 'variable'$", (*) => stdlib.tkinter.ttk.OptionMenu("master"))
+            AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'tk'$", (*) => stdlib.tkinter.ttk.OptionMenu(1, value, "x"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^unknown option -bad$", (*) => stdlib.tkinter.ttk.OptionMenu(root, value, "x", "y", { bad: 1 }))
+
+            empty := stdlib.tkinter.ttk.OptionMenu(root, value)
+            AhkTest.AssertTrue(empty is stdlib.tkinter.ttk.OptionMenu)
+            AhkTest.AssertTrue(empty is stdlib.tkinter.ttk.Menubutton)
+            empty.destroy()
+
+            option := stdlib.tkinter.ttk.OptionMenu(root, value, "one", "two", "three", { command: (selected) => (calls.Push([selected, value.get()]), "ignored") })
+            menu := option["menu"]
+            AhkTest.AssertTrue(option is stdlib.tkinter.ttk.OptionMenu)
+            AhkTest.AssertTrue(option is stdlib.tkinter.ttk.Menubutton)
+            AhkTest.AssertEqual("ttk::menubutton", option.widgetName)
+            AhkTest.AssertSame(root, option.master)
+            AhkTest.AssertSame(root.tk, option.tk)
+            AhkTest.AssertEqual("TMenubutton", option.winfo_class())
+            AhkTest.AssertEqual("one", value.get())
+            AhkTest.AssertEqual("one", option.cget("text"))
+            AhkTest.AssertEqual("ttk_option_var", option.cget("textvariable"))
+            AhkTest.AssertEqual(String(menu), option.cget("menu"))
+            AhkTest.AssertEqual("below", option.cget("direction"))
+            AhkTest.AssertEqual("", option.cget("style"))
+            AhkTest.AssertEqual("", option.cget("class"))
+            AhkTest.AssertTrue(menu is stdlib.tkinter.Menu)
+            AhkTest.AssertEqual(0, menu.cget("tearoff"))
+            AhkTest.AssertEqual(1, menu.index("end"))
+            AhkTest.AssertEqual("two", menu.entrycget(0, "label"))
+            AhkTest.AssertEqual("three", menu.entrycget(1, "label"))
+            AhkTest.AssertEqual(stdlib.tuple(["textvariable", "textVariable", "Variable", "", "ttk_option_var"]), option.configure("textvariable"))
+            AhkTest.AssertEqual(stdlib.tuple(["menu", "menu", "Menu", "", String(menu)]), option.configure("menu"))
+            AhkTest.AssertContains("text", option.keys())
+            AhkTest.AssertContains("textvariable", option.keys())
+            AhkTest.AssertContains("menu", option.keys())
+            AhkTest.AssertEqual(stdlib.tuple(), option.state())
+            AhkTest.AssertEqual(stdlib.tuple(["!disabled"]), option.state(["disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(["disabled"]), option.state())
+            AhkTest.AssertSame(stdlib.True, option.instate(["disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(["disabled"]), option.state(["!disabled"]))
+
+            AhkTest.AssertEqual("None", menu.invoke(1))
+            AhkTest.AssertEqual("three", value.get())
+            AhkTest.AssertEqual("three", calls[1][1])
+            AhkTest.AssertEqual("three", calls[1][2])
+
+            AhkTest.AssertEqual(stdlib.None, option.set_menu("reset", "alpha", "beta"))
+            AhkTest.AssertEqual("reset", value.get())
+            AhkTest.AssertEqual(1, menu.index("end"))
+            AhkTest.AssertEqual("alpha", menu.entrycget(0, "label"))
+            AhkTest.AssertEqual("beta", menu.entrycget(1, "label"))
+            AhkTest.AssertEqual("None", menu.invoke(0))
+            AhkTest.AssertEqual("alpha", value.get())
+            AhkTest.AssertEqual("alpha", calls[2][1])
+            AhkTest.AssertEqual("alpha", calls[2][2])
+            AhkTest.AssertEqual(stdlib.None, option.set_menu())
+            AhkTest.AssertEqual(stdlib.None, option.set_menu("only"))
+            AhkTest.RaisesMatch(TypeError, "^Misc\.configure\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => option.configure("text", "extra"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkOptionMenuDefaultTruthinessMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+
+            valueEmpty := stdlib.tkinter.StringVar(root, "seed_empty", "ttk_option_empty_default")
+            optionEmpty := stdlib.tkinter.ttk.OptionMenu(root, valueEmpty, "", "alpha", "beta")
+            AhkTest.AssertEqual("seed_empty", valueEmpty.get())
+            AhkTest.AssertEqual("seed_empty", optionEmpty.cget("text"))
+            AhkTest.AssertEqual(1, optionEmpty["menu"].index("end"))
+
+            valueZero := stdlib.tkinter.StringVar(root, "seed_zero", "ttk_option_zero_default")
+            optionZero := stdlib.tkinter.ttk.OptionMenu(root, valueZero, 0, "alpha", "beta")
+            AhkTest.AssertEqual("seed_zero", valueZero.get())
+            AhkTest.AssertEqual("seed_zero", optionZero.cget("text"))
+
+            valueFalse := stdlib.tkinter.StringVar(root, "seed_false", "ttk_option_false_default")
+            optionFalse := stdlib.tkinter.ttk.OptionMenu(root, valueFalse, false, "alpha", "beta")
+            AhkTest.AssertEqual("seed_false", valueFalse.get())
+            AhkTest.AssertEqual("seed_false", optionFalse.cget("text"))
+
+            valueTruthy := stdlib.tkinter.StringVar(root, "seed_truthy", "ttk_option_truthy_default")
+            optionTruthy := stdlib.tkinter.ttk.OptionMenu(root, valueTruthy, "default", "alpha", "beta")
+            AhkTest.AssertEqual("default", valueTruthy.get())
+            AhkTest.AssertEqual("default", optionTruthy.cget("text"))
+
+            valueEmpty.set("manual_empty")
+            AhkTest.AssertEqual(stdlib.None, optionEmpty.set_menu(stdlib.None, "one", "two"))
+            AhkTest.AssertEqual("manual_empty", valueEmpty.get())
+            AhkTest.AssertEqual(["one", "two"], [optionEmpty["menu"].entrycget(0, "label"), optionEmpty["menu"].entrycget(1, "label")])
+            AhkTest.AssertEqual(stdlib.None, optionEmpty.set_menu("", "three", "four"))
+            AhkTest.AssertEqual("manual_empty", valueEmpty.get())
+            AhkTest.AssertEqual(stdlib.None, optionEmpty.set_menu(0, "five", "six"))
+            AhkTest.AssertEqual("manual_empty", valueEmpty.get())
+            AhkTest.AssertEqual(stdlib.None, optionEmpty.set_menu(false, "seven", "eight"))
+            AhkTest.AssertEqual("manual_empty", valueEmpty.get())
+            AhkTest.AssertEqual(["seven", "eight"], [optionEmpty["menu"].entrycget(0, "label"), optionEmpty["menu"].entrycget(1, "label")])
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkOptionMenuRadiobuttonEntriesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            calls := []
+            value := stdlib.tkinter.StringVar(root, "seed", "ttk_option_radio_var")
+            option := stdlib.tkinter.ttk.OptionMenu(root, value, "one", "two", "three", { command: (selected) => (calls.Push([selected, value.get()]), "ignored") })
+            menu := option["menu"]
+
+            AhkTest.AssertEqual(1, menu.index("end"))
+            AhkTest.AssertEqual("radiobutton", menu.type(0))
+            AhkTest.AssertEqual("radiobutton", menu.type(1))
+            AhkTest.AssertEqual("two", menu.entrycget(0, "label"))
+            AhkTest.AssertEqual("three", menu.entrycget(1, "label"))
+            AhkTest.AssertEqual("ttk_option_radio_var", menu.entrycget(0, "variable"))
+            AhkTest.AssertEqual("ttk_option_radio_var", menu.entrycget(1, "variable"))
+            AhkTest.AssertEqual("two", menu.entrycget(0, "value"))
+            AhkTest.AssertEqual("three", menu.entrycget(1, "value"))
+            AhkTest.AssertTrue(menu.entrycget(0, "command") != "")
+            AhkTest.AssertTrue(menu.entrycget(1, "command") != "")
+            AhkTest.AssertEqual("one", value.get())
+            AhkTest.AssertEqual("None", menu.invoke(1))
+            AhkTest.AssertEqual("three", value.get())
+            AhkTest.AssertEqual(1, calls.Length)
+            AhkTest.AssertEqual("three", calls[1][1])
+            AhkTest.AssertEqual("three", calls[1][2])
+
+            AhkTest.AssertEqual(stdlib.None, option.set_menu("reset", "alpha", "beta"))
+            AhkTest.AssertEqual("reset", value.get())
+            AhkTest.AssertEqual(1, menu.index("end"))
+            AhkTest.AssertEqual("radiobutton", menu.type(0))
+            AhkTest.AssertEqual("radiobutton", menu.type(1))
+            AhkTest.AssertEqual("alpha", menu.entrycget(0, "label"))
+            AhkTest.AssertEqual("beta", menu.entrycget(1, "label"))
+            AhkTest.AssertEqual("ttk_option_radio_var", menu.entrycget(0, "variable"))
+            AhkTest.AssertEqual("ttk_option_radio_var", menu.entrycget(1, "variable"))
+            AhkTest.AssertEqual("alpha", menu.entrycget(0, "value"))
+            AhkTest.AssertEqual("beta", menu.entrycget(1, "value"))
+
+            AhkTest.AssertEqual(stdlib.None, option.set_menu(stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, menu.index("end"))
+            AhkTest.AssertEqual("reset", value.get())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTtkSeparatorPublicSurfaceMatchesLocal310()
     {
         AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
@@ -943,6 +3043,22 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad orient "diagonal": must be horizontal or vertical$', (*) => stdlib.tkinter.ttk.Separator(root, { orient: "diagonal" }))
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => sep.configure({ bad: 1 }))
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad orient "diagonal": must be horizontal or vertical$', (*) => sep.configure({ orient: "diagonal" }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkSeparatorIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            separator := stdlib.tkinter.ttk.Separator(root, { name: "ttk_separator_identify_sequence" })
+            separator.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(separator, "ttk_separator_identify_sequence")
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -1047,6 +3163,43 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTtkProgressbarIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            progress := stdlib.tkinter.ttk.Progressbar(root, { maximum: 100, value: 25, name: "ttk_progress_identify_sequence" })
+            progress.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(progress, "ttk_progress_identify_sequence")
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkProgressbarStartStepNoneAndSequenceWordsMatchLocal310()
+    {
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.start()))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.start(stdlib.None)))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad argument "": must be cancel, idle, info, or an integer$', (*) => StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.start([])))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad argument "": must be cancel, idle, info, or an integer$', (*) => StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.start(stdlib.tuple())))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.start(["5"])))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.start(stdlib.tuple(["5"]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad argument "5 6": must be cancel, idle, info, or an integer$', (*) => StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.start(["5", "6"])))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad argument "bad": must be cancel, idle, info, or an integer$', (*) => StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.start(["bad"])))
+
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, 11.5]), StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => (progress.step(), stdlib.tuple([stdlib.None, value.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, 11.5]), StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => (progress.step(stdlib.None), stdlib.tuple([stdlib.None, value.get()]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.step([])))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.step(stdlib.tuple())))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, 15.5]), StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => (progress.step(["5"]), stdlib.tuple([stdlib.None, value.get()]))))
+        AhkTest.AssertEqual(stdlib.tuple([stdlib.None, 16.5]), StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => (progress.step(stdlib.tuple(["6"])), stdlib.tuple([stdlib.None, value.get()]))))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "5 6"$', (*) => StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.step(["5", "6"])))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => StdlibTkinterTest.WithTtkProgressbarSequence((progress, value) => progress.step(["bad"])))
+    }
+
     static TestTtkScalePublicSurfaceMatchesLocal310()
     {
         AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
@@ -1134,6 +3287,248 @@ class StdlibTkinterTest
         }
     }
 
+    static TestTtkScaleCoordsSetNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            variable := stdlib.tkinter.DoubleVar(root, 2.5, "ttk_scale_sequence_var")
+            scale := stdlib.tkinter.ttk.Scale(root, { from_: 0, to: 10, variable: variable, name: "ttk_scale_sequence" })
+            scale.pack()
+            root.update_idletasks()
+
+            coords := scale.coords()
+            AhkTest.AssertEqual(2, coords.Length)
+            AhkTest.AssertTrue(coords[1] is Integer)
+            AhkTest.AssertTrue(coords[2] is Integer)
+            AhkTest.AssertEqual(coords, scale.coords(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => scale.coords([]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => scale.coords(stdlib.tuple()))
+            AhkTest.AssertEqual(coords, scale.coords(["5"]))
+            AhkTest.AssertEqual(coords, scale.coords(stdlib.tuple(["5"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "5 6"$', (*) => scale.coords(["5", "6"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => scale.coords(["bad"]))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scale_sequence set value"$', (*) => scale.set(stdlib.None))
+            AhkTest.AssertEqual(2.5, variable.get())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => scale.set([]))
+            AhkTest.AssertEqual(stdlib.None, scale.set(["7"]))
+            AhkTest.AssertEqual(7.0, variable.get())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "7 8"$', (*) => scale.set(["7", "8"]))
+            AhkTest.RaisesMatch(TypeError, "^Scale\.coords\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => scale.coords(1, 2))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkScaleGetNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            scale := stdlib.tkinter.ttk.Scale(root, { from: 0, to: 10, value: 4.5, orient: "horizontal", length: 120, name: "ttk_scale_get_sequence" })
+            scale.pack()
+            root.update_idletasks()
+
+            AhkTest.AssertEqual(4.5, scale.get())
+            AhkTest.AssertEqual(10.0, scale.get(10, 5))
+            AhkTest.AssertEqual(4.5, scale.get(stdlib.None, 5))
+            AhkTest.AssertEqual(4.5, scale.get(stdlib.None, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scale_get_sequence get \?x y\?"$', (*) => scale.get(10, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => scale.get([], 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => scale.get(10, []))
+            AhkTest.AssertEqual(10.0, scale.get(["10"], 5))
+            AhkTest.AssertEqual(10.0, scale.get(10, ["5"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "10 11"$', (*) => scale.get(["10", "11"], 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => scale.get(10, ["5", "6"]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkScaleConfigureRangeChangedEventMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            events := []
+            scale := stdlib.tkinter.ttk.Scale(root, { from_: 0, to: 10, value: 2.5, name: "ttk_scale_range_changed" })
+            scale.pack()
+            scale.bind("<<RangeChanged>>", (event) => (events.Push(stdlib.tuple([event.type.name, String(event.widget)])), stdlib.None))
+            root.update_idletasks()
+
+            AhkTest.AssertEqual(stdlib.None, scale.configure({ value: 3.5 }))
+            root.update()
+            AhkTest.AssertEqual([], events)
+
+            AhkTest.AssertEqual(stdlib.None, scale.configure({ from_: 1.0 }))
+            root.update()
+            AhkTest.AssertEqual([stdlib.tuple(["VirtualEvent", String(scale)])], events)
+
+            AhkTest.AssertEqual(stdlib.None, scale.configure({ from: 2.0 }))
+            root.update()
+            AhkTest.AssertEqual([stdlib.tuple(["VirtualEvent", String(scale)]), stdlib.tuple(["VirtualEvent", String(scale)])], events)
+
+            AhkTest.AssertEqual(stdlib.None, scale.configure({ to: 20.0 }))
+            root.update()
+            AhkTest.AssertEqual([stdlib.tuple(["VirtualEvent", String(scale)]), stdlib.tuple(["VirtualEvent", String(scale)]), stdlib.tuple(["VirtualEvent", String(scale)])], events)
+
+            AhkTest.AssertEqual(stdlib.None, scale.configure({ from_: 0.0, to: 30.0 }))
+            root.update()
+            AhkTest.AssertEqual([stdlib.tuple(["VirtualEvent", String(scale)]), stdlib.tuple(["VirtualEvent", String(scale)]), stdlib.tuple(["VirtualEvent", String(scale)]), stdlib.tuple(["VirtualEvent", String(scale)])], events)
+
+            AhkTest.AssertEqual(stdlib.tuple(["from", "from", "From", 0, 0.0]), scale.configure("from"))
+            root.update()
+            AhkTest.AssertEqual(4, events.Length)
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => scale.configure({ from_: "bad" }))
+            root.update()
+            AhkTest.AssertEqual(4, events.Length)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkScaleIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            scale := stdlib.tkinter.ttk.Scale(root, { from: 0, to: 10, value: 4.5, orient: "horizontal", length: 120, name: "ttk_scale_identify_sequence" })
+            scale.pack()
+            root.update_idletasks()
+
+            AhkTest.AssertEqual("", scale.identify(5, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scale_identify_sequence identify \?what\? x y"$', (*) => scale.identify(stdlib.None, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scale_identify_sequence identify \?what\? x y"$', (*) => scale.identify(5, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scale_identify_sequence identify \?what\? x y"$', (*) => scale.identify(stdlib.None, stdlib.None))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => scale.identify([], 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => scale.identify(stdlib.tuple(), 5))
+            AhkTest.AssertEqual("", scale.identify(["5"], 5))
+            AhkTest.AssertEqual("", scale.identify(stdlib.tuple(["5"]), 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => scale.identify(["5", "6"], 5))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => scale.identify(5, []))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => scale.identify(5, stdlib.tuple()))
+            AhkTest.AssertEqual("", scale.identify(5, ["5"]))
+            AhkTest.AssertEqual("", scale.identify(5, stdlib.tuple(["5"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => scale.identify(5, ["5", "6"]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkLabeledScalePublicSurfaceMatchesLocal310()
+    {
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter.ttk, "LabeledScale"))
+        AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'tk'$", (*) => stdlib.tkinter.ttk.LabeledScale("master"))
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.ttk.LabeledScale(root, { bad: 1 }))
+
+            defaultScale := stdlib.tkinter.ttk.LabeledScale({ name: "ttk_labeled_default_probe" })
+            AhkTest.AssertTrue(defaultScale is stdlib.tkinter.ttk.LabeledScale)
+            AhkTest.AssertTrue(defaultScale is stdlib.tkinter.ttk.Frame)
+            AhkTest.AssertEqual(".ttk_labeled_default_probe", String(defaultScale))
+            AhkTest.AssertEqual("ttk::frame", defaultScale.widgetName)
+            AhkTest.AssertEqual("TFrame", defaultScale.winfo_class())
+            AhkTest.AssertTrue(HasProp(defaultScale, "scale"))
+            AhkTest.AssertTrue(HasProp(defaultScale, "label"))
+            AhkTest.AssertFalse(HasProp(defaultScale, "variable"))
+            AhkTest.AssertTrue(defaultScale.scale is stdlib.tkinter.ttk.Scale)
+            AhkTest.AssertTrue(defaultScale.label is stdlib.tkinter.ttk.Label)
+            AhkTest.AssertEqual(0, defaultScale.value)
+            AhkTest.AssertEqual(0, defaultScale.scale.cget("from"))
+            AhkTest.AssertEqual(10, defaultScale.scale.cget("to"))
+            AhkTest.AssertEqual("", defaultScale.label.cget("text"))
+            AhkTest.AssertEqual("bottom", defaultScale.scale.pack_info()["side"])
+            AhkTest.AssertEqual("n", defaultScale.label.place_info()["anchor"])
+            AhkTest.AssertEqual(stdlib.tuple(), defaultScale.state())
+            AhkTest.AssertEqual("", defaultScale.identify(5, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-from"$', (*) => defaultScale.configure("from"))
+
+            variable := stdlib.tkinter.IntVar(root, 7, "ttk_labeled_value")
+            top := stdlib.tkinter.ttk.LabeledScale(root, { variable: variable, from_: 2, to: 12, compound: "top", name: "ttk_labeled_top" })
+            bottom := stdlib.tkinter.ttk.LabeledScale(root, { from_: 1, to: 3, compound: "bottom", name: "ttk_labeled_bottom" })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertTrue(top is stdlib.tkinter.ttk.LabeledScale)
+            AhkTest.AssertTrue(top is stdlib.tkinter.ttk.Frame)
+            AhkTest.AssertEqual(".ttk_labeled_top", String(top))
+            AhkTest.AssertSame(root, top.master)
+            AhkTest.AssertSame(root.tk, top.tk)
+            AhkTest.AssertEqual("ttk::frame", top.widgetName)
+            AhkTest.AssertEqual("TFrame", top.winfo_class())
+            AhkTest.AssertEqual(2, top.value)
+            AhkTest.AssertEqual(2, variable.get())
+            AhkTest.AssertEqual(2, top.scale.cget("from"))
+            AhkTest.AssertEqual(12, top.scale.cget("to"))
+            AhkTest.AssertEqual("ttk_labeled_value", top.scale.cget("variable"))
+            AhkTest.AssertEqual("", top.label.cget("text"))
+            AhkTest.AssertEqual("bottom", top.scale.pack_info()["side"])
+            AhkTest.AssertEqual("n", top.label.place_info()["anchor"])
+            AhkTest.AssertEqual("top", bottom.scale.pack_info()["side"])
+            AhkTest.AssertEqual("s", bottom.label.place_info()["anchor"])
+
+            top.value := 9
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(9, top.value)
+            AhkTest.AssertEqual(9, variable.get())
+            AhkTest.AssertEqual("9", String(top.label.cget("text")))
+
+            top.value := 99
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(9, top.value)
+            AhkTest.AssertEqual(9, variable.get())
+            AhkTest.AssertEqual("9", String(top.label.cget("text")))
+
+            AhkTest.AssertEqual(stdlib.None, top.destroy())
+            AhkTest.AssertEqual(stdlib.None, top.scale)
+            AhkTest.AssertEqual(stdlib.None, top.label)
+            AhkTest.RaisesMatch(AttributeError, "^'LabeledScale' object has no attribute '_variable'$", (*) => top.value)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkLabeledScaleIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            labeled := stdlib.tkinter.ttk.LabeledScale(root, { from_: 0, to: 10, name: "ttk_labeled_identify_sequence" })
+            labeled.pack()
+            root.update_idletasks()
+
+            AhkTest.AssertEqual("", labeled.identify(5, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_labeled_identify_sequence identify \?what\? x y"$', (*) => labeled.identify(stdlib.None, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_labeled_identify_sequence identify \?what\? x y"$', (*) => labeled.identify(5, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_labeled_identify_sequence identify \?what\? x y"$', (*) => labeled.identify(stdlib.None, stdlib.None))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => labeled.identify([], 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => labeled.identify(stdlib.tuple(), 5))
+            AhkTest.AssertEqual("", labeled.identify(["5"], 5))
+            AhkTest.AssertEqual("", labeled.identify(stdlib.tuple(["5"]), 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => labeled.identify(["5", "6"], 5))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => labeled.identify(5, []))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => labeled.identify(5, stdlib.tuple()))
+            AhkTest.AssertEqual("", labeled.identify(5, ["5"]))
+            AhkTest.AssertEqual("", labeled.identify(5, stdlib.tuple(["5"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => labeled.identify(5, ["5", "6"]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTtkScrollbarPublicSurfaceMatchesLocal310()
     {
         AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
@@ -1204,6 +3599,143 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => scrollbar.state(1))
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid state name d$", (*) => scrollbar.state("disabled"))
             AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => scrollbar.instate(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkScrollbarDeltaFractionSetNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            scrollbar := stdlib.tkinter.ttk.Scrollbar(root, { name: "ttk_scroll_sequence" })
+            scrollbar.pack()
+            root.update_idletasks()
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scroll_sequence delta dx dy"$', (*) => scrollbar.delta(stdlib.None, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scroll_sequence delta dx dy"$', (*) => scrollbar.delta(10, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => scrollbar.delta([], 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => scrollbar.delta(10, stdlib.tuple()))
+            AhkTest.AssertEqual(0.0, scrollbar.delta(["10"], 5))
+            AhkTest.AssertEqual(0.0, scrollbar.delta(10, stdlib.tuple(["5"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "10 11"$', (*) => scrollbar.delta(["10", "11"], 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => scrollbar.delta(10, ["bad"]))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scroll_sequence fraction x y"$', (*) => scrollbar.fraction(stdlib.None, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scroll_sequence fraction x y"$', (*) => scrollbar.fraction(10, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => scrollbar.fraction([], 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => scrollbar.fraction(10, stdlib.tuple()))
+            AhkTest.AssertEqual(0.0, scrollbar.fraction(["10"], 5))
+            AhkTest.AssertEqual(0.0, scrollbar.fraction(10, stdlib.tuple(["5"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "10 11"$', (*) => scrollbar.fraction(["10", "11"], 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => scrollbar.fraction(10, ["bad"]))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scroll_sequence set first last"$', (*) => scrollbar.set(stdlib.None, 0.75))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scroll_sequence set first last"$', (*) => scrollbar.set(0.25, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => scrollbar.set([], 0.75))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => scrollbar.set(0.25, stdlib.tuple()))
+            AhkTest.AssertEqual(stdlib.None, scrollbar.set(["0.25"], 0.75))
+            AhkTest.AssertEqual(stdlib.tuple([0.25, 0.75]), scrollbar.get())
+            AhkTest.AssertEqual(stdlib.None, scrollbar.set(0.25, stdlib.tuple(["0.75"])))
+            AhkTest.AssertEqual(stdlib.tuple([0.25, 0.75]), scrollbar.get())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "0.25 0.5"$', (*) => scrollbar.set(["0.25", "0.5"], 0.75))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => scrollbar.set(0.25, ["bad"]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkScrollbarIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            scrollbar := stdlib.tkinter.ttk.Scrollbar(root, { name: "ttk_scroll_identify_sequence" })
+            scrollbar.pack()
+            root.update_idletasks()
+
+            AhkTest.AssertEqual("", scrollbar.identify(5, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scroll_identify_sequence identify \?what\? x y"$', (*) => scrollbar.identify(stdlib.None, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scroll_identify_sequence identify \?what\? x y"$', (*) => scrollbar.identify(5, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_scroll_identify_sequence identify \?what\? x y"$', (*) => scrollbar.identify(stdlib.None, stdlib.None))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => scrollbar.identify([], 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => scrollbar.identify(stdlib.tuple(), 5))
+            AhkTest.AssertEqual("", scrollbar.identify(["5"], 5))
+            AhkTest.AssertEqual("", scrollbar.identify(stdlib.tuple(["5"]), 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => scrollbar.identify(["5", "6"], 5))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => scrollbar.identify(5, []))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => scrollbar.identify(5, stdlib.tuple()))
+            AhkTest.AssertEqual("", scrollbar.identify(5, ["5"]))
+            AhkTest.AssertEqual("", scrollbar.identify(5, stdlib.tuple(["5"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => scrollbar.identify(5, ["5", "6"]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkInheritedClassicCommandSequenceMethodsMatchLocal310()
+    {
+        badScrollbarActivate := '^bad command "activate": must be configure, cget, delta, fraction, get, identify, instate, set, or state$'
+        badPanedProxy := '^bad command "proxy": must be add, configure, cget, forget, identify, insert, instate, pane, panes, sashpos, or state$'
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            scrollbar := stdlib.tkinter.ttk.Scrollbar(root, { name: "ttk_scroll_activate_sequence" })
+            scrollbar.pack()
+
+            paned := stdlib.tkinter.ttk.Panedwindow(root, { orient: "horizontal", name: "ttk_paned_inherited_sequence" })
+            left := stdlib.tkinter.ttk.Frame(paned, { width: 40, height: 20, name: "left" })
+            right := stdlib.tkinter.ttk.Frame(paned, { width: 40, height: 20, name: "right" })
+            paned.add(left, { weight: 1 })
+            paned.add(right, { weight: 1 })
+            paned.pack()
+            root.update_idletasks()
+            root.update()
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badScrollbarActivate, scrollbar, "activate")
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badScrollbarActivate, scrollbar, "activate", stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badScrollbarActivate, scrollbar, "activate", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badScrollbarActivate, scrollbar, "activate", stdlib.tuple())
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badScrollbarActivate, scrollbar, "activate", ["slider"])
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badPanedProxy, paned, "proxy")
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badPanedProxy, paned, "proxy", stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badPanedProxy, paned, "proxy", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badPanedProxy, paned, "proxy", stdlib.tuple())
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badPanedProxy, paned, "proxy", ["coord"])
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badPanedProxy, paned, "proxy_place", stdlib.None, 6)
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badPanedProxy, paned, "proxy_place", [], 6)
+            StdlibTkinterTest.AssertTclCallRaisesMatch(badPanedProxy, paned, "proxy_place", [5, 6], 6)
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.ttk_paned_inherited_sequence sashpos index \?newpos\?"$', paned, "sash", stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', paned, "sash", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "coord"$', paned, "sash", ["coord"])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "coord"$', paned, "sash_coord", stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "coord"$', paned, "sash_coord", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "coord"$', paned, "sash_coord", [0])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "mark"$', paned, "sash_mark", stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "mark"$', paned, "sash_mark", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "place"$', paned, "sash_place", stdlib.None, 20, 21)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.ttk_paned_inherited_sequence sashpos index \?newpos\?"$', paned, "sash_place", [], 20, 21)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "place"$', paned, "sash_place", 0, stdlib.None, 21)
+
+            AhkTest.AssertTrue(paned.sashpos(0) is Integer)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.ttk_paned_inherited_sequence sashpos index \?newpos\?"$', paned, "sashpos", stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', paned, "sashpos", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', paned, "sashpos", stdlib.tuple())
+            AhkTest.AssertTrue(paned.sashpos([0]) is Integer)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "0 1"$', paned, "sashpos", [0, 1])
+            AhkTest.AssertTrue(paned.sashpos(0, stdlib.None) is Integer)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', paned, "sashpos", 0, [])
+            AhkTest.AssertTrue(paned.sashpos(0, [33]) is Integer)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "33 34"$', paned, "sashpos", 0, [33, 34])
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -1289,10 +3821,15 @@ class StdlibTkinterTest
             AhkTest.AssertEqual("", tabInfo["image"])
             AhkTest.AssertEqual("", tabInfo["compound"])
             AhkTest.AssertEqual(-1, tabInfo["underline"])
+            AhkTest.AssertEqual(tabInfo, notebook.tab(pageOne, stdlib.None))
             AhkTest.AssertEqual("Page One", notebook.tab(pageOne, "text"))
             AhkTest.AssertEqual(stdlib.tuple(["4"]), notebook.tab(pageOne, "padding"))
             AhkTest.AssertEqual("nsew", notebook.tab(pageOne, "sticky"))
             AhkTest.AssertEqual("normal", notebook.tab(pageOne, "state"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-"$', (*) => notebook.tab(pageOne, ""))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-0"$', (*) => notebook.tab(pageOne, 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-False"$', (*) => notebook.tab(pageOne, stdlib.False))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-True"$', (*) => notebook.tab(pageOne, stdlib.True))
             AhkTest.AssertEqual(Map(), notebook.tab(pageOne, { text: "One", state: "disabled" }))
             AhkTest.AssertEqual("One", notebook.tab(pageOne, "text"))
             AhkTest.AssertEqual("disabled", notebook.tab(pageOne, "state"))
@@ -1318,6 +3855,2105 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(TypeError, "^Notebook\.tab\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => notebook.tab(pageThree, "text", "extra"))
             AhkTest.RaisesMatch(TypeError, "^Notebook\.tabs\(\) takes 1 positional argument but 2 were given$", (*) => notebook.tabs("extra"))
             AhkTest.RaisesMatch(TypeError, "^Notebook\.enable_traversal\(\) takes 1 positional argument but 2 were given$", (*) => notebook.enable_traversal("extra"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkNotebookTabIdNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            notebook := stdlib.tkinter.ttk.Notebook(root, { name: "ttk_notebook_tabid_sequence" })
+            pageOne := stdlib.tkinter.ttk.Frame(notebook, { name: "page_one" })
+            pageTwo := stdlib.tkinter.ttk.Frame(notebook, { name: "page_two" })
+            AhkTest.AssertEqual(stdlib.None, notebook.add(pageOne, { text: "One" }))
+            AhkTest.AssertEqual(stdlib.None, notebook.add(pageTwo, { text: "Two" }))
+            AhkTest.AssertEqual(stdlib.None, notebook.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_notebook_tabid_sequence index tab"$', (*) => notebook.index(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => notebook.index([]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => notebook.index(stdlib.tuple()))
+            AhkTest.AssertEqual(0, notebook.index([String(pageOne)]))
+            AhkTest.AssertEqual(0, notebook.index(stdlib.tuple([String(pageOne)])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification missing tab$", (*) => notebook.index(["missing", "tab"]))
+
+            AhkTest.AssertEqual(String(pageOne), notebook.select(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => notebook.select([]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => notebook.select(stdlib.tuple()))
+            AhkTest.AssertEqual("", notebook.select([String(pageTwo)]))
+            AhkTest.AssertEqual(String(pageTwo), notebook.select(stdlib.None))
+            AhkTest.AssertEqual("", notebook.select(stdlib.tuple([String(pageOne)])))
+            AhkTest.AssertEqual(String(pageOne), notebook.select(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification missing tab$", (*) => notebook.select(["missing", "tab"]))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_notebook_tabid_sequence tab tab \?-option \?value\?\?\.\.\."$', (*) => notebook.tab(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_notebook_tabid_sequence tab tab \?-option \?value\?\?\.\.\."$', (*) => notebook.tab(stdlib.None, "text"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => notebook.tab([]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => notebook.tab(stdlib.tuple()))
+            pageOneTab := notebook.tab([String(pageOne)])
+            AhkTest.AssertEqual("One", pageOneTab["text"])
+            AhkTest.AssertEqual("normal", pageOneTab["state"])
+            AhkTest.AssertEqual(pageOneTab, notebook.tab(stdlib.tuple([String(pageOne)])))
+            AhkTest.AssertEqual("One", notebook.tab([String(pageOne)], "text"))
+            AhkTest.AssertEqual(Map(), notebook.tab([String(pageOne)], { text: "One Updated" }))
+            AhkTest.AssertEqual("One Updated", notebook.tab(String(pageOne), "text"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification missing tab$", (*) => notebook.tab(["missing", "tab"]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            notebook := stdlib.tkinter.ttk.Notebook(root, { name: "ttk_notebook_tabid_hide" })
+            pageOne := stdlib.tkinter.ttk.Frame(notebook, { name: "page_one" })
+            pageTwo := stdlib.tkinter.ttk.Frame(notebook, { name: "page_two" })
+            notebook.add(pageOne, { text: "One" })
+            notebook.add(pageTwo, { text: "Two" })
+            root.update_idletasks()
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_notebook_tabid_hide hide tab"$', (*) => notebook.hide(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => notebook.hide([]))
+            AhkTest.AssertEqual(stdlib.None, notebook.hide([String(pageOne)]))
+            AhkTest.AssertEqual(stdlib.None, notebook.hide(stdlib.tuple([String(pageTwo)])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification missing tab$", (*) => notebook.hide(["missing", "tab"]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            notebook := stdlib.tkinter.ttk.Notebook(root, { name: "ttk_notebook_tabid_forget" })
+            pageOne := stdlib.tkinter.ttk.Frame(notebook, { name: "page_one" })
+            pageTwo := stdlib.tkinter.ttk.Frame(notebook, { name: "page_two" })
+            notebook.add(pageOne, { text: "One" })
+            notebook.add(pageTwo, { text: "Two" })
+            root.update_idletasks()
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_notebook_tabid_forget forget tab"$', (*) => notebook.forget(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => notebook.forget([]))
+            AhkTest.AssertEqual(stdlib.None, notebook.forget([String(pageOne)]))
+            AhkTest.AssertEqual(stdlib.None, notebook.forget(stdlib.tuple([String(pageTwo)])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification missing tab$", (*) => notebook.forget(["missing", "tab"]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkNotebookAddInsertOptionsNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            notebook := stdlib.tkinter.ttk.Notebook(root, { name: "ttk_notebook_add_insert_options_sequence" })
+            first := stdlib.tkinter.ttk.Frame(notebook, { name: "first" })
+            second := stdlib.tkinter.ttk.Frame(notebook, { name: "second" })
+            third := stdlib.tkinter.ttk.Frame(notebook, { name: "third" })
+            fourth := stdlib.tkinter.ttk.Frame(notebook, { name: "fourth" })
+            spare := stdlib.tkinter.ttk.Frame(notebook, { name: "spare" })
+            insertedListPos := stdlib.tkinter.ttk.Frame(notebook, { name: "inserted_list_pos" })
+            insertedTupleChild := stdlib.tkinter.ttk.Frame(notebook, { name: "inserted_tuple_child" })
+            insertedBoolPos := stdlib.tkinter.ttk.Frame(notebook, { name: "inserted_bool_pos" })
+            notebook.pack()
+            root.update_idletasks()
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Bad -sticky specification n s$", (*) => notebook.add(first, { text: "First", padding: [1, 2], sticky: ["n", "s"] }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^\.ttk_notebook_add_insert_options_sequence\.second is not managed by \.ttk_notebook_add_insert_options_sequence$", (*) => notebook.tab(second))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_notebook_add_insert_options_sequence add window \?-option value \.\.\.\?"$', (*) => notebook.add(second, { text: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, notebook.add(third, { text: ["Third", "Page"], padding: stdlib.tuple() }))
+            AhkTest.AssertEqual("Third Page", notebook.tab(third, "text"))
+            AhkTest.AssertEqual("", notebook.tab(third, "padding"))
+            AhkTest.AssertEqual(stdlib.None, notebook.add(fourth, { text: stdlib.True, underline: stdlib.False }))
+            AhkTest.AssertEqual("1", notebook.tab(fourth, "text"))
+            AhkTest.AssertEqual(0, notebook.tab(fourth, "underline"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_notebook_add_insert_options_sequence add window \?-option value \.\.\.\?"$', (*) => notebook.add(stdlib.None, { text: "None child" }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name ""$', (*) => notebook.add([], { text: "Empty list child" }))
+            AhkTest.AssertEqual(stdlib.None, notebook.add([String(spare)], { text: "Spare list child" }))
+            AhkTest.AssertEqual(stdlib.tuple([String(third), String(fourth), String(spare)]), notebook.tabs())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_notebook_add_insert_options_sequence insert index slave \?-option value \.\.\.\?"$', (*) => notebook.insert(stdlib.None, insertedListPos, { text: "Inserted none pos" }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => notebook.insert([], insertedListPos, { text: "Inserted empty list pos" }))
+            AhkTest.AssertEqual(stdlib.None, notebook.insert([0], insertedListPos, { text: "Inserted list pos" }))
+            AhkTest.AssertEqual(stdlib.None, notebook.insert("end", stdlib.tuple([String(insertedTupleChild)]), { text: stdlib.tuple(["Tuple", "Child"]) }))
+            AhkTest.AssertEqual("Tuple Child", notebook.tab(insertedTupleChild, "text"))
+            AhkTest.AssertEqual(stdlib.None, notebook.insert(stdlib.True, insertedBoolPos, { text: "Bool pos" }))
+            AhkTest.AssertEqual(stdlib.tuple([String(insertedListPos), String(insertedBoolPos), String(third), String(fourth), String(spare), String(insertedTupleChild)]), notebook.tabs())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkNotebookTabKwargsNoneQueryMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            notebook := stdlib.tkinter.ttk.Notebook(root, { name: "ttk_notebook_tab_kwargs_none" })
+            first := stdlib.tkinter.ttk.Frame(notebook, { name: "first" })
+            second := stdlib.tkinter.ttk.Frame(notebook, { name: "second" })
+            notebook.add(first, { text: "First", padding: 4, state: "normal" })
+            notebook.add(second, { text: "Second", padding: [1, 2], state: "disabled" })
+            notebook.pack()
+            root.update_idletasks()
+
+            AhkTest.AssertEqual("normal", notebook.tab(first, { state: stdlib.None }))
+            AhkTest.AssertEqual("First", notebook.tab(first, { text: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.tuple(["4"]), notebook.tab(first, { padding: stdlib.None }))
+            AhkTest.AssertEqual("", notebook.tab(first, { compound: stdlib.None }))
+            AhkTest.AssertEqual(-1, notebook.tab(first, { underline: stdlib.None }))
+            AhkTest.AssertEqual("", notebook.tab(first, { image: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.tuple(["1", "2"]), notebook.tab(second, { padding: stdlib.None }))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad state "-text": must be normal, disabled, or hidden$', (*) => notebook.tab(first, { state: stdlib.None, text: stdlib.None }))
+            AhkTest.AssertEqual("First", notebook.tab(first, "text"))
+            AhkTest.AssertEqual("normal", notebook.tab(first, "state"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkNotebookIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            notebook := stdlib.tkinter.ttk.Notebook(root, { name: "ttk_notebook_identify_sequence" })
+            first := stdlib.tkinter.ttk.Frame(notebook, { name: "ttk_notebook_identify_first" })
+            second := stdlib.tkinter.ttk.Frame(notebook, { name: "ttk_notebook_identify_second" })
+            notebook.add(first, { text: "First" })
+            notebook.add(second, { text: "Second" })
+            notebook.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(notebook, "ttk_notebook_identify_sequence")
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewPublicSurfaceMatchesLocal310()
+    {
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter.ttk, "Treeview"))
+        AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'tk'$", (*) => stdlib.tkinter.ttk.Treeview("master"))
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            defaultTree := stdlib.tkinter.ttk.Treeview({ name: "ttk_tree_default_probe" })
+            AhkTest.AssertTrue(defaultTree is stdlib.tkinter.ttk.Treeview)
+            AhkTest.AssertEqual(".ttk_tree_default_probe", String(defaultTree))
+            AhkTest.AssertEqual("ttk::treeview", defaultTree.widgetName)
+            AhkTest.AssertEqual("Treeview", defaultTree.winfo_class())
+            AhkTest.AssertEqual(stdlib.tuple(), defaultTree.get_children())
+            AhkTest.AssertSame(defaultTree, defaultTree.master.nametowidget("ttk_tree_default_probe"))
+
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["name", "value"], displaycolumns: ["name"], height: 4, padding: 3, selectmode: "browse", show: ["tree", "headings"], style: "Probe.Treeview", takefocus: 1, cursor: "arrow", name: "ttk_tree_probe" })
+            AhkTest.AssertTrue(tree is stdlib.tkinter.ttk.Treeview)
+            AhkTest.AssertEqual(".ttk_tree_probe", String(tree))
+            AhkTest.AssertEqual("ttk::treeview", tree.widgetName)
+            AhkTest.AssertSame(root, tree.master)
+            AhkTest.AssertSame(root.tk, tree.tk)
+            AhkTest.AssertEqual("Treeview", tree.winfo_class())
+            AhkTest.AssertEqual(stdlib.tuple(["name", "value"]), tree.cget("columns"))
+            AhkTest.AssertEqual(stdlib.tuple(["name"]), tree.cget("displaycolumns"))
+            AhkTest.AssertEqual(4, tree.cget("height"))
+            AhkTest.AssertEqual(stdlib.tuple(["3"]), tree.cget("padding"))
+            AhkTest.AssertEqual("browse", tree.cget("selectmode"))
+            AhkTest.AssertEqual(stdlib.tuple(["tree", "headings"]), tree.cget("show"))
+            AhkTest.AssertEqual("Probe.Treeview", tree.cget("style"))
+            AhkTest.AssertEqual(1, tree.cget("takefocus"))
+            AhkTest.AssertEqual("arrow", tree.cget("cursor"))
+            AhkTest.AssertEqual("", tree.cget("class"))
+            AhkTest.AssertContains("columns", tree.keys())
+            AhkTest.AssertContains("displaycolumns", tree.keys())
+            AhkTest.AssertContains("height", tree.keys())
+            AhkTest.AssertContains("padding", tree.keys())
+            AhkTest.AssertContains("selectmode", tree.keys())
+            AhkTest.AssertContains("show", tree.keys())
+            AhkTest.AssertContains("style", tree.keys())
+            AhkTest.AssertContains("takefocus", tree.keys())
+            AhkTest.AssertContains("cursor", tree.keys())
+            AhkTest.AssertContains("class", tree.keys())
+            AhkTest.AssertContains("xscrollcommand", tree.keys())
+            AhkTest.AssertContains("yscrollcommand", tree.keys())
+            AhkTest.AssertEqual(stdlib.tuple(["columns", "columns", "Columns", "", stdlib.tuple(["name", "value"])]), tree.configure("columns"))
+            AhkTest.AssertEqual(stdlib.tuple(["displaycolumns", "displayColumns", "DisplayColumns", "#all", stdlib.tuple(["name"])]), tree.configure("displaycolumns"))
+            AhkTest.AssertEqual(stdlib.tuple(["height", "height", "Height", "10", 4]), tree.configure("height"))
+            AhkTest.AssertEqual(stdlib.tuple(["padding", "padding", "Pad", "", stdlib.tuple(["3"])]), tree.configure("padding"))
+            AhkTest.AssertEqual(stdlib.tuple(["selectmode", "selectMode", "SelectMode", "extended", "browse"]), tree.configure("selectmode"))
+            AhkTest.AssertEqual(stdlib.tuple(["show", "show", "Show", "tree headings", stdlib.tuple(["tree", "headings"])]), tree.configure("show"))
+            AhkTest.AssertEqual(stdlib.tuple(["style", "style", "Style", "", "Probe.Treeview"]), tree.configure("style"))
+            AhkTest.AssertEqual(stdlib.tuple(["takefocus", "takeFocus", "TakeFocus", "ttk::takefocus", 1]), tree.configure("takefocus"))
+            AhkTest.AssertEqual(stdlib.tuple(["cursor", "cursor", "Cursor", "", "arrow"]), tree.configure("cursor"))
+            AhkTest.AssertEqual(stdlib.tuple(["class", "", "", "", ""]), tree.configure("class"))
+            AhkTest.AssertSame(tree, root.nametowidget("ttk_tree_probe"))
+
+            AhkTest.AssertEqual(stdlib.tuple(), tree.get_children())
+            AhkTest.AssertEqual(stdlib.tuple(["name", "value"]), tree["columns"])
+            AhkTest.AssertEqual(Map(), tree.heading("name", { text: "Name", anchor: "w" }))
+            headingName := tree.heading("name")
+            AhkTest.AssertTrue(headingName is Map)
+            AhkTest.AssertEqual("Name", headingName["text"])
+            AhkTest.AssertEqual("", headingName["image"])
+            AhkTest.AssertEqual("w", headingName["anchor"])
+            AhkTest.AssertEqual("", headingName["command"])
+            AhkTest.AssertEqual("", headingName["state"])
+            AhkTest.AssertEqual(headingName, tree.heading("name", stdlib.None))
+            AhkTest.AssertEqual("Name", tree.heading("name", "text"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-"$', (*) => tree.heading("name", ""))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-0"$', (*) => tree.heading("name", 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-False"$', (*) => tree.heading("name", stdlib.False))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-True"$', (*) => tree.heading("name", stdlib.True))
+            AhkTest.AssertEqual(Map(), tree.column("name", { width: 120, minwidth: 20, stretch: 0, anchor: "center" }))
+            columnName := tree.column("name")
+            AhkTest.AssertTrue(columnName is Map)
+            AhkTest.AssertEqual(120, columnName["width"])
+            AhkTest.AssertEqual(20, columnName["minwidth"])
+            AhkTest.AssertEqual(0, columnName["stretch"])
+            AhkTest.AssertEqual("center", columnName["anchor"])
+            AhkTest.AssertEqual("name", columnName["id"])
+            AhkTest.AssertEqual(columnName, tree.column("name", stdlib.None))
+            AhkTest.AssertEqual(120, tree.column("name", "width"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-"$', (*) => tree.column("name", ""))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-0"$', (*) => tree.column("name", 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-False"$', (*) => tree.column("name", stdlib.False))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-True"$', (*) => tree.column("name", stdlib.True))
+
+            first := tree.insert("", "end", "first", { text: "First", values: ["alpha", 1], tags: ["odd"], open: 1 })
+            second := tree.insert("", "end", "second", { text: "Second", values: ["beta", 2] })
+            child := tree.insert(first, "end", "child", { text: "Child", values: ["gamma", 3] })
+            AhkTest.AssertEqual("first", first)
+            AhkTest.AssertEqual("second", second)
+            AhkTest.AssertEqual("child", child)
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second"]), tree.get_children())
+            AhkTest.AssertEqual(stdlib.tuple(["child"]), tree.get_children(first))
+            AhkTest.AssertEqual("first", tree.parent(child))
+            AhkTest.AssertEqual(1, tree.index(second))
+            AhkTest.AssertSame(stdlib.True, tree.exists(first))
+            AhkTest.AssertSame(stdlib.False, tree.exists("missing"))
+            itemFirst := tree.item(first)
+            AhkTest.AssertTrue(itemFirst is Map)
+            AhkTest.AssertEqual("First", itemFirst["text"])
+            AhkTest.AssertEqual("", itemFirst["image"])
+            AhkTest.AssertEqual(["alpha", 1], itemFirst["values"])
+            AhkTest.AssertEqual(1, itemFirst["open"])
+            AhkTest.AssertEqual(["odd"], itemFirst["tags"])
+            AhkTest.AssertEqual(itemFirst, tree.item(first, stdlib.None))
+            AhkTest.AssertEqual("First", tree.item(first, "text"))
+            AhkTest.AssertEqual(stdlib.tuple(["alpha", "1"]), tree.item(first, "values"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-"$', (*) => tree.item(first, ""))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-0"$', (*) => tree.item(first, 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-False"$', (*) => tree.item(first, stdlib.False))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-True"$', (*) => tree.item(first, stdlib.True))
+            AhkTest.AssertEqual(Map(), tree.item(first, { text: "First Updated", values: ["delta", 4] }))
+            AhkTest.AssertEqual("First Updated", tree.item(first, "text"))
+            AhkTest.AssertEqual("", tree.set(first, "name", "epsilon"))
+            AhkTest.AssertEqual("epsilon", tree.set(first, "name"))
+            setMap := tree.set(first)
+            AhkTest.AssertTrue(setMap is Map)
+            AhkTest.AssertEqual("epsilon", setMap["name"])
+            AhkTest.AssertEqual("4", setMap["value"])
+            AhkTest.AssertEqual(stdlib.tuple(), tree.selection())
+            AhkTest.AssertEqual(stdlib.None, tree.selection_set(first))
+            AhkTest.AssertEqual(stdlib.tuple(["first"]), tree.selection())
+            AhkTest.AssertEqual(stdlib.None, tree.selection_add(second))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second"]), tree.selection())
+            AhkTest.AssertEqual(stdlib.None, tree.selection_remove(first))
+            AhkTest.AssertEqual(stdlib.tuple(["second"]), tree.selection())
+            AhkTest.AssertEqual("", tree.focus())
+            AhkTest.AssertEqual("", tree.focus(first))
+            AhkTest.AssertEqual("first", tree.focus())
+            AhkTest.AssertEqual("", tree.bbox(first))
+            AhkTest.AssertEqual("first", tree.identify_row(5))
+            AhkTest.AssertEqual("#0", tree.identify_column(5))
+            AhkTest.AssertEqual("nothing", tree.identify_region(5, 5))
+            AhkTest.AssertEqual("second", tree.next(first))
+            AhkTest.AssertEqual("first", tree.prev(second))
+            AhkTest.AssertEqual(stdlib.None, tree.delete(child))
+            AhkTest.AssertSame(stdlib.False, tree.exists(child))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => stdlib.tkinter.ttk.Treeview(root, { bad: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.insert\(\) missing 2 required positional arguments: 'parent' and 'index'$", (*) => tree.insert())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.insert\(\) missing 1 required positional argument: 'index'$", (*) => tree.insert(""))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.insert\(\) takes from 3 to 4 positional arguments but 6 were given$", (*) => tree.insert("", "end", "x", {}, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.item\(\) missing 1 required positional argument: 'item'$", (*) => tree.item())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.item\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => tree.item(first, "text", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.heading\(\) missing 1 required positional argument: 'column'$", (*) => tree.heading())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.column\(\) missing 1 required positional argument: 'column'$", (*) => tree.column())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.get_children\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => tree.get_children("", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.exists\(\) missing 1 required positional argument: 'item'$", (*) => tree.exists())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.selection\(\) takes 1 positional argument but 3 were given$", (*) => tree.selection("set", first))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.item("missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid column index missing$", (*) => tree.column("missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid column index missing$", (*) => tree.heading("missing"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewStructureCommandsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["name"], height: 3, name: "ttk_tree_structure" })
+            first := tree.insert("", "end", "first", { text: "First", values: ["alpha"], open: 1 })
+            second := tree.insert("", "end", "second", { text: "Second", values: ["beta"] })
+            child := tree.insert(first, "end", "child", { text: "Child", values: ["gamma"] })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second"]), tree.get_children())
+            AhkTest.AssertEqual(stdlib.tuple(["child"]), tree.get_children(first))
+            AhkTest.AssertEqual("first", tree.parent(child))
+            AhkTest.AssertEqual(1, tree.index(second))
+
+            AhkTest.AssertEqual(stdlib.None, tree.detach(child))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second"]), tree.get_children())
+            AhkTest.AssertEqual(stdlib.tuple(), tree.get_children(first))
+            AhkTest.AssertSame(stdlib.True, tree.exists(child))
+            AhkTest.AssertEqual("", tree.parent(child))
+
+            AhkTest.AssertEqual(stdlib.None, tree.move(child, "", 0))
+            AhkTest.AssertEqual(stdlib.tuple(["child", "first", "second"]), tree.get_children())
+            AhkTest.AssertEqual("", tree.parent(child))
+            AhkTest.AssertEqual(0, tree.index(child))
+
+            AhkTest.AssertEqual(stdlib.None, tree.move(second, first, "end"))
+            AhkTest.AssertEqual(stdlib.tuple(["second"]), tree.get_children(first))
+            AhkTest.AssertEqual("first", tree.parent(second))
+
+            AhkTest.AssertEqual(stdlib.None, tree.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, tree.see(child))
+            AhkTest.AssertEqual(stdlib.None, tree.see(second))
+            AhkTest.AssertEqual(stdlib.None, tree.detach())
+
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.move\(\) missing 3 required positional arguments: 'item', 'parent', and 'index'$", (*) => tree.move())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.move\(\) missing 2 required positional arguments: 'parent' and 'index'$", (*) => tree.move(child))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.move\(\) missing 1 required positional argument: 'index'$", (*) => tree.move(child, ""))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.move\(\) takes 4 positional arguments but 5 were given$", (*) => tree.move(child, "", 0, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.see\(\) missing 1 required positional argument: 'item'$", (*) => tree.see())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.see\(\) takes 2 positional arguments but 3 were given$", (*) => tree.see(child, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.detach("missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.move("missing", "", 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.move(child, "missing", 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => tree.move(child, "", "bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.see("missing"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewColumnHeadingNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["name", "two words"], show: ["tree", "headings"], name: "ttk_tree_column_heading_sequence" })
+            tree.heading("#0", { text: "Tree" })
+            tree.heading("name", { text: "Name" })
+            tree.heading("two words", { text: "Two Words" })
+            tree.column("name", { width: 120, minwidth: 20, stretch: 0, anchor: "center" })
+            tree.column("two words", { width: 140, minwidth: 30, stretch: 1, anchor: "w" })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_column_heading_sequence column column -option value\.\.\."$', (*) => tree.column(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_column_heading_sequence column column -option value\.\.\."$', (*) => tree.column(stdlib.None, "width"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_column_heading_sequence column column -option value\.\.\."$', (*) => tree.column(stdlib.None, { width: 122 }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid column index $", (*) => tree.column([]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid column index $", (*) => tree.column(stdlib.tuple()))
+
+            nameColumn := tree.column(["name"])
+            AhkTest.AssertEqual(120, nameColumn["width"])
+            AhkTest.AssertEqual(20, nameColumn["minwidth"])
+            AhkTest.AssertEqual(0, nameColumn["stretch"])
+            AhkTest.AssertEqual("center", nameColumn["anchor"])
+            AhkTest.AssertEqual("name", nameColumn["id"])
+            AhkTest.AssertEqual(nameColumn, tree.column(stdlib.tuple(["name"])))
+            twoWordsColumn := tree.column(["two", "words"])
+            AhkTest.AssertEqual(140, twoWordsColumn["width"])
+            AhkTest.AssertEqual("two words", twoWordsColumn["id"])
+            AhkTest.AssertEqual(120, tree.column(["name"], "width"))
+            AhkTest.AssertEqual(140, tree.column(["two", "words"], "width"))
+            AhkTest.AssertEqual(Map(), tree.column(["name"], { width: 121 }))
+            AhkTest.AssertEqual(121, tree.column("name", "width"))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_column_heading_sequence heading column -option value\.\.\."$', (*) => tree.heading(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_column_heading_sequence heading column -option value\.\.\."$', (*) => tree.heading(stdlib.None, "text"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_column_heading_sequence heading column -option value\.\.\."$', (*) => tree.heading(stdlib.None, { text: "Bad" }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid column index $", (*) => tree.heading([]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid column index $", (*) => tree.heading(stdlib.tuple()))
+
+            nameHeading := tree.heading(["name"])
+            AhkTest.AssertEqual("Name", nameHeading["text"])
+            AhkTest.AssertEqual("center", nameHeading["anchor"])
+            AhkTest.AssertEqual(nameHeading, tree.heading(stdlib.tuple(["name"])))
+            twoWordsHeading := tree.heading(["two", "words"])
+            AhkTest.AssertEqual("Two Words", twoWordsHeading["text"])
+            AhkTest.AssertEqual("Name", tree.heading(["name"], "text"))
+            AhkTest.AssertEqual("Two Words", tree.heading(["two", "words"], "text"))
+            AhkTest.AssertEqual(Map(), tree.heading(["name"], { text: "Name Updated" }))
+            AhkTest.AssertEqual("Name Updated", tree.heading("name", "text"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewDeleteDetachSequenceOperandsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { name: "ttk_tree_delete_detach_sequences" })
+            first := tree.insert("", "end", "first", { text: "First" })
+            second := tree.insert("", "end", "second", { text: "Second" })
+            third := tree.insert("", "end", "third", { text: "Third" })
+            fourth := tree.insert("", "end", "fourth", { text: "Fourth" })
+            fifth := tree.insert("", "end", "fifth", { text: "Fifth" })
+            sixth := tree.insert("", "end", "sixth", { text: "Sixth" })
+            parent := tree.insert("", "end", "parent", { text: "Parent" })
+            nestedA := tree.insert(parent, "end", "nested_a", { text: "Nested A" })
+            nestedB := tree.insert(parent, "end", "nested_b", { text: "Nested B" })
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first second not found$", (*) => tree.delete([first, second]))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second", "third", "fourth", "fifth", "sixth", "parent"]), tree.get_children())
+            AhkTest.AssertSame(stdlib.True, tree.exists(first))
+            AhkTest.AssertSame(stdlib.True, tree.exists(second))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Cannot delete root item$", (*) => tree.delete([]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Cannot detach root item$", (*) => tree.detach(stdlib.tuple()))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item third fourth not found$", (*) => tree.detach(stdlib.tuple([third, fourth])))
+            AhkTest.AssertEqual("", tree.parent(third))
+            AhkTest.AssertEqual("", tree.parent(fourth))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item nested_a nested_b not found$", (*) => tree.detach([nestedA, nestedB]))
+            AhkTest.AssertEqual("parent", tree.parent(nestedA))
+            AhkTest.AssertEqual("parent", tree.parent(nestedB))
+            AhkTest.AssertEqual(stdlib.tuple(["nested_a", "nested_b"]), tree.get_children(parent))
+
+            AhkTest.AssertEqual(stdlib.None, tree.delete(fifth, sixth))
+            AhkTest.AssertSame(stdlib.False, tree.exists(fifth))
+            AhkTest.AssertSame(stdlib.False, tree.exists(sixth))
+            AhkTest.AssertEqual(stdlib.None, tree.delete())
+            AhkTest.AssertEqual(stdlib.None, tree.detach())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewReattachMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { name: "ttk_tree_reattach" })
+            first := tree.insert("", "end", "first", { text: "First" })
+            second := tree.insert("", "end", "second", { text: "Second" })
+            child := tree.insert(first, "end", "child", { text: "Child" })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertTrue(HasMethod(tree, "reattach"))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second"]), tree.get_children())
+            AhkTest.AssertEqual(stdlib.tuple(["child"]), tree.get_children(first))
+            AhkTest.AssertEqual("first", tree.parent(child))
+            AhkTest.AssertEqual(0, tree.index(child))
+
+            AhkTest.AssertEqual(stdlib.None, tree.detach(child))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second"]), tree.get_children())
+            AhkTest.AssertEqual(stdlib.tuple(), tree.get_children(first))
+            AhkTest.AssertSame(stdlib.True, tree.exists(child))
+            AhkTest.AssertEqual("", tree.parent(child))
+
+            AhkTest.AssertEqual(stdlib.None, tree.reattach(child, "", 0))
+            AhkTest.AssertEqual(stdlib.tuple(["child", "first", "second"]), tree.get_children())
+            AhkTest.AssertEqual("", tree.parent(child))
+            AhkTest.AssertEqual(0, tree.index(child))
+
+            AhkTest.AssertEqual(stdlib.None, tree.reattach(second, first, "end"))
+            AhkTest.AssertEqual(stdlib.tuple(["child", "first"]), tree.get_children())
+            AhkTest.AssertEqual(stdlib.tuple(["second"]), tree.get_children(first))
+            AhkTest.AssertEqual("first", tree.parent(second))
+            AhkTest.AssertEqual(0, tree.index(second))
+
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.move\(\) missing 3 required positional arguments: 'item', 'parent', and 'index'$", (*) => tree.reattach())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.move\(\) missing 2 required positional arguments: 'parent' and 'index'$", (*) => tree.reattach(child))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.move\(\) missing 1 required positional argument: 'index'$", (*) => tree.reattach(child, ""))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.move\(\) takes 4 positional arguments but 5 were given$", (*) => tree.reattach(child, "", 0, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.reattach("missing", "", 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.reattach(child, "missing", 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => tree.reattach(child, "", "bad"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewMutationNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["value"], show: ["tree", "headings"], name: "ttk_tree_mutation_sequence" })
+            tree.heading("value", { text: "Value" })
+            tree.column("value", { width: 80 })
+            first := tree.insert("", "end", "first", { text: "First", values: ["one"] })
+            second := tree.insert("", "end", "second", { text: "Second", values: ["two"] })
+            child := tree.insert(first, "end", "child", { text: "Child", values: ["child"] })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_mutation_sequence insert parent index \?-id id\? -options\.\.\."$', (*) => tree.insert(stdlib.None, "end", "none_parent"))
+            AhkTest.AssertEqual("empty_list_parent", tree.insert([], "end", "empty_list_parent"))
+            AhkTest.AssertEqual("empty_tuple_parent", tree.insert(stdlib.tuple(), "end", "empty_tuple_parent"))
+            AhkTest.AssertEqual("list_parent", tree.insert(["first"], "end", "list_parent"))
+            AhkTest.AssertEqual("tuple_parent", tree.insert(stdlib.tuple(["first"]), "end", "tuple_parent"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.insert(["first", "child"], "end", "bad_parent"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.insert(stdlib.tuple(["first", "child"]), "end", "bad_parent_tuple"))
+
+            generated := tree.insert("", "end", stdlib.None, { text: "None iid" })
+            AhkTest.AssertRegex(generated, "^I\d+$")
+            AhkTest.AssertEqual("list iid", tree.insert("", "end", ["list", "iid"], { text: "List iid" }))
+            AhkTest.AssertEqual("tuple iid", tree.insert("", "end", stdlib.tuple(["tuple", "iid"]), { text: "Tuple iid" }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item  already exists$", (*) => tree.insert("", "end", [], { text: "Empty list iid" }))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item  already exists$", (*) => tree.insert("", "end", stdlib.tuple(), { text: "Empty tuple iid" }))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_mutation_sequence move item parent index"$', (*) => tree.move(stdlib.None, "", 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_mutation_sequence move item parent index"$', (*) => tree.move("second", stdlib.None, "end"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Cannot insert  as descendant of $", (*) => tree.move([], "", 0))
+            AhkTest.AssertEqual(stdlib.None, tree.move(["second"], ["first"], "end"))
+            AhkTest.AssertEqual("first", tree.parent("second"))
+            AhkTest.AssertEqual(stdlib.None, tree.move(stdlib.tuple(["second"]), stdlib.tuple(), "end"))
+            AhkTest.AssertEqual("", tree.parent("second"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.move(["first", "child"], "", 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.move("second", ["first", "child"], "end"))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_mutation_sequence children item \?newchildren\?"$', (*) => tree.set_children(stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, tree.set_children([], "first"))
+            AhkTest.AssertEqual(stdlib.tuple(["first"]), tree.get_children())
+            AhkTest.AssertEqual(stdlib.None, tree.set_children(stdlib.tuple(), "first", "second"))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second"]), tree.get_children())
+            AhkTest.AssertEqual(stdlib.None, tree.set_children(["first"], "child"))
+            AhkTest.AssertEqual(stdlib.tuple(["child"]), tree.get_children("first"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.set_children(["first", "child"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item None not found$", (*) => tree.set_children("", stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Cannot insert  as descendant of $", (*) => tree.set_children("", []))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewSelectionOpsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { selectmode: "extended", name: "ttk_tree_selection_ops" })
+            first := tree.insert("", "end", "first", { text: "First" })
+            second := tree.insert("", "end", "second", { text: "Second" })
+            third := tree.insert("", "end", "third", { text: "Third" })
+
+            AhkTest.AssertEqual(stdlib.tuple(), tree.selection())
+            AhkTest.AssertEqual(stdlib.None, tree.selection_set())
+            AhkTest.AssertEqual(stdlib.tuple(), tree.selection())
+            AhkTest.AssertEqual(stdlib.None, tree.selection_set(stdlib.tuple([first, second])))
+            AhkTest.AssertEqual(stdlib.tuple([first, second]), tree.selection())
+            AhkTest.AssertEqual(stdlib.None, tree.selection_remove([first]))
+            AhkTest.AssertEqual(stdlib.tuple([second]), tree.selection())
+            AhkTest.AssertEqual(stdlib.None, tree.selection_add(first, third))
+            AhkTest.AssertEqual(stdlib.tuple([first, second, third]), tree.selection())
+            AhkTest.AssertEqual(stdlib.None, tree.selection_toggle(stdlib.tuple([second, third])))
+            AhkTest.AssertEqual(stdlib.tuple([first]), tree.selection())
+            AhkTest.AssertEqual(stdlib.None, tree.selection_toggle([first, third]))
+            AhkTest.AssertEqual(stdlib.tuple([third]), tree.selection())
+            AhkTest.AssertEqual(stdlib.None, tree.selection_add([]))
+            AhkTest.AssertEqual(stdlib.tuple([third]), tree.selection())
+
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.selection\(\) takes 1 positional argument but 2 were given$", (*) => tree.selection("extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.selection_set("missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.selection_add("missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.selection_remove("missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.selection_toggle("missing"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewIdentifyElementMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["name"], show: ["tree", "headings"], height: 3, name: "ttk_tree_identify_element" })
+            first := tree.insert("", "end", "first", { text: "First", values: ["alpha"] })
+            AhkTest.AssertEqual(Map(), tree.heading("#0", { text: "Item" }))
+            AhkTest.AssertEqual(Map(), tree.heading("name", { text: "Name" }))
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual("first", tree.identify_row(5))
+            AhkTest.AssertEqual("#0", tree.identify_column(5))
+            AhkTest.AssertEqual("nothing", tree.identify_region(5, 5))
+            AhkTest.AssertEqual("", tree.identify_element(5, 5))
+            AhkTest.AssertEqual("", tree.identify("element", 5, 5))
+            AhkTest.AssertEqual("", tree.identify_element(999, 999))
+            AhkTest.AssertEqual("", tree.identify("element", 999, 999))
+
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.identify_element\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => tree.identify_element())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.identify_element\(\) missing 1 required positional argument: 'y'$", (*) => tree.identify_element(1))
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.identify_element\(\) takes 3 positional arguments but 4 were given$", (*) => tree.identify_element(1, 2, 3))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => tree.identify_element("bad", 1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => tree.identify_element(1, "bad"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewIdentifyWrapperCoordinatesNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["name"], show: ["tree", "headings"], height: 3, name: "ttk_tree_identify_wrappers_sequence" })
+            first := tree.insert("", "end", "first", { text: "First", values: ["alpha"] })
+            AhkTest.AssertEqual(Map(), tree.heading("#0", { text: "Item" }))
+            AhkTest.AssertEqual(Map(), tree.heading("name", { text: "Name" }))
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual("first", tree.identify_row(["5"]))
+            AhkTest.AssertEqual("#0", tree.identify_column(stdlib.tuple(["5"])))
+            AhkTest.AssertEqual("nothing", tree.identify_region(["5"], 5))
+            AhkTest.AssertEqual("nothing", tree.identify_region(5, stdlib.tuple(["5"])))
+            AhkTest.AssertEqual("", tree.identify_element(["5"], 5))
+            AhkTest.AssertEqual("", tree.identify_element(5, stdlib.tuple(["5"])))
+            AhkTest.AssertEqual("nothing", tree.identify("region", ["5"], 5))
+            AhkTest.AssertEqual("nothing", tree.identify("region", 5, stdlib.tuple(["5"])))
+            AhkTest.AssertEqual("#0", tree.identify("column", ["5"], 0))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => tree.identify_column([]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => tree.identify_row(["5", "6"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => tree.identify_region(5, ["5", "6"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_identify_wrappers_sequence identify command x y"$', (*) => tree.identify("region", stdlib.None, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "region"$', (*) => tree.identify("region", 5, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_identify_wrappers_sequence identify command x y"$', (*) => tree.identify("column", stdlib.None, 0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "row"$', (*) => tree.identify_row(stdlib.None))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewIdentifyComponentNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["name"], show: ["tree", "headings"], height: 3, name: "ttk_tree_identify_component" })
+            first := tree.insert("", "end", "first", { text: "First", values: ["alpha"] })
+            AhkTest.AssertEqual(Map(), tree.heading("#0", { text: "Item" }))
+            AhkTest.AssertEqual(Map(), tree.heading("name", { text: "Name" }))
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual("", tree.identify("element", 5, 5))
+            AhkTest.AssertEqual("nothing", tree.identify("region", 5, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_identify_component identify command x y"$', (*) => tree.identify(stdlib.None, 5, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "": must be region, item, column, row, or element$', (*) => tree.identify([], 5, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "": must be region, item, column, row, or element$', (*) => tree.identify(stdlib.tuple(), 5, 5))
+            AhkTest.AssertEqual("", tree.identify(["element"], 5, 5))
+            AhkTest.AssertEqual("", tree.identify(stdlib.tuple(["element"]), 5, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "element extra": must be region, item, column, row, or element$', (*) => tree.identify(["element", "extra"], 5, 5))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad command "element extra": must be region, item, column, row, or element$', (*) => tree.identify(stdlib.tuple(["element", "extra"]), 5, 5))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewSetChildrenMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { name: "ttk_tree_set_children" })
+            first := tree.insert("", "end", "first", { text: "First" })
+            second := tree.insert("", "end", "second", { text: "Second" })
+            third := tree.insert("", "end", "third", { text: "Third" })
+            child := tree.insert(first, "end", "child", { text: "Child" })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second", "third"]), tree.get_children())
+            AhkTest.AssertEqual(stdlib.tuple(["child"]), tree.get_children(first))
+            AhkTest.AssertEqual(stdlib.None, tree.set_children("", third, first))
+            AhkTest.AssertEqual(stdlib.tuple(["third", "first"]), tree.get_children())
+            AhkTest.AssertSame(stdlib.True, tree.exists(second))
+            AhkTest.AssertEqual("", tree.parent(second))
+            AhkTest.AssertEqual(stdlib.tuple(["child"]), tree.get_children(first))
+
+            AhkTest.AssertEqual(stdlib.None, tree.set_children(first))
+            AhkTest.AssertEqual(stdlib.tuple(), tree.get_children(first))
+            AhkTest.AssertSame(stdlib.True, tree.exists(child))
+            AhkTest.AssertEqual("", tree.parent(child))
+            AhkTest.AssertEqual(stdlib.None, tree.set_children(first, child))
+            AhkTest.AssertEqual(stdlib.tuple(["child"]), tree.get_children(first))
+            AhkTest.AssertEqual("first", tree.parent(child))
+            AhkTest.AssertEqual(stdlib.None, tree.set_children("", first, first))
+
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.set_children\(\) missing 1 required positional argument: 'item'$", (*) => tree.set_children())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.set_children("missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.set_children("", "missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Cannot insert first as descendant of first$", (*) => tree.set_children(first, first))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewTagHasMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { name: "ttk_tree_tag_has" })
+            first := tree.insert("", "end", "first", { text: "First", tags: ["odd", "all rows"] })
+            second := tree.insert("", "end", "second", { text: "Second", tags: ["even"] })
+            child := tree.insert(first, "end", "child", { text: "Child", tags: ["odd", "child tag"] })
+            plain := tree.insert("", "end", "plain", { text: "Plain" })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual(stdlib.tuple(["first", "child"]), tree.tag_has("odd"))
+            AhkTest.AssertEqual(stdlib.tuple(["second"]), tree.tag_has("even"))
+            AhkTest.AssertEqual(stdlib.tuple(["first"]), tree.tag_has("all rows"))
+            AhkTest.AssertEqual(stdlib.tuple(["child"]), tree.tag_has("child tag"))
+            AhkTest.AssertEqual(stdlib.tuple(), tree.tag_has("missing"))
+            AhkTest.AssertSame(stdlib.True, tree.tag_has("odd", first))
+            AhkTest.AssertSame(stdlib.False, tree.tag_has("odd", second))
+            AhkTest.AssertSame(stdlib.True, tree.tag_has("odd", child))
+            AhkTest.AssertSame(stdlib.False, tree.tag_has("odd", plain))
+            AhkTest.AssertSame(stdlib.False, tree.tag_has("missing", first))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "child"]), tree.tag_has("odd", stdlib.None))
+
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.tag_has\(\) missing 1 required positional argument: 'tagname'$", (*) => tree.tag_has())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.tag_has\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => tree.tag_has("odd", first, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item missing not found$", (*) => tree.tag_has("odd", "missing"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewItemTagNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["value"], name: "ttk_tree_item_tag_sequence" })
+            first := tree.insert("", "end", "first", { text: "First", values: ["one"], tags: ["odd", "all rows"] })
+            second := tree.insert("", "end", "second", { text: "Second", values: ["two"], tags: ["even"] })
+            child := tree.insert(first, "end", "child", { text: "Child", values: ["child"], tags: ["odd", "child tag"] })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_item_tag_sequence exists itemid"$', (*) => tree.exists(stdlib.None))
+            AhkTest.AssertSame(stdlib.True, tree.exists([]))
+            AhkTest.AssertSame(stdlib.True, tree.exists(stdlib.tuple()))
+            AhkTest.AssertSame(stdlib.True, tree.exists(["first"]))
+            AhkTest.AssertSame(stdlib.True, tree.exists(stdlib.tuple(["first"])))
+            AhkTest.AssertSame(stdlib.False, tree.exists(["first", "child"]))
+            AhkTest.AssertSame(stdlib.False, tree.exists(stdlib.tuple(["first", "child"])))
+
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second"]), tree.get_children(stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second"]), tree.get_children([]))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "second"]), tree.get_children(stdlib.tuple()))
+            AhkTest.AssertEqual(stdlib.tuple(["child"]), tree.get_children(["first"]))
+            AhkTest.AssertEqual(stdlib.tuple(["child"]), tree.get_children(stdlib.tuple(["first"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.get_children(["first", "child"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.get_children(stdlib.tuple(["first", "child"])))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_item_tag_sequence tag has tagName \?item\?"$', (*) => tree.tag_has(stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(), tree.tag_has([]))
+            AhkTest.AssertEqual(stdlib.tuple(), tree.tag_has(stdlib.tuple()))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "child"]), tree.tag_has(["odd"]))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "child"]), tree.tag_has(stdlib.tuple(["odd"])))
+            AhkTest.AssertEqual(stdlib.tuple(["first"]), tree.tag_has(["all", "rows"]))
+            AhkTest.AssertEqual(stdlib.tuple(["first"]), tree.tag_has(stdlib.tuple(["all", "rows"])))
+            AhkTest.AssertEqual(stdlib.tuple(["first", "child"]), tree.tag_has("odd", stdlib.None))
+            AhkTest.AssertSame(stdlib.False, tree.tag_has("odd", []))
+            AhkTest.AssertSame(stdlib.True, tree.tag_has("odd", ["first"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.tag_has("odd", ["first", "child"]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewRemainingItemNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["value"], show: ["tree", "headings"], name: "ttk_tree_remaining_item_sequence" })
+            tree.heading("value", { text: "Value" })
+            tree.column("value", { width: 80 })
+            tree.pack()
+            first := tree.insert("", "end", "first", { text: "First", values: ["one"], tags: ["odd"] })
+            second := tree.insert("", "end", "second", { text: "Second", values: ["two"], tags: ["even"] })
+            child := tree.insert(first, "end", "child", { text: "Child", values: ["child"], tags: ["odd"] })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_remaining_item_sequence bbox itemid \?column"$', (*) => tree.bbox(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_remaining_item_sequence index item"$', (*) => tree.index(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_remaining_item_sequence item item \?option \?value\?\?...\"$', (*) => tree.item(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_remaining_item_sequence next item"$', (*) => tree.next(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_remaining_item_sequence parent item"$', (*) => tree.parent(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_remaining_item_sequence prev item"$', (*) => tree.prev(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_remaining_item_sequence see item"$', (*) => tree.see(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_remaining_item_sequence set item \?column \?value\?\?"$', (*) => tree.set(stdlib.None))
+
+            AhkTest.AssertEqual(0, tree.index([]))
+            AhkTest.AssertEqual(0, tree.index(stdlib.tuple()))
+            AhkTest.AssertEqual(0, tree.index(["first"]))
+            AhkTest.AssertEqual(0, tree.index(stdlib.tuple(["first"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.index(["first", "child"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.index(stdlib.tuple(["first", "child"])))
+
+            emptyItem := tree.item([])
+            AhkTest.AssertEqual("", emptyItem["text"])
+            AhkTest.AssertEqual("", emptyItem["image"])
+            AhkTest.AssertEqual("", emptyItem["values"])
+            AhkTest.AssertEqual(0, emptyItem["open"])
+            AhkTest.AssertEqual("", emptyItem["tags"])
+            firstItem := tree.item(["first"])
+            AhkTest.AssertEqual("First", firstItem["text"])
+            AhkTest.AssertEqual(["one"], firstItem["values"])
+            AhkTest.AssertEqual(["odd"], firstItem["tags"])
+            AhkTest.AssertEqual(firstItem, tree.item(stdlib.tuple(["first"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.item(["first", "child"]))
+
+            AhkTest.AssertEqual("", tree.next([]))
+            AhkTest.AssertEqual("second", tree.next(["first"]))
+            AhkTest.AssertEqual("second", tree.next(stdlib.tuple(["first"])))
+            AhkTest.AssertEqual("", tree.parent(["first"]))
+            AhkTest.AssertEqual("", tree.prev(["first"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.next(["first", "child"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.parent(["first", "child"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.prev(["first", "child"]))
+
+            AhkTest.AssertEqual(stdlib.None, tree.see([]))
+            AhkTest.AssertEqual(stdlib.None, tree.see(["first"]))
+            AhkTest.AssertEqual(stdlib.None, tree.see(stdlib.tuple(["first"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.see(["first", "child"]))
+
+            AhkTest.AssertEqual(Map(), tree.set([]))
+            AhkTest.AssertEqual(Map("value", "one"), tree.set(["first"]))
+            AhkTest.AssertEqual(Map("value", "one"), tree.set(stdlib.tuple(["first"])))
+            AhkTest.AssertEqual("one", tree.set(["first"], "value"))
+            AhkTest.AssertEqual("one", tree.set(stdlib.tuple(["first"]), "value"))
+            AhkTest.AssertEqual("", tree.set(["first"], "value", "changed"))
+            AhkTest.AssertEqual("changed", tree.set("first", "value"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.set(["first", "child"]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first child not found$", (*) => tree.set(stdlib.tuple(["first", "child"])))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewBboxSetColumnNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["name", "two words"], show: ["tree", "headings"], height: 3, name: "ttk_tree_bbox_set_column_sequence" })
+            tree.heading("#0", { text: "Tree" })
+            tree.heading("name", { text: "Name" })
+            tree.heading("two words", { text: "Two Words" })
+            tree.column("name", { width: 120 })
+            tree.column("two words", { width: 140 })
+            tree.pack()
+            first := tree.insert("", "end", "first", { text: "First", values: ["alpha", "beta"] })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual("", tree.bbox("first", stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid column index $", (*) => tree.bbox("first", []))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid column index $", (*) => tree.bbox("first", stdlib.tuple()))
+            AhkTest.AssertEqual("", tree.bbox("first", ["name"]))
+            AhkTest.AssertEqual("", tree.bbox("first", stdlib.tuple(["name"])))
+            AhkTest.AssertEqual("", tree.bbox("first", ["two", "words"]))
+            AhkTest.AssertEqual("", tree.bbox("first", stdlib.tuple(["two", "words"])))
+
+            AhkTest.AssertEqual(Map("name", "alpha", "two words", "beta"), tree.set("first", stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid column index $", (*) => tree.set("first", []))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid column index $", (*) => tree.set("first", stdlib.tuple()))
+            AhkTest.AssertEqual("alpha", tree.set("first", ["name"]))
+            AhkTest.AssertEqual("alpha", tree.set("first", stdlib.tuple(["name"])))
+            AhkTest.AssertEqual("beta", tree.set("first", ["two", "words"]))
+            AhkTest.AssertEqual("beta", tree.set("first", stdlib.tuple(["two", "words"])))
+            AhkTest.AssertEqual(stdlib.tuple(["name", "alpha", "two words", "beta"]), tree.set("first", stdlib.None, "none-updated"))
+            AhkTest.AssertEqual("", tree.set("first", ["name"], "alpha-updated"))
+            AhkTest.AssertEqual("", tree.set("first", ["two", "words"], "beta-updated"))
+            AhkTest.AssertEqual("alpha-updated", tree.set("first", "name"))
+            AhkTest.AssertEqual("beta-updated", tree.set("first", "two words"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewSetValueAndTagBindSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["name", "two words"], show: ["tree", "headings"], selectmode: "extended", name: "ttk_tree_set_selection_bind_sequence" })
+            tree.heading("name", { text: "Name" })
+            tree.heading("two words", { text: "Two Words" })
+            first := tree.insert("", "end", "first", { text: "First", values: ["alpha", "beta"], tags: ["odd", "all rows"] })
+            second := tree.insert("", "end", "second", { text: "Second", values: ["gamma", "delta"], tags: ["even"] })
+            third := tree.insert("", "end", "third", { text: "Third", values: ["theta", "lambda"], tags: [""] })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual("alpha", tree.set(first, "name", stdlib.None))
+            AhkTest.AssertEqual("alpha", tree.set(first, "name"))
+            AhkTest.AssertEqual("", tree.set(first, "name", []))
+            AhkTest.AssertEqual("", tree.set(first, "name"))
+            AhkTest.AssertEqual("", tree.set(first, "name", stdlib.tuple()))
+            AhkTest.AssertEqual("", tree.set(first, "name"))
+            AhkTest.AssertEqual("", tree.set(first, "name", ["new name"]))
+            AhkTest.AssertEqual("new name", tree.set(first, "name"))
+            AhkTest.AssertEqual("", tree.set(first, "name", ["new", "name"]))
+            AhkTest.AssertEqual(stdlib.tuple(["new", "name"]), stdlib.tuple(AhkStdlibTkinterSplitList(root.AhkStdlibInterp, tree.set(first, "name"))))
+            AhkTest.AssertEqual("", tree.set(first, "name", stdlib.True))
+            AhkTest.AssertEqual("1", tree.set(first, "name"))
+            AhkTest.AssertEqual("", tree.set(first, "name", stdlib.False))
+            AhkTest.AssertEqual("0", tree.set(first, "name"))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item None not found$", (*) => tree.selection_set(stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, tree.selection_set([]))
+            AhkTest.AssertEqual(stdlib.None, tree.selection_set([first]))
+            AhkTest.AssertEqual(stdlib.None, tree.selection_add(stdlib.tuple([second, third])))
+            AhkTest.AssertEqual(stdlib.tuple([first, second, third]), tree.selection())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Item first second not found$", (*) => tree.selection_toggle([[first, second]]))
+
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind(["all", "rows"], ["<Button-3>"], "set ::probe_list_script 1"))
+            AhkTest.AssertEqual("set ::probe_list_script 1", root.eval(String(tree) " tag bind " AhkStdlibTkinterTclWord("all rows") " <Button-3>"))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind("odd", ["<Button-4>", "<Button-5>"], "set ::probe_multi_script 1"))
+            AhkTest.AssertEqual("set ::probe_multi_script 1", root.eval(String(tree) " tag bind odd " AhkStdlibTkinterTclWord("<Button-4><Button-5>")))
+            tagSequences := stdlib.tuple(AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval(String(tree) " tag bind odd")))
+            AhkTest.AssertContains("<Button-4><Button-5>", tagSequences)
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind(stdlib.True))
+            AhkTest.AssertEqual("", root.eval(String(tree) " tag bind 1"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewTagConfigureMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { name: "ttk_tree_tag_configure" })
+            tree.insert("", "end", "first", { text: "First", tags: ["odd", "all rows"] })
+            tree.insert("", "end", "second", { text: "Second", tags: ["even"] })
+            tree.insert("", "end", "plain", { text: "Plain" })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            initial := tree.tag_configure("odd")
+            AhkTest.AssertEqual("", initial["anchor"])
+            AhkTest.AssertEqual("", initial["background"])
+            AhkTest.AssertEqual("", initial["font"])
+            AhkTest.AssertEqual("", initial["foreground"])
+            AhkTest.AssertEqual("", initial["image"])
+            AhkTest.AssertEqual("", initial["text"])
+
+            AhkTest.AssertEqual(Map(), tree.tag_configure("odd", { foreground: "red", background: "blue" }))
+            configured := tree.tag_configure("odd")
+            AhkTest.AssertEqual("blue", configured["background"])
+            AhkTest.AssertEqual("red", configured["foreground"])
+            AhkTest.AssertEqual("red", tree.tag_configure("odd", "foreground"))
+            AhkTest.AssertEqual("blue", tree.tag_configure("odd", "background"))
+            AhkTest.AssertEqual(configured, tree.tag_configure("odd", stdlib.None))
+            AhkTest.AssertEqual("", tree.tag_configure("missing", "foreground"))
+            AhkTest.AssertEqual(Map(), tree.tag_configure("", { foreground: "green" }))
+            AhkTest.AssertEqual("green", tree.tag_configure("", "foreground"))
+
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.tag_configure\(\) missing 1 required positional argument: 'tagname'$", (*) => tree.tag_configure())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.tag_configure\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => tree.tag_configure("odd", "foreground", "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-missing"$', (*) => tree.tag_configure("odd", "missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "--background"$', (*) => tree.tag_configure("odd", "-background"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-123"$', (*) => tree.tag_configure("odd", 123))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^unknown option "-bad"$', (*) => tree.tag_configure("odd", { bad: 1 }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewTagBindMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.geometry("240x160+0+0")
+            tree := stdlib.tkinter.ttk.Treeview(root, { name: "ttk_tree_tag_bind" })
+            first := tree.insert("", "end", "first", { text: "First", tags: ["odd", "all rows"] })
+            tree.insert("", "end", "second", { text: "Second", tags: ["even"] })
+            AhkTest.AssertEqual(stdlib.None, tree.pack({ fill: "both", expand: true }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            AhkTest.AssertFalse(HasMethod(tree, "tag_unbind"))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind("odd"))
+            AhkTest.AssertEqual("", root.eval(String(tree) " tag bind odd"))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind("odd", "<Button-1>"))
+            AhkTest.AssertEqual("", root.eval(String(tree) " tag bind odd <Button-1>"))
+
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind("odd", "<Button-1>", "set ::tree_tag_string 1"))
+            AhkTest.AssertEqual("set ::tree_tag_string 1", root.eval(String(tree) " tag bind odd <Button-1>"))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind("odd"))
+            AhkTest.AssertEqual("<Button-1>", root.eval(String(tree) " tag bind odd"))
+
+            events := []
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind("odd", "<Button-1>", (event) => (events.Push(stdlib.tuple([event.type.name, event.x, event.y, String(event.widget)])), stdlib.None)))
+            bindScript := root.eval(String(tree) " tag bind odd <Button-1>")
+            AhkTest.AssertContains("break", bindScript)
+            AhkTest.AssertContains("%x", bindScript)
+            AhkTest.AssertContains("%y", bindScript)
+            AhkTest.AssertContains("%W", bindScript)
+            bbox := tree.bbox(first)
+            AhkTest.AssertEqual(4, bbox.Length)
+            AhkTest.AssertEqual(stdlib.None, tree.event_generate("<Button-1>", { x: bbox[1] + 5, y: bbox[2] + 5 }))
+            AhkTest.AssertEqual(stdlib.None, root.update())
+            AhkTest.AssertEqual(1, events.Length)
+            AhkTest.AssertEqual("ButtonPress", events[1][1])
+            AhkTest.AssertEqual(bbox[1] + 5, events[1][2])
+            AhkTest.AssertEqual(bbox[2] + 5, events[1][3])
+            AhkTest.AssertEqual(String(tree), events[1][4])
+
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind("odd", "<Button-1>", stdlib.None))
+            AhkTest.AssertContains("break", root.eval(String(tree) " tag bind odd <Button-1>"))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind("missing", "<Button-1>", (event) => stdlib.None))
+            AhkTest.AssertEqual("<Button-1>", root.eval(String(tree) " tag bind missing"))
+
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.tag_bind\(\) missing 1 required positional argument: 'tagname'$", (*) => tree.tag_bind())
+            AhkTest.RaisesMatch(TypeError, "^Treeview\.tag_bind\(\) takes from 2 to 4 positional arguments but 5 were given$", (*) => tree.tag_bind("odd", "<Button-1>", (event) => stdlib.None, "extra"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewTagConfigureBindNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["value"], show: ["tree", "headings"], name: "ttk_tree_tag_sequence" })
+            tree.insert("", "end", "first", { text: "First", values: ["one"], tags: ["odd", "all rows"] })
+            tree.insert("", "end", "emptytag", { text: "Empty", values: ["empty"], tags: [""] })
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_tag_sequence tag configure tagName \?-option \?value \.\.\.\?\?"$', (*) => tree.tag_configure(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_tag_sequence tag configure tagName \?-option \?value \.\.\.\?\?"$', (*) => tree.tag_configure(stdlib.None, "foreground"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_tag_sequence tag configure tagName \?-option \?value \.\.\.\?\?"$', (*) => tree.tag_configure(stdlib.None, { foreground: "green" }))
+            emptyTag := tree.tag_configure([])
+            AhkTest.AssertEqual("", emptyTag["foreground"])
+            AhkTest.AssertEqual(emptyTag, tree.tag_configure(stdlib.tuple()))
+            oddTag := tree.tag_configure(["odd"])
+            AhkTest.AssertEqual("", oddTag["foreground"])
+            AhkTest.AssertEqual(oddTag, tree.tag_configure(stdlib.tuple(["odd"])))
+            allRowsTag := tree.tag_configure(["all", "rows"])
+            AhkTest.AssertEqual("", allRowsTag["foreground"])
+            AhkTest.AssertEqual(allRowsTag, tree.tag_configure(stdlib.tuple(["all", "rows"])))
+            AhkTest.AssertEqual("", tree.tag_configure(["odd"], "foreground"))
+            AhkTest.AssertEqual("", tree.tag_configure(["all", "rows"], "foreground"))
+            AhkTest.AssertEqual(Map(), tree.tag_configure(["odd"], { foreground: "red" }))
+            AhkTest.AssertEqual("red", tree.tag_configure("odd", "foreground"))
+            AhkTest.AssertEqual(Map(), tree.tag_configure(["all", "rows"], { foreground: "blue" }))
+            AhkTest.AssertEqual("blue", tree.tag_configure("all rows", "foreground"))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_tag_sequence tag bind tagName \?sequence\? \?script\?"$', (*) => tree.tag_bind(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_tag_sequence tag bind tagName \?sequence\? \?script\?"$', (*) => tree.tag_bind(stdlib.None, "<Button-1>"))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind([]))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind(stdlib.tuple()))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind(["odd"]))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind(stdlib.tuple(["odd"])))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind(["all", "rows"]))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind(stdlib.tuple(["all", "rows"])))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind(["odd"], "<Button-1>", "set ::odd_tag 1"))
+            AhkTest.AssertContains("odd_tag", root.eval(String(tree) " tag bind odd <Button-1>"))
+            AhkTest.AssertEqual(stdlib.None, tree.tag_bind(["all", "rows"], "<Button-1>", "set ::all_rows_tag 1"))
+            AhkTest.AssertContains("all_rows_tag", root.eval(String(tree) " tag bind " AhkStdlibTkinterTclWord("all rows") " <Button-1>"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewViewMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["value"], height: 2, name: "ttk_tree_view" })
+            AhkTest.AssertEqual(Map(), tree.column("#0", { width: 500 }))
+            AhkTest.AssertEqual(Map(), tree.column("value", { width: 500 }))
+            loop 12
+                tree.insert("", "end", "item" A_Index - 1, { text: "Item " A_Index - 1, values: [A_Index - 1] })
+            AhkTest.AssertEqual(stdlib.None, tree.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 1.0]), tree.xview())
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 1.0]), tree.yview())
+            AhkTest.AssertEqual(stdlib.None, tree.xview_moveto(0.5))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 1.0]), tree.xview())
+            AhkTest.AssertEqual(stdlib.None, tree.xview_scroll(-1, "units"))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 1.0]), tree.xview())
+            AhkTest.AssertEqual(stdlib.None, tree.xview("moveto", 0.0))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 1.0]), tree.xview())
+            AhkTest.AssertEqual(stdlib.None, tree.xview("scroll", 1, "pages"))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 1.0]), tree.xview())
+            AhkTest.AssertEqual(stdlib.None, tree.yview_moveto(0.5))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 1.0]), tree.yview())
+            AhkTest.AssertEqual(stdlib.None, tree.yview_scroll(-1, "units"))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 1.0]), tree.yview())
+            AhkTest.AssertEqual(stdlib.None, tree.yview("moveto", 0.0))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 1.0]), tree.yview())
+            AhkTest.AssertEqual(stdlib.None, tree.yview("scroll", 1, "pages"))
+            AhkTest.AssertEqual(stdlib.tuple([0.0, 1.0]), tree.yview())
+
+            AhkTest.RaisesMatch(TypeError, "^XView\.xview_moveto\(\) missing 1 required positional argument: 'fraction'$", (*) => tree.xview_moveto())
+            AhkTest.RaisesMatch(TypeError, "^XView\.xview_moveto\(\) takes 2 positional arguments but 3 were given$", (*) => tree.xview_moveto(0.1, 0.2))
+            AhkTest.RaisesMatch(TypeError, "^XView\.xview_scroll\(\) missing 2 required positional arguments: 'number' and 'what'$", (*) => tree.xview_scroll())
+            AhkTest.RaisesMatch(TypeError, "^XView\.xview_scroll\(\) missing 1 required positional argument: 'what'$", (*) => tree.xview_scroll(1))
+            AhkTest.RaisesMatch(TypeError, "^XView\.xview_scroll\(\) takes 3 positional arguments but 4 were given$", (*) => tree.xview_scroll(1, "units", "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => tree.xview("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "moveto"$', (*) => tree.xview("moveto"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_view xview scroll number units\|pages"$', (*) => tree.xview("scroll", 1))
+
+            AhkTest.RaisesMatch(TypeError, "^YView\.yview_moveto\(\) missing 1 required positional argument: 'fraction'$", (*) => tree.yview_moveto())
+            AhkTest.RaisesMatch(TypeError, "^YView\.yview_moveto\(\) takes 2 positional arguments but 3 were given$", (*) => tree.yview_moveto(0.1, 0.2))
+            AhkTest.RaisesMatch(TypeError, "^YView\.yview_scroll\(\) missing 2 required positional arguments: 'number' and 'what'$", (*) => tree.yview_scroll())
+            AhkTest.RaisesMatch(TypeError, "^YView\.yview_scroll\(\) missing 1 required positional argument: 'what'$", (*) => tree.yview_scroll(1))
+            AhkTest.RaisesMatch(TypeError, "^YView\.yview_scroll\(\) takes 3 positional arguments but 4 were given$", (*) => tree.yview_scroll(1, "units", "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => tree.yview("bad"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "moveto"$', (*) => tree.yview("moveto"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_tree_view yview scroll number units\|pages"$', (*) => tree.yview("scroll", 1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkTreeviewViewNoneAndSequenceWordsMatchLocal310()
+    {
+        StdlibTkinterTest.WithTtkTreeviewViewSequence((tree) => StdlibTkinterTest.AssertTtkTreeviewViewSequenceWords(tree, "ttk_tree_view_sequence"))
+    }
+
+    static TestTtkTreeviewScrollCommandOptionsMatchLocal310()
+    {
+        scriptPath := A_Temp "\stdlib-ttk-treeview-scrollcommand-" A_TickCount "-" Random(100000, 999999) ".ahk"
+        SplitPath A_LineFile, , &testsDir
+        stdlibDir := RegExReplace(testsDir, "\\tests$")
+        tkinterPath := stdlibDir "\tkinter.ahk"
+        script := '#Requires AutoHotkey v2.0`n'
+            . '#ErrorStdOut "UTF-8"`n'
+            . '#Include "' tkinterPath '"`n'
+            . 'fail(message) {`n'
+            . '    FileAppend "FAIL:" message "``n", "**", "UTF-8"`n'
+            . '    ExitApp 7`n'
+            . '}`n'
+            . 'assert_equal(expected, actual, label) {`n'
+            . '    if expected != actual`n'
+            . '        fail(label ": expected " expected ", got " actual)`n'
+            . '}`n'
+            . 'assert_same(expected, actual, label) {`n'
+            . '    if expected !== actual`n'
+            . '        fail(label ": unexpected object")`n'
+            . '}`n'
+            . 'events := []`n'
+            . 'yscroll(args*) {`n'
+            . '    global events`n'
+            . '    events.Push(args.Clone())`n'
+            . '    return stdlib.None`n'
+            . '}`n'
+            . 'root := stdlib.tkinter.Tk()`n'
+            . 'root.withdraw()`n'
+            . 'tree := stdlib.tkinter.ttk.Treeview(root, { height: 2 })`n'
+            . 'assert_same(stdlib.None, tree.configure({ yscrollcommand: yscroll }), "configure return")`n'
+            . 'commandName := tree.cget("yscrollcommand")`n'
+            . 'if !RegExMatch(commandName, "^ahkstdlib_tkinter_command_[0-9]+$")`n'
+            . '    fail("registered command name " commandName)`n'
+            . 'assert_equal("None", root.eval(commandName " 0.0 1.0"), "manual command return")`n'
+            . 'assert_equal(1, events.Length, "manual event count")`n'
+            . 'assert_equal("0.0", events[1][1], "manual first arg")`n'
+            . 'assert_equal("1.0", events[1][2], "manual second arg")`n'
+            . 'assert_same(stdlib.None, root.update_idletasks(), "idle update return")`n'
+            . 'assert_same(stdlib.None, tree.configure({ yscrollcommand: "" }), "clear return")`n'
+            . 'assert_equal("", tree.cget("yscrollcommand"), "cleared cget")`n'
+            . 'assert_same(stdlib.None, tree.configure({ xscrollcommand: "puts" }), "string xscroll return")`n'
+            . 'assert_equal("puts", tree.cget("xscrollcommand"), "string xscroll cget")`n'
+            . 'root.destroy()`n'
+            . 'FileAppend "ok``n", "*", "UTF-8"`n'
+            . 'ExitApp 0`n'
+        pollutedNamespace := "System.Text." "RegularExpressions"
+        pollutedEvaluator := "Match" "Evaluator"
+        AhkTest.AssertFalse(InStr(script, pollutedNamespace))
+        AhkTest.AssertFalse(InStr(script, pollutedEvaluator))
+        try {
+            FileAppend script, scriptPath, "UTF-8"
+            result := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", scriptPath], { WorkingDir: stdlibDir, TimeoutSeconds: 4 })
+        } finally {
+            try FileDelete scriptPath
+        }
+        diagnostic := "exit=" result.ExitCode " stdout=" result.Out " stderr=" result.Err
+        AhkTest.AssertEqual(0, result.ExitCode, diagnostic)
+        AhkTest.AssertContains("ok", result.Out, diagnostic)
+    }
+
+    static TestTtkStylePublicSurfaceMatchesLocal310()
+    {
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter.ttk, "Style"))
+        AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'tk'$", (*) => stdlib.tkinter.ttk.Style("master"))
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            defaultStyle := stdlib.tkinter.ttk.Style()
+            AhkTest.AssertTrue(defaultStyle is stdlib.tkinter.ttk.Style)
+            AhkTest.AssertTrue(defaultStyle.master is stdlib.tkinter.Tk)
+            AhkTest.AssertEqual(".", String(defaultStyle.master))
+            AhkTest.AssertContains(defaultStyle.theme_use(), defaultStyle.theme_names())
+
+            style := stdlib.tkinter.ttk.Style(root)
+            AhkTest.AssertTrue(style is stdlib.tkinter.ttk.Style)
+            AhkTest.AssertSame(root, style.master)
+            AhkTest.AssertSame(root.tk, style.tk)
+            themeNames := style.theme_names()
+            AhkTest.AssertContains("vista", themeNames)
+            AhkTest.AssertContains("default", themeNames)
+            AhkTest.AssertContains(style.theme_use(), themeNames)
+
+            AhkTest.AssertEqual(stdlib.None, style.configure("Probe.Treeview", { background: "red", foreground: "blue", padding: 3 }))
+            config := style.configure("Probe.Treeview")
+            AhkTest.AssertTrue(config is Map)
+            AhkTest.AssertEqual("red", config["background"])
+            AhkTest.AssertEqual("blue", config["foreground"])
+            AhkTest.AssertEqual(3, config["padding"])
+            AhkTest.AssertEqual("red", style.configure("Probe.Treeview", "background"))
+            AhkTest.AssertEqual(3, style.configure("Probe.Treeview", "padding"))
+            AhkTest.AssertEqual("red", style.lookup("Probe.Treeview", "background"))
+            AhkTest.AssertEqual("SystemButtonFace", style.lookup("Probe.Treeview", "background", ["disabled"]))
+            AhkTest.AssertEqual("fallback", style.lookup("Probe.Treeview", "missing", [], "fallback"))
+
+            AhkTest.AssertEqual(Map(), style.map("Probe.Treeview", { foreground: [["disabled", "gray"], ["selected", "white"]] }))
+            styleMap := style.map("Probe.Treeview")
+            AhkTest.AssertTrue(styleMap is Map)
+            AhkTest.AssertEqual([stdlib.tuple(["disabled", "gray"]), stdlib.tuple(["selected", "white"])], styleMap["foreground"])
+            AhkTest.AssertEqual([stdlib.tuple(["disabled", "gray"]), stdlib.tuple(["selected", "white"])], style.map("Probe.Treeview", "foreground"))
+
+            treeLayout := style.layout("Treeview")
+            AhkTest.AssertTrue(treeLayout is Array)
+            AhkTest.AssertEqual("Treeview.field", treeLayout[1][1])
+            AhkTest.AssertEqual("nswe", treeLayout[1][2]["sticky"])
+            AhkTest.AssertEqual([], style.layout("Probe.Treeview", treeLayout))
+            probeLayout := style.layout("Probe.Treeview")
+            AhkTest.AssertEqual("Treeview.field", probeLayout[1][1])
+            AhkTest.AssertContains("Entry.field", style.element_names())
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options("Treeview.field"))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options("missing"))
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_settings(style.theme_use(), Map("Probe.Treeview", { configure: { rowheight: 25 }, map: { foreground: [["selected", "green"]] } })))
+            AhkTest.AssertEqual("25", style.configure("Probe.Treeview", "rowheight"))
+            AhkTest.AssertEqual([stdlib.tuple(["selected", "green"])], style.map("Probe.Treeview", "foreground"))
+
+            AhkTest.RaisesMatch(TypeError, "^Style\.__init__\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => stdlib.tkinter.ttk.Style(root, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Style\.configure\(\) missing 1 required positional argument: 'style'$", (*) => style.configure())
+            AhkTest.RaisesMatch(TypeError, "^Style\.configure\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => style.configure("Probe.Treeview", "background", "extra"))
+            AhkTest.AssertEqual(stdlib.None, style.configure("Probe.Treeview", { bad: 1 }))
+            AhkTest.AssertEqual("", style.configure("Missing.Style", "background"))
+            AhkTest.RaisesMatch(TypeError, "^Style\.map\(\) missing 1 required positional argument: 'style'$", (*) => style.map())
+            AhkTest.RaisesMatch(TypeError, "^Style\.map\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => style.map("Probe.Treeview", "foreground", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Style\.lookup\(\) missing 2 required positional arguments: 'style' and 'option'$", (*) => style.lookup())
+            AhkTest.RaisesMatch(TypeError, "^Style\.lookup\(\) missing 1 required positional argument: 'option'$", (*) => style.lookup("Probe.Treeview"))
+            AhkTest.RaisesMatch(TypeError, "^Style\.lookup\(\) takes from 3 to 5 positional arguments but 6 were given$", (*) => style.lookup("Probe.Treeview", "foreground", [], "fallback", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^Style\.layout\(\) missing 1 required positional argument: 'style'$", (*) => style.layout())
+            AhkTest.RaisesMatch(TypeError, "^Style\.layout\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => style.layout("Treeview", [], "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Layout Missing\.Style not found$", (*) => style.layout("Missing.Style"))
+            AhkTest.RaisesMatch(TypeError, "^Style\.element_options\(\) missing 1 required positional argument: 'elementname'$", (*) => style.element_options())
+            AhkTest.RaisesMatch(TypeError, "^Style\.theme_settings\(\) missing 2 required positional arguments: 'themename' and 'settings'$", (*) => style.theme_settings())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::missing-theme$", (*) => style.theme_use("missing-theme"))
+            AhkTest.RaisesMatch(TypeError, "^Style\.theme_use\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => style.theme_use("default", "extra"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleThemeCreateMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            AhkTest.AssertTrue(HasMethod(style, "theme_create"))
+            baseTheme := style.theme_use()
+            themeName := "stdlib_theme_create_test_" A_TickCount "_" Random(100000, 999999)
+            childThemeName := themeName "_child"
+            emptyThemeName := themeName "_empty"
+            parentlessThemeName := themeName "_parentless"
+            AhkTest.AssertNotContains(themeName, style.theme_names())
+
+            treeLayout := style.layout("Treeview")
+            settings := Map(
+                "ThemeCreate.Treeview", {
+                    configure: { rowheight: 27, foreground: "purple" },
+                    map: { foreground: [["selected", "white"]] },
+                    layout: treeLayout
+                }
+            )
+            AhkTest.AssertEqual(stdlib.None, style.theme_create(themeName, baseTheme, settings))
+            AhkTest.AssertContains(themeName, style.theme_names())
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_use(themeName))
+            AhkTest.AssertEqual(themeName, style.theme_use())
+            AhkTest.AssertEqual("27", style.configure("ThemeCreate.Treeview", "rowheight"))
+            AhkTest.AssertEqual("purple", style.lookup("ThemeCreate.Treeview", "foreground"))
+            AhkTest.AssertEqual([stdlib.tuple(["selected", "white"])], style.map("ThemeCreate.Treeview", "foreground"))
+            createdLayout := style.layout("ThemeCreate.Treeview")
+            AhkTest.AssertEqual("Treeview.field", createdLayout[1][1])
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_use(baseTheme))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Theme " themeName " already exists$", (*) => style.theme_create(themeName))
+            AhkTest.AssertEqual(stdlib.None, style.theme_create(emptyThemeName, stdlib.None, Map()))
+            AhkTest.AssertContains(emptyThemeName, style.theme_names())
+            AhkTest.AssertEqual(stdlib.None, style.theme_create(parentlessThemeName))
+            AhkTest.AssertContains(parentlessThemeName, style.theme_names())
+            AhkTest.AssertEqual(stdlib.None, style.theme_create(childThemeName, stdlib.None))
+            AhkTest.AssertContains(childThemeName, style.theme_names())
+
+            AhkTest.RaisesMatch(TypeError, "^Style\.theme_create\(\) missing 1 required positional argument: 'themename'$", (*) => style.theme_create())
+            AhkTest.RaisesMatch(TypeError, "^Style\.theme_create\(\) takes from 2 to 4 positional arguments but 5 were given$", (*) => style.theme_create("too_many", stdlib.None, stdlib.None, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^theme `"missing-parent-theme`" doesn't exist$", (*) => style.theme_create(themeName "_bad_parent", "missing-parent-theme"))
+            AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'items'$", (*) => style.theme_create(themeName "_bad_settings_type", stdlib.None, "bad"))
+            AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'get'$", (*) => style.theme_create(themeName "_bad_settings_entry", stdlib.None, Map("Bad.TLabel", "bad")))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleThemeCreateFalsyParentAndSettingsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            baseTheme := style.theme_use()
+            prefix := "stdlib_theme_create_falsy_" A_TickCount "_" Random(100000, 999999)
+
+            emptyParentTheme := prefix "_empty_parent"
+            zeroParentTheme := prefix "_zero_parent"
+            falseParentTheme := prefix "_false_parent"
+            emptyStringSettingsTheme := prefix "_empty_string_settings"
+            zeroSettingsTheme := prefix "_zero_settings"
+            falseSettingsTheme := prefix "_false_settings"
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_create(emptyParentTheme, ""))
+            AhkTest.AssertContains(emptyParentTheme, style.theme_names())
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_create(zeroParentTheme, 0))
+            AhkTest.AssertContains(zeroParentTheme, style.theme_names())
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_create(falseParentTheme, false))
+            AhkTest.AssertContains(falseParentTheme, style.theme_names())
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_create(emptyStringSettingsTheme, stdlib.None, ""))
+            AhkTest.AssertContains(emptyStringSettingsTheme, style.theme_names())
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_create(zeroSettingsTheme, stdlib.None, 0))
+            AhkTest.AssertContains(zeroSettingsTheme, style.theme_names())
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_create(falseSettingsTheme, stdlib.None, false))
+            AhkTest.AssertContains(falseSettingsTheme, style.theme_names())
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleConfigureExplicitNoneMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            styleName := "ExplicitNone.Treeview"
+            AhkTest.AssertEqual(stdlib.None, style.configure(styleName, { background: "red", padding: 3 }))
+
+            omitted := style.configure(styleName)
+            explicitNone := style.configure(styleName, stdlib.None)
+            AhkTest.AssertTrue(omitted is Map)
+            AhkTest.AssertTrue(explicitNone is Map)
+            AhkTest.AssertEqual(omitted, explicitNone)
+            AhkTest.AssertEqual("red", explicitNone["background"])
+            AhkTest.AssertEqual(3, explicitNone["padding"])
+            AhkTest.AssertEqual(stdlib.None, style.configure(styleName, ""))
+            AhkTest.AssertEqual(stdlib.None, style.configure(styleName, 0))
+            AhkTest.AssertEqual(stdlib.None, style.configure(styleName, stdlib.False))
+            AhkTest.AssertEqual("", style.configure(styleName, stdlib.True))
+            AhkTest.AssertEqual("red", style.configure(styleName, "background"))
+            AhkTest.AssertEqual(stdlib.None, style.configure("Missing.Style", stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, style.configure("Missing.Style", ""))
+            AhkTest.AssertEqual(stdlib.None, style.configure("Missing.Style", 0))
+            AhkTest.AssertEqual(stdlib.None, style.configure("Missing.Style", stdlib.False))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleConfigureSequenceQueryOptionsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            styleName := "ConfigureSequenceQuery.Treeview"
+            missingStyle := "MissingConfigureSequence.Treeview"
+            AhkTest.AssertEqual(stdlib.None, style.configure(styleName, { background: "red", padding: 3 }))
+
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => style.configure(styleName, []))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => style.configure(styleName, ["background"]))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => style.configure(styleName, [""]))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => style.configure(missingStyle, []))
+            AhkTest.RaisesMatch(TypeError, "^unhashable type: 'list'$", (*) => style.configure(missingStyle, ["background"]))
+
+            AhkTest.RaisesMatch(TypeError, "^not enough arguments for format string$", (*) => style.configure(styleName, stdlib.tuple()))
+            AhkTest.AssertEqual("red", style.configure(styleName, stdlib.tuple(["background"])))
+            AhkTest.AssertEqual("", style.configure(styleName, stdlib.tuple(["missing"])))
+            AhkTest.AssertEqual("", style.configure(styleName, stdlib.tuple([""])))
+            AhkTest.RaisesMatch(TypeError, "^not all arguments converted during string formatting$", (*) => style.configure(styleName, stdlib.tuple(["background", "padding"])))
+            AhkTest.AssertEqual("", style.configure(missingStyle, stdlib.tuple(["background"])))
+            AhkTest.RaisesMatch(TypeError, "^not enough arguments for format string$", (*) => style.configure(missingStyle, stdlib.tuple()))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleConfigureAndMapKwargsNoneMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            styleName := "StyleKwargsNone.Treeview"
+            AhkTest.AssertEqual(stdlib.None, style.configure(styleName, { background: "red", padding: 3 }))
+            AhkTest.AssertEqual(Map(), style.map(styleName, { foreground: [["selected", "white"], ["disabled", "gray"]], background: [["active", "blue"]] }))
+
+            AhkTest.AssertEqual("red", style.configure(styleName, { background: stdlib.None }))
+            AhkTest.AssertEqual(3, style.configure(styleName, { padding: stdlib.None }))
+            AhkTest.AssertEqual(stdlib.None, style.configure(styleName, { missing: stdlib.None }))
+            AhkTest.AssertEqual("red", style.configure(styleName, "background"))
+            AhkTest.AssertEqual(3, style.configure(styleName, "padding"))
+            AhkTest.AssertEqual(stdlib.None, style.configure("MissingStyleKwargsNone.Treeview", { background: stdlib.None }))
+
+            AhkTest.RaisesMatch(TypeError, "^'NoneType' object is not iterable$", (*) => style.map(styleName, { foreground: stdlib.None }))
+            AhkTest.RaisesMatch(TypeError, "^'NoneType' object is not iterable$", (*) => style.map(styleName, { background: stdlib.None }))
+            AhkTest.RaisesMatch(TypeError, "^'NoneType' object is not iterable$", (*) => style.map(styleName, { missing: stdlib.None }))
+            AhkTest.AssertEqual([stdlib.tuple(["selected", "white"]), stdlib.tuple(["disabled", "gray"])], style.map(styleName, "foreground"))
+            AhkTest.AssertEqual([stdlib.tuple(["active", "blue"])], style.map(styleName, "background"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleMapValueIterationMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            styleName := "StyleMapValues.Treeview"
+
+            AhkTest.RaisesMatch(TypeError, "^'NoneType' object is not iterable$", (*) => style.map(styleName, { foreground: stdlib.None }))
+            AhkTest.RaisesMatch(TypeError, "^'int' object is not iterable$", (*) => style.map(styleName, { foreground: 1 }))
+            AhkTest.RaisesMatch(TypeError, "^'bool' object is not iterable$", (*) => style.map(styleName, { foreground: stdlib.True }))
+            AhkTest.RaisesMatch(TypeError, "^'bool' object is not iterable$", (*) => style.map(styleName, { foreground: stdlib.False }))
+
+            AhkTest.AssertEqual(Map(), style.map(styleName, { background: "" }))
+            AhkTest.AssertEqual([], style.map(styleName, "background"))
+            AhkTest.AssertEqual(Map(), style.map(styleName, { selectbackground: [] }))
+            AhkTest.AssertEqual([], style.map(styleName, "selectbackground"))
+            AhkTest.AssertEqual(Map(), style.map(styleName, { fieldbackground: "ab" }))
+            AhkTest.AssertEqual([stdlib.tuple(["a"]), stdlib.tuple(["b"])], style.map(styleName, "fieldbackground"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleMapEntryShapesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            styleName := "StyleMapEntryShapes.Treeview"
+
+            AhkTest.RaisesMatch(ValueError, "^not enough values to unpack \(expected at least 1, got 0\)$", (*) => style.map(styleName, { foreground: [[]] }))
+            AhkTest.RaisesMatch(ValueError, "^not enough values to unpack \(expected at least 1, got 0\)$", (*) => style.map(styleName, { foreground: [stdlib.tuple()] }))
+            AhkTest.RaisesMatch(TypeError, "^cannot unpack non-iterable int object$", (*) => style.map(styleName, { foreground: [1] }))
+            AhkTest.RaisesMatch(TypeError, "^cannot unpack non-iterable NoneType object$", (*) => style.map(styleName, { foreground: [stdlib.None] }))
+            AhkTest.RaisesMatch(TypeError, "^sequence item 1: expected str instance, int found$", (*) => style.map(styleName, { foreground: [["active", 1, "red"]] }))
+
+            AhkTest.AssertEqual(Map(), style.map(styleName, { foreground: [["active"]] }))
+            AhkTest.AssertEqual([stdlib.tuple(["active"])], style.map(styleName, "foreground"))
+            AhkTest.AssertEqual(Map(), style.map(styleName, { foreground: [["active", 7]] }))
+            AhkTest.AssertEqual([stdlib.tuple(["active", "7"])], style.map(styleName, "foreground"))
+            AhkTest.AssertEqual(Map(), style.map(styleName, { foreground: [["active", ["red", "blue"]]] }))
+            AhkTest.AssertEqual([stdlib.tuple(["active", "red blue"])], style.map(styleName, "foreground"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleMapExplicitNoneAndScalarQueriesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            styleName := "MapOptionBool.Treeview"
+            AhkTest.AssertEqual(Map(), style.map(styleName, { foreground: [["selected", "white"]] }))
+
+            omitted := style.map(styleName)
+            explicitNone := style.map(styleName, stdlib.None)
+            AhkTest.AssertTrue(omitted is Map)
+            AhkTest.AssertTrue(explicitNone is Map)
+            AhkTest.AssertEqual(omitted, explicitNone)
+            AhkTest.AssertEqual([stdlib.tuple(["selected", "white"])], explicitNone["foreground"])
+            AhkTest.AssertEqual([stdlib.tuple(["selected", "white"])], style.map(styleName, "foreground"))
+            AhkTest.AssertEqual([], style.map(styleName, ""))
+            AhkTest.AssertEqual([], style.map(styleName, 0))
+            AhkTest.AssertEqual([], style.map(styleName, stdlib.False))
+            AhkTest.AssertEqual([], style.map(styleName, stdlib.True))
+            AhkTest.AssertEqual([], style.map(styleName, []))
+            AhkTest.AssertEqual([], style.map(styleName, ["foreground"]))
+            AhkTest.RaisesMatch(TypeError, "^not enough arguments for format string$", (*) => style.map(styleName, stdlib.tuple()))
+            AhkTest.AssertEqual([stdlib.tuple(["selected", "white"])], style.map(styleName, stdlib.tuple(["foreground"])))
+            AhkTest.RaisesMatch(TypeError, "^not all arguments converted during string formatting$", (*) => style.map(styleName, stdlib.tuple(["foreground", "background"])))
+
+            missingStyle := "MissingMapOptionBool.Treeview"
+            AhkTest.AssertEqual(Map(), style.map(missingStyle))
+            AhkTest.AssertEqual(Map(), style.map(missingStyle, stdlib.None))
+            AhkTest.AssertEqual([], style.map(missingStyle, "foreground"))
+            AhkTest.AssertEqual([], style.map(missingStyle, ""))
+            AhkTest.AssertEqual([], style.map(missingStyle, 0))
+            AhkTest.AssertEqual([], style.map(missingStyle, stdlib.False))
+            AhkTest.AssertEqual([], style.map(missingStyle, stdlib.True))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleThemeUseNoneAndSequenceThemeNamesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            baseTheme := style.theme_use()
+            AhkTest.AssertEqual(baseTheme, style.theme_use(stdlib.None))
+            AhkTest.AssertContains(baseTheme, style.theme_names())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::$", (*) => style.theme_use(""))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::0$", (*) => style.theme_use(0))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::0$", (*) => style.theme_use(stdlib.False))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::1$", (*) => style.theme_use(stdlib.True))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.AssertEqual(stdlib.None, style.theme_use([baseTheme]))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.AssertEqual(stdlib.None, style.theme_use(stdlib.tuple([baseTheme])))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::$", (*) => style.theme_use([]))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::$", (*) => style.theme_use(stdlib.tuple()))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::\{missing theme\}$", (*) => style.theme_use(["missing theme"]))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::\{\}$", (*) => style.theme_use([""]))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::missing theme$", (*) => style.theme_use(["missing", "theme"]))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::\{missing theme\} x$", (*) => style.theme_use(["missing theme", "x"]))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^can't find package ttk::theme::missing theme$", (*) => style.theme_use(stdlib.tuple(["missing", "theme"])))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleThemeCreateAndSettingsSequenceThemeNamesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            baseTheme := style.theme_use()
+            prefix := "stdlib_theme_create_sequence_" A_TickCount "_" Random(100000, 999999)
+            oneTheme := prefix "_one"
+            pairTheme := prefix "_pair"
+            emptyItemTheme := prefix "_empty_item"
+            settingsStyleName := prefix "_settings.Treeview"
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_create([oneTheme], [baseTheme]))
+            AhkTest.AssertContains(oneTheme, style.theme_names())
+            AhkTest.AssertEqual(stdlib.None, style.theme_use([oneTheme]))
+            AhkTest.AssertEqual(oneTheme, style.theme_use())
+            AhkTest.AssertEqual(stdlib.None, style.theme_use(baseTheme))
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_create([pairTheme, "space"], baseTheme))
+            AhkTest.AssertContains(pairTheme " space", style.theme_names())
+            AhkTest.AssertEqual(stdlib.None, style.theme_use([pairTheme, "space"]))
+            AhkTest.AssertEqual(pairTheme " space", style.theme_use())
+            AhkTest.AssertEqual(stdlib.None, style.theme_use(baseTheme))
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_create([emptyItemTheme, ""]))
+            AhkTest.AssertContains(emptyItemTheme " {}", style.theme_names())
+            AhkTest.AssertEqual(stdlib.None, style.theme_use([emptyItemTheme, ""]))
+            AhkTest.AssertEqual(emptyItemTheme " {}", style.theme_use())
+            AhkTest.AssertEqual(stdlib.None, style.theme_use(baseTheme))
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_settings([baseTheme], Map(settingsStyleName, { configure: { rowheight: 31 } })))
+            AhkTest.AssertEqual("31", style.configure(settingsStyleName, "rowheight"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleLookupFalsyStateMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            styleName := "LookupFalsyState.Treeview"
+            AhkTest.AssertEqual(stdlib.None, style.configure(styleName, { background: "red" }))
+            AhkTest.AssertEqual(Map(), style.map(styleName, { background: [["disabled", "gray"]] }))
+
+            AhkTest.AssertEqual("fallback", style.lookup(styleName, "missing", stdlib.None, "fallback"))
+            AhkTest.AssertEqual("fallback", style.lookup(styleName, "missing", [], "fallback"))
+            AhkTest.AssertEqual("fallback", style.lookup(styleName, "missing", stdlib.tuple(), "fallback"))
+            AhkTest.AssertEqual("fallback", style.lookup(styleName, "missing", "", "fallback"))
+            AhkTest.AssertEqual("fallback", style.lookup(styleName, "missing", 0, "fallback"))
+            AhkTest.AssertEqual("fallback", style.lookup(styleName, "missing", false, "fallback"))
+            AhkTest.AssertEqual("red", style.lookup(styleName, "background", 0, "fallback"))
+            AhkTest.AssertEqual("red", style.lookup(styleName, "background", false, "fallback"))
+            AhkTest.AssertEqual("gray", style.lookup(styleName, "background", ["disabled"], "fallback"))
+            AhkTest.AssertEqual("", style.lookup(styleName, "missing", 0, stdlib.None))
+            AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => style.lookup(styleName, "missing", 1, "fallback"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleLookupSequenceOptionsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            styleName := "LookupOptionSequence.Treeview"
+            AhkTest.AssertEqual(stdlib.None, style.configure(styleName, { background: "red" }))
+            AhkTest.AssertEqual(Map(), style.map(styleName, { background: [["disabled", "gray"]] }))
+
+            AhkTest.AssertEqual("", style.lookup(styleName, stdlib.None))
+            AhkTest.AssertEqual("", style.lookup(styleName, ""))
+            AhkTest.AssertEqual("", style.lookup(styleName, 0))
+            AhkTest.AssertEqual("", style.lookup(styleName, stdlib.False))
+            AhkTest.AssertEqual("", style.lookup(styleName, stdlib.True))
+            AhkTest.AssertEqual("", style.lookup(styleName, []))
+            AhkTest.AssertEqual("", style.lookup(styleName, ["background"]))
+
+            AhkTest.RaisesMatch(TypeError, "^not enough arguments for format string$", (*) => style.lookup(styleName, stdlib.tuple()))
+            AhkTest.AssertEqual("red", style.lookup(styleName, stdlib.tuple(["background"])))
+            AhkTest.RaisesMatch(TypeError, "^not all arguments converted during string formatting$", (*) => style.lookup(styleName, stdlib.tuple(["background", "foreground"])))
+
+            AhkTest.AssertEqual("", style.lookup(styleName, "missing", stdlib.None, stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(["fallback", "value"]), style.lookup(styleName, "missing", stdlib.None, ["fallback", "value"]))
+            AhkTest.AssertEqual(stdlib.tuple(["fallback", "value"]), style.lookup(styleName, "missing", stdlib.None, stdlib.tuple(["fallback", "value"])))
+            AhkTest.AssertEqual(0, style.lookup(styleName, "missing", stdlib.None, stdlib.False))
+            AhkTest.AssertEqual(0, style.lookup(styleName, "missing", stdlib.None, 0))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleElementOptionsSequenceNamesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options("Treeview.field"))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options("missing"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "ttk::style element options element"$', (*) => style.element_options(stdlib.None))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(""))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(0))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(stdlib.False))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(stdlib.True))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options([]))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(["Treeview.field"]))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(["Treeview", "field"]))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(stdlib.tuple()))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(stdlib.tuple(["Treeview.field"])))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(stdlib.tuple(["Treeview", "field"])))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleElementCreateSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            baseTheme := style.theme_use()
+            suffix := A_TickCount "_" Random(100000, 999999)
+            listName := "ElementCreateList_" suffix " field"
+            tupleName := "ElementCreateTuple_" suffix " field"
+            listThemeName := "ElementCreateListTheme_" suffix
+            tupleElementName := "ElementCreateTupleElement_" suffix
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "ttk::style element create name type \?-option value \.\.\.\?"$', (*) => style.element_create(stdlib.None, "from", baseTheme, "Treeview.field"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "ttk::style element create name type \?-option value \.\.\.\?"$', (*) => style.element_create("ElementCreateBadType_" suffix, stdlib.None, baseTheme, "Treeview.field"))
+
+            AhkTest.AssertEqual(stdlib.None, style.element_create(["ElementCreateList_" suffix, "field"], "from", baseTheme, "Treeview.field"))
+            AhkTest.AssertContains(listName, style.element_names())
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(listName))
+
+            AhkTest.AssertEqual(stdlib.None, style.element_create(stdlib.tuple(["ElementCreateTuple_" suffix, "field"]), "from", baseTheme, "Treeview.field"))
+            AhkTest.AssertContains(tupleName, style.element_names())
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(tupleName))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "theme \?element\?"$', (*) => style.element_create("ElementCreateBadFromTheme_" suffix, "from", stdlib.None, "Treeview.field"))
+            AhkTest.AssertEqual(stdlib.None, style.element_create(listThemeName, "from", [baseTheme], "Treeview.field"))
+            AhkTest.AssertContains(listThemeName, style.element_names())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^theme " Chr(34) baseTheme " x" Chr(34) " doesn't exist$", (*) => style.element_create("ElementCreateBadFromThemeList_" suffix, "from", [baseTheme, "x"], "Treeview.field"))
+
+            AhkTest.AssertEqual(stdlib.None, style.element_create(tupleElementName, "from", baseTheme, stdlib.tuple(["Treeview.field"])))
+            AhkTest.AssertContains(tupleElementName, style.element_names())
+            AhkTest.AssertEqual(stdlib.None, style.element_create("ElementCreateNoneElement_" suffix, "from", baseTheme, stdlib.None))
+            AhkTest.AssertContains("ElementCreateNoneElement_" suffix, style.element_names())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleElementCreateImageMapEntryShapesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            suffix := A_TickCount "_" Random(100000, 999999)
+            imageName := "probe_element_image_" suffix
+            image := stdlib.tkinter.PhotoImage({ master: root, name: imageName, width: 1, height: 1 })
+            image.put("#ff0000", { to: [0, 0] })
+
+            AhkTest.RaisesMatch(ValueError, "^not enough values to unpack \(expected at least 1, got 0\)$", (*) => style.element_create("ProbeElementMap.empty_" suffix, "image", imageName, []))
+            AhkTest.RaisesMatch(TypeError, "^cannot unpack non-iterable int object$", (*) => style.element_create("ProbeElementMap.int_" suffix, "image", imageName, 1))
+            AhkTest.RaisesMatch(TypeError, "^cannot unpack non-iterable NoneType object$", (*) => style.element_create("ProbeElementMap.none_" suffix, "image", imageName, stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^image `"active`" doesn't exist$", (*) => style.element_create("ProbeElementMap.state_only_" suffix, "image", imageName, stdlib.tuple(["active"])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^image specification must contain an odd number of elements$", (*) => style.element_create("ProbeElementMap.none_value_" suffix, "image", imageName, stdlib.tuple(["active", stdlib.None])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^image `"7`" doesn't exist$", (*) => style.element_create("ProbeElementMap.int_value_" suffix, "image", imageName, stdlib.tuple(["active", 7])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid state name 1$", (*) => style.element_create("ProbeElementMap.int_state_" suffix, "image", imageName, stdlib.tuple([1, imageName])))
+            AhkTest.RaisesMatch(TypeError, "^sequence item 1: expected str instance, int found$", (*) => style.element_create("ProbeElementMap.multi_int_state_" suffix, "image", imageName, stdlib.tuple(["active", 1, imageName])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^image " Chr(34) imageName " " imageName Chr(34) " doesn't exist$", (*) => style.element_create("ProbeElementMap.nested_value_" suffix, "image", imageName, stdlib.tuple(["active", [imageName, imageName]])))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleElementCreateVsapiMissingArgsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            suffix := A_TickCount "_" Random(100000, 999999)
+
+            AhkTest.RaisesMatch(ValueError, "^not enough values to unpack \(expected 2, got 0\)$", (*) => style.element_create("ProbeVsapiMissing.all_" suffix, "vsapi"))
+            AhkTest.RaisesMatch(ValueError, "^not enough values to unpack \(expected 2, got 1\)$", (*) => style.element_create("ProbeVsapiMissing.part_" suffix, "vsapi", "Explorer::TreeView"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleStyleNameNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            suffix := A_TickCount "_" Random(100000, 999999)
+            listStyle := "StyleNameList_" suffix ".Treeview"
+            tupleStyle := "StyleNameTuple_" suffix ".Treeview"
+            pairStyle := "StyleNamePair_" suffix " Treeview"
+            pairStyleWords := ["StyleNamePair_" suffix, "Treeview"]
+            layoutListStyle := "StyleNameLayoutList_" suffix ".Treeview"
+            layoutTupleStyle := "StyleNameLayoutTuple_" suffix ".Treeview"
+            nullLayout := [stdlib.tuple(["null", Map("sticky", "nswe")])]
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "ttk::style configure style \?-option \?value\.\.\.\?\?"$', (*) => style.configure(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "ttk::style lookup style -option \?state\? \?default\?"$', (*) => style.lookup(stdlib.None, "background", stdlib.None, "fallback"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "ttk::style map style \?-option \?value\.\.\.\?\?"$', (*) => style.map(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "ttk::style layout name \?spec\?"$', (*) => style.layout(stdlib.None))
+
+            AhkTest.AssertEqual(stdlib.None, style.configure([listStyle], { background: "red", padding: 3 }))
+            AhkTest.AssertEqual(stdlib.None, style.configure(stdlib.tuple([tupleStyle]), { background: "blue", padding: 4 }))
+            listConfig := style.configure([listStyle])
+            tupleConfig := style.configure(stdlib.tuple([tupleStyle]))
+            AhkTest.AssertEqual("red", listConfig["background"])
+            AhkTest.AssertEqual(3, listConfig["padding"])
+            AhkTest.AssertEqual("blue", tupleConfig["background"])
+            AhkTest.AssertEqual(4, tupleConfig["padding"])
+            AhkTest.AssertEqual("red", style.lookup([listStyle], "background", stdlib.None, "fallback"))
+            AhkTest.AssertEqual("blue", style.lookup(stdlib.tuple([tupleStyle]), "background", stdlib.None, "fallback"))
+            AhkTest.AssertEqual("SystemButtonFace", style.lookup(pairStyleWords, "background", stdlib.None, "fallback"))
+            AhkTest.AssertEqual(stdlib.None, style.configure(pairStyleWords, { background: "green" }))
+            pairConfig := style.configure([pairStyle])
+            AhkTest.AssertEqual("green", pairConfig["background"])
+
+            AhkTest.AssertEqual(Map(), style.map([listStyle], { foreground: [["selected", "white"]] }))
+            AhkTest.AssertEqual(Map(), style.map(stdlib.tuple([tupleStyle]), { foreground: [["selected", "black"]] }))
+            AhkTest.AssertEqual([stdlib.tuple(["selected", "white"])], style.map([listStyle], "foreground"))
+            AhkTest.AssertEqual([stdlib.tuple(["selected", "black"])], style.map(stdlib.tuple([tupleStyle]), "foreground"))
+
+            AhkTest.AssertEqual([], style.layout([layoutListStyle], []))
+            AhkTest.AssertEqual([], style.layout(stdlib.tuple([layoutTupleStyle]), stdlib.tuple()))
+            AhkTest.AssertEqual(nullLayout, style.layout([layoutListStyle]))
+            AhkTest.AssertEqual(nullLayout, style.layout(stdlib.tuple([layoutTupleStyle])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Layout  not found$", (*) => style.layout([]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleLayoutFalsySpecMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            suffix := A_TickCount "_" Random(100000, 999999)
+            missingStyle := "LayoutNone.Treeview_" suffix
+            emptyListStyle := "LayoutEmptyList.Treeview_" suffix
+            emptyTupleStyle := "LayoutEmptyTuple.Treeview_" suffix
+            emptyStringStyle := "LayoutEmptyString.Treeview_" suffix
+            zeroStyle := "LayoutZero.Treeview_" suffix
+            falseStyle := "LayoutFalse.Treeview_" suffix
+
+            baseLayout := style.layout("Treeview")
+            AhkTest.AssertEqual(baseLayout, style.layout("Treeview", stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Layout " missingStyle " not found$", (*) => style.layout(missingStyle, stdlib.None))
+
+            nullLayout := [stdlib.tuple(["null", Map("sticky", "nswe")])]
+            AhkTest.AssertEqual([], style.layout(emptyListStyle, []))
+            AhkTest.AssertEqual(nullLayout, style.layout(emptyListStyle))
+            AhkTest.AssertEqual([], style.layout(emptyTupleStyle, stdlib.tuple()))
+            AhkTest.AssertEqual(nullLayout, style.layout(emptyTupleStyle))
+            AhkTest.AssertEqual([], style.layout(emptyStringStyle, ""))
+            AhkTest.AssertEqual(nullLayout, style.layout(emptyStringStyle))
+            AhkTest.AssertEqual([], style.layout(zeroStyle, 0))
+            AhkTest.AssertEqual(nullLayout, style.layout(zeroStyle))
+            AhkTest.AssertEqual([], style.layout(falseStyle, stdlib.False))
+            AhkTest.AssertEqual(nullLayout, style.layout(falseStyle))
+
+            AhkTest.RaisesMatch(TypeError, "^'int' object is not iterable$", (*) => style.layout("LayoutOne.Treeview_" suffix, 1))
+            AhkTest.RaisesMatch(TypeError, "^'bool' object is not iterable$", (*) => style.layout("LayoutTrue.Treeview_" suffix, stdlib.True))
+            AhkTest.RaisesMatch(ValueError, "^not enough values to unpack \(expected 2, got 1\)$", (*) => style.layout("LayoutBad.Treeview_" suffix, "bad"))
+            AhkTest.RaisesMatch(ValueError, "^too many values to unpack \(expected 2\)$", (*) => style.layout("LayoutBadEntry.Treeview_" suffix, ["bad"]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleThemeSettingsElementCreateMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            baseTheme := style.theme_use()
+            suffix := A_TickCount "_" Random(100000, 999999)
+            elementName := "SettingsClone.field_" suffix
+            blankElementName := "SettingsBlank.element_" suffix
+            emptyElementName := "SettingsEmpty.element_" suffix
+            styleName := "SettingsElement.Treeview_" suffix
+
+            settings := Map(
+                elementName, Map("element create", ["from", baseTheme, "Treeview.field"]),
+                blankElementName, Map("element create", ["from", baseTheme]),
+                styleName, {
+                    configure: { rowheight: 29 },
+                    map: { foreground: [["selected", "white"]] }
+                }
+            )
+            AhkTest.AssertEqual(stdlib.None, style.theme_settings(baseTheme, settings))
+            AhkTest.AssertEqual(baseTheme, style.theme_use())
+            AhkTest.AssertContains(elementName, style.element_names())
+            AhkTest.AssertContains(blankElementName, style.element_names())
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(elementName))
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(blankElementName))
+            AhkTest.AssertEqual("29", style.configure(styleName, "rowheight"))
+            AhkTest.AssertEqual([stdlib.tuple(["selected", "white"])], style.map(styleName, "foreground"))
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_settings(baseTheme, Map(emptyElementName, Map("element create", []))))
+            AhkTest.AssertNotContains(emptyElementName, style.element_names())
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => style.theme_settings(baseTheme, Map("BadMissing.element_" suffix, Map("element create", ["from"]))))
+            AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'get'$", (*) => style.theme_settings(baseTheme, Map("Bad.TLabel", "bad")))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^theme `"missing-theme`" doesn't exist$", (*) => style.theme_settings("missing-theme", Map("MissingTheme.element_" suffix, Map("element create", ["from", baseTheme]))))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleThemeSettingsElementCreateValueShapesMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            baseTheme := style.theme_use()
+            suffix := A_TickCount "_" Random(100000, 999999)
+            imageName := "theme_settings_probe_image_" suffix
+            image := stdlib.tkinter.PhotoImage({ master: root, name: imageName, width: 1, height: 1 })
+            image.put("#ff0000", { to: [0, 0] })
+
+            AhkTest.AssertEqual(stdlib.None, style.theme_settings(baseTheme, Map("ThemeSettingsNone.element_" suffix, Map("element create", stdlib.None))))
+            AhkTest.AssertNotContains("ThemeSettingsNone.element_" suffix, style.element_names())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^No such element type f$", (*) => style.theme_settings(baseTheme, Map("ThemeSettingsString.element_" suffix, Map("element create", "from"))))
+            AhkTest.RaisesMatch(TypeError, "^'int' object is not subscriptable$", (*) => style.theme_settings(baseTheme, Map("ThemeSettingsInt.element_" suffix, Map("element create", 1))))
+            AhkTest.RaisesMatch(ValueError, "^not enough values to unpack \(expected 2, got 0\)$", (*) => style.theme_settings(baseTheme, Map("ThemeSettingsVsapiMissingAll.element_" suffix, Map("element create", ["vsapi"]))))
+            AhkTest.RaisesMatch(ValueError, "^not enough values to unpack \(expected 2, got 1\)$", (*) => style.theme_settings(baseTheme, Map("ThemeSettingsVsapiMissingPart.element_" suffix, Map("element create", ["vsapi", "Explorer::TreeView"]))))
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => style.theme_settings(baseTheme, Map("ThemeSettingsImageMissing.element_" suffix, Map("element create", ["image"]))))
+            AhkTest.RaisesMatch(ValueError, "^not enough values to unpack \(expected at least 1, got 0\)$", (*) => style.theme_settings(baseTheme, Map("ThemeSettingsImageEmptyEntry.element_" suffix, Map("element create", ["image", imageName, []]))))
+            AhkTest.RaisesMatch(TypeError, "^cannot unpack non-iterable int object$", (*) => style.theme_settings(baseTheme, Map("ThemeSettingsImageIntEntry.element_" suffix, Map("element create", ["image", imageName, 1]))))
+            AhkTest.RaisesMatch(TypeError, "^cannot unpack non-iterable NoneType object$", (*) => style.theme_settings(baseTheme, Map("ThemeSettingsImageNoneEntry.element_" suffix, Map("element create", ["image", imageName, stdlib.None]))))
+            AhkTest.AssertEqual(stdlib.None, style.theme_settings(baseTheme, Map("ThemeSettingsImageOptionNone.element_" suffix, Map("element create", ["image", imageName], "border", stdlib.None))))
+            AhkTest.AssertContains("ThemeSettingsImageOptionNone.element_" suffix, style.element_names())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleThemeSettingsTupleKeysMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            baseTheme := style.theme_use()
+            suffix := A_TickCount "_" Random(100000, 999999)
+            tupleStyleKey := stdlib.tuple(["SettingsTupleKey_" suffix, "Treeview"])
+            tupleElementKey := stdlib.tuple(["SettingsTupleElement_" suffix, "field"])
+            spaceStyleKey := "Settings Space.Treeview_" suffix
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "ttk::style configure style \?-option \?value\.\.\.\?\?"$', (*) => style.theme_settings(baseTheme, Map(tupleStyleKey, { configure: { rowheight: 33 } })))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "ttk::style configure style \?-option \?value\.\.\.\?\?"$', (*) => style.theme_settings(baseTheme, Map(spaceStyleKey, { configure: { rowheight: 34 } })))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^No such element type 'field'\)$", (*) => style.theme_settings(baseTheme, Map(tupleElementKey, Map("element create", ["from", baseTheme, "Treeview.field"]))))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkStyleElementCreateMatchesLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            style := stdlib.tkinter.ttk.Style(root)
+            AhkTest.AssertTrue(HasMethod(style, "element_create"))
+            baseTheme := style.theme_use()
+            fromName := "ProbeClone.field"
+            emptyFromName := "ProbeEmpty.element"
+            extraFromName := "ProbeExtra.element"
+            imageName := "probe_style_image"
+            imageElement := "ProbeImage.element"
+            image := stdlib.tkinter.PhotoImage({ master: root, name: imageName, width: 1, height: 1 })
+            image.put("#ff0000", { to: [0, 0] })
+
+            AhkTest.AssertNotContains(fromName, style.element_names())
+            AhkTest.AssertEqual(stdlib.None, style.element_create(fromName, "from", baseTheme, "Treeview.field"))
+            AhkTest.AssertContains(fromName, style.element_names())
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(fromName))
+
+            AhkTest.AssertEqual(stdlib.None, style.element_create(emptyFromName, "from", baseTheme))
+            AhkTest.AssertContains(emptyFromName, style.element_names())
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(emptyFromName))
+
+            AhkTest.AssertEqual(stdlib.None, style.element_create(extraFromName, "from", baseTheme, "Treeview.field", "ignored"))
+            AhkTest.AssertContains(extraFromName, style.element_names())
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(extraFromName))
+
+            AhkTest.AssertEqual(stdlib.None, style.element_create(imageElement, "image", imageName, ["disabled", imageName], { border: 1, sticky: "we" }))
+            AhkTest.AssertContains(imageElement, style.element_names())
+            AhkTest.AssertEqual(stdlib.tuple(), style.element_options(imageElement))
+
+            AhkTest.RaisesMatch(TypeError, "^Style\.element_create\(\) missing 2 required positional arguments: 'elementname' and 'etype'$", (*) => style.element_create())
+            AhkTest.RaisesMatch(TypeError, "^Style\.element_create\(\) missing 1 required positional argument: 'etype'$", (*) => style.element_create("x"))
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => style.element_create("bad_from", "from"))
+            AhkTest.RaisesMatch(IndexError, "^tuple index out of range$", (*) => style.element_create("bad_image", "image"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^No such element type unknown$", (*) => style.element_create("bad_unknown", "unknown"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Duplicate element " fromName "$", (*) => style.element_create(fromName, "from", baseTheme, "Treeview.field"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^theme `"missing-theme`" doesn't exist$", (*) => style.element_create("bad_theme_element", "from", "missing-theme", "Treeview.field"))
+            AhkTest.AssertEqual(stdlib.None, style.element_create("bad_source_element", "from", baseTheme, "missing.element"))
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -1393,6 +6029,12 @@ class StdlibTkinterTest
             AhkTest.AssertTrue(sashposSet is Integer)
             AhkTest.AssertEqual(sashposSet, paned.sashpos(0))
             AhkTest.AssertEqual(stdlib.None, paned.insert("end", paneOne))
+            AhkTest.AssertTrue(HasMethod(paned, "remove"))
+            AhkTest.AssertEqual(stdlib.None, paned.remove(paneTwo))
+            AhkTest.AssertEqual(stdlib.tuple([".ttk_paned_probe.one"]), paned.panes())
+            AhkTest.AssertEqual("", paneTwo.winfo_manager())
+            AhkTest.AssertEqual(stdlib.None, paned.add(paneTwo, { weight: 5 }))
+            AhkTest.AssertEqual(5, paned.pane(paneTwo, "weight"))
             AhkTest.AssertEqual(stdlib.None, paned.forget(paneTwo))
             AhkTest.AssertEqual(stdlib.tuple([".ttk_paned_probe.one"]), paned.panes())
 
@@ -1403,6 +6045,9 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(TypeError, "^PanedWindow\.add\(\) takes 2 positional arguments but 4 were given$", (*) => paned.add(paneOne, {}, "extra"))
             AhkTest.RaisesMatch(TypeError, "^PanedWindow\.remove\(\) missing 1 required positional argument: 'child'$", (*) => paned.forget())
             AhkTest.RaisesMatch(TypeError, "^PanedWindow\.remove\(\) takes 2 positional arguments but 3 were given$", (*) => paned.forget(paneOne, "extra"))
+            AhkTest.RaisesMatch(TypeError, "^PanedWindow\.remove\(\) missing 1 required positional argument: 'child'$", (*) => paned.remove())
+            AhkTest.RaisesMatch(TypeError, "^PanedWindow\.remove\(\) takes 2 positional arguments but 3 were given$", (*) => paned.remove(paneOne, "extra"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification missing$", (*) => paned.remove("missing"))
             AhkTest.RaisesMatch(TypeError, "^Widget\.identify\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => paned.identify())
             AhkTest.RaisesMatch(TypeError, "^Widget\.identify\(\) missing 1 required positional argument: 'y'$", (*) => paned.identify(1))
             AhkTest.RaisesMatch(TypeError, "^Widget\.identify\(\) takes 3 positional arguments but 4 were given$", (*) => paned.identify(1, 2, 3))
@@ -1414,6 +6059,140 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(TypeError, "^PanedWindow\.panes\(\) takes 1 positional argument but 2 were given$", (*) => paned.panes("extra"))
             AhkTest.RaisesMatch(TypeError, "^Panedwindow\.sashpos\(\) missing 1 required positional argument: 'index'$", (*) => paned.sashpos())
             AhkTest.RaisesMatch(TypeError, "^Panedwindow\.sashpos\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => paned.sashpos(0, 1, 2))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkPanedwindowPaneIdNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            paned := stdlib.tkinter.ttk.Panedwindow(root, { name: "ttk_paned_paneid_sequence" })
+            paneOne := stdlib.tkinter.ttk.Frame(paned, { name: "one" })
+            paneTwo := stdlib.tkinter.ttk.Frame(paned, { name: "two" })
+            spare := stdlib.tkinter.ttk.Frame(paned, { name: "spare" })
+            AhkTest.AssertEqual(stdlib.None, paned.add(paneOne, { weight: 2 }))
+            AhkTest.AssertEqual(stdlib.None, paned.add(paneTwo, { weight: 3 }))
+            AhkTest.AssertEqual(stdlib.None, paned.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_paned_paneid_sequence pane pane \?-option value \.\.\.\?"$', (*) => paned.pane(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_paned_paneid_sequence pane pane \?-option value \.\.\.\?"$', (*) => paned.pane(stdlib.None, "weight"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => paned.pane([]))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => paned.pane(stdlib.tuple()))
+            paneOneInfo := paned.pane([String(paneOne)])
+            AhkTest.AssertEqual(2, paneOneInfo["weight"])
+            AhkTest.AssertEqual(paneOneInfo, paned.pane(stdlib.tuple([String(paneOne)])))
+            AhkTest.AssertEqual(2, paned.pane([String(paneOne)], "weight"))
+            AhkTest.AssertEqual(Map(), paned.pane([String(paneOne)], { weight: 4 }))
+            AhkTest.AssertEqual(4, paned.pane(String(paneOne), "weight"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification missing pane$", (*) => paned.pane(["missing", "pane"]))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_paned_paneid_sequence insert index slave \?-option value \.\.\.\?"$', (*) => paned.insert(stdlib.None, spare))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => paned.insert([], spare))
+            AhkTest.AssertEqual(stdlib.None, paned.insert([String(paneTwo)], spare))
+            AhkTest.AssertEqual(stdlib.tuple([String(paneOne), String(spare), String(paneTwo)]), paned.panes())
+            AhkTest.AssertEqual(stdlib.None, paned.forget(spare))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_paned_paneid_sequence insert index slave \?-option value \.\.\.\?"$', (*) => paned.insert("end", stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad window path name ""$', (*) => paned.insert("end", []))
+            AhkTest.AssertEqual(stdlib.None, paned.insert("end", [String(paneOne)]))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            paned := stdlib.tkinter.ttk.Panedwindow(root, { name: "ttk_paned_paneid_forget" })
+            paneOne := stdlib.tkinter.ttk.Frame(paned, { name: "one" })
+            paneTwo := stdlib.tkinter.ttk.Frame(paned, { name: "two" })
+            paned.add(paneOne, { weight: 2 })
+            paned.add(paneTwo, { weight: 3 })
+            root.update_idletasks()
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_paned_paneid_forget forget pane"$', (*) => paned.forget(stdlib.None))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification $", (*) => paned.forget([]))
+            AhkTest.AssertEqual(stdlib.None, paned.forget([String(paneOne)]))
+            AhkTest.AssertEqual(stdlib.None, paned.remove(stdlib.tuple([String(paneTwo)])))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid slave specification missing pane$", (*) => paned.remove(stdlib.tuple(["missing", "pane"])))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkPanedwindowIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            paned := stdlib.tkinter.ttk.Panedwindow(root, { orient: "horizontal", name: "ttk_paned_identify_sequence" })
+            left := stdlib.tkinter.ttk.Frame(paned, { width: 40, height: 20, name: "left" })
+            right := stdlib.tkinter.ttk.Frame(paned, { width: 40, height: 20, name: "right" })
+            paned.add(left, { weight: 1 })
+            paned.add(right, { weight: 1 })
+            paned.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(paned, "ttk_paned_identify_sequence", 0, 0)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkPanedwindowInheritedPanedWindowMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            paned := stdlib.tkinter.ttk.Panedwindow(root, { orient: "horizontal", name: "ttk_paned_inherited" })
+            left := stdlib.tkinter.ttk.Frame(paned, { width: 40, height: 20, name: "left" })
+            right := stdlib.tkinter.ttk.Frame(paned, { width: 40, height: 20, name: "right" })
+            AhkTest.AssertEqual(stdlib.None, paned.add(left, { weight: 2 }))
+            AhkTest.AssertEqual(stdlib.None, paned.add(right, { weight: 3 }))
+            AhkTest.AssertEqual(stdlib.None, paned.pack())
+            AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.update())
+
+            for methodName in ["panecget", "paneconfigure", "paneconfig", "proxy", "proxy_coord", "proxy_forget", "proxy_place", "sash", "sash_coord", "sash_mark", "sash_place"]
+                AhkTest.AssertTrue(HasMethod(paned, methodName))
+
+            badPanecget := '^bad command "panecget": must be add, configure, cget, forget, identify, insert, instate, pane, panes, sashpos, or state$'
+            badPaneconfigure := '^bad command "paneconfigure": must be add, configure, cget, forget, identify, insert, instate, pane, panes, sashpos, or state$'
+            badProxy := '^bad command "proxy": must be add, configure, cget, forget, identify, insert, instate, pane, panes, sashpos, or state$'
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, badPanecget, (*) => paned.panecget(left, "weight"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, badPanecget, (*) => paned.panecget([String(left)], "weight"))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "NoneType"\) to str$', (*) => paned.panecget(left, stdlib.None))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "list"\) to str$', (*) => paned.panecget(left, ["weight"]))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, badPaneconfigure, (*) => paned.paneconfigure(left))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, badPaneconfigure, (*) => paned.paneconfigure(left, "weight"))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, badPaneconfigure, (*) => paned.paneconfig(left, "weight"))
+            AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => paned.paneconfigure(left, ["weight"]))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, badProxy, (*) => paned.proxy())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, badProxy, (*) => paned.proxy_coord())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, badProxy, (*) => paned.proxy_forget())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, badProxy, (*) => paned.proxy_place(5, 6))
+
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_paned_inherited sashpos index \?newpos\?"$', (*) => paned.sash())
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "coord"$', (*) => paned.sash_coord(0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "mark"$', (*) => paned.sash_mark(0))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.ttk_paned_inherited sashpos index \?newpos\?"$', (*) => paned.sash_place(0, 20, 21))
+
+            AhkTest.RaisesMatch(TypeError, "^PanedWindow\.panecget\(\) missing 2 required positional arguments: 'child' and 'option'$", (*) => paned.panecget())
+            AhkTest.RaisesMatch(TypeError, "^PanedWindow\.panecget\(\) missing 1 required positional argument: 'option'$", (*) => paned.panecget(left))
+            AhkTest.RaisesMatch(TypeError, "^PanedWindow\.paneconfigure\(\) takes from 2 to 3 positional arguments but 4 were given$", (*) => paned.paneconfigure(left, "weight", "extra"))
+            AhkTest.RaisesMatch(TypeError, "^PanedWindow\.proxy_coord\(\) takes 1 positional argument but 2 were given$", (*) => paned.proxy_coord(1))
+            AhkTest.RaisesMatch(TypeError, "^PanedWindow\.proxy_place\(\) missing 1 required positional argument: 'y'$", (*) => paned.proxy_place(1))
+            AhkTest.RaisesMatch(TypeError, "^PanedWindow\.sash_coord\(\) missing 1 required positional argument: 'index'$", (*) => paned.sash_coord())
+            AhkTest.RaisesMatch(TypeError, "^PanedWindow\.sash_place\(\) missing 1 required positional argument: 'y'$", (*) => paned.sash_place(0, 1))
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -1476,6 +6255,22 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => sizegrip.state(1))
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid state name d$", (*) => sizegrip.state("disabled"))
             AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => sizegrip.instate(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkSizegripIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            sizegrip := stdlib.tkinter.ttk.Sizegrip(root, { name: "ttk_sizegrip_identify_sequence" })
+            sizegrip.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(sizegrip, "ttk_sizegrip_identify_sequence")
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -1579,6 +6374,142 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => labelFrame.state(1))
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid state name d$", (*) => labelFrame.state("disabled"))
             AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => labelFrame.instate(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkLabelFrameIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            labelFrame := stdlib.tkinter.ttk.LabelFrame(root, { text: "Group", name: "ttk_labelframe_identify_sequence" })
+            labelFrame.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(labelFrame, "ttk_labelframe_identify_sequence")
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkPublicAliasesMatchLocal310()
+    {
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter.ttk, "Labelframe"))
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter.ttk, "PanedWindow"))
+        AhkTest.AssertSame(stdlib.tkinter.ttk.LabelFrame, stdlib.tkinter.ttk.Labelframe)
+        AhkTest.AssertSame(stdlib.tkinter.ttk.Panedwindow, stdlib.tkinter.ttk.PanedWindow)
+        AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'tk'$", (*) => stdlib.tkinter.ttk.Labelframe("master"))
+        AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'tk'$", (*) => stdlib.tkinter.ttk.PanedWindow("master"))
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            labelFrame := stdlib.tkinter.ttk.Labelframe(root, { text: "Alias", padding: [1, 2], labelanchor: "ne", name: "ttk_alias_labelframe" })
+            AhkTest.AssertTrue(labelFrame is stdlib.tkinter.ttk.Labelframe)
+            AhkTest.AssertTrue(labelFrame is stdlib.tkinter.ttk.LabelFrame)
+            AhkTest.AssertEqual(".ttk_alias_labelframe", String(labelFrame))
+            AhkTest.AssertEqual("ttk::labelframe", labelFrame.widgetName)
+            AhkTest.AssertEqual("TLabelframe", labelFrame.winfo_class())
+            AhkTest.AssertEqual("Alias", labelFrame.cget("text"))
+            AhkTest.AssertEqual("ne", labelFrame.cget("labelanchor"))
+            AhkTest.AssertEqual(stdlib.tuple(["text", "text", "Text", "", "Alias"]), labelFrame.configure("text"))
+
+            paned := stdlib.tkinter.ttk.PanedWindow(root, { orient: "vertical", width: 120, height: 80, name: "ttk_alias_paned" })
+            AhkTest.AssertTrue(paned is stdlib.tkinter.ttk.PanedWindow)
+            AhkTest.AssertTrue(paned is stdlib.tkinter.ttk.Panedwindow)
+            AhkTest.AssertEqual(".ttk_alias_paned", String(paned))
+            AhkTest.AssertEqual("ttk::panedwindow", paned.widgetName)
+            AhkTest.AssertEqual("TPanedwindow", paned.winfo_class())
+            AhkTest.AssertEqual("vertical", paned.cget("orient"))
+            AhkTest.AssertEqual(120, paned.cget("width"))
+            AhkTest.AssertEqual(stdlib.tuple(["orient", "orient", "Orient", "vertical", "vertical"]), paned.configure("orient"))
+            left := stdlib.tkinter.ttk.Frame(paned, { name: "left" })
+            right := stdlib.tkinter.ttk.Frame(paned, { name: "right" })
+            AhkTest.AssertEqual(stdlib.None, paned.add(left, { weight: 1 }))
+            AhkTest.AssertEqual(stdlib.None, paned.add(right, { weight: 2 }))
+            AhkTest.AssertEqual(stdlib.tuple([".ttk_alias_paned.left", ".ttk_alias_paned.right"]), paned.panes())
+            AhkTest.AssertEqual(2, paned.pane(right, "weight"))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkWidgetPublicClassMatchesLocal310()
+    {
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter, "ttk"))
+        AhkTest.AssertTrue(HasProp(stdlib.tkinter.ttk, "Widget"))
+        AhkTest.RaisesMatch(TypeError, "^Widget\.__init__\(\) missing 2 required positional arguments: 'master' and 'widgetname'$", (*) => stdlib.tkinter.ttk.Widget())
+        AhkTest.RaisesMatch(TypeError, "^Widget\.__init__\(\) missing 1 required positional argument: 'widgetname'$", (*) => stdlib.tkinter.ttk.Widget("master"))
+        AhkTest.RaisesMatch(AttributeError, "^'str' object has no attribute 'tk'$", (*) => stdlib.tkinter.ttk.Widget("master", "ttk::frame"))
+        AhkTest.RaisesMatch(TypeError, "^Widget\.__init__\(\) takes from 3 to 4 positional arguments but 7 were given$", (*) => stdlib.tkinter.ttk.Widget(stdlib.None, "ttk::frame", {}, {}, [], "extra"))
+        AhkTest.RaisesMatch(ValueError, "^dictionary update sequence element #0 has length 1; 2 is required$", (*) => stdlib.tkinter.ttk.Widget(stdlib.None, "ttk::frame", "bad"))
+
+        defaultWidget := stdlib.tkinter.ttk.Widget(stdlib.None, "ttk::frame")
+        try {
+            AhkTest.AssertTrue(defaultWidget is stdlib.tkinter.ttk.Widget)
+            AhkTest.AssertEqual(".!widget", String(defaultWidget))
+            AhkTest.AssertEqual("ttk::frame", defaultWidget.widgetName)
+            AhkTest.AssertEqual("TFrame", defaultWidget.winfo_class())
+        } finally {
+            try defaultWidget.master.destroy()
+        }
+
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^invalid command name "bad::widget"$', (*) => stdlib.tkinter.ttk.Widget(root, "bad::widget"))
+            widget := stdlib.tkinter.ttk.Widget(root, "ttk::frame", { name: "ttk_widget_probe", style: "Probe.TFrame", padding: [1, 2] })
+            AhkTest.AssertTrue(widget is stdlib.tkinter.ttk.Widget)
+            AhkTest.AssertFalse(widget is stdlib.tkinter.ttk.Frame)
+            AhkTest.AssertEqual(".ttk_widget_probe", String(widget))
+            AhkTest.AssertEqual("ttk::frame", widget.widgetName)
+            AhkTest.AssertSame(root, widget.master)
+            AhkTest.AssertSame(root.tk, widget.tk)
+            AhkTest.AssertEqual("TFrame", widget.winfo_class())
+            AhkTest.AssertEqual("Probe.TFrame", widget.cget("style"))
+            AhkTest.AssertEqual(stdlib.tuple(["1", "2"]), widget.cget("padding"))
+            AhkTest.AssertContains("style", widget.keys())
+            AhkTest.AssertContains("padding", widget.keys())
+            AhkTest.AssertEqual(stdlib.tuple(["style", "style", "Style", "", "Probe.TFrame"]), widget.configure("style"))
+            AhkTest.AssertEqual(stdlib.tuple(["padding", "padding", "Pad", "", stdlib.tuple(["1", "2"])]), widget.configure("padding"))
+            AhkTest.AssertEqual(stdlib.None, widget.configure({ style: "Changed.TFrame" }))
+            AhkTest.AssertEqual("Changed.TFrame", widget.cget("style"))
+            AhkTest.AssertEqual(stdlib.tuple(), widget.state())
+            AhkTest.AssertEqual(stdlib.tuple(["!disabled"]), widget.state(["disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(["disabled"]), widget.state())
+            AhkTest.AssertSame(stdlib.True, widget.instate(["disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(["disabled"]), widget.state(["!disabled"]))
+            AhkTest.AssertEqual(stdlib.tuple(), widget.state())
+            AhkTest.AssertEqual(stdlib.tuple(["callback", "x"]), widget.instate(["!disabled"], (args*) => stdlib.tuple(["callback", args[1]]), "x"))
+            AhkTest.RaisesMatch(TypeError, "^Widget\.identify\(\) missing 2 required positional arguments: 'x' and 'y'$", (*) => widget.identify())
+            AhkTest.RaisesMatch(TypeError, "^Widget\.identify\(\) missing 1 required positional argument: 'y'$", (*) => widget.identify(1))
+            AhkTest.RaisesMatch(TypeError, "^Widget\.identify\(\) takes 3 positional arguments but 4 were given$", (*) => widget.identify(1, 2, 3))
+            AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => widget.state(1))
+            AhkTest.RaisesMatch(stdlib.tkinter.TclError, "^Invalid state name d$", (*) => widget.state("disabled"))
+            AhkTest.RaisesMatch(TypeError, "^Widget\.instate\(\) missing 1 required positional argument: 'statespec'$", (*) => widget.instate())
+            AhkTest.RaisesMatch(TypeError, "^can only join an iterable$", (*) => widget.instate(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestTtkWidgetIdentifyNoneAndSequenceWordsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            widget := stdlib.tkinter.ttk.Widget(root, "ttk::frame", { name: "ttk_widget_identify_sequence" })
+            widget.pack()
+            root.update_idletasks()
+
+            StdlibTkinterTest.AssertTtkIdentifySequenceWords(widget, "ttk_widget_identify_sequence")
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -2718,6 +7649,8 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, frame.pack({ padx: 8, pady: 9 }))
             AhkTest.AssertEqual(stdlib.None, label.pack({ padx: 6, pady: 7 }))
             AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
+            AhkTest.AssertEqual(stdlib.None, root.lift())
+            AhkTest.AssertEqual("", root.attributes("-topmost", stdlib.True))
             AhkTest.AssertEqual(stdlib.None, root.update())
 
             atom := root.winfo_atom("WM_DELETE_WINDOW")
@@ -2740,9 +7673,9 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(".atom_host.caption", label.winfo_pathname(labelId, root))
             AhkTest.AssertEqual(".", label.winfo_pathname(rootId, stdlib.None))
 
-            rootHit := root.winfo_containing(root.winfo_rootx() + 2, root.winfo_rooty() + 2)
+            rootHit := root.winfo_containing(frame.winfo_rootx() + 1, frame.winfo_rooty() + 1)
             labelHit := root.winfo_containing(label.winfo_rootx() + 1, label.winfo_rooty() + 1)
-            AhkTest.AssertSame(root, rootHit)
+            AhkTest.AssertSame(frame, rootHit)
             AhkTest.AssertSame(label, labelHit)
             AhkTest.AssertSame(label, label.winfo_containing(label.winfo_rootx() + 1, label.winfo_rooty() + 1, stdlib.None))
             AhkTest.AssertSame(label, label.winfo_containing(label.winfo_rootx() + 1, label.winfo_rooty() + 1, root))
@@ -4783,10 +9716,61 @@ class StdlibTkinterTest
         tkinterPath := stdlibDir "\tkinter.ahk"
         script := '#Requires AutoHotkey v2.0`n'
             . '#ErrorStdOut "UTF-8"`n'
-            . 'class Menu`n'
+            . 'class Button`n'
             . '{`n'
             . '}`n'
-            . 'class Button`n'
+            . 'class Label`n'
+            . '{`n'
+            . '}`n'
+            . 'class Frame`n'
+            . '{`n'
+            . '}`n'
+            . 'class Scale`n'
+            . '{`n'
+            . '}`n'
+            . 'class Notebook`n'
+            . '{`n'
+            . '}`n'
+            . 'class Combobox`n'
+            . '{`n'
+            . '}`n'
+            . 'class Separator`n'
+            . '{`n'
+            . '}`n'
+            . 'class Progressbar`n'
+            . '{`n'
+            . '}`n'
+            . 'class Treeview`n'
+            . '{`n'
+            . '}`n'
+            . 'class Style`n'
+            . '{`n'
+            . '}`n'
+            . 'class Checkbutton`n'
+            . '{`n'
+            . '}`n'
+            . 'class Radiobutton`n'
+            . '{`n'
+            . '}`n'
+            . 'class Scrollbar`n'
+            . '{`n'
+            . '}`n'
+            . 'class Spinbox`n'
+            . '{`n'
+            . '}`n'
+            . 'class Menubutton`n'
+            . '{`n'
+            . '}`n'
+            . 'class OptionMenu`n'
+            . '{`n'
+            . '}`n'
+            . 'class Panedwindow`n'
+            . '{`n'
+            . '}`n'
+            . 'class Sizegrip`n'
+            . '{`n'
+            . '}`n'
+            . 'class LabeledScale`n'
             . '{`n'
             . '}`n'
             . 'class Event`n'
@@ -4812,6 +9796,18 @@ class StdlibTkinterTest
             . '    ExitApp 14`n'
             . 'if (stdlib.tkinter.Menu = Menu)`n'
             . '    ExitApp 15`n'
+            . 'if (stdlib.tkinter.Button = Button || stdlib.tkinter.Label = Label || stdlib.tkinter.Frame = Frame || stdlib.tkinter.Scale = Scale)`n'
+            . '    ExitApp 16`n'
+            . 'if (stdlib.tkinter.ttk.Button = Button || stdlib.tkinter.ttk.Label = Label || stdlib.tkinter.ttk.Frame = Frame || stdlib.tkinter.ttk.Scale = Scale)`n'
+            . '    ExitApp 17`n'
+            . 'if (stdlib.tkinter.ttk.Notebook = Notebook || stdlib.tkinter.ttk.Combobox = Combobox || stdlib.tkinter.ttk.Separator = Separator || stdlib.tkinter.ttk.Progressbar = Progressbar)`n'
+            . '    ExitApp 18`n'
+            . 'if (stdlib.tkinter.ttk.Treeview = Treeview || stdlib.tkinter.ttk.Style = Style || stdlib.tkinter.ttk.Checkbutton = Checkbutton || stdlib.tkinter.ttk.Radiobutton = Radiobutton)`n'
+            . '    ExitApp 19`n'
+            . 'if (stdlib.tkinter.ttk.Scrollbar = Scrollbar || stdlib.tkinter.ttk.Spinbox = Spinbox || stdlib.tkinter.ttk.Menubutton = Menubutton || stdlib.tkinter.ttk.OptionMenu = OptionMenu)`n'
+            . '    ExitApp 20`n'
+            . 'if (stdlib.tkinter.ttk.Panedwindow = Panedwindow || stdlib.tkinter.ttk.Sizegrip = Sizegrip || stdlib.tkinter.ttk.LabeledScale = LabeledScale)`n'
+            . '    ExitApp 21`n'
             . 'FileAppend "ok``n", "*", "UTF-8"`n'
             . 'ExitApp 0`n'
         try {
@@ -5253,6 +10249,50 @@ class StdlibTkinterTest
         }
     }
 
+    static TestClassicScaleSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            variable := stdlib.tkinter.DoubleVar(root, 2.5, "classic_scale_sequence_var")
+            scale := stdlib.tkinter.Scale(root, { name: "classic_scale_sequence", from_: 0, to: 10, orient: "horizontal", length: 120, variable: variable })
+            scale.pack()
+            root.update_idletasks()
+
+            coords := scale.coords()
+            AhkTest.AssertEqual(coords, scale.coords(stdlib.None))
+            AhkTest.AssertEqual(coords, scale.coords(stdlib.tuple(["5"])))
+            AhkTest.AssertEqual(coords, scale.coords(["5"]))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got ""$', scale, "coords", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got ""$', scale, "coords", stdlib.tuple())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got "5 6"$', scale, "coords", ["5", "6"])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got "bad"$', scale, "coords", ["bad"])
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scale_sequence set value"$', scale, "set", stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got ""$', scale, "set", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got ""$', scale, "set", stdlib.tuple())
+            AhkTest.AssertEqual(stdlib.None, scale.set(stdlib.tuple(["7"])))
+            AhkTest.AssertEqual(7.0, variable.get())
+            AhkTest.AssertEqual(stdlib.None, scale.set(["6"]))
+            AhkTest.AssertEqual(6.0, variable.get())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got "7 8"$', scale, "set", ["7", "8"])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got "bad"$', scale, "set", ["bad"])
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scale_sequence identify x y"$', scale, "identify", stdlib.None, 5)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scale_sequence identify x y"$', scale, "identify", 5, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scale_sequence identify x y"$', scale, "identify", stdlib.None, stdlib.None)
+            AhkTest.AssertEqual("", scale.identify(stdlib.tuple(["5"]), stdlib.tuple(["5"])))
+            AhkTest.AssertEqual("", scale.identify(["5"], ["5"]))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', scale, "identify", [], 5)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', scale, "identify", 5, [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "5 6"$', scale, "identify", ["5", "6"], 5)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "5 6"$', scale, "identify", 5, ["5", "6"])
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestScrollbarControlSurfaceMatchesLocal310()
     {
         root := stdlib.tkinter.Tk()
@@ -5310,6 +10350,68 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(TypeError, "^Scrollbar\.set\(\) takes 3 positional arguments but 4 were given$", (*) => stdlib.tkinter.Scrollbar(root).set(0.1, 0.2, 0.3))
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "bad"$', (*) => stdlib.tkinter.Scrollbar(root).set("bad", 0.2))
             AhkTest.RaisesMatch(TypeError, "^Scrollbar\.get\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.tkinter.Scrollbar(root).get(1))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestClassicScrollbarSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            bar := stdlib.tkinter.Scrollbar(root, { name: "classic_scrollbar_sequence", orient: "vertical" })
+            bar.pack()
+            root.update_idletasks()
+
+            AhkTest.AssertEqual(stdlib.None, bar.activate(stdlib.None))
+            AhkTest.AssertEqual(stdlib.None, bar.activate())
+            AhkTest.AssertEqual(stdlib.None, bar.activate([]))
+            AhkTest.AssertEqual(stdlib.None, bar.activate(stdlib.tuple()))
+            AhkTest.AssertEqual(stdlib.None, bar.activate(["slider"]))
+            AhkTest.AssertEqual("slider", bar.activate())
+            AhkTest.AssertEqual(stdlib.None, bar.activate(stdlib.tuple(["arrow1"])))
+            AhkTest.AssertEqual("arrow1", bar.activate())
+            AhkTest.AssertEqual(stdlib.None, bar.activate(["slider", "arrow1"]))
+            AhkTest.AssertEqual(stdlib.None, bar.activate())
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence delta xDelta yDelta"$', bar, "delta", stdlib.None, 10)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence delta xDelta yDelta"$', bar, "delta", 0, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence delta xDelta yDelta"$', bar, "delta", stdlib.None, stdlib.None)
+            AhkTest.AssertTrue(bar.delta(["0"], stdlib.tuple(["10"])) is Float)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', bar, "delta", [], 10)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', bar, "delta", 0, [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "0 1"$', bar, "delta", ["0", "1"], 10)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "10 11"$', bar, "delta", 0, ["10", "11"])
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence fraction x y"$', bar, "fraction", stdlib.None, 10)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence fraction x y"$', bar, "fraction", 0, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence fraction x y"$', bar, "fraction", stdlib.None, stdlib.None)
+            AhkTest.AssertTrue(bar.fraction(["0"], stdlib.tuple(["10"])) is Float)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', bar, "fraction", [], 10)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', bar, "fraction", 0, [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "0 1"$', bar, "fraction", ["0", "1"], 10)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "10 11"$', bar, "fraction", 0, ["10", "11"])
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence identify x y"$', bar, "identify", stdlib.None, 1)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence identify x y"$', bar, "identify", 1, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence identify x y"$', bar, "identify", stdlib.None, stdlib.None)
+            AhkTest.AssertEqual("", bar.identify(["1"], stdlib.tuple(["1"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', bar, "identify", [], 1)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', bar, "identify", 1, [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "1 2"$', bar, "identify", ["1", "2"], 1)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "1 2"$', bar, "identify", 1, ["1", "2"])
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence set firstFraction lastFraction" or "\.classic_scrollbar_sequence set totalUnits windowUnits firstUnit lastUnit"$', bar, "set", stdlib.None, 0.75)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence set firstFraction lastFraction" or "\.classic_scrollbar_sequence set totalUnits windowUnits firstUnit lastUnit"$', bar, "set", 0.25, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_scrollbar_sequence set firstFraction lastFraction" or "\.classic_scrollbar_sequence set totalUnits windowUnits firstUnit lastUnit"$', bar, "set", stdlib.None, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got ""$', bar, "set", [], 0.75)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got ""$', bar, "set", 0.25, [])
+            AhkTest.AssertEqual(stdlib.None, bar.set(["0.25"], stdlib.tuple(["0.75"])))
+            AhkTest.AssertEqual(stdlib.tuple([0.25, 0.75]), bar.get())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got "0\.25 0\.5"$', bar, "set", ["0.25", "0.5"], 0.75)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got "0\.75 1\.0"$', bar, "set", 0.25, ["0.75", "1.0"])
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -6178,6 +11280,65 @@ class StdlibTkinterTest
         }
     }
 
+    static TestClassicPanedWindowSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            panes := stdlib.tkinter.PanedWindow(root, { name: "classic_paned_sequence", orient: "horizontal", sashwidth: 7 })
+            panes.pack()
+            left := stdlib.tkinter.Label(panes, { name: "left", text: "L" })
+            middle := stdlib.tkinter.Label(panes, { name: "middle", text: "M" })
+            spare := stdlib.tkinter.Label(panes, { name: "spare", text: "S" })
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence add widget \?widget \.\.\.\?"$', panes, "add", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, panes.add(stdlib.tuple([left]), { minsize: 20, padx: 3 }))
+            AhkTest.AssertEqual(stdlib.None, panes.add([middle], { minsize: 30 }))
+            AhkTest.AssertEqual(stdlib.tuple([".classic_paned_sequence.left", ".classic_paned_sequence.middle"]), panes.panes())
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence panecget pane option"$', panes, "panecget", stdlib.None, "minsize")
+            AhkTest.AssertEqual(20, panes.panecget(stdlib.tuple([left]), "minsize"))
+            AhkTest.RaisesMatch(TypeError, '^can only concatenate str \(not "NoneType"\) to str$', (*) => panes.panecget(left, stdlib.None))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence paneconfigure pane \?option\? \?value option value \.\.\.\?"$', panes, "paneconfigure", stdlib.None)
+            AhkTest.AssertEqual(stdlib.tuple(["minsize", "", "", "0", 20]), panes.paneconfigure(stdlib.tuple([left]))["minsize"])
+            AhkTest.AssertEqual(stdlib.tuple(["padx", "", "", "0", 3]), panes.paneconfigure(stdlib.tuple([left]), "padx"))
+            AhkTest.AssertEqual(stdlib.tuple(["minsize", "", "", "0", 20]), panes.paneconfigure(left, stdlib.None)["minsize"])
+            AhkTest.AssertEqual(stdlib.None, panes.paneconfigure(stdlib.tuple([left]), { minsize: 25 }))
+            AhkTest.AssertEqual(25, panes.panecget(left, "minsize"))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence identify x y"$', panes, "identify", stdlib.None, 1)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence identify x y"$', panes, "identify", 1, stdlib.None)
+            AhkTest.AssertEqual("", panes.identify(stdlib.tuple(["1"]), ["1"]))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence proxy place x y"$', panes, "proxy_place", stdlib.None, 5)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence proxy place x y"$', panes, "proxy_place", 5, stdlib.None)
+            AhkTest.AssertEqual(stdlib.tuple(), panes.proxy_place(stdlib.tuple(["5"]), ["6"]))
+            AhkTest.AssertEqual(2, panes.proxy_coord().Length)
+            AhkTest.AssertEqual(stdlib.tuple(), panes.proxy_forget())
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence sash coord index"$', panes, "sash_coord", stdlib.None)
+            AhkTest.AssertEqual(2, panes.sash_coord(stdlib.tuple(["0"])).Length)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence sash mark index \?x y\?"$', panes, "sash_mark", stdlib.None)
+            AhkTest.AssertEqual(2, panes.sash_mark(stdlib.tuple(["0"])).Length)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence sash place index x y"$', panes, "sash_place", stdlib.None, 10, 11)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence sash place index x y"$', panes, "sash_place", 0, stdlib.None, 11)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence sash place index x y"$', panes, "sash_place", 0, 10, stdlib.None)
+            AhkTest.AssertEqual(stdlib.tuple(), panes.sash_place(stdlib.tuple(["0"]), ["10"], stdlib.tuple(["11"])))
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.classic_paned_sequence forget widget \?widget \.\.\.\?"$', panes, "remove", stdlib.None)
+            AhkTest.AssertEqual(stdlib.None, panes.remove(stdlib.tuple([left])))
+            AhkTest.AssertEqual(stdlib.tuple([".classic_paned_sequence.middle"]), panes.panes())
+            AhkTest.AssertEqual(stdlib.None, panes.forget([middle]))
+            AhkTest.AssertEqual(stdlib.tuple(), panes.panes())
+            AhkTest.AssertEqual(stdlib.None, panes.add(spare))
+            AhkTest.AssertEqual(stdlib.tuple([".classic_paned_sequence.spare"]), panes.panes())
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
     static TestTkClipboardSurfaceMatchesLocal310()
     {
         oldClipboardWasRead := false
@@ -6788,6 +11949,81 @@ class StdlibTkinterTest
             AhkTest.RaisesMatch(TypeError, "^PhotoImage\.put\(\) missing 1 required positional argument: 'data'$", (*) => image.put())
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "bad"$', (*) => image.get("bad", 0))
             AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^the "-to" option requires one to four integer values$', (*) => image.put("#ff0000", { to: "bad" }))
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static TestPhotoImageSequenceMethodsMatchLocal310()
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            image := stdlib.tkinter.PhotoImage({ master: root, name: "photo_sequence", width: 3, height: 2 })
+            image.put("#112233", { to: [0, 0] })
+            image.put("#abcdef", { to: [2, 1] })
+
+            AhkTest.AssertEqual(stdlib.tuple([17, 34, 51]), image.get(["0"], stdlib.tuple(["0"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "photo_sequence get x y"$', image, "get", stdlib.None, 0)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "photo_sequence get x y"$', image, "get", 0, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "photo_sequence get x y"$', image, "get", stdlib.None, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', image, "get", [], 0)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', image, "get", 0, stdlib.tuple())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "0 1"$', image, "get", ["0", "1"], 0)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "0 1"$', image, "get", 0, ["0", "1"])
+
+            AhkTest.AssertSame(stdlib.False, image.transparency_get(["0"], stdlib.tuple(["0"])))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "photo_sequence transparency get x y"$', image, "transparency_get", stdlib.None, 0)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "photo_sequence transparency get x y"$', image, "transparency_get", 0, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', image, "transparency_get", [], 0)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "0 1"$', image, "transparency_get", ["0", "1"], 0)
+
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "photo_sequence transparency set x y boolean"$', image, "transparency_set", stdlib.None, 0, stdlib.True)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "photo_sequence transparency set x y boolean"$', image, "transparency_set", 0, stdlib.None, stdlib.True)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "photo_sequence transparency set x y boolean"$', image, "transparency_set", 0, 0, stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', image, "transparency_set", [], 0, stdlib.True)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', image, "transparency_set", 0, stdlib.tuple(), stdlib.True)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected boolean value but got ""$', image, "transparency_set", 0, 0, [])
+            AhkTest.AssertEqual(stdlib.None, image.transparency_set(["0"], stdlib.tuple(["0"]), ["1"]))
+            AhkTest.AssertSame(stdlib.True, image.transparency_get(0, 0))
+            AhkTest.AssertEqual(stdlib.None, image.transparency_set(0, 0, stdlib.False))
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "0 1"$', image, "transparency_set", ["0", "1"], 0, stdlib.True)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected boolean value but got "1 0"$', image, "transparency_set", 0, 0, ["1", "0"])
+
+            zoomed := image.zoom(["2"])
+            AhkTest.AssertTrue(zoomed is stdlib.tkinter.PhotoImage)
+            AhkTest.AssertEqual(6, zoomed.width())
+            AhkTest.AssertEqual(4, zoomed.height())
+            AhkTest.AssertEqual(stdlib.tuple([17, 34, 51]), zoomed.get(0, 0))
+            zoomedYNone := image.zoom(2, stdlib.None)
+            AhkTest.AssertEqual(6, zoomedYNone.width())
+            AhkTest.AssertEqual(4, zoomedYNone.height())
+            zoomedTupleY := image.zoom(2, stdlib.tuple(["3"]))
+            AhkTest.AssertEqual(6, zoomedTupleY.width())
+            AhkTest.AssertEqual(6, zoomedTupleY.height())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^the "-zoom" option requires one or two integer values$', image, "zoom", stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^the "-zoom" option requires one or two integer values$', image, "zoom", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "pyimage\d+ copy source-image .*\?-zoom x y\? .*\?-subsample x y\?"$', image, "zoom", 2, stdlib.tuple())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "2 3"$', image, "zoom", ["2", "3"])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "3 4"$', image, "zoom", 2, ["3", "4"])
+
+            sampled := image.subsample(["2"])
+            AhkTest.AssertTrue(sampled is stdlib.tkinter.PhotoImage)
+            AhkTest.AssertEqual(2, sampled.width())
+            AhkTest.AssertEqual(1, sampled.height())
+            AhkTest.AssertEqual(stdlib.tuple([17, 34, 51]), sampled.get(0, 0))
+            sampledYNone := image.subsample(2, stdlib.None)
+            AhkTest.AssertEqual(2, sampledYNone.width())
+            AhkTest.AssertEqual(1, sampledYNone.height())
+            sampledTupleY := image.subsample(2, stdlib.tuple(["1"]))
+            AhkTest.AssertEqual(2, sampledTupleY.width())
+            AhkTest.AssertEqual(2, sampledTupleY.height())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^the "-subsample" option requires one or two integer values$', image, "subsample", stdlib.None)
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^the "-subsample" option requires one or two integer values$', image, "subsample", [])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "pyimage\d+ copy source-image .*\?-zoom x y\? .*\?-subsample x y\?"$', image, "subsample", 2, stdlib.tuple())
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "2 3"$', image, "subsample", ["2", "3"])
+            StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "1 2"$', image, "subsample", 2, ["1", "2"])
         } finally {
             try root.update_idletasks()
             try root.destroy()
@@ -8381,6 +13617,423 @@ class StdlibTkinterTest
     static ThrowCallbackError(message)
     {
         throw Error(message, -1)
+    }
+
+    static AssertTtkIdentifySequenceWords(widget, commandName, scalarExpected := "", sequenceExpected := "", scalarX := 5, scalarY := 5)
+    {
+        AhkTest.AssertEqual(scalarExpected, widget.identify(scalarX, scalarY))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.' commandName ' identify \?what\? x y"$', (*) => widget.identify(stdlib.None, 5))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.' commandName ' identify \?what\? x y"$', (*) => widget.identify(5, stdlib.None))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.' commandName ' identify \?what\? x y"$', (*) => widget.identify(stdlib.None, stdlib.None))
+
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => widget.identify([], 5))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => widget.identify(stdlib.tuple(), 5))
+        AhkTest.AssertEqual(sequenceExpected, widget.identify(["5"], 5))
+        AhkTest.AssertEqual(sequenceExpected, widget.identify(stdlib.tuple(["5"]), 5))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => widget.identify(["5", "6"], 5))
+
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => widget.identify(5, []))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => widget.identify(5, stdlib.tuple()))
+        AhkTest.AssertEqual(sequenceExpected, widget.identify(5, ["5"]))
+        AhkTest.AssertEqual(sequenceExpected, widget.identify(5, stdlib.tuple(["5"])))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "5 6"$', (*) => widget.identify(5, ["5", "6"]))
+    }
+
+    static AssertTtkEntryFamilyXviewSequenceWords(widget, commandName)
+    {
+        AhkTest.AssertEqual(stdlib.None, widget.xview_moveto(["0.5"]))
+        AhkTest.AssertEqual(stdlib.None, widget.xview_moveto(stdlib.tuple(["0.5"])))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "moveto"$', (*) => widget.xview_moveto(stdlib.None))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => widget.xview_moveto([]))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got ""$', (*) => widget.xview_moveto(stdlib.tuple()))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected floating-point number but got "0\.5 0\.6"$', (*) => widget.xview_moveto(["0.5", "0.6"]))
+
+        AhkTest.AssertEqual(stdlib.None, widget.xview_scroll(["1"], "units"))
+        AhkTest.AssertEqual(stdlib.None, widget.xview_scroll(1, stdlib.tuple(["units"])))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad entry index "scroll"$', (*) => widget.xview_scroll(stdlib.None, "units"))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^wrong # args: should be "\.' commandName ' xview scroll number units\|pages"$', (*) => widget.xview_scroll(1, stdlib.None))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got ""$', (*) => widget.xview_scroll([], "units"))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^expected integer but got "1 2"$', (*) => widget.xview_scroll(["1", "2"], "units"))
+        AhkTest.RaisesMatch(stdlib.tkinter.TclError, '^bad argument "units pages": must be units or pages$', (*) => widget.xview_scroll(1, ["units", "pages"]))
+    }
+
+    static AssertTtkTreeviewViewSequenceWords(tree, commandName)
+    {
+        for axis in ["xview", "yview"] {
+            movetoMethod := axis "_moveto"
+            scrollMethod := axis "_scroll"
+
+            AhkTest.AssertEqual(2, StdlibTkinterTest.CallObjectMethod(tree, axis).Length)
+            AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(tree, axis, stdlib.None))
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got ""$', tree, axis, [])
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got "moveto"$', tree, axis, ["moveto"])
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got "moveto 0\.5"$', tree, axis, ["moveto", "0.5"])
+
+            AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(tree, axis, "moveto", ["0.5"]))
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got "moveto"$', tree, axis, "moveto", stdlib.None)
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected floating-point number but got ""$', tree, axis, "moveto", [])
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected floating-point number but got "0\.5 0\.6"$', tree, axis, "moveto", ["0.5", "0.6"])
+
+            AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(tree, axis, "scroll", ["1"], "units"))
+            AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(tree, axis, "scroll", 1, stdlib.tuple(["units"])))
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got "scroll"$', tree, axis, "scroll", stdlib.None, "units")
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^wrong # args: should be "\.' commandName ' ' axis ' scroll number units\|pages"$', tree, axis, "scroll", 1, stdlib.None)
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got ""$', tree, axis, "scroll", [], "units")
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got "1 2"$', tree, axis, "scroll", ["1", "2"], "units")
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^bad argument "units pages": must be units or pages$', tree, axis, "scroll", 1, ["units", "pages"])
+
+            AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(tree, movetoMethod, ["0.5"]))
+            AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(tree, movetoMethod, stdlib.tuple(["0.5"])))
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got "moveto"$', tree, movetoMethod, stdlib.None)
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected floating-point number but got ""$', tree, movetoMethod, [])
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected floating-point number but got ""$', tree, movetoMethod, stdlib.tuple())
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected floating-point number but got "0\.5 0\.6"$', tree, movetoMethod, ["0.5", "0.6"])
+
+            AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(tree, scrollMethod, ["1"], "units"))
+            AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(tree, scrollMethod, 1, stdlib.tuple(["units"])))
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got "scroll"$', tree, scrollMethod, stdlib.None, "units")
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^wrong # args: should be "\.' commandName ' ' axis ' scroll number units\|pages"$', tree, scrollMethod, 1, stdlib.None)
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got ""$', tree, scrollMethod, [], "units")
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^expected integer but got "1 2"$', tree, scrollMethod, ["1", "2"], "units")
+            StdlibTkinterTest.AssertTtkTclCallRaisesMatch('^bad argument "units pages": must be units or pages$', tree, scrollMethod, 1, ["units", "pages"])
+        }
+    }
+
+    static AssertClassicViewAxisSequenceWords(widget, commandName, axis, rawEmptyPattern, rawOnePattern, rawMultiPattern, movetoNonePattern, scrollNoneNumberPattern, scrollMultiWhatPattern)
+    {
+        movetoMethod := axis "_moveto"
+        scrollMethod := axis "_scroll"
+        scrollArgsPattern := InStr(scrollMultiWhatPattern, "pixels") ? "units\|pages\|pixels" : "units\|pages"
+
+        AhkTest.AssertEqual(2, StdlibTkinterTest.CallObjectMethod(widget, axis).Length)
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(widget, axis, stdlib.None))
+        StdlibTkinterTest.AssertTclCallRaisesMatch(rawEmptyPattern, widget, axis, [])
+        StdlibTkinterTest.AssertTclCallRaisesMatch(rawEmptyPattern, widget, axis, stdlib.tuple())
+        StdlibTkinterTest.AssertTclCallRaisesMatch(rawOnePattern, widget, axis, ["moveto"])
+        StdlibTkinterTest.AssertTclCallRaisesMatch(rawMultiPattern, widget, axis, ["moveto", "0.5"])
+
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(widget, axis, "moveto", ["0.5"]))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(widget, axis, "moveto", stdlib.tuple(["0.5"])))
+        StdlibTkinterTest.AssertTclCallRaisesMatch(movetoNonePattern, widget, axis, "moveto", stdlib.None)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got ""$', widget, axis, "moveto", [])
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got "0\.5 0\.6"$', widget, axis, "moveto", ["0.5", "0.6"])
+
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(widget, axis, "scroll", ["1"], "units"))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(widget, axis, "scroll", 1, stdlib.tuple(["units"])))
+        StdlibTkinterTest.AssertTclCallRaisesMatch(scrollNoneNumberPattern, widget, axis, "scroll", stdlib.None, "units")
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.' commandName ' ' axis ' scroll number ' scrollArgsPattern '"$', widget, axis, "scroll", 1, stdlib.None)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', widget, axis, "scroll", [], "units")
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "1 2"$', widget, axis, "scroll", ["1", "2"], "units")
+        StdlibTkinterTest.AssertTclCallRaisesMatch(scrollMultiWhatPattern, widget, axis, "scroll", 1, ["units", "pages"])
+
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(widget, movetoMethod, ["0.5"]))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(widget, movetoMethod, stdlib.tuple(["0.5"])))
+        StdlibTkinterTest.AssertTclCallRaisesMatch(movetoNonePattern, widget, movetoMethod, stdlib.None)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got ""$', widget, movetoMethod, [])
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got ""$', widget, movetoMethod, stdlib.tuple())
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected floating-point number but got "0\.5 0\.6"$', widget, movetoMethod, ["0.5", "0.6"])
+
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(widget, scrollMethod, ["1"], "units"))
+        AhkTest.AssertEqual(stdlib.None, StdlibTkinterTest.CallObjectMethod(widget, scrollMethod, 1, stdlib.tuple(["units"])))
+        StdlibTkinterTest.AssertTclCallRaisesMatch(scrollNoneNumberPattern, widget, scrollMethod, stdlib.None, "units")
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^wrong # args: should be "\.' commandName ' ' axis ' scroll number ' scrollArgsPattern '"$', widget, scrollMethod, 1, stdlib.None)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', widget, scrollMethod, [], "units")
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "1 2"$', widget, scrollMethod, ["1", "2"], "units")
+        StdlibTkinterTest.AssertTclCallRaisesMatch(scrollMultiWhatPattern, widget, scrollMethod, 1, ["units", "pages"])
+    }
+
+    static AssertClassicScan2DSequenceWords(widget, wrongArgsPattern)
+    {
+        AhkTest.AssertEqual(stdlib.None, widget.scan_mark(5, 5))
+        AhkTest.AssertEqual(stdlib.None, widget.scan_mark(stdlib.tuple(["5"]), 5))
+        AhkTest.AssertEqual(stdlib.None, widget.scan_mark(5, stdlib.tuple(["5"])))
+        StdlibTkinterTest.AssertTclCallRaisesMatch(wrongArgsPattern, widget, "scan_mark", stdlib.None, 5)
+        StdlibTkinterTest.AssertTclCallRaisesMatch(wrongArgsPattern, widget, "scan_mark", 5, stdlib.None)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', widget, "scan_mark", [], 5)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', widget, "scan_mark", 5, [])
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "5 6"$', widget, "scan_mark", ["5", "6"], 5)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "5 6"$', widget, "scan_mark", 5, ["5", "6"])
+
+        AhkTest.AssertEqual(stdlib.None, widget.scan_dragto(1, 1))
+        AhkTest.AssertEqual(stdlib.None, widget.scan_dragto(stdlib.tuple(["1"]), 1))
+        AhkTest.AssertEqual(stdlib.None, widget.scan_dragto(1, stdlib.tuple(["1"])))
+        StdlibTkinterTest.AssertTclCallRaisesMatch(wrongArgsPattern, widget, "scan_dragto", stdlib.None, 1)
+        StdlibTkinterTest.AssertTclCallRaisesMatch(wrongArgsPattern, widget, "scan_dragto", 1, stdlib.None)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', widget, "scan_dragto", [], 1)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', widget, "scan_dragto", 1, [])
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "1 2"$', widget, "scan_dragto", ["1", "2"], 1)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "1 2"$', widget, "scan_dragto", 1, ["1", "2"])
+    }
+
+    static AssertClassicScan1DSequenceWords(widget, wrongArgsPattern, okValue)
+    {
+        AhkTest.AssertEqual(okValue, widget.scan_mark(5))
+        AhkTest.AssertEqual(okValue, widget.scan_mark(stdlib.tuple(["5"])))
+        StdlibTkinterTest.AssertTclCallRaisesMatch(wrongArgsPattern, widget, "scan_mark", stdlib.None)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', widget, "scan_mark", [])
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "5 6"$', widget, "scan_mark", ["5", "6"])
+
+        AhkTest.AssertEqual(okValue, widget.scan_dragto(1))
+        AhkTest.AssertEqual(okValue, widget.scan_dragto(stdlib.tuple(["1"])))
+        StdlibTkinterTest.AssertTclCallRaisesMatch(wrongArgsPattern, widget, "scan_dragto", stdlib.None)
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got ""$', widget, "scan_dragto", [])
+        StdlibTkinterTest.AssertTclCallRaisesMatch('^expected integer but got "1 2"$', widget, "scan_dragto", ["1", "2"])
+    }
+
+    static AssertTtkTclCallRaisesMatch(pattern, instance, methodName, args*)
+    {
+        return StdlibTkinterTest.AssertTclCallRaisesMatch(pattern, instance, methodName, args*)
+    }
+
+    static AssertTclCallRaisesMatch(pattern, instance, methodName, args*)
+    {
+        try {
+            StdlibTkinterTest.CallObjectMethod(instance, methodName, args*)
+        } catch Error as err {
+            if !(err is stdlib.tkinter.TclError)
+                AhkTest.Fail("Expected exception " stdlib.tkinter.TclError.Prototype.__Class ", got " Type(err))
+            if !RegExMatch(err.Message, pattern)
+                AhkTest.Fail("Expected exception message to match " pattern ", got " err.Message)
+            return err
+        }
+        AhkTest.Fail("Expected exception " stdlib.tkinter.TclError.Prototype.__Class ", but nothing was thrown")
+    }
+
+    static WithTtkProgressbarSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            value := stdlib.tkinter.DoubleVar(root, 10.5, "ttk_progress_sequence_var")
+            progress := stdlib.tkinter.ttk.Progressbar(root, { maximum: 200, value: 10.5, variable: value, name: "ttk_progress_sequence" })
+            progress.pack()
+            root.update_idletasks()
+            return callback(progress, value)
+        } finally {
+            try progress.stop()
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithTtkSpinboxSetSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            variable := stdlib.tkinter.StringVar(root, "seed", "ttk_spin_set_var")
+            spin := stdlib.tkinter.ttk.Spinbox(root, { values: ["alpha", "beta gamma", "delta"], textvariable: variable, name: "ttk_spin_set_sequence" })
+            spin.pack()
+            root.update_idletasks()
+            return callback(spin, variable)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithTtkEntryInsertSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            variable := stdlib.tkinter.StringVar(root, "seed", "ttk_entry_insert_var")
+            entry := stdlib.tkinter.ttk.Entry(root, { textvariable: variable, name: "ttk_entry_insert_sequence" })
+            entry.pack()
+            root.update_idletasks()
+            return callback(entry, variable)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithTtkEntryDeleteSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            variable := stdlib.tkinter.StringVar(root, "abcdef", "ttk_entry_delete_var")
+            entry := stdlib.tkinter.ttk.Entry(root, { textvariable: variable, name: "ttk_entry_delete_sequence" })
+            entry.pack()
+            root.update_idletasks()
+            return callback(entry, variable)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithTtkEntryBboxSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            entry := stdlib.tkinter.ttk.Entry(root, { name: "ttk_entry_bbox_sequence" })
+            entry.insert(0, "abcdef")
+            entry.pack()
+            root.update_idletasks()
+            return callback(entry)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithTtkEntryIdentifySequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            entry := stdlib.tkinter.ttk.Entry(root, { name: "ttk_entry_identify_sequence" })
+            entry.insert(0, "abcdef")
+            entry.pack()
+            root.update_idletasks()
+            return callback(entry)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithTtkEntryIndexSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            entry := stdlib.tkinter.ttk.Entry(root, { name: "ttk_entry_index_sequence" })
+            entry.insert(0, "abcdef")
+            entry.pack()
+            root.update_idletasks()
+            return callback(entry)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithTtkEntryIcursorSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            entry := stdlib.tkinter.ttk.Entry(root, { name: "ttk_entry_icursor_sequence" })
+            entry.insert(0, "abcdef")
+            entry.pack()
+            root.update_idletasks()
+            return callback(entry)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithTtkEntrySelectionRangeSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            entry := stdlib.tkinter.ttk.Entry(root, { name: "ttk_entry_selection_sequence" })
+            entry.insert(0, "abcdef")
+            entry.pack()
+            root.update_idletasks()
+            return callback(entry)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithTtkEntryXviewSequence(callback, name := "ttk_entry_xview_sequence", factory := unset)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            entry := IsSet(factory) ? factory.Call(root, { width: 5, name: name }) : stdlib.tkinter.ttk.Entry(root, { width: 5, name: name })
+            entry.insert(0, "abcdefghijklmnopqrstuvwxyz")
+            entry.pack()
+            root.update_idletasks()
+            root.update()
+            return callback(entry)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithTtkTreeviewViewSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            tree := stdlib.tkinter.ttk.Treeview(root, { columns: ["value"], height: 2, name: "ttk_tree_view_sequence" })
+            AhkTest.AssertEqual(Map(), tree.column("#0", { width: 500 }))
+            AhkTest.AssertEqual(Map(), tree.column("value", { width: 500 }))
+            loop 12
+                tree.insert("", "end", "item" A_Index - 1, { text: "Item " A_Index - 1, values: [A_Index - 1] })
+            tree.pack()
+            root.update_idletasks()
+            root.update()
+            return callback(tree)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithClassicViewSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            widgets := Map()
+            canvas := stdlib.tkinter.Canvas(root, { name: "classic_view_seq_canvas", width: 100, height: 80, scrollregion: "0 0 500 400" })
+            text := stdlib.tkinter.Text(root, { name: "classic_view_seq_text", width: 8, height: 3, wrap: "none" })
+            listbox := stdlib.tkinter.Listbox(root, { name: "classic_view_seq_listbox", width: 8, height: 3 })
+            entry := stdlib.tkinter.Entry(root, { name: "classic_view_seq_entry", width: 8 })
+            spinbox := stdlib.tkinter.Spinbox(root, { name: "classic_view_seq_spinbox", width: 8, from_: 0, to: 10 })
+
+            text.insert("1.0", "abcdefghijklmnopqrstuvwxyz`n0123456789`nsecond line`nthird line`nfourth line")
+            loop 20
+                listbox.insert("end", "item " A_Index)
+            entry.insert(0, "abcdefghijklmnopqrstuvwxyz")
+            spinbox.delete(0, "end")
+            spinbox.insert(0, "abcdefghijklmnopqrstuvwxyz")
+
+            for widget in [canvas, text, listbox, entry, spinbox]
+                widget.pack()
+            root.update_idletasks()
+            root.update()
+
+            widgets["canvas"] := canvas
+            widgets["text"] := text
+            widgets["listbox"] := listbox
+            widgets["entry"] := entry
+            widgets["spinbox"] := spinbox
+            return callback(widgets)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
+    }
+
+    static WithClassicCanvasWordSequence(callback)
+    {
+        root := stdlib.tkinter.Tk()
+        try {
+            root.withdraw()
+            canvas := stdlib.tkinter.Canvas(root, { name: "classic_canvas_word_seq", width: 160, height: 120, scrollregion: "0 0 500 400" })
+            canvas.pack()
+            lineId := canvas.create_line(0, 0, 10, 10, { tags: "path shape" })
+            rectId := canvas.create_rectangle(20, 20, 50, 50, { tags: "box shape" })
+            ovalId := canvas.create_oval(60, 60, 90, 90, { tags: "round" })
+            root.update_idletasks()
+            root.update()
+            return callback(canvas, lineId, rectId, ovalId)
+        } finally {
+            try root.update_idletasks()
+            try root.destroy()
+        }
     }
 
     static ReadSha256Sums(path)
