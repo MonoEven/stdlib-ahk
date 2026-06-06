@@ -50,6 +50,34 @@ class StdlibBinasciiTest
         AhkTest.RaisesMatch(stdlib.binascii.Error, "^Non-hexadecimal digit found$", (*) => stdlib.binascii.unhexlify("zz"))
     }
 
+    static TestCrc32MatchesLocal310()
+    {
+        AhkTest.AssertEqual(891568578, stdlib.binascii.crc32(StdlibBinasciiTest.Bytes("abc")))
+        AhkTest.AssertEqual(0, stdlib.binascii.crc32(StdlibBinasciiTest.Bytes("")))
+        AhkTest.AssertEqual(1826356594, stdlib.binascii.crc32(StdlibBinasciiTest.ByteValues([0x00, 0xff])))
+        AhkTest.AssertEqual(887499765, stdlib.binascii.crc32(StdlibBinasciiTest.Bytes("abc"), 1))
+        AhkTest.AssertEqual(899311407, stdlib.binascii.crc32(StdlibBinasciiTest.Bytes("abc"), -1))
+
+        AhkTest.RaisesMatch(TypeError, "^crc32 expected at least 1 argument, got 0$", (*) => stdlib.binascii.crc32())
+        AhkTest.RaisesMatch(TypeError, "^crc32 expected at most 2 arguments, got 3$", (*) => stdlib.binascii.crc32(StdlibBinasciiTest.Bytes("abc"), 1, 2))
+        AhkTest.RaisesMatch(TypeError, "^a bytes-like object is required, not 'str'$", (*) => stdlib.binascii.crc32("abc"))
+        AhkTest.RaisesMatch(TypeError, "^'str' object cannot be interpreted as an integer$", (*) => stdlib.binascii.crc32(StdlibBinasciiTest.Bytes("abc"), "1"))
+    }
+
+    static TestBase64HelpersMatchLocal310()
+    {
+        AhkTest.AssertEqual("YWJj`n", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_base64(StdlibBinasciiTest.Bytes("abc"))))
+        AhkTest.AssertEqual("`n", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_base64(StdlibBinasciiTest.Bytes(""))))
+        AhkTest.AssertEqual("+/8=`n", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_base64(StdlibBinasciiTest.ByteValues([0xfb, 0xff]))))
+        AhkTest.AssertEqual("YWJj", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_base64(StdlibBinasciiTest.Bytes("abc"), { newline: false })))
+        AhkTest.RaisesMatch(TypeError, "^a bytes-like object is required, not 'str'$", (*) => stdlib.binascii.b2a_base64("abc"))
+
+        AhkTest.AssertEqual("abc", StdlibBinasciiTest.BufferText(stdlib.binascii.a2b_base64(StdlibBinasciiTest.Bytes("YWJj`n"))))
+        AhkTest.AssertEqual("abc", StdlibBinasciiTest.BufferText(stdlib.binascii.a2b_base64("YWJj`n")))
+        AhkTest.AssertEqual("fbff", StdlibBinasciiTest.BufferHex(stdlib.binascii.a2b_base64(StdlibBinasciiTest.Bytes("+/8=`n"))))
+        AhkTest.AssertEqual("", StdlibBinasciiTest.BufferHex(stdlib.binascii.a2b_base64(StdlibBinasciiTest.Bytes("!!!!"))))
+    }
+
     static Bytes(text)
     {
         size := StrPut(text, "UTF-8") - 1
@@ -62,6 +90,22 @@ class StdlibBinasciiTest
     static BufferText(bytes)
     {
         return bytes.Size > 0 ? StrGet(bytes, "UTF-8") : ""
+    }
+
+    static ByteValues(values)
+    {
+        bytes := Buffer(values.Length, 0)
+        for index, value in values
+            NumPut("UChar", value, bytes, index - 1)
+        return bytes
+    }
+
+    static BufferHex(bytes)
+    {
+        output := ""
+        loop bytes.Size
+            output .= Format("{:02x}", NumGet(bytes, A_Index - 1, "UChar"))
+        return output
     }
 }
 

@@ -1,6 +1,7 @@
 ﻿#Requires AutoHotkey v2.0
 
 #Include <stdlib\init>
+#Include <stdlib\asyncio>
 #Include <stdlib\toml>
 
 init_example_data := stdlib.toml.loads("name = `"stdlib`"`n[features]`nnamespace = true")
@@ -17,3 +18,59 @@ init_example_true := stdlib.True
 init_example_false := stdlib.False
 init_example_tuple := stdlib.tuple("ab")
 init_example_empty_tuple := stdlib.tuple()
+init_example_await_result := stdlib.await(InitExampleAwaitBody())
+init_example_decorator_events := []
+init_example_decorated := stdlib.decorate(
+    (*) => InitExampleDecoratedValue(init_example_decorator_events),
+    InitExampleDecorator("outer", init_example_decorator_events),
+    InitExampleDecorator("inner", init_example_decorator_events)
+)
+init_example_decorated_result := init_example_decorated.Call()
+init_example_decorated_class := stdlib.decorate(InitExampleDecoratedTarget, (target) => {
+    target: target,
+    label: "decorated"
+})
+
+class InitExampleAwaitBody
+{
+    __New()
+    {
+        this.StepIndex := 0
+    }
+
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        if this.StepIndex = 0 {
+            this.StepIndex += 1
+            return stdlib.asyncio.sleep(0, "slept")
+        }
+        return "await-result"
+    }
+}
+
+class InitExampleDecoratedTarget
+{
+}
+
+InitExampleDecorator(label, events)
+{
+    return (target) => InitExampleDecoratorApply(label, events, target)
+}
+
+InitExampleDecoratorApply(label, events, target)
+{
+    events.Push("apply:" label)
+    return (*) => InitExampleDecoratorCall(label, events, target)
+}
+
+InitExampleDecoratorCall(label, events, target)
+{
+    events.Push("call:" label)
+    return label "(" target.Call() ")"
+}
+
+InitExampleDecoratedValue(events)
+{
+    events.Push("call:value")
+    return "value"
+}

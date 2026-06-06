@@ -5,6 +5,17 @@
 
 class StdlibCopyTest
 {
+    static TestPublicSurfaceMatchesObservedLocal310Names()
+    {
+        AhkTest.AssertSame(stdlib.copy.Error, stdlib.copy.error)
+        AhkTest.AssertTrue(stdlib.copy.Error("x", -1) is Error)
+        AhkTest.AssertTrue(stdlib.copy.dispatch_table is Map)
+        AhkTest.AssertEqual(3, stdlib.copy.dispatch_table.Count)
+        AhkTest.AssertTrue(stdlib.copy.dispatch_table.Has("complex"))
+        AhkTest.AssertTrue(stdlib.copy.dispatch_table.Has("types.UnionType"))
+        AhkTest.AssertTrue(stdlib.copy.dispatch_table.Has("re.Pattern"))
+    }
+
     static TestCopyAndDeepcopyMatchObservedLocal310Surface()
     {
         values := [1, [2]]

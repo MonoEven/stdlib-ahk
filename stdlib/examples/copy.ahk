@@ -25,6 +25,8 @@ copy_example_int_same := stdlib.copy.deepcopy(42)
 
 copy_example_custom_copy := stdlib.copy.copy(StdlibCopyExampleCustomCopy())
 copy_example_custom_deep := stdlib.copy.deepcopy(StdlibCopyExampleCustomDeep())
+copy_example_error_alias := stdlib.copy.Error == stdlib.copy.error
+copy_example_dispatch_entries := stdlib.copy.dispatch_table.Count
 
 copy_example_cycle := StdlibCopyExampleNode()
 copy_example_cycle.me := copy_example_cycle

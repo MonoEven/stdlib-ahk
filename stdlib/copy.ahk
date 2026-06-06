@@ -2,8 +2,15 @@
 
 #Include <stdlib\init>
 
+class AhkStdlibCopyError extends Error
+{
+}
+
 class AhkStdlibCopy
 {
+    static Error := AhkStdlibCopyError
+    static dispatch_table := AhkStdlibCopyDispatchTable()
+
     static copy(args*)
     {
         if args.Length = 0
@@ -21,6 +28,15 @@ class AhkStdlibCopy
 }
 
 stdlib.copy := AhkStdlibCopy
+
+AhkStdlibCopyDispatchTable()
+{
+    return Map(
+        "complex", { module: "copyreg", name: "pickle_complex" },
+        "types.UnionType", { module: "copyreg", name: "pickle_union" },
+        "re.Pattern", { module: "re", name: "_pickle" }
+    )
+}
 
 AhkStdlibCopyShallow(value)
 {

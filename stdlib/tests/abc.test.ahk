@@ -25,6 +25,29 @@ class StdlibAbcTest
         AhkTest.AssertTrue(stdlib.abc.isinstance(StdlibAbcForeign(), stdlib.abc.ABC))
     }
 
+    static TestRegisterUsesVirtualRegistryWithoutReparenting()
+    {
+        baseBefore := StdlibAbcVirtualRegistryForeign.Prototype.Base
+        tokenBefore := stdlib.abc.get_cache_token()
+
+        registered := stdlib.abc.ABC.register(StdlibAbcVirtualRegistryForeign)
+
+        AhkTest.AssertSame(StdlibAbcVirtualRegistryForeign, registered)
+        AhkTest.AssertEqual(1, stdlib.abc.get_cache_token() - tokenBefore)
+        AhkTest.AssertSame(baseBefore, StdlibAbcVirtualRegistryForeign.Prototype.Base)
+        AhkTest.AssertTrue(stdlib.abc.issubclass(StdlibAbcVirtualRegistryForeign, stdlib.abc.ABC))
+        AhkTest.AssertTrue(stdlib.abc.isinstance(StdlibAbcVirtualRegistryForeign(), stdlib.abc.ABC))
+        AhkTest.AssertTrue(stdlib.abc.issubclass(StdlibAbcVirtualRegistryReal, stdlib.abc.ABC))
+        AhkTest.AssertTrue(stdlib.abc.isinstance(StdlibAbcVirtualRegistryReal(), stdlib.abc.ABC))
+        AhkTest.AssertFalse(stdlib.abc.issubclass(StdlibAbcVirtualRegistryUnrelated, stdlib.abc.ABC))
+        AhkTest.AssertFalse(stdlib.abc.isinstance(StdlibAbcVirtualRegistryUnrelated(), stdlib.abc.ABC))
+
+        tokenBeforeDuplicate := stdlib.abc.get_cache_token()
+        AhkTest.AssertSame(StdlibAbcVirtualRegistryForeign, stdlib.abc.ABC.register(StdlibAbcVirtualRegistryForeign))
+        AhkTest.AssertEqual(tokenBeforeDuplicate, stdlib.abc.get_cache_token())
+        AhkTest.AssertSame(baseBefore, StdlibAbcVirtualRegistryForeign.Prototype.Base)
+    }
+
     static TestGetCacheTokenAndRegisterInvalidationMatchLocal310()
     {
         tokenBefore := stdlib.abc.get_cache_token()
@@ -54,6 +77,38 @@ class StdlibAbcTest
         AhkTest.RaisesMatch(TypeError, "^ABCMeta\.register\(\) takes 2 positional arguments but 3 were given$", (*) => stdlib.abc.ABC.register(StdlibAbcCacheForeignOne, StdlibAbcCacheForeignTwo))
         AhkTest.RaisesMatch(TypeError, "^Can only register classes$", (*) => stdlib.abc.ABC.register(1))
     }
+
+    static TestPublicAbstractHelpersAndUpdateAbstractMethods()
+    {
+        AhkTest.AssertSame(stdlib.abc.ABC, stdlib.abc.ABCMeta)
+
+        staticMethod := stdlib.abc.abstractstaticmethod((value) => value + 1)
+        AhkTest.AssertTrue(staticMethod.HasOwnProp("__isabstractmethod__"))
+        AhkTest.AssertTrue(staticMethod.__isabstractmethod__)
+        AhkTest.AssertTrue(staticMethod.__func__.HasOwnProp("__isabstractmethod__"))
+        AhkTest.AssertTrue(staticMethod.__func__.__isabstractmethod__)
+        AhkTest.AssertEqual(4, staticMethod.Call(3))
+
+        classMethod := stdlib.abc.abstractclassmethod((cls, value) => value + 2)
+        AhkTest.AssertTrue(classMethod.HasOwnProp("__isabstractmethod__"))
+        AhkTest.AssertTrue(classMethod.__isabstractmethod__)
+        AhkTest.AssertTrue(classMethod.__func__.HasOwnProp("__isabstractmethod__"))
+        AhkTest.AssertTrue(classMethod.__func__.__isabstractmethod__)
+        AhkTest.AssertEqual(5, classMethod.Call(StdlibAbcPublicAbstractDynamic, 3))
+
+        propertyMethod := stdlib.abc.abstractproperty((self) => "prop")
+        AhkTest.AssertTrue(propertyMethod.HasOwnProp("__isabstractmethod__"))
+        AhkTest.AssertTrue(propertyMethod.__isabstractmethod__)
+        AhkTest.AssertFalse(propertyMethod.fget.HasOwnProp("__isabstractmethod__"))
+        AhkTest.AssertEqual("prop", propertyMethod.Get(StdlibAbcPublicAbstractDynamic()))
+
+        AhkTest.AssertSame(StdlibAbcPublicAbstractDynamic, stdlib.abc.update_abstractmethods(StdlibAbcPublicAbstractDynamic))
+        AhkTest.AssertFalse(stdlib.abc.isabstract(StdlibAbcPublicAbstractDynamic))
+        StdlibAbcPublicAbstractDynamic.Prototype.need := stdlib.abc.abstractmethod((self) => stdlib.None)
+        AhkTest.AssertFalse(stdlib.abc.isabstract(StdlibAbcPublicAbstractDynamic))
+        AhkTest.AssertSame(StdlibAbcPublicAbstractDynamic, stdlib.abc.update_abstractmethods(StdlibAbcPublicAbstractDynamic))
+        AhkTest.AssertTrue(stdlib.abc.isabstract(StdlibAbcPublicAbstractDynamic))
+    }
 }
 
 class StdlibAbcForeign
@@ -66,6 +121,23 @@ class StdlibAbcCacheForeignOne
 
 class StdlibAbcCacheForeignTwo
 {
+}
+
+class StdlibAbcVirtualRegistryForeign
+{
+}
+
+class StdlibAbcVirtualRegistryReal extends AhkStdlibAbcBase
+{
+}
+
+class StdlibAbcVirtualRegistryUnrelated
+{
+}
+
+class StdlibAbcPublicAbstractDynamic
+{
+    static AhkStdlibAbstractMethods := Map()
 }
 
 AhkTest.Collect(StdlibAbcTest)

@@ -6,10 +6,14 @@
 
 class AhkStdlibDateTime
 {
+    static MINYEAR := 1
+    static MAXYEAR := 9999
     static OverflowError := AhkStdlibDateTimeOverflowError
     static date := AhkStdlibDateTimeDate
     static datetime := AhkStdlibDateTimeDateTime
     static time := AhkStdlibDateTimeTime
+    static tzinfo := AhkStdlibDateTimeTzInfoClass
+    static timezone := AhkStdlibDateTimeTimezoneClass
 
     static timedelta(options := unset)
     {
@@ -21,6 +25,101 @@ class AhkStdlibDateTime
 
 class AhkStdlibDateTimeOverflowError extends Error
 {
+}
+
+class AhkStdlibDateTimeTzInfo
+{
+    __New()
+    {
+        this.__AhkStdlibDateTimeIsTzInfo := true
+    }
+
+    utcoffset(dt)
+    {
+        throw stdlib.NotImplementedError("a tzinfo subclass must implement utcoffset()", -1)
+    }
+
+    dst(dt)
+    {
+        throw stdlib.NotImplementedError("a tzinfo subclass must implement dst()", -1)
+    }
+
+    tzname(dt)
+    {
+        throw stdlib.NotImplementedError("a tzinfo subclass must implement tzname()", -1)
+    }
+
+    fromutc(dt)
+    {
+        if Type(dt) != "AhkStdlibDateTimeDateTimeValue"
+            throw TypeError("fromutc: argument must be a datetime", -1)
+        return dt
+    }
+}
+
+class AhkStdlibDateTimeTzInfoClass
+{
+    static Call(thisClass, args*)
+    {
+        if args.Length != 0
+            throw TypeError("tzinfo() takes no arguments", -1)
+        return AhkStdlibDateTimeTzInfo()
+    }
+}
+
+class AhkStdlibDateTimeTimezone extends AhkStdlibDateTimeTzInfo
+{
+    __New(offset, name := unset)
+    {
+        super.__New()
+        if !(offset is AhkStdlibDateTimeTimedelta)
+            throw TypeError("timezone() argument 1 must be datetime.timedelta, not " AhkStdlibDateTimePythonTypeName(offset), -1)
+        totalSeconds := offset.total_seconds()
+        if totalSeconds <= -86400 || totalSeconds >= 86400
+            throw ValueError("offset must be a timedelta strictly between -timedelta(hours=24) and timedelta(hours=24), not " AhkStdlibDateTimeTimedeltaRepr(offset) ".", -1)
+        if IsSet(name) && !(name is String)
+            throw TypeError("timezone() argument 2 must be str, not " AhkStdlibDateTimePythonTypeName(name), -1)
+        this.offset := offset
+        this.name := IsSet(name) ? name : unset
+    }
+
+    ToString()
+    {
+        return this.tzname(stdlib.None)
+    }
+
+    utcoffset(dt)
+    {
+        return this.offset
+    }
+
+    dst(dt)
+    {
+        return stdlib.None
+    }
+
+    tzname(dt)
+    {
+        if HasProp(this, "name")
+            return this.name
+        return AhkStdlibDateTimeTimezoneOffsetName(this.offset)
+    }
+}
+
+class AhkStdlibDateTimeTimezoneClass
+{
+    static utc := AhkStdlibDateTimeTimezone(AhkStdlibDateTimeTimedelta(), "UTC")
+
+    static Call(thisClass, args*)
+    {
+        if args.Length = 0
+            throw TypeError("timezone() missing required argument 'offset' (pos 1)", -1)
+        if args.Length > 2
+            throw TypeError("timezone() takes at most 2 arguments (" args.Length " given)", -1)
+        return args.Length = 1
+            ? AhkStdlibDateTimeTimezone(args[1])
+            : AhkStdlibDateTimeTimezone(args[1], args[2])
+    }
 }
 
 class AhkStdlibDateTimeDate
@@ -529,6 +628,41 @@ AhkStdlibDateTimeTimedeltaNormalize(options := unset)
     if Abs(normalized.days) > 999999999
         throw AhkStdlibDateTimeOverflowError("days=" normalized.days "; must have magnitude <= 999999999", -1)
     return normalized
+}
+
+AhkStdlibDateTimeTimezoneOffsetName(offset)
+{
+    totalSeconds := Integer(offset.total_seconds())
+    sign := totalSeconds < 0 ? "-" : "+"
+    absSeconds := Abs(totalSeconds)
+    hours := Floor(absSeconds / 3600)
+    minutes := Floor(Mod(absSeconds, 3600) / 60)
+    return "UTC" sign Format("{:02}:{:02}", hours, minutes)
+}
+
+AhkStdlibDateTimeTimedeltaRepr(delta)
+{
+    parts := []
+    if delta.days != 0
+        parts.Push("days=" delta.days)
+    if delta.seconds != 0
+        parts.Push("seconds=" delta.seconds)
+    if delta.microseconds != 0
+        parts.Push("microseconds=" delta.microseconds)
+    if parts.Length = 0
+        return "datetime.timedelta(0)"
+    return "datetime.timedelta(" AhkStdlibDateTimeJoin(parts, ", ") ")"
+}
+
+AhkStdlibDateTimeJoin(values, delimiter := "")
+{
+    result := ""
+    for index, value in values {
+        if index > 1
+            result .= delimiter
+        result .= value
+    }
+    return result
 }
 
 AhkStdlibDateTimeDaysInYear(year)

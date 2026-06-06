@@ -6,6 +6,7 @@ class AhkStdlibArray
 {
     static typecodes := "bBuhHiIlLqQfd"
     static array := AhkStdlibArrayType
+    static ArrayType := AhkStdlibArrayType
 }
 
 class AhkStdlibArrayType
@@ -51,13 +52,80 @@ class AhkStdlibArrayValue
     {
         get {
             offset := this.AhkStdlibResolveIndex(index)
-            return NumGet(this.AhkStdlibBuffer, offset, this.AhkStdlibStorageType)
+            return AhkStdlibArrayReadElement(this, offset)
         }
         set {
             offset := this.AhkStdlibResolveIndex(index)
             AhkStdlibArrayValidateValue(this.typecode, this.AhkStdlibElementKind, value)
-            NumPut(this.AhkStdlibStorageType, value, this.AhkStdlibBuffer, offset)
+            AhkStdlibArrayWriteElement(this, value, this.AhkStdlibBuffer, offset)
         }
+    }
+
+    __Len
+    {
+        get => this.AhkStdlibLength
+    }
+
+    __Compare(other, operation)
+    {
+        if !(other is AhkStdlibArrayValue)
+            return ""
+
+        sharedLength := this.AhkStdlibLength < other.AhkStdlibLength ? this.AhkStdlibLength : other.AhkStdlibLength
+        loop sharedLength {
+            index := A_Index - 1
+            left := this[index]
+            right := other[index]
+            if !AhkStdlibArrayValuesEqual(left, right)
+                return left < right ? -1 : 1
+        }
+
+        if this.AhkStdlibLength = other.AhkStdlibLength
+            return 0
+        return this.AhkStdlibLength < other.AhkStdlibLength ? -1 : 1
+    }
+
+    __Add(other)
+    {
+        if !(other is AhkStdlibArrayValue)
+            return ""
+        if this.typecode != other.typecode
+            throw TypeError("bad argument type for built-in operation", -1)
+
+        result := AhkStdlibArrayValue(this.typecode)
+        for value in this
+            result.append(value)
+        for value in other
+            result.append(value)
+        return result
+    }
+
+    __Mul(count)
+    {
+        if AhkStdlibIsBool(count)
+            count := count.Value ? 1 : 0
+        if !(count is Integer)
+            return ""
+
+        result := AhkStdlibArrayValue(this.typecode)
+        if count <= 0
+            return result
+
+        loop count {
+            for value in this
+                result.append(value)
+        }
+        return result
+    }
+
+    __Contains(value)
+    {
+        return this.count(value) > 0
+    }
+
+    __LengthHint()
+    {
+        return this.AhkStdlibLength
     }
 
     append(value)
@@ -66,7 +134,7 @@ class AhkStdlibArrayValue
         oldLength := this.AhkStdlibLength
         this.AhkStdlibLength += 1
         this.AhkStdlibBuffer.Size := this.AhkStdlibLength * this.itemsize
-        NumPut(this.AhkStdlibStorageType, value, this.AhkStdlibBuffer, oldLength * this.itemsize)
+        AhkStdlibArrayWriteElement(this, value, this.AhkStdlibBuffer, oldLength * this.itemsize)
         return ""
     }
 
@@ -83,6 +151,149 @@ class AhkStdlibArrayValue
         for value in values
             this.append(value)
         return ""
+    }
+
+    fromlist(iterable)
+    {
+        return AhkStdlibArrayReturnNone(this.extend(iterable))
+    }
+
+    insert(index, value)
+    {
+        if !(index is Integer)
+            throw TypeError("'" AhkStdlibPythonTypeName(index) "' object cannot be interpreted as an integer", -1)
+        AhkStdlibArrayValidateValue(this.typecode, this.AhkStdlibElementKind, value)
+        if index < 0 {
+            index += this.AhkStdlibLength
+            if index < 0
+                index := 0
+        }
+        if index > this.AhkStdlibLength
+            index := this.AhkStdlibLength
+
+        oldLength := this.AhkStdlibLength
+        newBuffer := Buffer((oldLength + 1) * this.itemsize, 0)
+        targetIndex := 0
+        loop oldLength + 1 {
+            if targetIndex = index {
+                AhkStdlibArrayWriteElement(this, value, newBuffer, targetIndex * this.itemsize)
+                targetIndex += 1
+            }
+            sourceIndex := A_Index - 1
+            if sourceIndex < oldLength {
+                sourceValue := AhkStdlibArrayReadStorage(this, sourceIndex * this.itemsize)
+                NumPut(this.AhkStdlibStorageType, sourceValue, newBuffer, targetIndex * this.itemsize)
+                targetIndex += 1
+            }
+        }
+        this.AhkStdlibLength := oldLength + 1
+        this.AhkStdlibBuffer := newBuffer
+        return stdlib.None
+    }
+
+    tobytes()
+    {
+        bytes := Buffer(this.AhkStdlibBuffer.Size, 0)
+        if bytes.Size > 0
+            DllCall("RtlMoveMemory", "Ptr", bytes.Ptr, "Ptr", this.AhkStdlibBuffer.Ptr, "UPtr", bytes.Size)
+        return bytes
+    }
+
+    frombytes(bytes)
+    {
+        if bytes is String
+            throw TypeError("a bytes-like object is required, not 'str'", -1)
+        if !IsObject(bytes) || !HasProp(bytes, "Ptr") || !HasProp(bytes, "Size")
+            throw TypeError("a bytes-like object is required, not '" AhkStdlibPythonTypeName(bytes) "'", -1)
+        if Mod(bytes.Size, this.itemsize) != 0
+            throw ValueError("bytes length not a multiple of item size", -1)
+
+        count := bytes.Size // this.itemsize
+        loop count {
+            offset := (A_Index - 1) * this.itemsize
+            value := NumGet(bytes, offset, this.AhkStdlibStorageType)
+            this.AhkStdlibAppendStorageValue(value)
+        }
+        return stdlib.None
+    }
+
+    byteswap()
+    {
+        if !(this.itemsize = 1 || this.itemsize = 2 || this.itemsize = 4 || this.itemsize = 8)
+            throw RuntimeError("don't know how to byteswap this array type", -1)
+        if this.itemsize = 1
+            return stdlib.None
+
+        loop this.AhkStdlibLength {
+            elementOffset := (A_Index - 1) * this.itemsize
+            left := 0
+            right := this.itemsize - 1
+            while left < right {
+                leftValue := NumGet(this.AhkStdlibBuffer, elementOffset + left, "UChar")
+                rightValue := NumGet(this.AhkStdlibBuffer, elementOffset + right, "UChar")
+                NumPut("UChar", rightValue, this.AhkStdlibBuffer, elementOffset + left)
+                NumPut("UChar", leftValue, this.AhkStdlibBuffer, elementOffset + right)
+                left += 1
+                right -= 1
+            }
+        }
+        return stdlib.None
+    }
+
+    fromunicode(text)
+    {
+        if this.typecode != "u"
+            throw ValueError("fromunicode() may only be called on unicode type arrays", -1)
+        if !(text is String)
+            throw TypeError("can only extend array with unicode string", -1)
+        loop parse text
+            this.append(A_LoopField)
+        return stdlib.None
+    }
+
+    tounicode()
+    {
+        if this.typecode != "u"
+            throw ValueError("tounicode() may only be called on unicode type arrays", -1)
+        text := ""
+        loop this.AhkStdlibLength
+            text .= this[A_Index - 1]
+        return text
+    }
+
+    tofile(file)
+    {
+        bytes := this.tobytes()
+        handle := AhkStdlibArrayOpenBinaryFile(file, "w", &closeAfter)
+        try {
+            if bytes.Size > 0
+                handle.RawWrite(bytes, bytes.Size)
+        } finally {
+            if closeAfter
+                handle.Close()
+        }
+        return stdlib.None
+    }
+
+    fromfile(file, n)
+    {
+        if !(n is Integer)
+            throw TypeError("'" AhkStdlibPythonTypeName(n) "' object cannot be interpreted as an integer", -1)
+        if n < 0
+            throw ValueError("negative count", -1)
+
+        bytesToRead := n * this.itemsize
+        bytes := Buffer(bytesToRead, 0)
+        handle := AhkStdlibArrayOpenBinaryFile(file, "r", &closeAfter)
+        try {
+            bytesRead := bytesToRead = 0 ? 0 : handle.RawRead(bytes, bytesToRead)
+        } finally {
+            if closeAfter
+                handle.Close()
+        }
+        if bytesRead != bytesToRead
+            throw Error("read() didn't return enough bytes", -1)
+        return this.frombytes(bytes)
     }
 
     count(args*)
@@ -168,7 +379,7 @@ class AhkStdlibArrayValue
     {
         values := []
         loop this.AhkStdlibLength
-            values.Push(NumGet(this.AhkStdlibBuffer, (A_Index - 1) * this.itemsize, this.AhkStdlibStorageType))
+            values.Push(this[A_Index - 1])
         return values
     }
 
@@ -230,12 +441,20 @@ class AhkStdlibArrayValue
             sourceIndex := A_Index - 1
             if sourceIndex = index
                 continue
-            value := NumGet(this.AhkStdlibBuffer, sourceIndex * this.itemsize, this.AhkStdlibStorageType)
+            value := AhkStdlibArrayReadStorage(this, sourceIndex * this.itemsize)
             NumPut(this.AhkStdlibStorageType, value, newBuffer, targetIndex * this.itemsize)
             targetIndex += 1
         }
         this.AhkStdlibLength -= 1
         this.AhkStdlibBuffer := newBuffer
+    }
+
+    AhkStdlibAppendStorageValue(value)
+    {
+        oldLength := this.AhkStdlibLength
+        this.AhkStdlibLength += 1
+        this.AhkStdlibBuffer.Size := this.AhkStdlibLength * this.itemsize
+        NumPut(this.AhkStdlibStorageType, value, this.AhkStdlibBuffer, oldLength * this.itemsize)
     }
 }
 
@@ -245,6 +464,46 @@ AhkStdlibArrayCollectIterable(iterable, &values)
 {
     for value in iterable
         values.Push(value)
+}
+
+AhkStdlibArrayReturnNone(value)
+{
+    return stdlib.None
+}
+
+AhkStdlibArrayReadStorage(arrayValue, offset)
+{
+    return NumGet(arrayValue.AhkStdlibBuffer, offset, arrayValue.AhkStdlibStorageType)
+}
+
+AhkStdlibArrayReadElement(arrayValue, offset)
+{
+    value := AhkStdlibArrayReadStorage(arrayValue, offset)
+    if arrayValue.typecode = "u"
+        return Chr(value)
+    return value
+}
+
+AhkStdlibArrayWriteElement(arrayValue, value, buffer, offset)
+{
+    storageValue := arrayValue.typecode = "u" ? Ord(value) : value
+    NumPut(arrayValue.AhkStdlibStorageType, storageValue, buffer, offset)
+}
+
+AhkStdlibArrayOpenBinaryFile(file, mode, &closeAfter)
+{
+    closeAfter := false
+    if file is String {
+        closeAfter := true
+        return FileOpen(file, mode)
+    }
+    if IsObject(file) && HasMethod(file, "RawRead") && HasMethod(file, "RawWrite")
+        return file
+    if IsObject(file) && mode = "r" && HasMethod(file, "RawRead")
+        return file
+    if IsObject(file) && mode = "w" && HasMethod(file, "RawWrite")
+        return file
+    throw TypeError("file must have 'read' and 'write' attributes", -1)
 }
 
 AhkStdlibArrayIterateInitializerChars(text, &values)

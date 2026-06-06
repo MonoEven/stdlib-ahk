@@ -5,6 +5,32 @@
 
 class StdlibCsvTest
 {
+    static TestFieldSizeLimitAndSnifferMatchObservedLocal310()
+    {
+        initialLimit := stdlib.csv.field_size_limit()
+        AhkTest.AssertEqual(131072, initialLimit)
+        AhkTest.AssertEqual(initialLimit, stdlib.csv.field_size_limit(5))
+        AhkTest.AssertEqual(5, stdlib.csv.field_size_limit())
+        AhkTest.RaisesMatch(stdlib.csv.Error, "field larger than field limit \(5\)", (*) => stdlib.csv.reader("abcdef"))
+        AhkTest.AssertEqual(5, stdlib.csv.field_size_limit(initialLimit))
+        AhkTest.AssertEqual(initialLimit, stdlib.csv.field_size_limit())
+
+        sniffer := stdlib.csv.Sniffer()
+        semicolon := sniffer.sniff("name;score`nAda;7`nGrace;8`n")
+        tab := sniffer.sniff("name`tScore`nAda`t7`n")
+        restricted := sniffer.sniff("name|score`nAda|7`n", ",|")
+
+        AhkTest.AssertEqual(";", semicolon.delimiter)
+        AhkTest.AssertEqual("`"", semicolon.quotechar)
+        AhkTest.AssertEqual(false, semicolon.skipinitialspace)
+        AhkTest.AssertEqual(stdlib.csv.QUOTE_MINIMAL, semicolon.quoting)
+        AhkTest.AssertEqual("`t", tab.delimiter)
+        AhkTest.AssertEqual("|", restricted.delimiter)
+        AhkTest.AssertTrue(sniffer.has_header("name,score`nAda,7`nGrace,8`n"))
+        AhkTest.AssertFalse(sniffer.has_header("1,2`n3,4`n5,6`n"))
+        AhkTest.RaisesMatch(stdlib.csv.Error, "Could not determine delimiter", (*) => sniffer.sniff("abc`n", ",;"))
+    }
+
     static TestDialectsExposePythonDefaults()
     {
         AhkTest.AssertEqual("1.0", stdlib.csv.__version__)

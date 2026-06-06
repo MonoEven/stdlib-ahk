@@ -83,6 +83,16 @@ class stdlib
             return AhkStdlibTuple()
         return AhkStdlibTupleFrom(iterable)
     }
+
+    static await(value, options?)
+    {
+        return AhkStdlibAwait(value, options?)
+    }
+
+    static decorate(target, decorators*)
+    {
+        return AhkStdlibDecorate(target, decorators*)
+    }
 }
 
 class NotImplementedError extends Error
@@ -243,6 +253,41 @@ AhkStdlibTupleFrom(iterable)
 AhkStdlibTupleMutation()
 {
     throw TypeError("'tuple' object does not support item assignment", -1)
+}
+
+AhkStdlibAwait(value, options := unset)
+{
+    if IsObject(value) && Type(value) = "AhkStdlibThreadFuture" {
+        if IsSet(options) && Type(options) = "Object" && options.HasOwnProp("timeout")
+            return value.result(options.timeout)
+        return value.result()
+    }
+
+    if !HasProp(stdlib, "asyncio")
+        throw RuntimeError("stdlib.await() requires stdlib.asyncio to be loaded", -1)
+
+    runningLoop := stdlib.asyncio._get_running_loop()
+    if !AhkStdlibIsNone(runningLoop)
+        throw RuntimeError("stdlib.await() cannot block while an asyncio loop is already running", -1)
+
+    if IsSet(options) && Type(options) = "Object" && options.HasOwnProp("loop")
+        return options.loop.run_until_complete(value)
+
+    return stdlib.asyncio.run(value)
+}
+
+AhkStdlibDecorate(target, decorators*)
+{
+    decorated := target
+    index := decorators.Length
+    while index >= 1 {
+        decorator := decorators[index]
+        if !IsObject(decorator) || !HasMethod(decorator, "Call")
+            throw TypeError("'" AhkStdlibPythonTypeName(decorator) "' object is not callable", -1)
+        decorated := decorator.Call(decorated)
+        index -= 1
+    }
+    return decorated
 }
 
 AhkStdlibPythonTypeName(value)

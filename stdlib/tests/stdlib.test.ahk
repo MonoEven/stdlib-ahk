@@ -47,6 +47,7 @@
 #Include <stdlib\shutil>
 #Include <stdlib\tempfile>
 #Include <stdlib\time>
+#Include <stdlib\thread>
 #Include <stdlib\asyncio>
 #Include <stdlib\enum>
 #Include <stdlib\copy>
@@ -81,6 +82,7 @@ class StdlibBootstrapTest
         AhkTest.AssertTrue(HasMethod(stdlib.glob, "glob"))
         AhkTest.AssertTrue(HasMethod(stdlib.string, "capwords"))
         AhkTest.AssertTrue(HasMethod(stdlib.textwrap, "dedent"))
+        AhkTest.AssertTrue(HasMethod(stdlib.thread, "Thread"))
     }
 
     static AhkTestRaisesUsesAhkNaming()
@@ -3522,12 +3524,15 @@ class StdlibBootstrapTest
     static AbcUsesStdlibNamespace()
     {
         marker := stdlib.abc.abstractmethod((value) => value)
+        baseBefore := StdlibBootstrapAbcForeign.Prototype.Base
 
         AhkTest.AssertEqual(true, marker.__isabstractmethod__)
         AhkTest.AssertEqual(5, marker.Call(5))
 
         stdlib.abc.ABC.register(StdlibBootstrapAbcForeign)
         AhkTest.AssertFalse(stdlib.abc.isabstract(StdlibBootstrapAbcForeign))
+        AhkTest.AssertSame(baseBefore, StdlibBootstrapAbcForeign.Prototype.Base)
+        AhkTest.AssertTrue(stdlib.abc.issubclass(StdlibBootstrapAbcForeign, stdlib.abc.ABC))
         AhkTest.AssertTrue(stdlib.abc.isinstance(StdlibBootstrapAbcForeign(), stdlib.abc.ABC))
     }
 
@@ -3687,6 +3692,13 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual(4, values[3])
         AhkTest.AssertEqual(3, bufferInfo[2])
         AhkTest.AssertEqual("array('b', [1, -2, 3])", bytes.__Repr())
+        AhkTest.AssertEqual(4, values.__Len)
+        AhkTest.AssertTrue(stdlib.operator.truth(values))
+        AhkTest.AssertFalse(stdlib.operator.truth(stdlib.array.array("i")))
+        AhkTest.AssertTrue(stdlib.operator.contains(values, 3))
+        AhkTest.AssertTrue(stdlib.operator.eq(values, stdlib.array.array("h", [1, 2, 3, 4])))
+        AhkTest.AssertEqual([1, 2, 3, 4, 5], stdlib.operator.add(values, stdlib.array.array("i", [5])).tolist())
+        AhkTest.AssertEqual([1, 2, 3, 4, 1, 2, 3, 4], stdlib.operator.mul(2, values).tolist())
     }
 
     static HashlibUsesStdlibNamespace()
@@ -3732,6 +3744,20 @@ class StdlibBootstrapTest
         AhkTest.AssertTrue(cancelled.cancel())
         AhkTest.AssertTrue(cancelled.cancelled())
         AhkTest.Raises(stdlib.asyncio.CancelledError, (*) => cancelled.result())
+
+        loopEvents := []
+        AhkTest.AssertFalse(eventLoop.is_running())
+        AhkTest.AssertFalse(eventLoop.is_closed())
+        AhkTest.AssertEqual("Float", Type(eventLoop.time()))
+        eventLoop.call_soon((targetLoop, events) => events.Push(["soon", targetLoop.is_running(), targetLoop.is_closed()]), eventLoop, loopEvents)
+        eventLoop.call_at(eventLoop.time(), (events, label) => events.Push(["at", label]), loopEvents, "now")
+        spinFuture := eventLoop.create_future()
+        eventLoop.call_later(0.01, (future) => future.set_result("spin"), spinFuture)
+        AhkTest.AssertEqual("spin", eventLoop.run_until_complete(spinFuture))
+        AhkTest.AssertEqual([["soon", true, false], ["at", "now"]], loopEvents)
+        AhkTest.AssertSame(stdlib.None, eventLoop.close())
+        AhkTest.AssertTrue(eventLoop.is_closed())
+        AhkTest.RaisesMatch(RuntimeError, "^Event loop is closed$", (*) => eventLoop.call_soon((*) => stdlib.None))
     }
 
     static TkinterUsesStdlibNamespace()
@@ -3780,6 +3806,9 @@ class StdlibBootstrapTest
         AhkTest.AssertFalse(deep[2] == values[2])
         AhkTest.AssertSame("abc", stdlib.copy.copy("abc"))
         AhkTest.AssertEqual(42, stdlib.copy.deepcopy(42))
+        AhkTest.AssertSame(stdlib.copy.Error, stdlib.copy.error)
+        AhkTest.AssertTrue(stdlib.copy.dispatch_table is Map)
+        AhkTest.AssertEqual(3, stdlib.copy.dispatch_table.Count)
     }
 
     static UuidUsesStdlibNamespace()
@@ -3860,6 +3889,38 @@ class StdlibBootstrapTest
         StrPut("abc", bytes, "UTF-8")
         AhkTest.AssertEqual("YWJj", StrGet(stdlib.base64.b64encode(bytes), "UTF-8"))
         AhkTest.AssertEqual("abc", StrGet(stdlib.base64.b64decode("YWJj"), "UTF-8"))
+        AhkTest.AssertEqual("YWJj", StrGet(stdlib.base64.standard_b64encode(bytes), "UTF-8"))
+        AhkTest.AssertEqual("abc", StrGet(stdlib.base64.standard_b64decode("YWJj"), "UTF-8"))
+        AhkTest.AssertEqual("YWJj`n", StrGet(stdlib.base64.encodebytes(bytes), "UTF-8"))
+        AhkTest.AssertEqual("abc", StrGet(stdlib.base64.decodebytes(stdlib.base64.encodebytes(bytes)), "UTF-8"))
+
+        binary := Buffer(5, 0)
+        NumPut("UChar", 0x41, binary, 0)
+        NumPut("UChar", 0x42, binary, 1)
+        NumPut("UChar", 0x43, binary, 2)
+        NumPut("UChar", 0x00, binary, 3)
+        NumPut("UChar", 0xff, binary, 4)
+        decoded := stdlib.base64.b16decode("41424300ff", true)
+        AhkTest.AssertEqual("41424300FF", StrGet(stdlib.base64.b16encode(binary), "UTF-8"))
+        AhkTest.AssertEqual("41424300ff", Format("{:02x}{:02x}{:02x}{:02x}{:02x}"
+            , NumGet(decoded, 0, "UChar")
+            , NumGet(decoded, 1, "UChar")
+            , NumGet(decoded, 2, "UChar")
+            , NumGet(decoded, 3, "UChar")
+            , NumGet(decoded, 4, "UChar")))
+    }
+
+    static BisectUsesStdlibNamespace()
+    {
+        values := [1, 2, 2, 3]
+        arrayValues := stdlib.array.array("i", [1, 2, 2, 3])
+        arrayInsert := stdlib.array.array("i", [1, 3])
+
+        AhkTest.AssertEqual(1, stdlib.bisect.bisect_left(values, 2))
+        AhkTest.AssertEqual(3, stdlib.bisect.bisect_right(values, 2))
+        AhkTest.AssertEqual(3, stdlib.bisect.bisect_right(arrayValues, 2))
+        AhkTest.AssertSame(stdlib.None, stdlib.bisect.insort_left(arrayInsert, 2))
+        AhkTest.AssertEqual([1, 2, 3], arrayInsert.tolist())
     }
 
     static GetpassUsesStdlibNamespace()
@@ -3883,6 +3944,8 @@ class StdlibBootstrapTest
 
         AhkTest.AssertEqual("616263", StrGet(stdlib.binascii.hexlify(bytes), "UTF-8"))
         AhkTest.AssertEqual("abc", StrGet(stdlib.binascii.unhexlify("616263"), "UTF-8"))
+        AhkTest.AssertEqual("YWJj`n", StrGet(stdlib.binascii.b2a_base64(bytes), "UTF-8"))
+        AhkTest.AssertEqual("abc", StrGet(stdlib.binascii.a2b_base64("YWJj`n"), "UTF-8"))
     }
 
     static QuopriUsesStdlibNamespace()
@@ -3907,10 +3970,34 @@ class StdlibBootstrapTest
         nullctx := stdlib.contextlib.nullcontext("seed")
         closer := StdlibBootstrapContextlibCloser()
         suppressCtx := stdlib.contextlib.suppress(ValueError)
+        events := []
+        stream := stdlib.io.StringIO()
+        redirect := stdlib.contextlib.redirect_stdout(stream)
+        stack := stdlib.contextlib.ExitStack()
+        decorator := stdlib.contextlib.ContextDecorator(StdlibBootstrapContextlibDecoratorCore(events))
+        decorated := decorator.Call((value) => stdlib_bootstrap_contextlib_decorated(events, value))
 
         AhkTest.AssertEqual("seed", nullctx.__enter__())
         AhkTest.AssertSame(closer, stdlib.contextlib.closing(closer).__enter__())
         AhkTest.AssertTrue(suppressCtx.__exit__(ValueError, ValueError("x", -1), stdlib.None))
+        AhkTest.AssertSame(stream, redirect.__enter__())
+        redirect.write("captured")
+        AhkTest.AssertFalse(redirect.__exit__(stdlib.None, stdlib.None, stdlib.None))
+        AhkTest.AssertEqual("captured", stream.getvalue())
+        stack.callback(stdlib_bootstrap_contextlib_callback, events, "one")
+        stack.callback(stdlib_bootstrap_contextlib_callback, events, "two")
+        AhkTest.AssertEqual("entered", stack.enter_context(StdlibBootstrapContextlibStackContext(events)))
+        AhkTest.AssertFalse(stack.__exit__(stdlib.None, stdlib.None, stdlib.None))
+        AhkTest.AssertEqual(42, decorated.Call(21))
+        AhkTest.AssertEqual([
+            "enter",
+            ["exit", stdlib.None],
+            ["callback", "two"],
+            ["callback", "one"],
+            "decorator-enter",
+            ["decorated-call", 21],
+            ["decorator-exit", stdlib.None]
+        ], events)
     }
 
     static ItertoolsUsesStdlibNamespace()
@@ -4249,6 +4336,36 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual("No module named 'pwd'", moduleNotFoundError.Message)
     }
 
+    static RootNamespaceAwaitRunsAsyncioAwaitables()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        future := eventLoop.create_future()
+        future.set_result("future-value")
+
+        AhkTest.AssertEqual("future-value", stdlib.await(future, { loop: eventLoop }))
+        AhkTest.AssertEqual("task-result", stdlib.await(StdlibBootstrapAwaitTaskBody()))
+        AhkTest.RaisesMatch(RuntimeError, "^stdlib\.await\(\) cannot block while an asyncio loop is already running$", (*) => stdlib.asyncio.run(StdlibBootstrapNestedAwaitBody()))
+    }
+
+    static RootNamespaceDecorateAppliesDecoratorOrder()
+    {
+        events := []
+        value := (*) => stdlib_bootstrap_decorated_value(events)
+        outer := stdlib_bootstrap_decorator("outer", events)
+        inner := stdlib_bootstrap_decorator("inner", events)
+
+        decorated := stdlib.decorate(value, outer, inner)
+        classLike := stdlib.decorate(StdlibBootstrapDecoratedTarget, (target) => {
+            target: target,
+            label: "decorated"
+        })
+
+        AhkTest.AssertEqual("outer(inner(value))", decorated.Call())
+        AhkTest.AssertEqual(["apply:inner", "apply:outer", "call:outer", "call:inner", "call:value"], events)
+        AhkTest.AssertEqual("decorated", classLike.label)
+        AhkTest.AssertSame(StdlibBootstrapDecoratedTarget, classLike.target)
+    }
+
     static FunctoolsUsesStdlibNamespace()
     {
         addTwo := stdlib.functools.partial(stdlib_bootstrap_add, 2)
@@ -4332,6 +4449,14 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual([3, 29], stdlib.calendar.monthrange(2024, 2))
         AhkTest.AssertEqual(3, stdlib.calendar.weekday(2024, 2, 29))
         AhkTest.AssertEqual([0, 0, 0, 1, 2, 3, 4], stdlib.calendar.monthcalendar(2024, 2)[1])
+        AhkTest.AssertEqual("Mo Tu We Th Fr Sa Su", stdlib.calendar.weekheader(2))
+        AhkTest.AssertEqual("Monday", stdlib.calendar.day_name[0])
+        AhkTest.AssertEqual("Feb", stdlib.calendar.month_abbr[2])
+        AhkTest.AssertEqual(1709168523, stdlib.calendar.timegm([2024, 2, 29, 1, 2, 3]))
+
+        calendar := stdlib.calendar.Calendar(stdlib.calendar.SUNDAY)
+        AhkTest.AssertEqual([6, 0, 1, 2, 3, 4, 5], stdlib_bootstrap_array(calendar.iterweekdays()))
+        AhkTest.AssertEqual([0, 0, 0, 0, 1, 2, 3], calendar.monthdayscalendar(2024, 2)[1])
     }
 
     static CollectionsUsesStdlibNamespace()
@@ -4369,8 +4494,42 @@ class StdlibBootstrapTest
         copiedCounterSubclass := counterSubclass.copy()
         clearCounter := stdlib.collections.Counter("abca")
         clearReturned := clearCounter.Clear()
+        deque := stdlib.collections.deque([1, 2], 3)
+        deque.append(3)
+        deque.appendleft(0)
+        deque.append(4)
+        defaultDict := stdlib.collections.defaultdict((*) => [])
+        defaultDict["a"].Push(1)
+        ordered := stdlib.collections.OrderedDict([["a", 1], ["b", 2]])
+        ordered.move_to_end("a")
+        chain := stdlib.collections.ChainMap(Map("a", 1), Map("a", 2, "b", 3))
+        pointType := stdlib.collections.namedtuple("Point", "x y")
+        point := pointType.Call(2, 3)
+        userDict := stdlib.collections.UserDict(Map("a", 1))
+        userList := stdlib.collections.UserList([1, 2])
+        userString := stdlib.collections.UserString("ahk")
+        userDict["b"] := 2
+        userList.append(3)
 
         AhkTest.AssertEqual(1, counter["a"])
+        AhkTest.AssertSame(AhkStdlibCollectionsDeque, stdlib.collections.deque)
+        AhkTest.AssertSame(AhkStdlibCollectionsDefaultDict, stdlib.collections.defaultdict)
+        AhkTest.AssertSame(AhkStdlibCollectionsOrderedDict, stdlib.collections.OrderedDict)
+        AhkTest.AssertSame(AhkStdlibCollectionsChainMap, stdlib.collections.ChainMap)
+        AhkTest.AssertSame(AhkStdlibCollectionsUserDict, stdlib.collections.UserDict)
+        AhkTest.AssertSame(AhkStdlibCollectionsUserList, stdlib.collections.UserList)
+        AhkTest.AssertSame(AhkStdlibCollectionsUserString, stdlib.collections.UserString)
+        AhkTest.AssertEqual([1, 2, 4], stdlib_bootstrap_array(deque))
+        AhkTest.AssertEqual([["a", [1]]], stdlib_bootstrap_pairs(defaultDict))
+        AhkTest.AssertSame(defaultDict["missing"], defaultDict["missing"])
+        AhkTest.AssertEqual([["b", 2], ["a", 1]], stdlib_bootstrap_pairs(ordered))
+        AhkTest.AssertEqual(1, chain["a"])
+        AhkTest.AssertEqual(3, chain["b"])
+        AhkTest.AssertEqual([2, 3], stdlib_bootstrap_array(point))
+        AhkTest.AssertEqual([["x", 2], ["y", 3]], stdlib_bootstrap_pairs(point._asdict()))
+        AhkTest.AssertEqual([["a", 1], ["b", 2]], stdlib_bootstrap_pairs(userDict))
+        AhkTest.AssertEqual([1, 2, 3], stdlib_bootstrap_array(userList))
+        AhkTest.AssertEqual("AHK", userString.upper().data)
         kwargsUpdateCounter.update({ kwargs: Map("a", 2, "b", 3) })
         kwargsSubtractCounter.subtract({ kwargs: Map("a", 2, "b", 3) })
         AhkTest.AssertEqual([["a", 3], ["b", 1], ["c", 3]], stdlib_bootstrap_pairs(kwargsCounter))
@@ -4548,6 +4707,19 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual("0:00:00.000001", String(stdlib.datetime.time.resolution))
         AhkTest.AssertEqual("01:02:03.000004", String(moment.time()))
         AhkTest.AssertEqual("2024-02-29 01:02:03.000004", String(stdlib.datetime.datetime.combine(leapDay, stdlib.datetime.time(1, 2, 3, 4))))
+        AhkTest.AssertEqual(1, stdlib.datetime.MINYEAR)
+        AhkTest.AssertEqual(9999, stdlib.datetime.MAXYEAR)
+
+        tzinfo := stdlib.datetime.tzinfo()
+        AhkTest.RaisesMatch(stdlib.NotImplementedError, "a tzinfo subclass must implement utcoffset\(\)", (*) => tzinfo.utcoffset(stdlib.None))
+
+        utc := stdlib.datetime.timezone.utc
+        ist := stdlib.datetime.timezone(stdlib.datetime.timedelta({ hours: 5, minutes: 30 }), "IST")
+        AhkTest.AssertEqual("UTC", String(utc))
+        AhkTest.AssertEqual("0:00:00", String(utc.utcoffset(stdlib.None)))
+        AhkTest.AssertSame(stdlib.None, utc.dst(stdlib.None))
+        AhkTest.AssertEqual("IST", String(ist))
+        AhkTest.AssertEqual("5:30:00", String(ist.utcoffset(stdlib.None)))
     }
 
     static WarningsUsesStdlibNamespace()
@@ -4602,6 +4774,15 @@ class StdlibBootstrapTest
         writer := stdlib.csv.writer()
         writer.writerow(["a`"b", "c"])
         AhkTest.AssertEqual("`"a`"`"b`",c`r`n", writer.text)
+
+        initialLimit := stdlib.csv.field_size_limit()
+        AhkTest.AssertEqual(initialLimit, stdlib.csv.field_size_limit(5))
+        AhkTest.RaisesMatch(stdlib.csv.Error, "field larger than field limit \(5\)", (*) => stdlib.csv.reader("abcdef"))
+        stdlib.csv.field_size_limit(initialLimit)
+
+        sniffer := stdlib.csv.Sniffer()
+        AhkTest.AssertEqual(";", sniffer.sniff("name;score`nAda;7`n").delimiter)
+        AhkTest.AssertTrue(sniffer.has_header("name,score`nAda,7`nGrace,8`n"))
     }
 
     static ConfigParserUsesStdlibNamespace()
@@ -4667,6 +4848,24 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual("3.75", String(stdlib.operator.add(value, other)))
         AhkTest.AssertTrue(stdlib.operator.lt(value, other))
         AhkTest.AssertEqual("2.5", String(trailing.normalize()))
+        AhkTest.AssertEqual("ROUND_HALF_EVEN", stdlib.decimal.ROUND_HALF_EVEN)
+        AhkTest.AssertTrue(stdlib.decimal.HAVE_CONTEXTVAR)
+        AhkTest.AssertTrue(stdlib.decimal.DecimalException() is Error)
+
+        original := stdlib.decimal.getcontext().copy()
+        custom := stdlib.decimal.Context({ prec: 7, rounding: stdlib.decimal.ROUND_DOWN })
+        try {
+            AhkTest.AssertSame(stdlib.None, stdlib.decimal.setcontext(custom))
+            AhkTest.AssertEqual(7, stdlib.decimal.getcontext().prec)
+            localContext := stdlib.decimal.localcontext()
+            entered := localContext.__enter__()
+            entered.prec := 11
+            AhkTest.AssertEqual(11, stdlib.decimal.getcontext().prec)
+            AhkTest.AssertFalse(localContext.__exit__(stdlib.None, stdlib.None, stdlib.None))
+            AhkTest.AssertEqual(7, stdlib.decimal.getcontext().prec)
+        } finally {
+            stdlib.decimal.setcontext(original)
+        }
     }
 
     static LoggingUsesStdlibNamespace()
@@ -4876,6 +5075,58 @@ class StdlibBootstrapAbcForeign
 {
 }
 
+class StdlibBootstrapAwaitTaskBody
+{
+    __New()
+    {
+        this.StepIndex := 0
+    }
+
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        if this.StepIndex = 0 {
+            this.StepIndex += 1
+            return stdlib.asyncio.sleep(0, "slept")
+        }
+        return "task-result"
+    }
+}
+
+class StdlibBootstrapNestedAwaitBody
+{
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        return stdlib.await(stdlib.asyncio.sleep(0, "nested"))
+    }
+}
+
+class StdlibBootstrapDecoratedTarget
+{
+}
+
+stdlib_bootstrap_decorator(label, events)
+{
+    return (target) => stdlib_bootstrap_decorator_apply(label, events, target)
+}
+
+stdlib_bootstrap_decorator_apply(label, events, target)
+{
+    events.Push("apply:" label)
+    return (*) => stdlib_bootstrap_decorator_call(label, events, target)
+}
+
+stdlib_bootstrap_decorator_call(label, events, target)
+{
+    events.Push("call:" label)
+    return label "(" target.Call() ")"
+}
+
+stdlib_bootstrap_decorated_value(events)
+{
+    events.Push("call:value")
+    return "value"
+}
+
 AhkTest.Test("stdlib bootstrap uses <stdlib\\ahktest>", (*) => StdlibBootstrapTest.FrameworkStartsFromStdlibHarness())
 AhkTest.Test("stdlib ahktest exposes AHK-named raises helper", (*) => StdlibBootstrapTest.AhkTestRaisesUsesAhkNaming())
 AhkTest.Test("stdlib ahktest creates isolated suites", (*) => StdlibBootstrapTest.AhkTestCreatesIsolatedSuites())
@@ -5075,6 +5326,7 @@ AhkTest.Test("stdlib glob uses root stdlib namespace", (*) => StdlibBootstrapTes
 AhkTest.Test("stdlib string uses root stdlib namespace", (*) => StdlibBootstrapTest.StringUsesStdlibNamespace())
 AhkTest.Test("stdlib textwrap uses root stdlib namespace", (*) => StdlibBootstrapTest.TextwrapUsesStdlibNamespace())
 AhkTest.Test("stdlib base64 uses root stdlib namespace", (*) => StdlibBootstrapTest.Base64UsesStdlibNamespace())
+AhkTest.Test("stdlib bisect uses root stdlib namespace", (*) => StdlibBootstrapTest.BisectUsesStdlibNamespace())
 AhkTest.Test("stdlib getpass uses root stdlib namespace", (*) => StdlibBootstrapTest.GetpassUsesStdlibNamespace())
 AhkTest.Test("stdlib binascii uses root stdlib namespace", (*) => StdlibBootstrapTest.BinasciiUsesStdlibNamespace())
 AhkTest.Test("stdlib quopri uses root stdlib namespace", (*) => StdlibBootstrapTest.QuopriUsesStdlibNamespace())
@@ -5084,6 +5336,8 @@ AhkTest.Test("stdlib root namespace exposes tuple builtin", (*) => StdlibBootstr
 AhkTest.Test("stdlib root namespace exposes boolean builtins", (*) => StdlibBootstrapTest.RootNamespaceExposesBooleanBuiltins())
 AhkTest.Test("stdlib root namespace exposes NotImplemented builtin", (*) => StdlibBootstrapTest.RootNamespaceExposesNotImplementedBuiltin())
 AhkTest.Test("stdlib root namespace exposes error builtins", (*) => StdlibBootstrapTest.RootNamespaceExposesErrorBuiltins())
+AhkTest.Test("stdlib root namespace await runs asyncio awaitables", (*) => StdlibBootstrapTest.RootNamespaceAwaitRunsAsyncioAwaitables())
+AhkTest.Test("stdlib root namespace decorate applies decorator order", (*) => StdlibBootstrapTest.RootNamespaceDecorateAppliesDecoratorOrder())
 AhkTest.Test("stdlib functools uses root stdlib namespace", (*) => StdlibBootstrapTest.FunctoolsUsesStdlibNamespace())
 AhkTest.Test("stdlib calendar uses root stdlib namespace", (*) => StdlibBootstrapTest.CalendarUsesStdlibNamespace())
 AhkTest.Test("stdlib collections uses root stdlib namespace", (*) => StdlibBootstrapTest.CollectionsUsesStdlibNamespace())
@@ -5395,6 +5649,57 @@ class StdlibBootstrapContextlibCloser
     {
         this.closed := true
     }
+}
+
+class StdlibBootstrapContextlibStackContext
+{
+    __New(events)
+    {
+        this.events := events
+    }
+
+    __enter__()
+    {
+        this.events.Push("enter")
+        return "entered"
+    }
+
+    __exit__(excType, exc, tb)
+    {
+        this.events.Push(["exit", AhkStdlibIsNone(excType) ? stdlib.None : excType])
+        return false
+    }
+}
+
+class StdlibBootstrapContextlibDecoratorCore
+{
+    __New(events)
+    {
+        this.events := events
+    }
+
+    __enter__()
+    {
+        this.events.Push("decorator-enter")
+        return this
+    }
+
+    __exit__(excType, exc, tb)
+    {
+        this.events.Push(["decorator-exit", AhkStdlibIsNone(excType) ? stdlib.None : excType])
+        return false
+    }
+}
+
+stdlib_bootstrap_contextlib_callback(events, label)
+{
+    events.Push(["callback", label])
+}
+
+stdlib_bootstrap_contextlib_decorated(events, value)
+{
+    events.Push(["decorated-call", value])
+    return value * 2
 }
 
 class StdlibBootstrapLengthHintValueError

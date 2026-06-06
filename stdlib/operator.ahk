@@ -166,6 +166,16 @@ AhkStdlibOperatorCompare(operation, left, right)
             throw TypeError(AhkStdlibOperatorComparisonError(operation, left, right), -1)
         return result
     }
+    if AhkStdlibOperatorIsArrayValue(left) {
+        if AhkStdlibOperatorComparableCrossTypeEqual(operation)
+            return AhkStdlibOperatorObjectEqNe(operation, left, right)
+        return AhkStdlibOperatorObjectCompare(operation, left, right)
+    }
+    if AhkStdlibOperatorIsArrayValue(right) {
+        if AhkStdlibOperatorComparableCrossTypeEqual(operation)
+            return AhkStdlibOperatorObjectEqNe(operation, right, left)
+        return AhkStdlibOperatorObjectCompare(AhkStdlibOperatorReverseComparison(operation), right, left)
+    }
 
     switch operation {
         case "lt":
@@ -268,6 +278,8 @@ AhkStdlibOperatorTruth(value)
         return value.digits != "0"
     if AhkStdlibOperatorIsFraction(value)
         return value.numerator != 0
+    if AhkStdlibOperatorIsArrayValue(value)
+        return value.__Len > 0
     if value is Array
         return value.Length > 0
     if value is Map
@@ -402,6 +414,14 @@ AhkStdlibOperatorAdd(left, right)
     }
     if AhkStdlibOperatorIsTimedelta(right)
         throw TypeError("unsupported operand type(s) for +: '" AhkStdlibOperatorPythonTypeName(left) "' and 'datetime.timedelta'", -1)
+    if AhkStdlibOperatorIsArrayValue(left) {
+        result := left.__Add(right)
+        if result = ""
+            throw TypeError("unsupported operand type(s) for +: 'array.array' and '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
+        return result
+    }
+    if AhkStdlibOperatorIsArrayValue(right)
+        throw TypeError("unsupported operand type(s) for +: '" AhkStdlibOperatorPythonTypeName(left) "' and 'array.array'", -1)
 
     if left is String {
         if right is String
@@ -538,6 +558,18 @@ AhkStdlibOperatorAbs(value)
 
 AhkStdlibOperatorMul(left, right)
 {
+    if AhkStdlibOperatorIsArrayValue(left) {
+        result := left.__Mul(right)
+        if result = ""
+            throw TypeError("can't multiply sequence by non-int of type '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
+        return result
+    }
+    if AhkStdlibOperatorIsArrayValue(right) {
+        result := right.__Mul(left)
+        if result = ""
+            throw TypeError("can't multiply sequence by non-int of type '" AhkStdlibOperatorPythonTypeName(left) "'", -1)
+        return result
+    }
     if left is String || left is Array {
         if !(right is Integer)
             throw TypeError("can't multiply sequence by non-int of type '" Type(right) "'", -1)
@@ -627,6 +659,9 @@ AhkStdlibOperatorRepeatSequence(value, count)
 
 AhkStdlibOperatorContains(container, needle)
 {
+    if AhkStdlibOperatorIsArrayValue(container)
+        return container.__Contains(needle)
+
     if container is Array {
         for value in container {
             if AhkStdlibOperatorSameOrEqual(value, needle)
@@ -647,6 +682,9 @@ AhkStdlibOperatorContains(container, needle)
 AhkStdlibOperatorCountOf(container, needle)
 {
     count := 0
+    if AhkStdlibOperatorIsArrayValue(container)
+        return container.count(needle)
+
     if container is Array {
         for value in container {
             if AhkStdlibOperatorSameOrEqual(value, needle)
@@ -676,6 +714,9 @@ AhkStdlibOperatorCountOf(container, needle)
 
 AhkStdlibOperatorIndexOf(container, needle)
 {
+    if AhkStdlibOperatorIsArrayValue(container)
+        return container.index(needle)
+
     if container is Array {
         for index, value in container {
             if AhkStdlibOperatorSameOrEqual(value, needle)
@@ -834,6 +875,8 @@ AhkStdlibOperatorPythonTypeName(value)
         return "datetime.date"
     if AhkStdlibOperatorIsTimedelta(value)
         return "datetime.timedelta"
+    if AhkStdlibOperatorIsArrayValue(value)
+        return "array.array"
     if value is String
         return "str"
     if value is Integer
@@ -887,6 +930,11 @@ AhkStdlibOperatorIsDate(value)
 AhkStdlibOperatorIsTime(value)
 {
     return Type(value) = "AhkStdlibDateTimeTimeValue"
+}
+
+AhkStdlibOperatorIsArrayValue(value)
+{
+    return Type(value) = "AhkStdlibArrayValue"
 }
 
 AhkStdlibOperatorIsDateTimeComparable(value)

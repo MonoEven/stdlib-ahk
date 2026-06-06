@@ -47,6 +47,51 @@ class AhkStdlibBinascii
     {
         return this.unhexlify(args*)
     }
+
+    static b2a_base64(args*)
+    {
+        if args.Length = 0
+            throw TypeError("b2a_base64() missing required argument 'data' (pos 1)", -1)
+        if args.Length > 2
+            throw TypeError("b2a_base64() takes at most 1 positional argument (" args.Length " given)", -1)
+
+        data := AhkStdlibBinasciiRequireBytesLike(args[1])
+        newline := true
+        if args.Length = 2 {
+            options := args[2]
+            if Type(options) != "Object" || !options.HasOwnProp("newline")
+                throw TypeError("b2a_base64() takes exactly 1 positional argument (" args.Length " given)", -1)
+            newline := AhkStdlibTruthValue(options.newline)
+        }
+
+        encoded := AhkStdlibBinasciiBase64Encode(data)
+        if newline
+            encoded .= "`n"
+        return AhkStdlibBinasciiUtf8Bytes(encoded)
+    }
+
+    static a2b_base64(args*)
+    {
+        if args.Length = 0
+            throw TypeError("a2b_base64() missing required argument 'data' (pos 1)", -1)
+        if args.Length > 1
+            throw TypeError("a2b_base64() takes exactly 1 positional argument (" args.Length " given)", -1)
+
+        source := AhkStdlibBinasciiRequireAsciiSource(args[1])
+        return AhkStdlibBinasciiBase64Decode(source)
+    }
+
+    static crc32(args*)
+    {
+        if args.Length = 0
+            throw TypeError("crc32 expected at least 1 argument, got 0", -1)
+        if args.Length > 2
+            throw TypeError("crc32 expected at most 2 arguments, got " args.Length, -1)
+
+        data := AhkStdlibBinasciiRequireBytesLike(args[1])
+        seed := args.Length = 2 ? AhkStdlibBinasciiInterpretIndex(args[2]) : 0
+        return AhkStdlibBinasciiCrc32(data, seed)
+    }
 }
 
 stdlib.binascii := AhkStdlibBinascii
@@ -64,6 +109,17 @@ AhkStdlibBinasciiRequireBytesLike(value, stringMessage := "")
 }
 
 AhkStdlibBinasciiRequireHexSource(value)
+{
+    if value is String
+        return value
+    if AhkStdlibIsBool(value)
+        throw TypeError("argument should be bytes, buffer or ASCII string, not 'bool'", -1)
+    if IsObject(value) && HasProp(value, "Ptr") && HasProp(value, "Size")
+        return StrGet(value, value.Size, "UTF-8")
+    throw TypeError("argument should be bytes, buffer or ASCII string, not '" AhkStdlibPythonTypeName(value) "'", -1)
+}
+
+AhkStdlibBinasciiRequireAsciiSource(value)
 {
     if value is String
         return value
@@ -155,6 +211,87 @@ AhkStdlibBinasciiUnhexlify(source)
         NumPut("UChar", Integer("0x" pair), bytes, A_Index - 1)
     }
     return bytes
+}
+
+AhkStdlibBinasciiCrc32(data, seed)
+{
+    crc := DllCall("ntdll\RtlComputeCrc32"
+        , "UInt", seed & 0xffffffff
+        , "Ptr", data.Ptr
+        , "UInt", data.Size
+        , "UInt")
+    return crc & 0xffffffff
+}
+
+AhkStdlibBinasciiBase64Encode(bytes)
+{
+    if bytes.Size = 0
+        return ""
+
+    flags := 0x00000001 | 0x40000000
+    chars := 0
+    if !DllCall("crypt32\CryptBinaryToStringW"
+        , "Ptr", bytes.Ptr
+        , "UInt", bytes.Size
+        , "UInt", flags
+        , "Ptr", 0
+        , "UInt*", &chars
+        , "Int")
+        throw Error("CryptBinaryToStringW failed", -1)
+
+    outputBuffer := Buffer(chars * 2, 0)
+    if !DllCall("crypt32\CryptBinaryToStringW"
+        , "Ptr", bytes.Ptr
+        , "UInt", bytes.Size
+        , "UInt", flags
+        , "Ptr", outputBuffer.Ptr
+        , "UInt*", &chars
+        , "Int")
+        throw Error("CryptBinaryToStringW failed", -1)
+    return StrGet(outputBuffer, "UTF-16")
+}
+
+AhkStdlibBinasciiBase64Decode(text)
+{
+    source := AhkStdlibBinasciiNormalizeBase64Input(text)
+    if source = ""
+        return Buffer(0)
+
+    size := 0
+    if !DllCall("crypt32\CryptStringToBinaryA"
+        , "AStr", source
+        , "UInt", 0
+        , "UInt", 0x00000001
+        , "Ptr", 0
+        , "UInt*", &size
+        , "Ptr", 0
+        , "Ptr", 0
+        , "Int")
+        throw AhkStdlibBinasciiError("Incorrect padding", -1)
+
+    bytes := Buffer(size, 0)
+    if !DllCall("crypt32\CryptStringToBinaryA"
+        , "AStr", source
+        , "UInt", 0
+        , "UInt", 0x00000001
+        , "Ptr", bytes.Ptr
+        , "UInt*", &size
+        , "Ptr", 0
+        , "Ptr", 0
+        , "Int")
+        throw AhkStdlibBinasciiError("Incorrect padding", -1)
+    return bytes
+}
+
+AhkStdlibBinasciiNormalizeBase64Input(text)
+{
+    normalized := ""
+    loop parse text {
+        char := A_LoopField
+        if RegExMatch(char, "^[A-Za-z0-9+/=]$")
+            normalized .= char
+    }
+    return normalized
 }
 
 AhkStdlibBinasciiUtf8Bytes(text)

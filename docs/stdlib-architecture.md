@@ -88,6 +88,7 @@ small TDD slices. Current direct modules:
 - `stdlib\tempfile.ahk`
 - `stdlib\logging.ahk`
 - `stdlib\queue.ahk`
+- `stdlib\thread.ahk`
 - `stdlib\asyncio.ahk`
 - `stdlib\enum.ahk`
 - `stdlib\copy.ahk`
@@ -97,7 +98,7 @@ small TDD slices. Current direct modules:
 - `stdlib\inspect.ahk`
 - `stdlib\tkinter.ahk`
 
-The framework manifest currently tracks `57` total module slots: `57` direct,
+The framework manifest currently tracks `58` total module slots: `58` direct,
 `0` candidate, and `0` native-quarantine.
 
 Current verified wrapper baseline is
@@ -107,6 +108,190 @@ Current verified wrapper baseline is
 expected output rather than a failure. This raises the aggregate evidence from
 the previous 90-second 1139-test baseline; it uses the current 90-second
 default aggregate gate and does not claim lower-timeout aggregate stability.
+
+The latest concurrency slice expands `stdlib.thread` as a process-backed
+interpreter worker module with bounded memory access. This follows the
+requested AHK architecture: the main interpreter remains the scheduler and
+state owner, Windows system DLL calls provide process/event/wait/
+handle-redirection/file-mapping primitives, each `Thread` starts an independent
+AutoHotkey interpreter process for its script fragment, and the main
+interpreter polls `Thread`, `ResultQueue`, JSON-safe `Channel` messages, or
+bounded `SharedMemory` regions to read worker state and update AHK state. It
+does not claim that the current AHK VM executes shared script state on multiple
+OS threads, and it does not share AHK object pointers across worker boundaries.
+Fresh OS-thread callback probes confirm why this boundary matters: `CreateThread`
+can enter an AHK `CallbackCreate` function on non-main thread IDs, and two such
+callbacks can overlap before the first one releases. Therefore raw pointers are
+only promoted as explicit shared-memory addresses and typed slots, not as a
+general shared AHK object model.
+An attempted GIL-style native wrapper was also probed and rejected for public
+promotion: `.codex/thread_ahk_object_gil_probe.test.ahk` showed that a very small
+direct `CreateThread` callback can serialize a shared `Map` / `Array` mutation
+with a Win32 mutex, but `.codex/thread_native_min_probe.test.ahk` then reproduced
+an ahktest no-status process exit once the behavior was wrapped as a reusable
+`NativeThread` returning or sharing AHK objects. That is treated as crossing the
+AHK VM object-memory boundary. The promoted path toward Python-like
+shared-object threading is therefore a broker/proxy model:
+`stdlib.thread.SharedObject(...)` keeps the real AHK object owned by the main
+interpreter, workers access it through `current_shared_object(...)` proxy
+handles, and JSON-safe operations are marshalled back to the main interpreter
+for serialized execution. Large byte payloads should use `SharedMemory` typed
+slots, not AHK object pointers.
+Covered Python-guided surface now includes `Lock`, `RLock`, `Semaphore`,
+`BoundedSemaphore`, `Condition`, `Barrier`, `Event`, `Thread`, `Timer`,
+`Future`, `ThreadPool`, `WeakSet`, `ExceptHookArgs`, `local`,
+trace/profile/stack helpers, current / main thread helpers, deprecated aliases
+such as `activeCount()`,
+`currentThread()`, `Event.isSet()`, `Thread.getName()/setName()`,
+`Thread.isDaemon()/setDaemon()`, and object-level `Thread.run()` /
+`Timer.run()` / `Timer.cancel()` / `Condition.wait_for(...)`. AHK extension
+surface includes `stdlib.thread.Channel()` / `current_channel()` for
+process-safe JSON message passing and `stdlib.thread.SharedMemory()` /
+`current_shared_memory()` for named Win32 file-mapping regions with logical
+size bounds, byte reads/writes, UTF-8 text helpers, and fixed-region JSON
+helpers. Shared memory also exposes raw `SharedMemory.address`,
+`SharedMemory.ptr()`, and fixed-width `SharedMemory.get(...)` /
+`SharedMemory.put(...)` typed slots for low-level worker coordination, plus an
+explicit named-mutex lock via `SharedMemory.lock()` and
+`SharedMemory.synchronized(...)`; this protects caller-selected critical
+sections instead of hiding every read/write behind an implicit lock.
+`SharedObject` currently covers brokered `acquire(...)`, `release()`,
+`get(...)`, `set(...)`, `append(...)`, `len(...)`, and `snapshot()` for
+JSON-safe shared state, including duplicate public thread names; internal broker
+identity is not derived from `Thread.name`. `Thread.join(...)` and
+`Thread.is_alive()` pump broker requests for all active process-backed workers,
+not only the worker being joined, so a worker holding a `SharedObject` lock can
+release it while the main interpreter is currently waiting on another worker.
+`ThreadPool` currently covers bounded `max_workers` scheduling, queued-future
+cancelation, `Future.running()`, `Future.add_done_callback(...)`,
+timeout-aware `Future.result(...)`, `Future.exception(...)`, worker exception
+propagation, shutdown submit rejection, ordered single-iterable
+`ThreadPool.map(...)`, `worker_source` / `task` persistent worker processes for
+JSON-safe task payloads, `shutdown(wait := false)` completion of already running
+persistent tasks, and `stdlib.await(future, { timeout: ... })` for thread
+futures. Dynamic `{ source: ... }` tasks remain one-shot worker scripts; this
+does not claim persistent worker-process reuse for arbitrary dynamic source
+execution.
+The JSON-file `Channel` spool retries transient Windows file-lock reads after a
+worker publishes a message, uses string ordering for hyphenated sequence file
+names, and preserves hard JSON/read errors. Worker
+scripts are generated with
+`#NoTrayIcon` as their first directive and
+`#ErrorStdOut "UTF-8"`; `CreateProcessW` starts them with captured stdout/stderr
+handles, so load-time worker failures are shaped into controlled
+`RuntimeError("worker exited without a result: ...")` instead of warning/error
+popups.
+
+Fresh CPython 3.10.11 evidence includes `.codex/thread_python_probe.py`,
+`.codex/threading_surface_probe.py`, `.codex/threading_thread_timer_probe.py`,
+`.codex/threading_object_surface_probe.py`, `.codex/thread_shared_memory_probe.py`,
+`.codex/thread_named_mutex_probe.py`, `.codex/thread_raw_memory_probe.py`,
+`.codex/thread_shared_object_python310_probe.py`,
+`.codex/thread_duplicate_name_python310_probe.py`,
+`.codex/threadpool_executor_python310_probe.py`,
+`.codex/threadpool_callbacks_map_python310_probe.py`,
+`.codex/threadpool_worker_reuse_python310_probe.py`,
+`.codex/threadpool_shutdown_wait_false_python310_probe.py`,
+`.codex/thread_first_json_order_python310_probe.py`, and their JSON outputs.
+These confirm the Python `threading` public names,
+synchronization behavior, `Thread` lifecycle errors, `Timer`, `WeakSet`,
+`ExceptHookArgs`, deprecated object aliases, object method surface, the Windows
+shared-memory model used to guide bounded memory access, the Win32 named mutex
+behavior used to guard cross-process critical sections, and the little-endian
+fixed-width typed raw memory slot semantics used by `SharedMemory.get/put`.
+They also confirm that Python 3.10.11 permits same-name threads and that
+lock-guarded shared dict/list mutation produces the expected serialized count
+and item-length outcomes. The thread-pool probe confirms Python 3.10.11
+`ThreadPoolExecutor(max_workers=1)` queues later tasks, `Future.result(timeout)`
+raises `TimeoutError`, queued futures can be cancelled, shutdown rejects new
+submissions with `RuntimeError`, and worker exceptions are returned by
+`Future.exception(...)` and re-raised by `Future.result(...)`. The callback/map
+probe confirms `Future.running()` state transitions, done-callback registration
+order, immediate callback execution after a future is already done, queued
+cancellation callback state, and ordered `ThreadPoolExecutor.map(...)` results.
+The worker-reuse and shutdown probes confirm that
+`ThreadPoolExecutor(max_workers=1)` reuses the same worker identity for
+sequential submit/map work, and that `shutdown(wait=False)` rejects later
+submissions while letting a running future complete normally.
+The JSON filename-order probe confirms that Python selects the first queue item
+with string ordering for hyphenated names such as
+`000000000001-...json`, not numeric coercion.
+Fresh AHK evidence includes `.codex/thread_os_callback_probe.test.ahk` and
+`.codex/thread_os_callback_concurrency_probe.test.ahk` proving non-main and
+overlapping OS-thread callback entry, `.codex/thread_ahk_object_gil_probe.test.ahk`
+showing the narrow mutex-serialized object probe, `.codex/thread_native_min_probe.test.ahk`
+and `.codex/thread-native-min-probe-expanded-report.txt` recording the failed
+public wrapper direction via an ahktest no-status process exit,
+`.codex/thread-shared-memory-red-report.txt`
+failing because `SharedMemory` was absent, `.codex/thread-shared-memory-green-report.txt`
+passing `stdlib/tests/thread.test.ahk` 15/15 in 5609 ms after adding Win32
+file-mapping shared memory, and `.codex/thread-shared-memory-mutex-red-report.txt`
+failing because `SharedMemory.lock()` was absent, followed by
+`.codex/thread-shared-memory-mutex-green-report.txt` passing
+`stdlib/tests/thread.test.ahk` 16/16 in 5875 ms after adding named mutex locking
+and `SharedMemory.synchronized(...)`, and `.codex/thread-shared-memory-raw-red-report.txt`
+failing because `SharedMemory.address` was absent, followed by
+`.codex/thread-shared-memory-raw-green-report.txt` passing
+`stdlib/tests/thread.test.ahk` 17/17 in 8906 ms after adding raw address and
+typed slot access, and `.codex/thread-channel-lock-retry-green-report.txt`
+passing `stdlib/tests/thread.test.ahk` 18/18 in 9172 ms after adding a regression
+for transient Channel JSON file locks, followed by
+`.codex/thread-child-tray-hidden-green-report.txt` passing 19/19 after asserting
+worker `A_IconHidden`, `.codex/thread-shared-object-red-report.txt` failing
+because `SharedObject` was absent, `.codex/thread-shared-object-green-report.txt`
+passing 20/20 after adding the broker/proxy shared object path, and
+`.codex/thread-shared-object-duplicate-name-red-report.txt` failing because
+broker identity used public `Thread.name`, followed by
+`.codex/thread-shared-object-duplicate-name-green-report.txt` passing 21/21
+after switching to unique worker broker keys, and
+`.codex/thread-shared-object-global-pump-red-report.txt` failing because
+joining one worker did not process another active worker's `SharedObject`
+release request, followed by
+`.codex/thread-shared-object-global-pump-green-report.txt` passing 22/22 after
+adding a global active-worker broker pump, and `.codex/threadpool-red-report.txt`
+failing because `Future` / `ThreadPool` were absent, followed by
+`.codex/threadpool-green-report.txt` passing 24/24 after adding bounded
+`ThreadPool` scheduling, `Future` result/exception/timeout/cancel behavior,
+worker error propagation, shutdown submit rejection, README/example capture, and
+`stdlib.await(...)` support for thread futures, and
+`.codex/threadpool-callbacks-map-red-report.txt` failing because
+`Future.running()` and `ThreadPool.map(...)` were absent, followed by
+`.codex/threadpool-callbacks-map-green-1-report.txt` passing 26/26 after adding
+`Future.running()`, `Future.add_done_callback(...)`, reentrancy-guarded pool
+pumping, and ordered single-iterable `ThreadPool.map(...)`, followed by
+`.codex/threadpool-persistent-worker-red-report.txt` failing because the
+`worker_source` / `task` persistent-worker protocol was absent,
+`.codex/threadpool-persistent-worker-green-1-report.txt` passing 27/27 after
+adding hidden persistent worker processes for JSON-safe tasks, and
+`.codex/threadpool-shutdown-wait-false-red-report.txt` failing because
+`shutdown(false)` prevented a running persistent task result from being
+collected. The user-reproduced `Expected a Number but got a String` failure at
+`AhkStdlibThreadFirstJsonFile(...)` then identified the root cause: channel
+queue file names such as `000000000001-...json` were compared with numeric
+`<` instead of string comparison. `.codex/threadpool-shutdown-wait-false-after-firstjson-fix.txt`,
+`.codex/threadpool-shutdown-wait-false-final-focused.txt`, and
+`.codex/thread-channel-first-json-final-focused.txt` pass after switching the
+queue selector to `StrCompare(...)`, preserving running persistent futures after
+`shutdown(false)`, and explicitly covering hyphenated JSON file names. The final
+`.codex/threadpool-persistent-worker-final-green-report.txt` thread gate passes
+`stdlib/tests/thread.test.ahk` 29/29 at `TimeoutSeconds 90`. The
+covered AHK behavior includes
+worker reopen via `current_shared_memory()`, bounded out-of-range errors, raw
+address/ptr exposure, typed `UInt`/`Int`/`UChar` slots, Channel communication and
+file-lock retry, no-tray worker generation, captured worker error regression,
+`SharedObject` broker/proxy operations through `current_shared_object(...)`,
+duplicate public thread names, all-active-worker broker pumping during
+`join(...)` / `is_alive()`, `ThreadPool` / `Future` task scheduling,
+`Future.running()`, done callbacks, ordered `ThreadPool.map(...)`, JSON-safe
+`worker_source` / `task` persistent worker reuse, `shutdown(false)` completion
+for running persistent work, string-ordered channel queue file selection, and
+README/example capture regression. The README
+thread examples are extracted
+and run through
+`AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", ...])`
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions. This slice does not promote the verified aggregate baseline beyond
+1140/1140 because no fresh aggregate `stdlib/tests` gate was run for it.
 
 The latest classic tkinter work-in-progress slice tightens grouped root and
 public-widget option `keyword=None` behavior for `Tk.configure(...)`,
@@ -140,6 +325,29 @@ README en/zh tkinter examples passing through ahktest capture with pollution
 assertions in 1547 ms, README LabeledScale probes passing 2/2 in 1719 ms, and
 `run-ahk-validate -Path stdlib/examples/tkinter.ahk -TimeoutSeconds 90`
 passing for the existing coverage-style tkinter example.
+
+The tkinter example/README regression surface has now been promoted from
+ignored `.codex`-only checks into tracked stdlib tests. The tracked
+`stdlib/tests/tkinter_examples.test.ahk` capture gate runs
+`stdlib/examples/tkinter_gui.ahk` through
+`AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", ...])`,
+asserts that the live example still exposes `root.mainloop()`, `--capture`,
+Tk variables, ttk `Style`, `Entry`, `Combobox`, `Scale`, `Progressbar`,
+`Treeview`, `Notebook`, `Canvas`, and callback-driven updates, and verifies the
+capture marker. The same tracked gate extracts the README.en.md and
+README.zh-CN.md tkinter code blocks, asserts the examples stay focused enough
+for README use while still covering variables, grid layout, callbacks, canvas,
+style, and the core ttk widgets, patches in a short `root.after(...)` close
+only for captured test execution, and asserts the previous PowerShell regex
+replacement pollution strings are absent. Fresh evidence includes focused red
+`ReadmeTkinter` failing on the old overgrown README example, focused green
+passing 1/1 in 1219 ms after the example was simplified, focused
+`TkinterGuiExample` passing 1/1 in 672 ms, full
+`stdlib/tests/tkinter_examples.test.ahk` passing 2/2 in 5282 ms, the legacy
+`.codex/readme_tkinter_capture.test.ahk` passing 1/1 in 3094 ms, the legacy
+`.codex/tkinter_gui_example_capture.test.ahk` passing 1/1 in 1391 ms, and the
+README LabeledScale probes passing 2/2 in 2797 ms. This is an example and docs
+hardening pass, not a new Python API parity claim.
 
 The preceding classic tkinter work-in-progress slice tightens grouped classic
 constructor keyword-`None` no-op behavior for `Label(...)`, `Frame(...)`,
@@ -5250,7 +5458,8 @@ global class definitions.
 The root namespace currently exposes `stdlib.None`, `stdlib.NotImplemented`,
 `stdlib.NotImplementedError`, `stdlib.RuntimeError`, `stdlib.StopIteration`,
 `stdlib.KeyError`, `stdlib.AttributeError`, `stdlib.SystemError`,
-`stdlib.True`, `stdlib.False`, and `stdlib.tuple(...)`.
+`stdlib.ModuleNotFoundError`, `stdlib.True`, `stdlib.False`,
+`stdlib.tuple(...)`, `stdlib.await(...)`, and `stdlib.decorate(...)`.
 
 The root namespace currently exposes builtins-style helpers:
 `stdlib.None` as the shared AHK sentinel for Python `None` semantics where
@@ -5258,11 +5467,19 @@ omitted AHK parameters are not expressive enough, `stdlib.NotImplemented` as
 the shared Python `NotImplemented` sentinel for covered provider-protocol and
 type-name parity paths, `stdlib.NotImplementedError` /
 `stdlib.RuntimeError` / `stdlib.StopIteration` / `stdlib.KeyError` /
-`stdlib.AttributeError` / `stdlib.SystemError` as root-level builtin-style
+`stdlib.AttributeError` / `stdlib.SystemError` /
+`stdlib.ModuleNotFoundError` as root-level builtin-style
 error classes for covered parity paths, `stdlib.True` / `stdlib.False` as
 root-level shared boolean singleton values, and `stdlib.tuple(...)` as a first
 root-level tuple constructor for cases where
 the direct module surface needs stable Python-like readonly tuple materialization.
+It also exposes AHK-side convenience helpers: `stdlib.await(awaitable, options?)`
+for covered asyncio and thread futures, and
+`stdlib.decorate(target, decorators*)` for Python-style decorator application
+order. `stdlib.decorate(target, outer, inner)` applies `inner(target)` first and
+then `outer(...)`, matching Python's `@outer` / `@inner` expansion. This is a
+library helper only; AutoHotkey still does not parse Python `@decorator` source
+syntax, and `class X {}` global class declarations are not rewritten in place.
 For example, `stdlib.itertools.islice(values, 1, stdlib.None, 2)` maps to
 Python `itertools.islice(values, 1, None, 2)`, `stdlib.True` maps to Python
 `True`, including covered bool-as-int argument paths such as
@@ -5305,20 +5522,40 @@ their existing direct stdlib `__Add` / `__Sub` paths, while mixed
 `Fraction` / `decimal.Decimal` mapping arithmetic remains unsupported with
 Python-style binary-operator TypeErrors.
 
-`stdlib.array` is now direct as a first slice of Python 3.10.11's `array`
-module, migrated from the old `bufferarray` source material but exposed on the
-public Python-path root as `stdlib.array.array(...)`. The latest alphabetical
-pass slice adds covered sequence mutation/query methods `.count(x)`,
-`.index(x)`, `.remove(x)`, `.pop(i=-1)`, and `.reverse()`. Fresh Python
-3.10.11 evidence from `.codex/array_sequence_mutation_probe.py` confirmed the
-covered return values and mutations for duplicate counts, first index lookup,
-removing the first matching value, default / zero / negative pop, and in-place
-reverse; it also confirmed the covered errors for missing values, empty or
-out-of-range pop, non-integer pop indices, extra `.count(...)` arguments, and
-extra `.reverse(...)` arguments. Fresh AHK evidence includes focused red
-`array sequence mutation methods match local 3.10 baseline` failing because
-`AhkStdlibArrayValue.count` was absent, focused green passing 1/1 in 0 ms,
-full `stdlib/tests/array.test.ahk` passing 4/4 in 0 ms, and
+`stdlib.array` is now direct as a Python 3.10.11 `array` module slice, migrated
+from the old `bufferarray` source material but exposed on the public
+Python-path root as `stdlib.array.array(...)`. The current alphabetical restart
+prioritizes public function coverage over fine parameter-corner parity. Fresh
+Python 3.10.11 evidence from `.codex/array_function_surface_probe.py`
+confirmed module public names `ArrayType`, `array`, and `typecodes`, plus main
+paths for `.insert(...)`, `.fromlist(...)`, `.tobytes()`, `.frombytes(...)`,
+`.byteswap()`, `.tounicode()`, `.fromunicode(...)`, `.tofile(...)`, and
+`.fromfile(...)`. Fresh Python 3.10.11 evidence from
+`.codex/array_sequence_dunder_python310_probe.py` plus JSON output confirmed
+covered sequence behavior for `len(a)`, `bool(a)`, membership, equality across
+same-value arrays with different typecodes, same-type concatenation,
+different-type concatenation `TypeError("bad argument type for built-in
+operation")`, left and right multiplication, and zero / negative repeat counts.
+The AHK surface now exposes `ArrayType` as the same callable class as `array`,
+supports those methods for the covered numeric / unicode / path-backed file
+cases, preserves the earlier sequence slice for `.count(x)`, `.index(x)`,
+`.remove(x)`, `.pop(i=-1)`, and `.reverse()`, and adds `__Len`,
+`__Compare`, `__Add`, `__Mul`, `__Contains`, and `__LengthHint` hooks wired
+through `stdlib.operator` for the covered array truth, contains, equality,
+addition, and multiplication paths. Fresh AHK evidence includes focused red
+`.codex/array-sequence-dunder-red-report.txt` failing because
+`AhkStdlibArrayValue` had no `__Len`, final module green
+`.codex/array-sequence-dunder-final-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 6/6, operator regression
+`.codex/array-sequence-dunder-operator-green-report.txt` passing
+`stdlib/tests/operator.test.ahk` 12/12, root smoke
+`.codex/array-sequence-dunder-stdlib-focused-report.txt` passing 1/1, and
+`.codex/array-sequence-dunder-validate-report.txt` passing `stdlib/array.ahk`,
+`stdlib/operator.ahk`, related tests, and `stdlib/examples/array.ahk` at
+`TimeoutSeconds 90`. Earlier evidence also includes focused red
+`array function surface covers binary unicode and file methods` failing because
+`stdlib.array.ArrayType` was absent, focused green passing 1/1 in 0 ms, full
+`stdlib/tests/array.test.ahk` passing 5/5 in 16 ms, and
 `run-ahk-validate -Path stdlib/examples/array.ahk -TimeoutSeconds 90`
 passing. The earlier `array` slice continues to cover module-level
 `typecodes`, constructor-style `stdlib.array.array(typecode, initializer?)`,
@@ -5326,7 +5563,9 @@ observable `.typecode` and `.itemsize` properties, zero-based index get/set
 semantics, `.append(...)`, `.extend(...)`, `.tolist()`, `.buffer_info()`,
 iteration, Python-style `__Repr()` output for covered numeric arrays, bad
 typecodes, non-iterable initializers and `extend(...)` payloads,
-non-integer-compatible `append(...)` payloads, and out-of-range indexes.
+non-integer-compatible `append(...)` payloads, and out-of-range indexes. Full
+Python file-object protocol parity and detailed parameter error wording remain
+maintenance backlog.
 
 `stdlib.pprint` is now direct as a first slice of Python 3.10.11's `pprint`
 module, migrated from the old `print` source material but exposed on the
@@ -5431,15 +5670,46 @@ removed from the manifest count in favor of this concrete Python stdlib root.
 
 `stdlib.base64` is now direct as a first slice of Python 3.10.11 `base64`,
 promoted onto the public Python-path root as `stdlib.base64.*`. The current
-slice covers `b64encode(s, altchars := None)` and
-`b64decode(s, altchars := None, validate := False)` for the observed local
-baseline: bytes-to-bytes Base64 encoding, bytes and ASCII-string decode input,
-covered two-byte `altchars` handling, covered bool-like `validate` acceptance,
-and the observed local arity/type-error wording for missing arguments, too
-many positional arguments, text passed where bytes are required, non-bytes or
-non-ASCII decode payloads, and invalid `altchars` length. To keep the public
-root budget stable at 57 slots, one native-quarantine slot has been reclaimed
-in favor of this concrete Python stdlib root.
+slice covers `b64encode(s, altchars := None)`,
+`b64decode(s, altchars := None, validate := False)`,
+`urlsafe_b64encode(s)`, and `urlsafe_b64decode(s)` for the observed local
+baseline. The latest alphabetical pass slice adds `standard_b64encode(s)`,
+`standard_b64decode(s)`, `encodebytes(s)`, `decodebytes(s)`,
+`b16encode(s)`, and `b16decode(s, casefold := False)`. Fresh Python 3.10.11
+evidence from `.codex/base64_standard_bytes_b16_probe.py` plus JSON output
+confirmed standard Base64 wrappers, wrapped bytes output with 76-character
+line folding and trailing newlines for non-empty input, `decodebytes(...)`
+rejecting text input, Base16 uppercase encoding, bytes and ASCII-string
+Base16 decode input, empty Base16 decode, default lowercase rejection with
+`Error("Non-base16 digit found")`, and `casefold=True` accepting lowercase
+hex digits. Fresh AHK evidence includes focused red
+`.codex/base64-standard-bytes-b16-red-report.txt` failing because
+`stdlib.base64.standard_b64encode` was absent, focused green
+`.codex/base64-standard-bytes-b16-green-focused-report.txt` passing 1/1, full
+module `.codex/base64-standard-bytes-b16-final-green-report.txt` passing
+`stdlib/tests/base64.test.ahk` 4/4, root smoke
+`.codex/base64-standard-bytes-b16-stdlib-focused-report.txt` passing 1/1, and
+`.codex/base64-standard-bytes-b16-validate-report.txt` validating
+`stdlib/base64.ahk`, `stdlib/tests/base64.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/base64.ahk` at
+`TimeoutSeconds 90`. The earlier alphabetical pass slice added URL-safe Base64 encoding and
+decoding, including the probed `b"\xfb\xff" -> b"-_8="` and `b"-_8=" ->
+b"\xfb\xff"` behavior, ASCII-string decode input, and the observed local
+arity/type-error wording for missing arguments, too many positional arguments,
+text passed where bytes are required, and non-bytes decode payloads. Fresh
+Python 3.10.11 evidence from `.codex/base64_urlsafe_probe.py` confirmed the
+covered values and error text. Fresh AHK evidence includes focused red
+`UrlsafeB64` failing because `stdlib.base64.urlsafe_b64encode` was absent,
+focused green passing 1/1 in 16 ms, full `stdlib/tests/base64.test.ahk`
+passing 3/3 in 47 ms, and `run-ahk-validate -Path
+stdlib/examples/base64.ahk -TimeoutSeconds 90` passing. The earlier `base64`
+slice continues to cover bytes-to-bytes Base64 encoding, bytes and
+ASCII-string decode input, covered two-byte `altchars` handling, covered
+bool-like `validate` acceptance, non-ASCII decode payloads, invalid
+`altchars` length, and the observed local arity/type-error wording for the
+covered `b64encode(...)` / `b64decode(...)` branches. To keep the public root
+budget stable at 57 slots, one native-quarantine slot has been reclaimed in
+favor of this concrete Python stdlib root.
 
 `stdlib.getpass` is now direct as a first slice of Python 3.10.11 `getpass`,
 promoted onto the public Python-path root as `stdlib.getpass.*`. The current
@@ -5457,17 +5727,48 @@ stdlib root.
 `stdlib.binascii` is now direct as a first slice of Python 3.10.11
 `binascii`, promoted onto the public Python-path root as `stdlib.binascii.*`.
 The current slice covers `hexlify(data, sep?, bytes_per_sep?)`,
-`b2a_hex(...)`, `unhexlify(hexstr)`, and `a2b_hex(...)`, plus module-level
-`Error` and `Incomplete` error aliases, for the observed local baseline:
-lowercase bytes-to-bytes hex encoding, bytes and ASCII-string hex decode
-input, covered one-byte separator handling, covered bool-like and integer
-`bytes_per_sep` grouping including zero and negative values, and the observed
-local arity/type/value-error wording for missing arguments, too many
-positional arguments, text passed where bytes are required, bad separator
-length, non-length-like separators, non-integer `bytes_per_sep`, odd-length
-decode strings, invalid hex digits, and non-bytes/non-ASCII decode payloads.
-To keep the public root budget stable at 57 slots, another native-quarantine
-slot has been reclaimed in favor of this concrete Python stdlib root.
+`b2a_hex(...)`, `unhexlify(hexstr)`, `a2b_hex(...)`,
+`b2a_base64(data, { newline: false }?)`, `a2b_base64(data)`, and
+`crc32(data, value := 0)`, plus module-level `Error` and `Incomplete` error
+aliases, for the observed local baseline. The latest alphabetical pass slice
+adds Base64 ASCII helpers: default `b2a_base64(...)` trailing-newline output,
+empty input newline output, binary bytes, AHK-side keyword-style
+`{ newline: false }`, bytes and ASCII-string decode input, binary decode, and
+Python 3.10.11 non-strict invalid-character filtering for `b"!!!!"`. Fresh
+Python 3.10.11 evidence from `.codex/binascii_base64_probe.py` and
+`.codex/binascii_base64_probe.output.json` confirmed those values and that
+`strict_mode` is not supported in local 3.10.11. Fresh AHK evidence includes
+focused red `.codex/binascii-base64-red-report.txt` failing because
+`stdlib.binascii.b2a_base64` was absent, focused green
+`.codex/binascii-base64-green-focused-report.txt` passing 1/1, and full module
+`.codex/binascii-base64-final-green-report.txt` passing
+`stdlib/tests/binascii.test.ahk` 4/4 at `TimeoutSeconds 90`; root smoke
+`.codex/binascii-base64-stdlib-focused-report.txt` passing 1/1; and
+`.codex/binascii-base64-validate-report.txt` validating
+`stdlib/binascii.ahk`, `stdlib/tests/binascii.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/binascii.ahk` at
+`TimeoutSeconds 90`. The earlier
+CRC32 slice added `crc32(...)` for empty bytes, ASCII bytes, binary bytes,
+explicit positive and negative seed values, and representative
+missing/extra/type errors. Fresh Python 3.10.11 evidence from
+`.codex/binascii_crc32_probe.py` confirmed `crc32(b"abc") == 891568578`,
+`crc32(b"") == 0`, `crc32(b"\x00\xff") == 1826356594`,
+`crc32(b"abc", 1) == 887499765`, `crc32(b"abc", -1) == 899311407`, and the
+covered TypeError text. Fresh AHK evidence included focused red `Crc32`
+failing because `stdlib.binascii.crc32` was absent, focused green passing 1/1
+in 0 ms, full `stdlib/tests/binascii.test.ahk` passing 3/3 in 15 ms, and
+`run-ahk-validate -Path stdlib/examples/binascii.ahk -TimeoutSeconds 90`
+passing. The earlier
+`binascii` slice continues to cover lowercase bytes-to-bytes hex encoding,
+bytes and ASCII-string hex decode input, covered one-byte separator handling,
+covered bool-like and integer `bytes_per_sep` grouping including zero and
+negative values, and the observed local arity/type/value-error wording for
+missing arguments, too many positional arguments, text passed where bytes are
+required, bad separator length, non-length-like separators, non-integer
+`bytes_per_sep`, odd-length decode strings, invalid hex digits, and
+non-bytes/non-ASCII decode payloads. To keep the public root budget stable at
+57 slots, another native-quarantine slot has been reclaimed in favor of this
+concrete Python stdlib root.
 
 `stdlib.quopri` is now direct as a first slice of Python 3.10.11 `quopri`,
 promoted onto the public Python-path root as `stdlib.quopri.*`. The current
@@ -5558,26 +5859,50 @@ covered AHK keyword-object adapter.
 
 `stdlib.abc` is direct as a Python 3.10.11 `abc` slice, promoted from the old
 `std` candidate slot but exposed on the public Python-path root as
-`stdlib.abc.*`. The latest alphabetical pass slice covers
-`get_cache_token()` and the cache-token invalidation behavior of
-`ABC.register(subclass)` for the current AHK virtual-subclass model. Fresh
-Python 3.10.11 evidence from `.codex/abc_cache_register_probe.py` confirmed
-that `get_cache_token()` returns an `int`, rejects positional arguments as
+`stdlib.abc.*`. The current alphabetical restart prioritizes public function
+coverage over fine parameter-corner parity. Fresh Python 3.10.11 evidence from
+`.codex/abc_public_surface_probe.py` confirms the public names `ABC`,
+`ABCMeta`, `abstractmethod`, `abstractstaticmethod`, `abstractclassmethod`,
+`abstractproperty`, `get_cache_token`, and `update_abstractmethods`. The AHK
+surface now exposes all of those names, with `ABCMeta` mapped to the current
+AHK `ABC` carrier, the three legacy abstract descriptor helpers marking their
+wrapper objects and covered underlying callables according to the probe, and
+`update_abstractmethods(cls)` returning `cls` while refreshing the current AHK
+abstract-method cache when a class opts into that cache. AHK helper
+`stdlib.abc.issubclass(subclass, cls)` now accompanies
+`stdlib.abc.isinstance(instance, cls)` for the covered virtual-subclass checks.
+The earlier cache-token slice remains covered:
+`.codex/abc_cache_register_probe.py` confirmed that
+`get_cache_token()` returns an `int`, rejects positional arguments as
 `_abc.get_cache_token() takes no arguments (1 given)`, first registration of a
 new virtual subclass increments the token by one, duplicate registration leaves
 the token unchanged, registering a second distinct subclass increments it
 again, `ABC.register(ABC)` returns the ABC itself without token invalidation,
 and missing / extra / non-class register calls use the probed Python error
-text. Fresh AHK evidence includes focused red
-`TestGetCacheTokenAndRegisterInvalidationMatchLocal310` failing because
-`stdlib.abc.get_cache_token` was absent, focused green passing 1/1 in 0 ms,
-full `stdlib/tests/abc.test.ahk` passing 3/3 in 0 ms, `run-ahk-validate -Path
-stdlib/examples/abc.ahk -TimeoutSeconds 90` passing, and
-`tools/test-stdlib-layout.ps1` passing. The earlier `abc` slice continues to
-cover `abstractmethod(funcobj)`, `ABC.register(subclass)` returning the same
-subclass object, virtual subclass `isinstance` truth after registration, and
-covered helper predicates `isabstract(value)` and `isinstance(instance, cls)`
-for the minimal AHK expression of the observed Python semantics.
+text. Fresh CPython 3.10.11 virtual-registry evidence from
+`.codex/abc_virtual_registry_python310_probe.py` plus JSON output confirms that
+`ABC.register(Foreign)` leaves `Foreign.__bases__` and `Foreign.__mro__`
+unchanged while `issubclass(Foreign, ABC)` and `isinstance(Foreign(), ABC)`
+become true, real subclasses remain true, unrelated classes remain false, the
+first register increments the cache token by one, and duplicate register leaves
+the token unchanged. Fresh AHK evidence for this registry slice includes
+focused red `.codex/abc-virtual-registry-red-report.txt` failing because
+`ABC.register(...)` reparented the AHK prototype, focused green
+`.codex/abc-virtual-registry-green-focused-report.txt` passing 1/1 after
+switching to a virtual registry, full
+`.codex/abc-virtual-registry-final-green-report.txt` passing
+`stdlib/tests/abc.test.ahk` 5/5, root smoke
+`.codex/abc-virtual-registry-stdlib-focused-report.txt` passing 1/1, and
+`.codex/abc-virtual-registry-final-validate-report.txt` validating
+`stdlib/abc.ahk`, `stdlib/tests/abc.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/abc.ahk`.
+Earlier AHK evidence for the public-surface slice includes focused red
+`TestPublicAbstractHelpersAndUpdateAbstractMethods` failing because
+`stdlib.abc.ABCMeta` was absent, focused green passing 1/1 in 0 ms, full
+`stdlib/tests/abc.test.ahk` passing 4/4 in 15 ms, and `run-ahk-validate -Path
+stdlib/examples/abc.ahk -TimeoutSeconds 90` passing. This does not claim full
+Python metaclass instantiation or descriptor binding parity; those parameter
+and type-system edges stay in the maintenance backlog.
 
 `ahktest` is the first-class stdlib test framework. It must grow toward
 pytest 7.4.3 capability parity under AHK v2 constraints before broad module
@@ -5641,7 +5966,27 @@ returning a direct `time` object, `datetime.time(...)`,
 `time.min/max/resolution`, `time.replace(...)`, `time` rich comparison,
 `replace(...)`, `datetime +/- timedelta`, `datetime - datetime`, rich
 comparison, and Python-style cross-type equality/inequality behavior
-through `stdlib.operator`.
+through `stdlib.operator`. The latest public-surface slice adds module
+constants `MINYEAR` and `MAXYEAR`, `tzinfo()`, `timezone(...)`, and
+`timezone.utc`: fresh CPython 3.10.11 probe
+`.codex/datetime_timezone_surface_probe.py` plus JSON output confirmed
+`datetime.__all__`, `MINYEAR == 1`, `MAXYEAR == 9999`, `tzinfo` base methods
+raising `NotImplementedError`, `tzinfo.fromutc(None)` raising
+`TypeError("fromutc: argument must be a datetime")`, `timezone.utc` string/name
+and zero offset behavior, named fixed-offset timezone behavior for `IST`
+`+05:30`, generated negative offset names such as `UTC-04:00`, and covered
+constructor errors. Focused red
+`.codex/datetime-timezone-surface-red-report.txt` failed because
+`stdlib.datetime.MINYEAR` was absent; focused green
+`.codex/datetime-timezone-surface-green-focused-report.txt` passed 1/1; full
+module `.codex/datetime-timezone-surface-final-green-report.txt` passed
+`stdlib/tests/datetime.test.ahk` 32/32 at `TimeoutSeconds 90`; root smoke
+`.codex/datetime-timezone-surface-stdlib-focused-report.txt` passed 1/1;
+validation `.codex/datetime-timezone-surface-validate-report.txt` passed
+`stdlib/datetime.ahk`, `stdlib/tests/datetime.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/datetime.ahk` at
+`TimeoutSeconds 90`. This slice does not claim full aware `datetime` / `time`
+integration, `fold`, `astimezone`, or complete timezone arithmetic.
 
 Other modules remain `candidate`, `missing`, or `native-quarantine` until
 promoted through the same red-green flow.
@@ -5670,7 +6015,27 @@ context behavior, preserved trailing-zero significance such as
 and `%` parity including integer interop, sign behavior, DivisionByZero on
 `// 0`, and InvalidOperation on `% 0`, and Python 3.10 style invalid string
 and dict-construction errors. Cross-type `Decimal`/`Fraction` arithmetic
-remains unsupported, matching local Python 3.10.11.
+remains unsupported, matching local Python 3.10.11. The latest public-surface
+slice adds rounding constants, limit constants, `HAVE_CONTEXTVAR`,
+`HAVE_THREADS`, signal exception classes, `Context(...)`, `DefaultContext`,
+`BasicContext`, `ExtendedContext`, `getcontext()`, `setcontext(...)`, and
+`localcontext(...)`. Fresh CPython 3.10.11 probe
+`.codex/decimal_context_surface_probe.py` plus JSON output confirmed rounding
+constant values, context defaults and custom attributes, flag/trap map sizes,
+`getcontext` / `setcontext` / `localcontext` precision behavior, context
+argument errors, and public signal exception relationships. Focused red
+`.codex/decimal-context-surface-red-report.txt` failed because
+`stdlib.decimal.ROUND_CEILING` was absent; focused green
+`.codex/decimal-context-surface-green-focused-report.txt` passed 1/1; full
+module `.codex/decimal-context-surface-final-green-report.txt` passed
+`stdlib/tests/decimal.test.ahk` 7/7 at `TimeoutSeconds 90`; root smoke
+`.codex/decimal-context-surface-stdlib-focused-report.txt` passed 1/1;
+validation `.codex/decimal-context-surface-validate-report.txt` passed
+`stdlib/decimal.ahk`, `stdlib/tests/decimal.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/decimal.ahk` at
+`TimeoutSeconds 90`. This slice exposes the context/signals surface but does
+not yet claim complete signal trapping, rounding-mode execution across all
+arithmetic, `DecimalTuple`, or the full `Context` method suite.
 
 `stdlib.logging` is now direct as a first slice of Python 3.10.11 `logging`.
 The current slice exposes numeric level constants, `getLogger()`,
@@ -5760,23 +6125,176 @@ min-priority `put/get/put_nowait/get_nowait`, numeric and covered list-priority
 ordering, `qsize()/empty()/full()`, bounded `Full` / empty `Empty` parity, and the
 same covered timeout validation shape as `Queue`.
 
-`stdlib.asyncio` is now direct as a first slice of Python 3.10.11 `asyncio`.
-The current slice exposes `stdlib.asyncio.Future(...)`,
-`stdlib.asyncio.isfuture(obj)`, `stdlib.asyncio.new_event_loop()`, plus public
-`stdlib.asyncio.CancelledError` and `stdlib.asyncio.InvalidStateError`
-exception classes. Covered behavior includes `Future()` and `Future({ loop:
-loop_obj })` construction, Python-style keyword-only constructor failures for
-positional arguments, invalid keyword names, too-many-keyword wrappers, and
-bad `loop` objects, `done()` / `cancelled()` / `cancel()` state transitions,
-`result()` / `exception()` invalid-state and cancelled branches, finished
-result and finished exception storage, `set_result(...)` /
-`set_exception(...)` single-argument and invalid-state errors, accepting either
-an exception instance or exception class for `set_exception(...)`, Python-style
-`<Future pending>`, `<Future finished result=...>`, `<Future finished
-exception=RuntimeError('boom')>`, and `<Future cancelled>` repr shapes for the
-covered paths, plus `asyncio.isfuture(...)` arity validation and predicate
-results. Event-loop integration beyond the covered `get_debug()` acceptance
-shape remains deferred.
+`stdlib.asyncio` is now direct as a Python 3.10.11 `asyncio` slice. The current
+restart treats `asyncio` as a hard module that needs a real single-threaded
+cooperative scheduler, not just public-name stubs. Fresh Python 3.10.11 evidence
+from `.codex/asyncio_policy_queue_surface_probe.py` confirmed covered public
+constants, event-loop policy/current-loop helpers, running-loop helper behavior,
+queue nowait ordering, and public exception class shapes. Fresh evidence from
+`.codex/asyncio_core_loop_probe.py` confirmed `call_soon` before
+`call_later(0)`, handle cancellation, deferred `Future.add_done_callback(...)`
+execution on the next loop tick, `remove_done_callback(...) == 0` for a missing
+callback, `run_until_complete(...)` returning finished values and propagating
+exceptions, `sleep(0, result=...)`, and `gather(...)` result ordering. The AHK
+surface now includes cooperative `EventLoop` ready/timer queues, `Handle` /
+`TimerHandle`, `create_future()`, `call_soon(...)`, `call_later(...)`,
+`call_at(...)`, `time()`, `is_running()`, `is_closed()`, `close()`,
+`call_soon_threadsafe(...)`, `run_until_complete(...)`, `run_forever()`,
+`stop()`, Future done-callback
+registration/removal/scheduling, `asyncio.sleep(...)`, and `asyncio.gather(...)`
+for covered Future inputs, plus `Queue`, `PriorityQueue`, and `LifoQueue`
+nowait operations. The latest lifecycle/time slice uses fresh Python 3.10.11
+evidence from `.codex/asyncio_loop_lifecycle_time_probe.py` plus JSON output to
+cover `loop.time()` returning a float, initial / running / post-run / closed
+`is_running()` and `is_closed()` states, `call_at(loop.time(), ...)`,
+delayed `call_at(...)` timer scheduling, `call_at(...)` returning
+`TimerHandle`, `close()` returning `None`, and closed-loop `call_soon(...)` /
+`run_until_complete(...)` raising `RuntimeError("Event loop is closed")`.
+Fresh AHK evidence includes focused red
+`.codex/asyncio-loop-lifecycle-red-report.txt` failing because
+`AhkStdlibAsyncioEventLoop` had no `time()` method, focused green
+`.codex/asyncio-loop-lifecycle-green-focused-report.txt` passing 1/1, full
+module `.codex/asyncio-loop-lifecycle-final-green-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 15/15, root smoke
+`.codex/asyncio-loop-lifecycle-stdlib-focused-report.txt` passing 1/1, and
+`.codex/asyncio-loop-lifecycle-validate-report.txt` validating
+`stdlib/asyncio.ahk`, `stdlib/tests/asyncio.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/asyncio.ahk` at
+`TimeoutSeconds 90`. The `run_coroutine_threadsafe(...)` slice uses fresh Python
+3.10.11 evidence from `.codex/asyncio_run_coroutine_threadsafe_probe.py` and
+`.codex/asyncio_run_coroutine_threadsafe_probe.json` to cover the public
+function's arity/bad-coro/bad-loop errors, initial pending state, result
+completion after loop ticks, exception propagation, and cancellation. The AHK
+implementation is intentionally a single-threaded bridge: `call_soon_threadsafe`
+is the current loop's scheduling alias and `run_coroutine_threadsafe(...)`
+returns a covered `stdlib.asyncio.Future`, not a claim of Python
+`concurrent.futures.Future` blocking/thread parity. Fresh AHK evidence includes
+focused red `CoreEventLoopFutureCallbacksSleepAndGather` failing because
+`EventLoop.call_soon_threadsafe` was absent, focused green passing 1/1 in 0 ms,
+full `stdlib/tests/asyncio.test.ahk` passing 14/14 in 16 ms, and
+`run-ahk-validate -Path stdlib/examples/asyncio.ahk -TimeoutSeconds 90`
+passing after the example was updated with the single-threaded bridge. The
+follow-up Future-combinator slice uses fresh Python
+3.10.11 evidence from `.codex/asyncio_future_combinators_probe.py` to cover
+Future-input `ensure_future(...)` identity, `shield(...)`, `wait(...)`,
+`wait_for(...)` including timeout cancellation, `as_completed(...)`, and
+task-registry queries returning `None` / empty sets when no Task exists. A
+small `wrap_future(...)` follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_wrap_future_probe.py` and
+`.codex/asyncio_wrap_future_probe.json` to cover asyncio-Future identity for
+default and explicit loop calls plus the probed missing/extra/bad-type errors;
+`concurrent.futures.Future` bridge behavior remains backlog because this
+stdlib tree does not yet expose a `concurrent.futures` module. Fresh
+AHK evidence for that slice includes focused red
+`FutureCombinatorsForSingleThreadedCore` failing because
+`stdlib.asyncio.ensure_future` was absent, focused green passing 1/1 in 0 ms,
+later focused red failing because `stdlib.asyncio.wrap_future` was absent,
+focused green passing 1/1 in 0 ms, full `stdlib/tests/asyncio.test.ahk`
+passing 14/14 in 47 ms, and
+`run-ahk-validate -Path stdlib/examples/asyncio.ahk -TimeoutSeconds 90`
+passing. The next Task slice uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_task_core_probe.py` and
+`.codex/asyncio_run_introspection_probe.py` to cover cooperative
+AHK-step awaitables as `Task` inputs: `loop.create_task(...)`, module-level
+`asyncio.create_task(...)` only inside a running loop, `asyncio.run(...)`,
+`asyncio.iscoroutine(...)`, `asyncio.iscoroutinefunction(...)`,
+`asyncio.current_task(...)`, `asyncio.all_tasks(...)`, awaiting `sleep(0)` and
+child tasks, Task result / exception / cancellation state, and Python 3.10.11's
+observed deferred cancellation settlement. A small `asyncio.coroutine(...)`
+follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_coroutine_probe.py` and
+`.codex/asyncio_coroutine_probe.json` to cover the deprecated public decorator's
+arity errors, plain-callable wrapping into a coroutine-function, and identity
+preservation when the AHK callable already returns a covered step-awaitable;
+Python generator/native coroutine object parity remains backlog. Fresh AHK evidence for this slice
+includes focused red `TaskDrivesCooperativeAwaitables...` failing because
+`AhkStdlibAsyncioEventLoop.create_task` was absent, focused green passing 1/1
+in 0 ms, focused red `RunCreateTaskAndCoroutineIntrospection...` failing
+because `stdlib.asyncio.iscoroutine` was absent, focused green passing 1/1 in
+0 ms, later focused red failing because `stdlib.asyncio.coroutine` was absent,
+focused green passing 1/1 in 0 ms, and full `stdlib/tests/asyncio.test.ahk`
+passing 14/14 in 31 ms. This
+Task surface is intentionally single-threaded and protocol-based: it supports
+AHK objects with `AhkStdlibAsyncioStep(...)` as awaitables, but does not claim
+native Python `async def` syntax compatibility. The follow-up synchronization
+slice uses fresh Python 3.10.11 evidence from `.codex/asyncio_sync_queue_probe.py`
+to cover `Lock`, `Event`, `Semaphore`, `BoundedSemaphore`, and async
+`Queue.put(...)` / `Queue.get(...)` / `Queue.join()` / `Queue.task_done()`
+waiter behavior. Fresh AHK evidence includes focused red
+`SyncPrimitivesAndAsyncQueueWaiters...` failing because `stdlib.asyncio.Lock`
+was absent, focused green passing 1/1 in 0 ms, full
+`stdlib/tests/asyncio.test.ahk` passing 10/10 in 0 ms, and
+`run-ahk-validate -Path stdlib/examples/asyncio.ahk -TimeoutSeconds 90`
+passing after the example was expanded to exercise cooperative lock, event,
+semaphore, and queue paths.
+The subsequent Condition slice uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_condition_probe.py` to cover `Condition.acquire()`,
+`release()`, `locked()`, `wait()`, `notify()`, `notify_all()`, and unlocked
+wait/notify/release errors. Fresh AHK evidence includes focused red
+`ConditionWaitNotifyAndErrors...` failing because `stdlib.asyncio.Condition`
+was absent, focused green passing 1/1 in 0 ms, and full
+`stdlib/tests/asyncio.test.ahk` passing 11/11 in 16 ms. The same implementation
+added Task exception reinjection through `AhkStdlibAsyncioThrow(...)` so
+awaited Future failures can be handled by cooperative AHK-step awaitables. The
+asyncio tests now use `stdlib.await(...)` for test-side waiting, while a
+dedicated `TestEventLoopRunUntilCompleteReturnAndExceptionLikeLocal310` keeps
+direct `EventLoop.run_until_complete(...)` return/exception assertions where
+that API itself is under test; fresh AHK evidence for this simplification is
+`stdlib/tests/asyncio.test.ahk` passing 13/13 in 32 ms at `TimeoutSeconds 90`.
+The next wait-combinator slice uses fresh Python 3.10.11
+evidence from `.codex/asyncio_wait_pending_probe.py` to cover pending
+`asyncio.wait(...)` completion after all inputs finish, non-zero
+`wait_for(...)` timeout cancellation, pending `wait_for(...)` success, and
+`as_completed(...)` result ordering through coroutine-like awaitable wrappers.
+Fresh AHK evidence includes focused red
+`WaitWaitForAndAsCompletedResolvePendingInputsLikeLocal310` failing because
+`wait(...)` returned pending inputs immediately, focused green passing 1/1 in
+32 ms, full `stdlib/tests/asyncio.test.ahk` passing 12/12 in 31 ms, and
+`run-ahk-validate -Path stdlib/examples/asyncio.ahk -TimeoutSeconds 90`
+passing after the example was updated to consume `as_completed(...)` through
+`stdlib.await(...)`.
+The Windows child-watcher surface slice uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_child_watcher_probe.py` and
+`.codex/asyncio_child_watcher_probe.json` to cover public
+`asyncio.get_child_watcher()` and `asyncio.set_child_watcher(watcher)` on the
+local Windows policy: arity errors use the observed Python wording, while the
+supported-arity calls raise `NotImplementedError`. Fresh AHK evidence includes
+focused red `TestChildWatcherSurfaceMatchesLocalWindows310` failing because the
+public functions were absent, focused green passing 1/1 in 0 ms, full
+`stdlib/tests/asyncio.test.ahk` passing 14/14 in 31 ms, and
+`run-ahk-validate -Path stdlib/examples/asyncio.ahk -TimeoutSeconds 90`
+passing after the example was updated to show the covered
+`NotImplementedError` branch.
+The earlier cooperative-core AHK evidence includes focused red
+`CoreEventLoopFutureCallbacksSleepAndGather` failing because
+`AhkStdlibAsyncioEventLoop.call_soon` was absent, focused green passing 1/1 in
+0 ms, full `stdlib/tests/asyncio.test.ahk` passing 6/6 in 0 ms, and
+`run-ahk-validate -Path stdlib/examples/asyncio.ahk -TimeoutSeconds 90`
+passing. The earlier Future slice continues to cover construction,
+`Future.get_loop()`, pending/finished/cancelled state transitions,
+`cancel(msg)`, `result()`, `exception()`, `set_result(...)`,
+`set_exception(...)`, covered repr shapes, and `asyncio.isfuture(...)`.
+Native Python coroutine object interop, stream/network/subprocess APIs, thread
+handoff APIs, and full Python parameter/error parity remain explicit
+maintenance backlog. Separately, the root namespace now includes the AHK-only
+bridge `stdlib.await(awaitable, options?)`, implemented in `stdlib\init.ahk`,
+which delegates covered asyncio awaitables to an explicit loop or to
+`asyncio.run(...)` when no event loop is already running. Fresh AHK evidence
+for this bridge includes focused red `stdlib root namespace await runs asyncio
+awaitables` failing because `stdlib.await` was absent, focused green passing
+1/1 in 15 ms, and validation of `stdlib/examples/init.ahk` plus
+`stdlib/examples/asyncio.ahk` at `TimeoutSeconds 90`.
+Fresh decorator-helper evidence includes CPython 3.10.11 probe
+`.codex/init_decorator_order_python310_probe.py` plus JSON output confirming
+`@outer` / `@inner` expands as `outer(inner(target))`; focused red
+`.codex/init-decorator-red-report.txt` failing because `stdlib.decorate` was
+absent; focused green `.codex/init-decorator-final-green-report.txt` passing
+`stdlib/tests/init.test.ahk` 2/2; root smoke
+`.codex/init-decorator-stdlib-final-focused-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 1/1; and final validation
+`.codex/init-decorator-final-validate-report.txt` covering `stdlib/init.ahk`,
+`stdlib/tests/init.test.ahk`, `stdlib/tests/stdlib.test.ahk`, and
+`stdlib/examples/init.ahk`.
 
 `stdlib.tkinter` is now direct as a first Tcl/Tk-oriented slice of Python 3.10.11
 `tkinter`, promoted onto the public Python-path root as `stdlib.tkinter.*`.
@@ -6356,19 +6874,36 @@ surface without additional `stdlib.operator` integration.
 
 `stdlib.copy` is now direct as a first slice of Python 3.10.11 `copy`,
 promoted onto the public Python-path root as `stdlib.copy.*`. The current
-slice covers `stdlib.copy.copy(x)` and `stdlib.copy.deepcopy(x)` for the
-observable shapes that are straightforward to express in AHK today: shallow
-and deep copying of lists, maps, plain objects, tuple-like `stdlib.tuple(...)`
-values, immutable scalar passthrough for covered `str`/`int`-style inputs,
-custom `__copy__()` and `__deepcopy__(memo)` hooks, and recursive cycle
-preservation through memoized deep-copy traversal. Covered behavior currently
-matches the local Python 3.10.11 probe for list/dict nested-identity
-differences between shallow and deep copy, `tuple` shallow identity vs deep
-copy rematerialization when nested mutable content is present, recursive
-self-reference reconstruction, and the observed missing-argument `TypeError`
-wording for bare `copy()` / `deepcopy()` calls. This first slice intentionally
-stops before Python's full pickling-protocol integration, slots/descriptor
-edge cases, and richer reducer/custom-dispatch machinery.
+slice covers `stdlib.copy.copy(x)` and `stdlib.copy.deepcopy(x)` for observable
+shapes that are straightforward to express in AHK today: shallow and deep
+copying of lists, maps, plain objects, tuple-like `stdlib.tuple(...)` values,
+immutable scalar passthrough for covered `str`/`int`-style inputs, custom
+`__copy__()` and `__deepcopy__(memo)` hooks, and recursive cycle preservation
+through memoized deep-copy traversal. Covered behavior currently matches the
+local Python 3.10.11 probe for list/dict nested-identity differences between
+shallow and deep copy, `tuple` shallow identity vs deep copy rematerialization
+when nested mutable content is present, recursive self-reference
+reconstruction, and the observed missing-argument `TypeError` wording for bare
+`copy()` / `deepcopy()` calls. The public-surface slice now also exposes
+`stdlib.copy.Error`, the lowercase `stdlib.copy.error` alias through AHK's
+case-insensitive class-property lookup, and the public `dispatch_table` shape.
+Fresh CPython 3.10.11 probe `.codex/copy_public_surface_probe.py` plus JSON
+output confirmed `copy.__all__ == ["Error", "copy", "deepcopy"]`, public names
+`Error`, `copy`, `deepcopy`, `dispatch_table`, and `error`, `Error is error`,
+and a three-entry dispatch table for `complex`, `types.UnionType`, and
+`re.Pattern`; focused red `.codex/copy-public-surface-red-report.txt` failed
+because `stdlib.copy.Error` was absent; focused green
+`.codex/copy-public-surface-green-focused-report.txt` passed 1/1; full module
+`.codex/copy-public-surface-final-green-report.txt` passed
+`stdlib/tests/copy.test.ahk` 3/3 at `TimeoutSeconds 90`; root smoke
+`.codex/copy-public-surface-stdlib-focused-report.txt` passed 1/1; validation
+`.codex/copy-public-surface-validate-report.txt` passed `stdlib/copy.ahk`,
+`stdlib/tests/copy.test.ahk`, `stdlib/tests/stdlib.test.ahk`, and
+`stdlib/examples/copy.ahk` at `TimeoutSeconds 90`. This slice still
+intentionally stops before Python's full pickling-protocol integration,
+slots/descriptor edge cases, and richer reducer/custom-dispatch machinery; the
+current `dispatch_table` is a public surface mirror, not a complete reducer
+engine.
 
 `stdlib.uuid` is now direct as a first slice of Python 3.10.11 `uuid`,
 promoted onto the public Python-path root as `stdlib.uuid.*`. The current
@@ -6382,17 +6917,35 @@ before `bytes`, `bytes_le`, `fields`, `int`, ordering/comparison helpers,
 namespace constants, `SafeUUID`, and the wider `uuid1` / `uuid3` / `uuid5`
 surface.
 
-`stdlib.contextlib` is now direct as a first slice of Python 3.10.11
-`contextlib`, promoted onto the public Python-path root as
-`stdlib.contextlib.*`. The current slice covers `stdlib.contextlib.nullcontext`,
-`stdlib.contextlib.suppress`, and `stdlib.contextlib.closing` for the
-observable object behavior exercised by the local Python baseline: `__enter__`
-return values, `__exit__` suppression decisions, Python-style `repr(...)`
-object shapes, zero-argument `suppress()` permissiveness, `closing(...)`
-calling `.close()` on exit, and the covered arity / bad-exception-type error
-messages. This first slice intentionally stops before `ContextDecorator`,
-`redirect_stdout`, `redirect_stderr`, `ExitStack`, `AsyncExitStack`, async
-helpers, and generator-based decorators.
+`stdlib.contextlib` is now direct as a Python 3.10.11 `contextlib` slice,
+promoted onto the public Python-path root as `stdlib.contextlib.*`. The covered
+surface includes `stdlib.contextlib.nullcontext`, `stdlib.contextlib.suppress`,
+and `stdlib.contextlib.closing` for observable object behavior exercised by the
+local Python baseline: `__enter__` return values, `__exit__` suppression
+decisions, Python-style `repr(...)` object shapes, zero-argument `suppress()`
+permissiveness, `closing(...)` calling `.close()` on exit, and the covered
+arity / bad-exception-type error messages. The current promoted slice also
+covers `ContextDecorator`, `ExitStack`, `redirect_stdout`, and
+`redirect_stderr`: fresh CPython 3.10.11 probe
+`.codex/contextlib_stack_decorator_redirect_probe.py` plus JSON output
+confirmed decorator call order, `ExitStack` LIFO callback/context-exit order,
+and redirect enter-target behavior; focused red
+`.codex/contextlib-stack-decorator-redirect-red-report.txt` failed because
+`redirect_stdout` was absent; focused green
+`.codex/contextlib-stack-decorator-redirect-green-focused-report.txt` passed
+1/1; root smoke
+`.codex/contextlib-stack-decorator-redirect-stdlib-focused-report.txt` passed
+1/1; full module
+`.codex/contextlib-stack-decorator-redirect-final-green-report.txt` passed
+`stdlib/tests/contextlib.test.ahk` 3/3 at `TimeoutSeconds 90`; validation
+`.codex/contextlib-stack-decorator-redirect-validate-report.txt` passed
+`stdlib/contextlib.ahk`, `stdlib/tests/contextlib.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/contextlib.ahk` at
+`TimeoutSeconds 90`. Redirect coverage is intentionally scoped to AHK-target
+context behavior and does not claim full Python process-global `sys.stdout` /
+`sys.stderr` replacement. Remaining future work includes `contextmanager`,
+async helpers, `AsyncExitStack`, broader parameter parity, and wider edge-error
+parity.
 
 `stdlib.collections.Counter` now covers lazy `elements()` iteration, Python-style
 dictionary-size and dictionary-keys mutation errors during iteration,
@@ -6514,7 +7067,7 @@ bundled Tcl/Tk DLLs used by `stdlib.tkinter`.
 | `os` | os, pathlib, shutil, platform, Windows helpers | `os` direct as `stdlib.os`; `pathlib.Path` direct as `stdlib.pathlib.Path`; `shutil` direct as a first slice |
 | `io` | io, tempfile | `io` direct first slice with `StringIO`; `tempfile` direct first slice |
 | `runtime` | hashlib, logging, pprint, inspect/import-style helpers | `hashlib` direct as a first slice; `logging` direct as a first slice; `pprint` direct as a first slice; `inspect` direct as a predicate first slice; `socket` direct as a first networking/runtime slice; other runtime helpers still candidate |
-| `concurrency` | asyncio, concurrent.futures, queue | `asyncio` and `queue` direct as first slices; other concurrency modules still candidate |
+| `concurrency` | asyncio, concurrent.futures, queue, threading-style helpers | `asyncio`, `queue`, and process-backed `thread` direct as first slices; other concurrency modules still candidate |
 | `native` | ctypes and external bindings | native quarantine |
 
 ## Promotion Rules
@@ -6707,10 +7260,48 @@ lowercase Python-style properties/methods such as `.name`, `.stem`,
 `.joinpath(...)` and `.Join(...)` are the public AHK equivalent for now.
 `write_text()` returns the written character count to match Python behavior.
 
-`stdlib.bisect.bisect_left/right` follow Python's 0-based insertion
-point convention even though AHK arrays are 1-based. `insort_left/right`
-convert that public insertion point to the required AHK `InsertAt`/`Push`
-operation internally.
+`stdlib.bisect` exposes Python 3.10.11-style `bisect_left(...)`,
+`bisect_right(...)`, `bisect(...)`, `insort_left(...)`, `insort_right(...)`,
+and `insort(...)` over AHK arrays as Python-list equivalents and over covered
+Python-style sequence targets with `__Len` / `__Item`. Public insertion points
+remain Python-style zero-based even though AHK arrays are 1-based, and
+`insort_left/right` convert that public insertion point to AHK `InsertAt` /
+`Push` for native arrays or call the target's `insert(index, value)` protocol.
+The latest alphabetical pass slice adds sequence and insert-target coverage:
+`stdlib.array.array`, a custom `__Len` / `__Item` sequence, custom
+`insert(index, value)` targets, and the missing-`insert` `AttributeError` path.
+Fresh Python 3.10.11 evidence from `.codex/bisect_sequence_protocol_probe.py`
+and `.codex/bisect_sequence_protocol_probe.output.json` confirmed
+`array.array` return values, custom sequence `__len__` / `__getitem__` event
+order, `insort_left/right` calling `insert(...)` at zero-based indexes, and
+`ProbeSequence` without `insert` raising an attribute error. Fresh AHK evidence
+includes focused red `.codex/bisect-sequence-protocol-red-report.txt` failing
+because `a must be an Array`, focused green
+`.codex/bisect-sequence-protocol-green-focused-report.txt` passing 1/1, and
+full module `.codex/bisect-sequence-protocol-final-green-report.txt` passing
+`stdlib/tests/bisect.test.ahk` 6/6 at `TimeoutSeconds 90`; root smoke
+`.codex/bisect-sequence-protocol-stdlib-focused-report.txt` passing 1/1; and
+`.codex/bisect-sequence-protocol-validate-report.txt` validating
+`stdlib/bisect.ahk`, `stdlib/tests/bisect.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/bisect.ahk` at
+`TimeoutSeconds 90`. The earlier
+alphabetical pass slice tightened Python signature and bounds behavior for
+covered paths: missing
+`a`/`x`, too many positional arguments, `lo=None`, explicit `hi=None`,
+oversized `hi`, non-callable `key`, and `insort_right(...)` returning
+`stdlib.None` while mutating the list. Fresh Python 3.10.11 evidence from
+`.codex/bisect_signature_bounds_probe.py` confirmed the covered return values
+and errors, including `bisect_left([1, 2, 3], 2, 0, None) == 1`,
+`bisect_right([1, 2, 3], 2, 0, None) == 2`,
+`bisect_left(..., hi=99)` raising `IndexError("list index out of range")`,
+and `bisect_left(..., key=1)` raising `TypeError("'int' object is not callable")`.
+Fresh AHK evidence includes focused red `SignatureBoundsAndKey` failing because
+AHK's native parameter error escaped instead of the probed Python `TypeError`,
+focused green passing 1/1 in 0 ms, full `stdlib/tests/bisect.test.ahk`
+passing 5/5 in 0 ms, and `run-ahk-validate -Path
+stdlib/examples/bisect.ahk -TimeoutSeconds 90` passing. The existing
+compatibility treatment for `hi=-1` as an omitted-`hi` sentinel remains covered
+locally for the current AHK call surface.
 
 `stdlib.heapq` is a first slice of Python 3.10.11 `heapq` over AHK arrays as
 Python-list equivalents. It exposes `heappush`, `heappop`, `heapify`,
@@ -6907,6 +7498,30 @@ class names instead of raw AHK `Type(...)` names.
 Direct `Fraction(1, 1)` and `Decimal("1")` count payloads remain rejected by
 `elements()` with Python's integer-interpretation `TypeError`, matching local
 Python 3.10.11. Deeper non-integer count edge cases remain deferred.
+
+Fresh `collections` public-surface evidence from local Python 3.10.11 probe
+`.codex/collections_public_surface_probe.py` plus
+`.codex/collections_public_surface_probe.output.json` confirmed the module's
+major public container names (`ChainMap`, `Counter`, `OrderedDict`,
+`UserDict`, `UserList`, `UserString`, `defaultdict`, `deque`, and
+`namedtuple`) and core behavior for bounded deque mutation, defaultdict
+factory insertion, OrderedDict movement/pop order, ChainMap lookup and
+`new_child(...)`, namedtuple fields/attribute lookup/`_asdict()`/`_replace()`/
+`_make()`, and the UserDict/UserList/UserString wrapper surfaces. The focused
+red `.codex/collections-public-surface-red-report.txt` failed because
+`stdlib.collections.deque` was absent. The focused green
+`.codex/collections-public-surface-green-focused-report.txt` passed 1/1,
+root-smoke `.codex/collections-public-surface-stdlib-focused-report.txt`
+passed 1/1, full module
+`.codex/collections-public-surface-final-green-report.txt` passed
+`stdlib/tests/collections.test.ahk` 64/64, and validation
+`.codex/collections-public-surface-validate-report.txt` passed
+`stdlib/collections.ahk`, `stdlib/tests/collections.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/collections.ahk` at
+`TimeoutSeconds 90`. This slice intentionally claims public functionality
+coverage for those container entrypoints first; detailed constructor keyword
+parity, complete edge errors, and full `collections.abc` behavior remain
+future maintenance work.
 
 `stdlib.itertools` is a first slice of Python 3.10.11 `itertools`. It exposes
 `accumulate`, `count`, `repeat`, `chain`, `compress`, `cycle`, `pairwise`, `product`, `zip_longest`, `groupby`, `combinations`, `combinations_with_replacement`, `permutations`, `starmap`, `takewhile`, `dropwhile`, `filterfalse`, `tee`, and `islice` under `stdlib.itertools`,
@@ -8052,13 +8667,30 @@ comparison helpers remain deferred.
 `stdlib.calendar` is a first slice of Python 3.10.11 `calendar`. It exposes
 weekday/month constants, `IllegalMonthError`, `IllegalWeekdayError`, `isleap`,
 `leapdays`, `weekday`, `monthrange`, `monthcalendar`, `firstweekday`, and
-`setfirstweekday` under `stdlib.calendar`. The old global `isleap`,
-`leapdays`, `weekday`, `monthrange`, `monthcalendar`, and `Calendar` names from
-`calendar\calendar.ahk` are intentionally not part of the direct surface.
-The direct module follows Python's proleptic Gregorian behavior for covered
-cases, including year 0 in `monthrange`, and `monthcalendar` respects the
-module-level first weekday. Formatting calendars, locale names, `Calendar`
-classes, and `timegm` remain deferred.
+`setfirstweekday` under `stdlib.calendar`. The latest alphabetical pass slice
+adds `day_name`, `day_abbr`, `month_name`, `month_abbr`, `weekheader(width)`,
+`timegm(tuple)`, and the covered `Calendar(firstweekday := 0)` class surface:
+`getfirstweekday()`, `iterweekdays()`, `itermonthdays(...)`,
+`itermonthdays2(...)`, `itermonthdays3(...)`, `itermonthdays4(...)`,
+`monthdayscalendar(...)`, and `monthdays2calendar(...)`. Fresh Python 3.10.11
+evidence from `.codex/calendar_sequence_timegm_probe.py` and
+`.codex/calendar_sequence_timegm_probe.output.json` confirmed the covered
+names, week header text, Unix-second conversion, weekday iteration order, and
+February 2024 month-grid shapes. Fresh AHK evidence includes focused red
+`.codex/calendar-sequence-timegm-red-report.txt` failing because
+`stdlib.calendar.weekheader` was absent, focused green
+`.codex/calendar-sequence-timegm-green-focused-report.txt` passing 1/1, and
+full module `.codex/calendar-sequence-timegm-final-green-report.txt` passing
+`stdlib/tests/calendar.test.ahk` 5/5 at `TimeoutSeconds 90`; root smoke
+`.codex/calendar-sequence-timegm-stdlib-focused-report.txt` passing 1/1; and
+`.codex/calendar-sequence-timegm-validate-report.txt` validating
+`stdlib/calendar.ahk`, `stdlib/tests/calendar.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/calendar.ahk` at
+`TimeoutSeconds 90`. The direct module
+follows Python's proleptic Gregorian behavior for covered cases, including year
+0 in `monthrange`, and `monthcalendar` respects the module-level first weekday.
+Formatting calendars, locale-specific names, `monthdatescalendar`, and
+`yeardatescalendar` remain deferred.
 
 `stdlib.time` is a first slice of Python 3.10.11 `time`. It exposes
 `time()` and `time_ns()` under `stdlib.time`, returning Unix epoch seconds as
@@ -8145,9 +8777,10 @@ AHK type names. String/bytes seed
 expansion, `Random` instances, state
 import/export, and distribution helpers remain deferred.
 
-`stdlib.csv` is a first slice of Python 3.10.11 `csv`. It exposes dialect
-constants, `Error`, `get_dialect()`, `list_dialects()`, `reader(...)`,
-`writer(...)`, `DictReader(...)`, and `DictWriter(...)` under `stdlib.csv`.
+`stdlib.csv` is a Python 3.10.11 `csv` slice. It exposes dialect constants,
+`Error`, `get_dialect()`, `list_dialects()`, `reader(...)`, `writer(...)`,
+`DictReader(...)`, `DictWriter(...)`, `field_size_limit(...)`, and
+`Sniffer()` under `stdlib.csv`.
 Readers accept strings or line arrays and are enumerable through AHK `for`;
 `reader(...)` is stateful like Python's reader iterator, treats array entries as
 physical input lines, and updates `line_num` as rows are consumed.
@@ -8156,9 +8789,28 @@ The direct reader supports quoted fields, embedded newlines, `escapechar`, and
 `QUOTE_NONNUMERIC` float conversion for unquoted fields; the direct writer
 supports minimal/all/none/nonnumeric quoting for the covered AHK value types,
 with `writerows(...)` writing rows without returning a character count like
-Python 3.10.
-`Sniffer`, `field_size_limit`, fuller `DictReader` lifecycle/default handling,
-and strict-mode edge cases such as text after a closing quote remain deferred.
+Python 3.10. The latest promoted slice adds `field_size_limit(...)` and
+`Sniffer()`: fresh CPython 3.10.11 probe
+`.codex/csv_sniffer_field_size_probe.py` plus JSON output confirmed the
+default field limit `131072`, old-limit return values during set/restore,
+`csv.Error("field larger than field limit (5)")`, `Sniffer.sniff(...)`
+delimiter inference for semicolon, tab, and restricted pipe delimiters,
+`Sniffer.has_header(...)` true/false basics, and
+`csv.Error("Could not determine delimiter")`; focused red
+`.codex/csv-sniffer-field-size-red-report.txt` failed because
+`stdlib.csv.field_size_limit` was absent; focused green
+`.codex/csv-sniffer-field-size-green-focused-report.txt` passed 1/1; full
+module `.codex/csv-sniffer-field-size-final-green-report.txt` passed
+`stdlib/tests/csv.test.ahk` 20/20 at `TimeoutSeconds 90`; root smoke
+`.codex/csv-sniffer-field-size-stdlib-focused-report.txt` passed 1/1;
+validation `.codex/csv-sniffer-field-size-validate-report.txt` passed
+`stdlib/csv.ahk`, `stdlib/tests/csv.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/csv.ahk` at
+`TimeoutSeconds 90`. Because the current AHK reader eagerly parses in its
+constructor, covered field-size-limit failures occur during
+`stdlib.csv.reader(...)` construction rather than at first row iteration.
+Fuller `DictReader` lifecycle/default handling, full Sniffer heuristics, and
+strict-mode edge cases such as text after a closing quote remain deferred.
 
 `stdlib.configparser` is a first slice of Python 3.10.11 `configparser`. It
 exposes `ConfigParser()` plus the exception classes `Error`,

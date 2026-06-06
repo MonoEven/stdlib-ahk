@@ -18,6 +18,62 @@ source and SHA256 verification report are tracked in
 `stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
 
 For a standalone live GUI demo, run `stdlib\examples\tkinter_gui.ahk`.
+The `stdlib\examples\asyncio.ahk` regression example demonstrates the current
+single-threaded cooperative `Future` / `Task` / `sleep` / `gather` / sync
+primitive / queue surface, event-loop lifecycle and `call_at(...)` time
+scheduling, covered AHK-callable `asyncio.coroutine(...)` wrapping, covered
+`wrap_future(asyncio.Future)` identity, the single-threaded
+`run_coroutine_threadsafe(...)` bridge, plus the Windows child-watcher public
+functions that currently raise
+`NotImplementedError` like local Python 3.10.11.
+For AHK-side convenience, `stdlib.await(awaitable, options?)` runs covered
+asyncio awaitables to completion when no event loop is already running.
+`stdlib.decorate(target, decorators*)` mirrors Python decorator application
+order for AHK callables and class-like objects; it does not add Python `@`
+syntax to the AHK parser.
+`stdlib\examples\array.ahk` demonstrates fixed-type arrays, covered sequence
+operations, binary / unicode conversion, and file round-trips.
+`stdlib\examples\base64.ahk` demonstrates standard, URL-safe, wrapped-bytes,
+and Base16 codecs.
+`stdlib\examples\binascii.ahk` demonstrates hexlify/unhexlify, crc32, and
+Base64 ASCII helpers.
+`stdlib\examples\bisect.ahk` demonstrates zero-based insertion points, key
+functions, and sequence/insert targets.
+`stdlib\examples\calendar.ahk` demonstrates Gregorian date helpers, names,
+week headers, `timegm`, and `Calendar` month grids.
+`stdlib\examples\collections.ahk` demonstrates `Counter` plus the core
+`deque`, `defaultdict`, `OrderedDict`, `ChainMap`, `namedtuple`, `UserDict`,
+`UserList`, and `UserString` public surface.
+`stdlib\examples\contextlib.ahk` demonstrates `nullcontext`, `suppress`,
+`closing`, `ContextDecorator`, `ExitStack`, and AHK-target `redirect_stdout` /
+`redirect_stderr` context behavior.
+`stdlib\examples\copy.ahk` demonstrates shallow/deep copy behavior, custom
+copy hooks, recursive cycles, `Error` / `error`, and the public
+`dispatch_table` shape.
+`stdlib\examples\csv.ahk` demonstrates reader/writer, dict reader/writer,
+dialects, `field_size_limit`, and `Sniffer` delimiter/header helpers.
+`stdlib\examples\datetime.ahk` demonstrates date/time/datetime/timedelta
+behavior, module year bounds, `tzinfo`, `timezone.utc`, and fixed-offset
+`timezone` basics.
+`stdlib\examples\decimal.ahk` demonstrates Decimal arithmetic plus rounding
+constants, contexts, `getcontext` / `setcontext` / `localcontext`, and signal
+exception classes.
+The `stdlib.thread` slice is process-backed: AHK submits script fragments,
+Windows system DLL calls start an independent AutoHotkey interpreter process,
+and the main interpreter polls result objects through `Thread` and
+`ResultQueue`, exchanges JSON-safe values through `Channel`, or shares bounded
+byte regions through `SharedMemory` guarded by a named mutex. Shared AHK object
+state uses `SharedObject` broker/proxy handles: the real object stays in the
+main interpreter and workers marshal JSON-safe operations back to it.
+`ThreadPool` adds bounded task scheduling with `Future` results, cancellation
+of queued work, timeout-aware `result(...)`, and `stdlib.await(future, ...)`
+support. A `worker_source` / `task` protocol can keep hidden worker
+interpreters alive for JSON-safe tasks, while dynamic `{ source: ... }` tasks
+remain one-shot worker scripts.
+`SharedMemory` also exposes explicit raw `address` / `ptr()` and fixed-width
+`get(...)` / `put(...)` slots for low-level worker coordination. Worker scripts
+run with `#NoTrayIcon` and captured stdout/stderr. This deliberately does not
+execute current-interpreter AHK object state on a foreign OS thread.
 
 ## Quick Start
 
@@ -35,224 +91,180 @@ stdlib.bisect.insort_right(bisect_example_values, 2)
 ```ahk
 #Requires AutoHotkey v2.0
 
+#Include <stdlib\thread>
+
+ready := stdlib.thread.Event()
+ready.set()
+
+channel := stdlib.thread.Channel()
+memory := stdlib.thread.SharedMemory({ size: 128 })
+shared := stdlib.thread.SharedObject(Map("count", 0, "items", []))
+memory.write("abcd", 0)
+worker := stdlib.thread.Thread({
+    name: "calc-worker",
+    channel: channel,
+    shared_memory: memory,
+    shared_objects: Map("state", shared),
+    source: "channel := stdlib.thread.current_channel()`n"
+        . "memory := stdlib.thread.current_shared_memory()`n"
+        . "request := channel.recv_worker(2)`n"
+        . "seen := memory.read_text(0, 4)`n"
+        . "memory.write(`"WXYZ`", 4)`n"
+        . "memory.synchronized((shared) => (`n"
+        . "    shared.write_json(Map(`"seen`", seen), 16, 48),`n"
+        . "    shared.put(request[`"value`"] * 2, 80, `"UInt`"),`n"
+        . "    shared.put(-123, 84, `"Int`")`n"
+        . "), 2)`n"
+        . "channel.send_worker(Map(`"answer`", memory.get(80, `"UInt`"), `"label`", request[`"label`"], `"address_type`", Type(memory.address)))`n"
+        . "state := stdlib.thread.current_shared_object(`"state`")`n"
+        . "state.acquire(true, 2)`n"
+        . "try {`n"
+        . "    state.append(`"items`", request[`"label`"])`n"
+        . "    state.set(`"count`", state.get(`"count`") + 1)`n"
+        . "} finally {`n"
+        . "    state.release()`n"
+        . "}`n"
+        . "thread_result := Map(`"native_id`", DllCall(`"kernel32\GetCurrentThreadId`", `"UInt`"))"
+})
+worker.start()
+channel.send(Map("value", 21, "label", "json-message"))
+reply := channel.recv(2)
+worker.join(2)
+
+result := worker.result()
+worker_answer := reply["answer"]
+worker_label := reply["label"]
+worker_native_id := result["native_id"]
+shared_text := memory.read_text(4, 4)
+shared_payload := memory.read_json(16, 48)
+shared_answer_slot := memory.get(80, "UInt")
+shared_signed_slot := memory.get(84, "Int")
+shared_state := shared.snapshot()
+
+pool := stdlib.thread.ThreadPool({ max_workers: 1 })
+first_future := pool.submit({ source: "thread_result := `"first`"" })
+second_future := pool.submit({ source: "thread_result := `"second`"" })
+future_events := []
+first_future.add_done_callback((future) => future_events.Push(future.result()))
+second_running_before := second_future.running()
+first_value := first_future.result(2)
+second_future.add_done_callback((future) => future_events.Push(future.result()))
+second_value := stdlib.await(second_future, { timeout: 2 })
+mapped_values := pool.map((value) => { source: "thread_result := " (value * 10) }, [3, 1, 2])
+pool.shutdown()
+
+persistent_pool := stdlib.thread.ThreadPool({
+    max_workers: 1,
+    worker_source: "AhkStdlibThreadPoolHandleTask(task) {`n"
+        . "    return Map(`"label`", task[`"label`"], `"value`", task[`"value`"] * 10, `"pid`", DllCall(`"kernel32\GetCurrentProcessId`", `"UInt`"), `"native_id`", DllCall(`"kernel32\GetCurrentThreadId`", `"UInt`"))`n"
+        . "}"
+})
+persistent_first := persistent_pool.submit({ task: Map("label", "first", "value", 1) }).result(2)
+persistent_second := persistent_pool.submit({ task: Map("label", "second", "value", 2) }).result(2)
+persistent_reused_worker := persistent_first["pid"] = persistent_second["pid"]
+persistent_pool.shutdown()
+
+channel.close()
+memory.close()
+```
+
+```ahk
+#Requires AutoHotkey v2.0
+
 #Include <stdlib\tkinter>
 
 root := stdlib.tkinter.Tk()
 root.title("stdlib tkinter demo")
+root.geometry("740x480")
 
 count := 0
 name := stdlib.tkinter.StringVar(root, "AutoHotkey")
+stage := stdlib.tkinter.StringVar(root, "draft")
 status := stdlib.tkinter.StringVar(root, "Ready")
-progressValue := stdlib.tkinter.DoubleVar(root, 0)
-stepValue := stdlib.tkinter.StringVar(root, "20")
+scoreValue := stdlib.tkinter.DoubleVar(root, 42)
 
-frame := stdlib.tkinter.ttk.LabelFrame(root, { text: "Python-style tkinter" })
-frame.grid({ row: 0, column: 0, padx: 16, pady: 16, sticky: "nsew" })
-
-stdlib.tkinter.ttk.Label(frame, { text: "Name" })
-    .grid({ row: 0, column: 0, padx: 6, pady: 6, sticky: "w" })
-entry := stdlib.tkinter.ttk.Entry(frame, { textvariable: name, width: 24 })
-entry.validate()
-entry.xview_moveto(["0.5"])
-entry.grid({ row: 0, column: 1, padx: 6, pady: 6, sticky: "ew" })
-spin := stdlib.tkinter.ttk.Spinbox(frame, {
-    from_: 10,
-    to: 50,
-    increment: 10,
-    textvariable: stepValue,
-    width: 6
-})
-spin.xview_scroll(["1"], "units")
-spin.grid({ row: 0, column: 2, padx: 6, pady: 6, sticky: "ew" })
-
-progress := stdlib.tkinter.ttk.Progressbar(frame, {
-    orient: "horizontal",
-    length: 180,
-    mode: "determinate",
-    maximum: 100,
-    variable: progressValue
-})
-progress.grid({ row: 1, column: 0, columnspan: 2, padx: 6, pady: 6, sticky: "ew" })
-
-canvas := stdlib.tkinter.Canvas(frame, { width: 240, height: 90, bg: "white" })
-canvas.grid({ row: 2, column: 0, columnspan: 2, padx: 6, pady: 6 })
-bar := canvas.create_rectangle(10, 55, 10, 75, { fill: "steelblue", outline: "steelblue" })
-caption := canvas.create_text(12, 20, { text: "Click Update", anchor: "nw", fill: "gray20" })
-canvas.xview_moveto(["0.0"])
-canvas.yview("moveto", stdlib.tuple(["0.0"]))
-canvas.scan_mark(stdlib.tuple(["20"]), 20)
-canvas.scan_dragto(["10"], stdlib.tuple(["10"]), stdlib.None)
-
-paned := stdlib.tkinter.ttk.Panedwindow(frame, { orient: "horizontal", height: 72 })
-paned.grid({ row: 3, column: 0, columnspan: 2, padx: 6, pady: 6, sticky: "ew" })
-leftPane := stdlib.tkinter.ttk.Frame(paned)
-rightPane := stdlib.tkinter.ttk.Frame(paned)
-paned.add(leftPane, { weight: 1 })
-paned.add(rightPane, { weight: 2 })
-scratchPane := stdlib.tkinter.ttk.Frame(paned)
-paned.add(scratchPane, { weight: 0 })
-paned.remove(scratchPane)
-rawHost := stdlib.tkinter.ttk.Widget(leftPane, "ttk::frame", {
-    padding: [4, 2],
-    style: "Demo.TFrame"
-})
-rawHost.grid({ row: 0, column: 0, padx: 8, pady: 4, sticky: "ew" })
-stdlib.tkinter.ttk.Label(rawHost, { text: "ttk widgets" })
-    .grid({ row: 0, column: 0, padx: 8, pady: 8 })
-rawHost.state(["disabled"])
-rawHost.instate(["disabled"], stdlib.None, "ignored")
-rawHost.state(["!disabled"])
-rawHost.identify(["5"], 5)
 style := stdlib.tkinter.ttk.Style(root)
-style.configure("Demo.TFrame", { padding: 4 })
-style.configure("Demo.Treeview", { rowheight: 24, foreground: "navy" })
-style.configure("Demo.Treeview", stdlib.None)
-style.configure("Demo.Treeview", "")
-style.lookup("Demo.Treeview", "foreground", 0, "navy")
-style.map("Demo.Treeview", { foreground: [["selected", "white"]] })
-style.map("Demo.Treeview", stdlib.None)
-style.map("Demo.Treeview", [])
-style.layout("Treeview", stdlib.None)
-style.layout("Demo.Empty.Treeview", [])
-style.element_create("DemoClone.field_" A_TickCount "_" Random(100000, 999999), "from", style.theme_use(), "Treeview.field")
-style.theme_settings(style.theme_use(), Map(
-    "DemoSettingsClone.field_" A_TickCount "_" Random(100000, 999999),
-    Map("element create", ["from", style.theme_use(), "Treeview.field"])
-))
-demoTheme := "demo_theme_" A_TickCount "_" Random(100000, 999999)
-style.theme_create(demoTheme "_scratch", "")
-style.theme_create([demoTheme "_sequence"], [style.theme_use()])
-style.theme_create(demoTheme, style.theme_use(), Map(
-    "Demo.TFrame", { configure: { padding: 4 } },
-    "Demo.Treeview", { configure: { rowheight: 24, foreground: "navy" } }
-))
-style.theme_settings([style.theme_use()], Map(
-    "Demo.Sequence.Treeview", { configure: { rowheight: 28 } }
-))
-style.theme_use(demoTheme)
-style.theme_use([demoTheme])
-tree := stdlib.tkinter.ttk.Treeview(leftPane, {
+try style.theme_use("clam")
+style.configure("App.TFrame", { padding: 14 })
+style.configure("Demo.Treeview", { rowheight: 24, foreground: "#203040" })
+style.map("Demo.Treeview", { foreground: [["selected", "white"]], background: [["selected", "#2878b8"]] })
+
+main := stdlib.tkinter.ttk.Frame(root, { padding: [16, 14], style: "App.TFrame" })
+main.grid({ row: 0, column: 0, sticky: "nsew" })
+root.columnconfigure(0, { weight: 1 })
+root.rowconfigure(0, { weight: 1 })
+main.columnconfigure(1, { weight: 1 })
+main.rowconfigure(3, { weight: 1 })
+
+stdlib.tkinter.ttk.Label(main, { text: "Name" })
+    .grid({ row: 0, column: 0, padx: [0, 8], pady: 6, sticky: "w" })
+entry := stdlib.tkinter.ttk.Entry(main, { textvariable: name, width: 24 })
+entry.grid({ row: 0, column: 1, pady: 6, sticky: "ew" })
+
+stdlib.tkinter.ttk.Label(main, { text: "Stage" })
+    .grid({ row: 1, column: 0, padx: [0, 8], pady: 6, sticky: "w" })
+stageChoice := stdlib.tkinter.ttk.Combobox(main, { textvariable: stage, values: ["draft", "review", "ship"], state: "readonly" })
+stageChoice.grid({ row: 1, column: 1, pady: 6, sticky: "ew" })
+stageChoice.current(0)
+
+scoreRow := stdlib.tkinter.ttk.Frame(main)
+scoreRow.grid({ row: 2, column: 0, columnspan: 2, pady: 8, sticky: "ew" })
+scoreRow.columnconfigure(0, { weight: 1 })
+scoreScale := stdlib.tkinter.ttk.Scale(scoreRow, { variable: scoreValue, from_: 0, to: 100, command: update_demo })
+scoreScale.grid({ row: 0, column: 0, padx: [0, 10], sticky: "ew" })
+progress := stdlib.tkinter.ttk.Progressbar(scoreRow, { maximum: 100, variable: scoreValue, mode: "determinate" })
+progress.grid({ row: 0, column: 1, sticky: "ew" })
+
+canvas := stdlib.tkinter.Canvas(main, { width: 300, height: 120, bg: "white", highlightthickness: 0 })
+canvas.grid({ row: 3, column: 0, padx: [0, 12], pady: 8, sticky: "nsew" })
+canvas.create_rectangle(12, 16, 288, 104, { fill: "#f7fbff", outline: "#d4e3ef" })
+bar := canvas.create_rectangle(24, 72, 24, 92, { fill: "#2878b8", outline: "#2878b8" })
+caption := canvas.create_text(24, 30, { text: "Ready", anchor: "nw", fill: "#203040" })
+
+tree := stdlib.tkinter.ttk.Treeview(main, {
     columns: ["value"],
     show: ["tree", "headings"],
-    height: 2,
+    height: 5,
     style: "Demo.Treeview"
 })
-tree.heading("#0", { text: "Item" })
+tree.heading("#0", { text: "Signal" })
 tree.heading("value", { text: "Value" })
-tree.column("value", { width: 80, anchor: "center" })
+tree.column("#0", { width: 120, anchor: "w" })
+tree.column("value", { width: 100, anchor: "center" })
+tree.insert("", "end", "stage", { text: "Stage", values: [stage.get()] })
+tree.insert("", "end", "score", { text: "Score", values: [scoreValue.get() "%"] })
 tree.insert("", "end", "updates", { text: "Updates", values: [0], tags: ["dynamic"] })
-tree.insert("", "end", "last", { text: "Last value", values: ["Ready"] })
-tree.insert("", "end", "scratch_a", { text: "Scratch", values: ["A"] })
-tree.insert("", "end", "scratch_b", { text: "Scratch", values: ["B"] })
-tree.delete("scratch_a", "scratch_b")
 tree.tag_configure("dynamic", { foreground: "navy" })
-tree.tag_configure("alert", { foreground: "firebrick" })
-tree.tag_bind("dynamic", "<Button-1>", tree_row_clicked)
-tree.detach("last")
-tree.reattach("last", "", "end")
-tree.set_children("", "updates", "last")
-tree.heading("value", stdlib.None)
-tree.column("value", stdlib.None)
-tree.item("updates", stdlib.None)
-tree.selection_set(["updates"])
-tree.selection_toggle(["last"])
-tree.xview("scroll", ["1"], "units")
-tree.yview_moveto(["0.0"])
-tree.grid({ row: 1, column: 0, padx: 8, pady: 4, sticky: "nsew" })
-treeScroll := stdlib.tkinter.ttk.Scrollbar(leftPane, {
-    orient: "vertical",
-    command: (args*) => tree.yview(args*)
-})
-tree.configure({ yscrollcommand: (args*) => treeScroll.set(args*) })
-treeScroll.grid({ row: 1, column: 1, pady: 4, sticky: "ns" })
-stdlib.tkinter.ttk.Label(rightPane, { text: "Canvas + variables + callbacks" })
-    .grid({ row: 0, column: 0, padx: 8, pady: 8 })
-actionMenu := stdlib.tkinter.Menu(root, { tearoff: false })
-actionMenu.add_command({ label: "Mark ready", command: mark_ready })
-menuButton := stdlib.tkinter.ttk.Menubutton(rightPane, {
-    text: "Actions",
-    menu: actionMenu,
-    direction: "below"
-})
-menuButton.grid({ row: 1, column: 0, padx: 8, pady: 4, sticky: "e" })
-choice := stdlib.tkinter.StringVar(root, "one")
-choiceMenu := stdlib.tkinter.ttk.OptionMenu(
-    rightPane,
-    choice,
-    "one",
-    "two",
-    "three",
-    { command: choose_mode }
-)
-choiceMenu.set_menu("", "draft", "review")
-choiceMenu.set_menu("one", "two", "three")
-choiceMenu.grid({ row: 2, column: 0, padx: 8, pady: 4, sticky: "e" })
-labeledValue := stdlib.tkinter.IntVar(root, 3)
-labeledScale := stdlib.tkinter.ttk.LabeledScale(rightPane, {
-    variable: labeledValue,
-    from_: 1,
-    to: 5,
-    compound: "bottom"
-})
-labeledScale.grid({ row: 3, column: 0, padx: 8, pady: 4, sticky: "ew" })
-notebook := stdlib.tkinter.ttk.Notebook(rightPane, { height: 54 })
+tree.grid({ row: 3, column: 1, pady: 8, sticky: "nsew" })
+
+notebook := stdlib.tkinter.ttk.Notebook(main, { height: 70 })
 firstPage := stdlib.tkinter.ttk.Frame(notebook)
 secondPage := stdlib.tkinter.ttk.Frame(notebook)
-notebook.add(firstPage, { text: "One", padding: 4 })
-notebook.add(secondPage, { text: "Two" })
-notebook.tab(firstPage, stdlib.None)
-notebook.grid({ row: 4, column: 0, padx: 8, pady: 4, sticky: "ew" })
-stdlib.tkinter.ttk.Sizegrip(rightPane)
-    .grid({ row: 5, column: 0, padx: 8, pady: 4, sticky: "e" })
+notebook.add(firstPage, { text: "Summary", padding: 8 })
+notebook.add(secondPage, { text: "Details", padding: 8 })
+stdlib.tkinter.ttk.Label(firstPage, { textvariable: status }).grid({ row: 0, column: 0, sticky: "w" })
+stdlib.tkinter.ttk.Label(secondPage, { text: "Variables, layout, callbacks, canvas, and ttk widgets." }).grid({ row: 0, column: 0, sticky: "w" })
+notebook.grid({ row: 4, column: 0, columnspan: 2, pady: [6, 0], sticky: "ew" })
 
-mark_ready(*) {
-    global status
-    status.set("Menu ready")
-}
+button := stdlib.tkinter.ttk.Button(main, { text: "Update", command: update_demo })
+button.grid({ row: 5, column: 0, columnspan: 2, pady: 10, sticky: "ew" })
 
-choose_mode(value) {
-    global status
-    status.set("Selected " value)
-}
-
-tree_row_clicked(event) {
-    global status
-    status.set("Tree row clicked at " event.x ", " event.y)
+update_demo(*) {
+    global count, name, stage, status, scoreValue, canvas, bar, caption, tree
+    count += 1
+    score := Integer(scoreValue.get())
+    status.set(stage.get() " for " name.get() ": " score "%")
+    canvas.coords(bar, 24, 72, 24 + Round(score * 2.4), 92)
+    canvas.itemconfigure(caption, { text: status.get() })
+    tree.set("stage", "value", stage.get())
+    tree.set("score", "value", score "%")
+    tree.set("updates", "value", count)
+    tree.selection_set(["updates"])
+    tree.see("updates")
     return stdlib.None
 }
 
-update_demo(*) {
-    global count, name, status, progressValue, stepValue, canvas, bar, caption, tree
-    count += 1
-    percent := Mod(count * Integer(stepValue.get()), 120)
-    if (percent = 0)
-        percent := 100
-    progressValue.set(percent)
-    dynamicRows := tree.tag_has("dynamic")
-    status.set("Hello " name.get() " - " percent "%, tagged " dynamicRows.Length)
-    canvas.coords(bar, 10, 55, 10 + percent * 2, 75)
-    canvas.itemconfigure(caption, { text: status.get() })
-    tree.set("updates", "value", count)
-    tree.set("last", "value", percent "%")
-    tree.item("updates", { tags: percent >= 80 ? ["dynamic", "alert"] : ["dynamic"] })
-    if Mod(count, 2)
-        tree.set_children("", "last", "updates")
-    else
-        tree.set_children("", "updates", "last")
-    tree.xview("scroll", ["1"], "units")
-    tree.yview_moveto(0.0)
-    tree.identify_region(["5"], 5)
-    tree.identify_element(5, 5)
-    tree.see("last")
-}
-
-button := stdlib.tkinter.ttk.Button(frame, { text: "Update", command: update_demo })
-button.grid({ row: 4, column: 0, padx: 6, pady: 6, sticky: "ew" })
-stdlib.tkinter.ttk.Label(frame, { textvariable: status })
-    .grid({ row: 4, column: 1, padx: 6, pady: 6, sticky: "w" })
-
-frame.columnconfigure(1, { weight: 1 })
-root.columnconfigure(0, { weight: 1 })
+update_demo()
 root.mainloop()
 ```
 

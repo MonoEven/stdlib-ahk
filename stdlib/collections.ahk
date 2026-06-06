@@ -13,6 +13,81 @@ class AhkStdlibCollections
     {
         return AhkStdlibCollectionsCounter(args*)
     }
+
+    static deque
+    {
+        get => AhkStdlibCollectionsDeque
+    }
+
+    static deque(args*)
+    {
+        return AhkStdlibCollectionsDeque(args*)
+    }
+
+    static defaultdict
+    {
+        get => AhkStdlibCollectionsDefaultDict
+    }
+
+    static defaultdict(args*)
+    {
+        return AhkStdlibCollectionsDefaultDict(args*)
+    }
+
+    static OrderedDict
+    {
+        get => AhkStdlibCollectionsOrderedDict
+    }
+
+    static OrderedDict(args*)
+    {
+        return AhkStdlibCollectionsOrderedDict(args*)
+    }
+
+    static ChainMap
+    {
+        get => AhkStdlibCollectionsChainMap
+    }
+
+    static ChainMap(args*)
+    {
+        return AhkStdlibCollectionsChainMap(args*)
+    }
+
+    static namedtuple(typename, field_names, options?)
+    {
+        return AhkStdlibCollectionsNamedTupleType(typename, field_names, options?)
+    }
+
+    static UserDict
+    {
+        get => AhkStdlibCollectionsUserDict
+    }
+
+    static UserDict(args*)
+    {
+        return AhkStdlibCollectionsUserDict(args*)
+    }
+
+    static UserList
+    {
+        get => AhkStdlibCollectionsUserList
+    }
+
+    static UserList(args*)
+    {
+        return AhkStdlibCollectionsUserList(args*)
+    }
+
+    static UserString
+    {
+        get => AhkStdlibCollectionsUserString
+    }
+
+    static UserString(args*)
+    {
+        return AhkStdlibCollectionsUserString(args*)
+    }
 }
 
 class AhkStdlibCollectionsCounter extends Map
@@ -357,6 +432,473 @@ class AhkStdlibCollectionsCounter extends Map
         }
         this.AhkStdlibOrder := nextOrder
         this.AhkStdlibKeyMutationVersion += 1
+    }
+}
+
+class AhkStdlibCollectionsDeque
+{
+    __New(iterable := unset, maxlen := unset)
+    {
+        this.AhkStdlibItems := []
+        this.maxlen := IsSet(maxlen) && !AhkStdlibIsNone(maxlen) ? maxlen : stdlib.None
+        if IsSet(iterable) && !AhkStdlibIsNone(iterable) {
+            for value in AhkStdlibCollectionsIterableItems(iterable)
+                this.append(value)
+        }
+    }
+
+    Length
+    {
+        get => this.AhkStdlibItems.Length
+    }
+
+    __Item[index]
+    {
+        get => this.AhkStdlibItems[AhkStdlibCollectionsSequenceIndex(this.AhkStdlibItems.Length, index)]
+        set => this.AhkStdlibItems[AhkStdlibCollectionsSequenceIndex(this.AhkStdlibItems.Length, index)] := value
+    }
+
+    append(value)
+    {
+        if this.AhkStdlibMaxlenIsZero()
+            return
+        while this.AhkStdlibHasMaxlen() && this.AhkStdlibItems.Length >= this.maxlen
+            this.AhkStdlibItems.RemoveAt(1)
+        this.AhkStdlibItems.Push(value)
+    }
+
+    appendleft(value)
+    {
+        if this.AhkStdlibMaxlenIsZero()
+            return
+        while this.AhkStdlibHasMaxlen() && this.AhkStdlibItems.Length >= this.maxlen
+            this.AhkStdlibItems.Pop()
+        this.AhkStdlibItems.InsertAt(1, value)
+    }
+
+    extend(iterable)
+    {
+        for value in AhkStdlibCollectionsIterableItems(iterable)
+            this.append(value)
+    }
+
+    extendleft(iterable)
+    {
+        for value in AhkStdlibCollectionsIterableItems(iterable)
+            this.appendleft(value)
+    }
+
+    pop()
+    {
+        if this.AhkStdlibItems.Length = 0
+            throw IndexError("pop from an empty deque", -1)
+        return this.AhkStdlibItems.Pop()
+    }
+
+    popleft()
+    {
+        if this.AhkStdlibItems.Length = 0
+            throw IndexError("pop from an empty deque", -1)
+        return this.AhkStdlibItems.RemoveAt(1)
+    }
+
+    rotate(n := 1)
+    {
+        length := this.AhkStdlibItems.Length
+        if length = 0
+            return
+        while n > 0 {
+            this.AhkStdlibItems.InsertAt(1, this.AhkStdlibItems.Pop())
+            n -= 1
+        }
+        while n < 0 {
+            this.AhkStdlibItems.Push(this.AhkStdlibItems.RemoveAt(1))
+            n += 1
+        }
+    }
+
+    clear()
+    {
+        this.AhkStdlibItems := []
+    }
+
+    __Enum(numberOfVars)
+    {
+        return this.AhkStdlibItems.__Enum(numberOfVars)
+    }
+
+    AhkStdlibHasMaxlen()
+    {
+        return !AhkStdlibIsNone(this.maxlen)
+    }
+
+    AhkStdlibMaxlenIsZero()
+    {
+        return this.AhkStdlibHasMaxlen() && this.maxlen = 0
+    }
+}
+
+class AhkStdlibCollectionsOrderedMapBase
+{
+    __New(source := unset)
+    {
+        this.AhkStdlibStorage := Map()
+        this.AhkStdlibOrder := []
+        if IsSet(source) && !AhkStdlibIsNone(source)
+            this.update(source)
+    }
+
+    Count
+    {
+        get => this.AhkStdlibStorage.Count
+    }
+
+    __Item[key]
+    {
+        get => this.AhkStdlibGet(key)
+        set => this.AhkStdlibSet(key, value)
+    }
+
+    Has(key)
+    {
+        return this.AhkStdlibStorage.Has(key)
+    }
+
+    get(key, defaultValue := unset)
+    {
+        if this.Has(key)
+            return this[key]
+        return IsSet(defaultValue) ? defaultValue : stdlib.None
+    }
+
+    update(source)
+    {
+        for pair in AhkStdlibCollectionsMappingPairs(source)
+            this.AhkStdlibSet(pair[1], pair[2])
+    }
+
+    items()
+    {
+        return AhkStdlibCollectionsMappingPairs(this)
+    }
+
+    Delete(key)
+    {
+        if !this.AhkStdlibStorage.Has(key)
+            throw KeyError(AhkStdlibCollectionsCounterValueRepr(key), -1)
+        this.AhkStdlibStorage.Delete(key)
+        this.AhkStdlibForgetKey(key)
+    }
+
+    Clear()
+    {
+        this.AhkStdlibStorage.Clear()
+        this.AhkStdlibOrder := []
+    }
+
+    __Enum(numberOfVars)
+    {
+        self := this
+        index := 1
+        if numberOfVars = 1
+            return NextKey
+        return NextPair
+
+        NextKey(&key)
+        {
+            while index <= self.AhkStdlibOrder.Length {
+                candidate := self.AhkStdlibOrder[index]
+                index += 1
+                if self.AhkStdlibStorage.Has(candidate) {
+                    key := candidate
+                    return true
+                }
+            }
+            return false
+        }
+
+        NextPair(&key, &value)
+        {
+            while index <= self.AhkStdlibOrder.Length {
+                candidate := self.AhkStdlibOrder[index]
+                index += 1
+                if self.AhkStdlibStorage.Has(candidate) {
+                    key := candidate
+                    value := self.AhkStdlibStorage[candidate]
+                    return true
+                }
+            }
+            return false
+        }
+    }
+
+    AhkStdlibGet(key)
+    {
+        return this.AhkStdlibStorage[key]
+    }
+
+    AhkStdlibSet(key, value)
+    {
+        if !this.AhkStdlibStorage.Has(key)
+            this.AhkStdlibOrder.Push(key)
+        this.AhkStdlibStorage[key] := value
+        return value
+    }
+
+    AhkStdlibForgetKey(key)
+    {
+        nextOrder := []
+        for item in this.AhkStdlibOrder {
+            if item != key
+                nextOrder.Push(item)
+        }
+        this.AhkStdlibOrder := nextOrder
+    }
+}
+
+class AhkStdlibCollectionsDefaultDict extends AhkStdlibCollectionsOrderedMapBase
+{
+    __New(default_factory := unset, source := unset)
+    {
+        this.default_factory := IsSet(default_factory) ? default_factory : stdlib.None
+        super.__New(source?)
+    }
+
+    AhkStdlibGet(key)
+    {
+        if this.AhkStdlibStorage.Has(key)
+            return this.AhkStdlibStorage[key]
+        if AhkStdlibIsNone(this.default_factory)
+            throw KeyError(AhkStdlibCollectionsCounterValueRepr(key), -1)
+        value := this.default_factory.Call()
+        this.AhkStdlibSet(key, value)
+        return value
+    }
+}
+
+class AhkStdlibCollectionsOrderedDict extends AhkStdlibCollectionsOrderedMapBase
+{
+    move_to_end(key, last := true)
+    {
+        if !this.AhkStdlibStorage.Has(key)
+            throw KeyError(AhkStdlibCollectionsCounterValueRepr(key), -1)
+        value := this.AhkStdlibStorage[key]
+        this.AhkStdlibForgetKey(key)
+        if last
+            this.AhkStdlibOrder.Push(key)
+        else
+            this.AhkStdlibOrder.InsertAt(1, key)
+        this.AhkStdlibStorage[key] := value
+    }
+
+    popitem(last := true)
+    {
+        if this.AhkStdlibOrder.Length = 0
+            throw KeyError("'dictionary is empty'", -1)
+        index := last ? this.AhkStdlibOrder.Length : 1
+        key := this.AhkStdlibOrder[index]
+        value := this.AhkStdlibStorage[key]
+        this.AhkStdlibOrder.RemoveAt(index)
+        this.AhkStdlibStorage.Delete(key)
+        return stdlib.tuple([key, value])
+    }
+}
+
+class AhkStdlibCollectionsChainMap
+{
+    __New(maps*)
+    {
+        this.maps := []
+        if maps.Length = 0 {
+            this.maps.Push(Map())
+            return
+        }
+        for mapping in maps
+            this.maps.Push(mapping)
+    }
+
+    __Item[key]
+    {
+        get {
+            for mapping in this.maps {
+                if AhkStdlibCollectionsMappingHas(mapping, key)
+                    return AhkStdlibCollectionsMappingGet(mapping, key)
+            }
+            throw KeyError(AhkStdlibCollectionsCounterValueRepr(key), -1)
+        }
+        set {
+            AhkStdlibCollectionsMappingSet(this.maps[1], key, value)
+            return value
+        }
+    }
+
+    new_child(mapping := unset)
+    {
+        childMaps := [IsSet(mapping) ? mapping : Map()]
+        for existing in this.maps
+            childMaps.Push(existing)
+        return AhkStdlibCollectionsChainMap(childMaps*)
+    }
+
+    __Enum(numberOfVars)
+    {
+        keys := []
+        seen := Map()
+        for mapping in this.maps {
+            for key, value in AhkStdlibCollectionsMappingPairs(mapping) {
+                if !seen.Has(key) {
+                    seen[key] := true
+                    keys.Push(key)
+                }
+            }
+        }
+        index := 1
+        self := this
+        if numberOfVars = 1
+            return NextKey
+        return NextPair
+
+        NextKey(&key)
+        {
+            if index > keys.Length
+                return false
+            key := keys[index]
+            index += 1
+            return true
+        }
+
+        NextPair(&key, &value)
+        {
+            if index > keys.Length
+                return false
+            key := keys[index]
+            value := self[key]
+            index += 1
+            return true
+        }
+    }
+}
+
+class AhkStdlibCollectionsNamedTupleType
+{
+    __New(typename, fieldNames, options := unset)
+    {
+        this.__name__ := typename
+        this._fields := AhkStdlibCollectionsNamedTupleFields(fieldNames)
+        this.AhkStdlibFieldIndex := Map()
+        for index, field in this._fields
+            this.AhkStdlibFieldIndex[field] := index
+    }
+
+    Call(values*)
+    {
+        if values.Length != this._fields.Length
+            throw TypeError(this.__name__ ".__new__() expected " this._fields.Length " argument(s), got " values.Length, -1)
+        return AhkStdlibCollectionsNamedTupleValue(this, values)
+    }
+
+    _make(iterable)
+    {
+        values := AhkStdlibCollectionsIterableItems(iterable)
+        return this.Call(values*)
+    }
+}
+
+class AhkStdlibCollectionsNamedTupleValue extends AhkStdlibTuple
+{
+    __New(tupleType, values)
+    {
+        this.AhkStdlibNamedTupleType := tupleType
+        super.__New(values)
+    }
+
+    __Get(name, params)
+    {
+        if this.AhkStdlibNamedTupleType.AhkStdlibFieldIndex.Has(name)
+            return this[this.AhkStdlibNamedTupleType.AhkStdlibFieldIndex[name]]
+        throw AttributeError("'" this.AhkStdlibNamedTupleType.__name__ "' object has no attribute '" name "'", -1)
+    }
+
+    _asdict()
+    {
+        result := AhkStdlibCollectionsOrderedDict()
+        for index, field in this.AhkStdlibNamedTupleType._fields
+            result[field] := this[index]
+        return result
+    }
+
+    _replace(options := unset)
+    {
+        values := []
+        for value in this
+            values.Push(value)
+        replacements := AhkStdlibCollectionsKwargsFromOptions(options)
+        for field, value in replacements {
+            if !this.AhkStdlibNamedTupleType.AhkStdlibFieldIndex.Has(field)
+                throw ValueError("Got unexpected field names: " field, -1)
+            values[this.AhkStdlibNamedTupleType.AhkStdlibFieldIndex[field]] := value
+        }
+        return AhkStdlibCollectionsNamedTupleValue(this.AhkStdlibNamedTupleType, values)
+    }
+}
+
+class AhkStdlibCollectionsUserDict extends AhkStdlibCollectionsOrderedMapBase
+{
+    __New(source := unset)
+    {
+        super.__New(source?)
+        this.data := this.AhkStdlibStorage
+    }
+}
+
+class AhkStdlibCollectionsUserList
+{
+    __New(initlist := unset)
+    {
+        this.data := []
+        if IsSet(initlist) && !AhkStdlibIsNone(initlist) {
+            for value in AhkStdlibCollectionsIterableItems(initlist)
+                this.data.Push(value)
+        }
+    }
+
+    Length
+    {
+        get => this.data.Length
+    }
+
+    __Item[index]
+    {
+        get => this.data[AhkStdlibCollectionsSequenceIndex(this.data.Length, index)]
+        set => this.data[AhkStdlibCollectionsSequenceIndex(this.data.Length, index)] := value
+    }
+
+    append(value)
+    {
+        this.data.Push(value)
+    }
+
+    __Enum(numberOfVars)
+    {
+        return this.data.__Enum(numberOfVars)
+    }
+}
+
+class AhkStdlibCollectionsUserString
+{
+    __New(seq := "")
+    {
+        this.data := String(seq)
+    }
+
+    ToString()
+    {
+        return this.data
+    }
+
+    upper()
+    {
+        return AhkStdlibCollectionsUserString(StrUpper(this.data))
     }
 }
 
@@ -1327,4 +1869,130 @@ AhkStdlibCollectionsOrderEquals(left, right)
     }
 
     return true
+}
+
+AhkStdlibCollectionsSequenceIndex(length, index)
+{
+    if !(index is Integer)
+        throw TypeError("sequence index must be an integer", -1)
+    actual := index >= 0 ? index + 1 : length + index + 1
+    if actual < 1 || actual > length
+        throw IndexError("list index out of range", -1)
+    return actual
+}
+
+AhkStdlibCollectionsMappingPairs(source)
+{
+    result := []
+
+    if source is Map || source is AhkStdlibCollectionsCounter || source is AhkStdlibCollectionsOrderedMapBase {
+        for key, value in source
+            result.Push([key, value])
+        return result
+    }
+
+    if source is Array || source is AhkStdlibTuple {
+        for item in source
+            result.Push(AhkStdlibCollectionsPairFromItem(item))
+        return result
+    }
+
+    if Type(source) = "Object" {
+        for key, value in source.OwnProps()
+            result.Push([key, value])
+        return result
+    }
+
+    if IsObject(source) && HasMethod(source, "__Enum") {
+        for item in source
+            result.Push(AhkStdlibCollectionsPairFromItem(item))
+        return result
+    }
+
+    throw TypeError("'" AhkStdlibCollectionsCounterTypeName(source) "' object is not iterable", -1)
+}
+
+AhkStdlibCollectionsPairFromItem(item)
+{
+    if item is Array || item is AhkStdlibTuple {
+        if item.Length < 2
+            throw ValueError("dictionary update sequence element has length " item.Length "; 2 is required", -1)
+        return [item[1], item[2]]
+    }
+
+    if IsObject(item) && HasMethod(item, "__Enum") {
+        values := []
+        for value in item
+            values.Push(value)
+        if values.Length < 2
+            throw ValueError("dictionary update sequence element has length " values.Length "; 2 is required", -1)
+        return [values[1], values[2]]
+    }
+
+    throw TypeError("cannot convert dictionary update sequence element to a sequence", -1)
+}
+
+AhkStdlibCollectionsMappingHas(mapping, key)
+{
+    if mapping is Map || mapping is AhkStdlibCollectionsCounter || mapping is AhkStdlibCollectionsOrderedMapBase
+        return mapping.Has(key)
+    if Type(mapping) = "Object"
+        return mapping.HasOwnProp(key)
+    return false
+}
+
+AhkStdlibCollectionsMappingGet(mapping, key)
+{
+    if mapping is Map || mapping is AhkStdlibCollectionsCounter || mapping is AhkStdlibCollectionsOrderedMapBase
+        return mapping[key]
+    if Type(mapping) = "Object" && mapping.HasOwnProp(key)
+        return mapping.%key%
+    throw KeyError(AhkStdlibCollectionsCounterValueRepr(key), -1)
+}
+
+AhkStdlibCollectionsMappingSet(mapping, key, value)
+{
+    if mapping is Map || mapping is AhkStdlibCollectionsCounter || mapping is AhkStdlibCollectionsOrderedMapBase {
+        mapping[key] := value
+        return value
+    }
+    if Type(mapping) = "Object" {
+        mapping.%key% := value
+        return value
+    }
+    throw TypeError("'" AhkStdlibCollectionsCounterTypeName(mapping) "' object does not support item assignment", -1)
+}
+
+AhkStdlibCollectionsNamedTupleFields(fieldNames)
+{
+    fields := []
+    if fieldNames is String {
+        normalized := StrReplace(fieldNames, ",", " ")
+        for field in StrSplit(normalized, " ") {
+            if field != ""
+                fields.Push(field)
+        }
+        return fields
+    }
+
+    for field in AhkStdlibCollectionsIterableItems(fieldNames)
+        fields.Push(field)
+    return fields
+}
+
+AhkStdlibCollectionsKwargsFromOptions(options := unset)
+{
+    result := Map()
+    if !IsSet(options) || AhkStdlibIsNone(options)
+        return result
+    if AhkStdlibCollectionsIsKwargsOptions(options)
+        return options.kwargs
+    if options is Map
+        return options
+    if Type(options) = "Object" {
+        for key, value in options.OwnProps()
+            result[key] := value
+        return result
+    }
+    throw TypeError("expected keyword options object", -1)
 }

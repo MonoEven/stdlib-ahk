@@ -967,6 +967,87 @@ class StdlibCollectionsTest
         AhkTest.RaisesMatch(TypeError, "^'>' not supported between instances of 'Counter' and 'DemoDictLike'$", (*) => stdlib.operator.gt(counter, dictLikeHigher))
         AhkTest.RaisesMatch(TypeError, "^'>=' not supported between instances of 'Counter' and 'DemoDictLike'$", (*) => stdlib.operator.ge(counter, dictLikeHigher))
     }
+
+    static TestPublicCollectionsSurfaceCoversCoreContainerFunctions()
+    {
+        deque := stdlib.collections.deque([1, 2], 3)
+        deque.append(3)
+        deque.appendleft(0)
+        deque.append(4)
+        deque.rotate(1)
+        poppedRight := deque.pop()
+        poppedLeft := deque.popleft()
+        deque.extend([5, 6])
+        deque.extendleft([-1, -2])
+
+        defaultDict := stdlib.collections.defaultdict((*) => [])
+        defaultDict["a"].Push(1)
+        missingDefault := defaultDict["b"]
+
+        ordered := stdlib.collections.OrderedDict([["a", 1], ["b", 2]])
+        ordered.move_to_end("a")
+        lastItem := ordered.popitem()
+        ordered["c"] := 3
+        ordered.move_to_end("c", false)
+
+        chain := stdlib.collections.ChainMap(Map("a", 1), Map("a", 2, "b", 3))
+        chain["c"] := 4
+        child := chain.new_child(Map("z", 9))
+
+        pointType := stdlib.collections.namedtuple("Point", "x y")
+        point := pointType.Call(2, 3)
+        replaced := point._replace({ kwargs: Map("y", 5) })
+        made := pointType._make([7, 8])
+
+        userDict := stdlib.collections.UserDict(Map("a", 1))
+        userDict["b"] := 2
+        userList := stdlib.collections.UserList([1, 2])
+        userList.append(3)
+        userString := stdlib.collections.UserString("ahk")
+
+        AhkTest.AssertSame(AhkStdlibCollectionsDeque, stdlib.collections.deque)
+        AhkTest.AssertSame(AhkStdlibCollectionsDefaultDict, stdlib.collections.defaultdict)
+        AhkTest.AssertSame(AhkStdlibCollectionsOrderedDict, stdlib.collections.OrderedDict)
+        AhkTest.AssertSame(AhkStdlibCollectionsChainMap, stdlib.collections.ChainMap)
+        AhkTest.AssertSame(AhkStdlibCollectionsUserDict, stdlib.collections.UserDict)
+        AhkTest.AssertSame(AhkStdlibCollectionsUserList, stdlib.collections.UserList)
+        AhkTest.AssertSame(AhkStdlibCollectionsUserString, stdlib.collections.UserString)
+
+        AhkTest.AssertEqual(3, deque.maxlen)
+        AhkTest.AssertEqual(2, poppedRight)
+        AhkTest.AssertEqual(4, poppedLeft)
+        AhkTest.AssertEqual([-2, -1, 1], stdlib_collections_test_array(deque))
+        AhkTest.RaisesMatch(IndexError, "^pop from an empty deque$", (*) => stdlib.collections.deque().pop())
+
+        AhkTest.AssertTrue(HasMethod(defaultDict.default_factory, "Call"))
+        AhkTest.AssertEqual([["a", [1]], ["b", []]], stdlib_collections_test_pairs(defaultDict))
+        AhkTest.AssertSame(missingDefault, defaultDict["b"])
+
+        AhkTest.AssertEqual(["a", 1], stdlib_collections_test_array(lastItem))
+        AhkTest.AssertEqual([["c", 3], ["b", 2]], stdlib_collections_test_pairs(ordered))
+
+        AhkTest.AssertEqual(1, chain["a"])
+        AhkTest.AssertEqual(3, chain["b"])
+        AhkTest.AssertEqual(4, chain["c"])
+        AhkTest.AssertEqual(2, chain.maps.Length)
+        AhkTest.AssertEqual(3, child.maps.Length)
+        AhkTest.AssertEqual([["z", 9]], stdlib_collections_test_pairs(child.maps[1]))
+
+        AhkTest.AssertEqual("Point", pointType.__name__)
+        AhkTest.AssertEqual(["x", "y"], pointType._fields)
+        AhkTest.AssertEqual([2, 3], stdlib_collections_test_array(point))
+        AhkTest.AssertEqual(2, point.x)
+        AhkTest.AssertEqual(3, point.y)
+        AhkTest.AssertEqual([["x", 2], ["y", 3]], stdlib_collections_test_pairs(point._asdict()))
+        AhkTest.AssertEqual([2, 5], stdlib_collections_test_array(replaced))
+        AhkTest.AssertEqual([7, 8], stdlib_collections_test_array(made))
+
+        AhkTest.AssertEqual([["a", 1], ["b", 2]], stdlib_collections_test_pairs(userDict))
+        AhkTest.AssertEqual([1, 2, 3], stdlib_collections_test_array(userList))
+        AhkTest.AssertEqual([1, 2, 3], userList.data)
+        AhkTest.AssertEqual("ahk", userString.data)
+        AhkTest.AssertEqual("AHK", userString.upper().data)
+    }
 }
 
 stdlib_collections_test_array(iterable)

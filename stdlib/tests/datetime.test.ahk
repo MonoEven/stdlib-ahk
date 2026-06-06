@@ -6,6 +6,41 @@
 
 class StdlibDateTimeTest
 {
+    static TestTimezoneAndModuleConstantsMatchObservedLocal310()
+    {
+        AhkTest.AssertEqual(1, stdlib.datetime.MINYEAR)
+        AhkTest.AssertEqual(9999, stdlib.datetime.MAXYEAR)
+
+        tzinfo := stdlib.datetime.tzinfo()
+        AhkTest.RaisesMatch(stdlib.NotImplementedError, "a tzinfo subclass must implement utcoffset\(\)", (*) => tzinfo.utcoffset(stdlib.None))
+        AhkTest.RaisesMatch(stdlib.NotImplementedError, "a tzinfo subclass must implement dst\(\)", (*) => tzinfo.dst(stdlib.None))
+        AhkTest.RaisesMatch(stdlib.NotImplementedError, "a tzinfo subclass must implement tzname\(\)", (*) => tzinfo.tzname(stdlib.None))
+        AhkTest.RaisesMatch(TypeError, "fromutc: argument must be a datetime", (*) => tzinfo.fromutc(stdlib.None))
+
+        utc := stdlib.datetime.timezone.utc
+        plus := stdlib.datetime.timezone(stdlib.datetime.timedelta({ hours: 5, minutes: 30 }), "IST")
+        minus := stdlib.datetime.timezone(stdlib.datetime.timedelta({ hours: -4 }))
+
+        AhkTest.AssertEqual("AhkStdlibDateTimeTimezone", Type(utc))
+        AhkTest.AssertTrue(utc.__AhkStdlibDateTimeIsTzInfo)
+        AhkTest.AssertEqual("UTC", String(utc))
+        AhkTest.AssertEqual("UTC", utc.tzname(stdlib.None))
+        AhkTest.AssertEqual("0:00:00", String(utc.utcoffset(stdlib.None)))
+        AhkTest.AssertSame(stdlib.None, utc.dst(stdlib.None))
+        AhkTest.AssertEqual("IST", String(plus))
+        AhkTest.AssertEqual("IST", plus.tzname(stdlib.None))
+        AhkTest.AssertEqual("5:30:00", String(plus.utcoffset(stdlib.None)))
+        AhkTest.AssertSame(stdlib.None, plus.dst(stdlib.None))
+        AhkTest.AssertEqual("UTC-04:00", String(minus))
+        AhkTest.AssertEqual("UTC-04:00", minus.tzname(stdlib.None))
+        AhkTest.AssertEqual("-1 day, 20:00:00", String(minus.utcoffset(stdlib.None)))
+
+        AhkTest.RaisesMatch(TypeError, "timezone\(\) missing required argument 'offset' \(pos 1\)", (*) => stdlib.datetime.timezone())
+        AhkTest.RaisesMatch(TypeError, "timezone\(\) argument 1 must be datetime\.timedelta, not int", (*) => stdlib.datetime.timezone(1))
+        AhkTest.RaisesMatch(TypeError, "timezone\(\) argument 2 must be str, not int", (*) => stdlib.datetime.timezone(stdlib.datetime.timedelta({ hours: 1 }), 1))
+        AhkTest.RaisesMatch(ValueError, "offset must be a timedelta strictly between -timedelta\(hours=24\) and timedelta\(hours=24\), not datetime\.timedelta\(days=1\)\.", (*) => stdlib.datetime.timezone(stdlib.datetime.timedelta({ hours: 24 })))
+    }
+
     static TestDatetimeConstructsFormatsAndReplacesLikePython310()
     {
         value := stdlib.datetime.datetime(2024, 2, 29, 1, 2, 3, 456789)

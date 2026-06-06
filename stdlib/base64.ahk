@@ -47,6 +47,93 @@ class AhkStdlibBase64
 
         return AhkStdlibBase64Decode(source)
     }
+
+    static urlsafe_b64encode(args*)
+    {
+        if args.Length = 0
+            throw TypeError("urlsafe_b64encode() missing 1 required positional argument: 's'", -1)
+        if args.Length > 1
+            throw TypeError("urlsafe_b64encode() takes 1 positional argument but " args.Length " were given", -1)
+
+        encoded := AhkStdlibBase64Encode(AhkStdlibBase64RequireBytesLike(args[1], "str"))
+        encoded := StrReplace(StrReplace(encoded, "+", "-"), "/", "_")
+        return AhkStdlibBase64Utf8Bytes(encoded)
+    }
+
+    static urlsafe_b64decode(args*)
+    {
+        if args.Length = 0
+            throw TypeError("urlsafe_b64decode() missing 1 required positional argument: 's'", -1)
+        if args.Length > 1
+            throw TypeError("urlsafe_b64decode() takes 1 positional argument but " args.Length " were given", -1)
+
+        source := AhkStdlibBase64RequireDecodeSource(args[1])
+        source := StrReplace(StrReplace(source, "-", "+"), "_", "/")
+        return AhkStdlibBase64Decode(source)
+    }
+
+    static standard_b64encode(args*)
+    {
+        if args.Length = 0
+            throw TypeError("standard_b64encode() missing 1 required positional argument: 's'", -1)
+        if args.Length > 1
+            throw TypeError("standard_b64encode() takes 1 positional argument but " args.Length " were given", -1)
+        return this.b64encode(args[1])
+    }
+
+    static standard_b64decode(args*)
+    {
+        if args.Length = 0
+            throw TypeError("standard_b64decode() missing 1 required positional argument: 's'", -1)
+        if args.Length > 1
+            throw TypeError("standard_b64decode() takes 1 positional argument but " args.Length " were given", -1)
+        return this.b64decode(args[1])
+    }
+
+    static encodebytes(args*)
+    {
+        if args.Length = 0
+            throw TypeError("encodebytes() missing 1 required positional argument: 's'", -1)
+        if args.Length > 1
+            throw TypeError("encodebytes() takes 1 positional argument but " args.Length " were given", -1)
+
+        encoded := AhkStdlibBase64Encode(AhkStdlibBase64RequireBytesLike(args[1], "str"))
+        if encoded = ""
+            return AhkStdlibBase64Utf8Bytes("")
+        return AhkStdlibBase64Utf8Bytes(AhkStdlibBase64WrapLines(encoded, 76))
+    }
+
+    static decodebytes(args*)
+    {
+        if args.Length = 0
+            throw TypeError("decodebytes() missing 1 required positional argument: 's'", -1)
+        if args.Length > 1
+            throw TypeError("decodebytes() takes 1 positional argument but " args.Length " were given", -1)
+        if args[1] is String
+            throw TypeError("expected bytes-like object, not str", -1)
+        return AhkStdlibBase64Decode(StrGet(AhkStdlibBase64RequireBytesLike(args[1]), args[1].Size, "UTF-8"))
+    }
+
+    static b16encode(args*)
+    {
+        if args.Length = 0
+            throw TypeError("b16encode() missing 1 required positional argument: 's'", -1)
+        if args.Length > 1
+            throw TypeError("b16encode() takes 1 positional argument but " args.Length " were given", -1)
+        return AhkStdlibBase64Utf8Bytes(AhkStdlibBase64HexUpper(AhkStdlibBase64RequireBytesLike(args[1], "str")))
+    }
+
+    static b16decode(args*)
+    {
+        if args.Length = 0
+            throw TypeError("b16decode() missing 1 required positional argument: 's'", -1)
+        if args.Length > 2
+            throw TypeError("b16decode() takes from 1 to 2 positional arguments but " args.Length " were given", -1)
+
+        source := AhkStdlibBase64RequireDecodeSource(args[1])
+        casefold := args.Length >= 2 ? AhkStdlibTruthValue(args[2]) : false
+        return AhkStdlibBase64DecodeBase16(source, casefold)
+    }
 }
 
 stdlib.base64 := AhkStdlibBase64
@@ -83,6 +170,42 @@ AhkStdlibBase64Utf8Bytes(text)
     bytes := Buffer(size, 0)
     if size > 0
         StrPut(text, bytes, "UTF-8")
+    return bytes
+}
+
+AhkStdlibBase64WrapLines(text, lineLength)
+{
+    output := ""
+    offset := 1
+    while offset <= StrLen(text) {
+        output .= SubStr(text, offset, lineLength) "`n"
+        offset += lineLength
+    }
+    return output
+}
+
+AhkStdlibBase64HexUpper(bytes)
+{
+    output := ""
+    loop bytes.Size
+        output .= Format("{:02X}", NumGet(bytes, A_Index - 1, "UChar"))
+    return output
+}
+
+AhkStdlibBase64DecodeBase16(source, casefold)
+{
+    if Mod(StrLen(source), 2) != 0
+        throw Error("Odd-length string", -1)
+
+    normalized := casefold ? StrUpper(source) : source
+    if !RegExMatch(normalized, "^[0-9A-F]*$")
+        throw Error("Non-base16 digit found", -1)
+
+    bytes := Buffer(StrLen(normalized) // 2, 0)
+    loop bytes.Size {
+        pair := SubStr(normalized, (A_Index - 1) * 2 + 1, 2)
+        NumPut("UChar", Integer("0x" pair), bytes, A_Index - 1)
+    }
     return bytes
 }
 

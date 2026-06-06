@@ -121,6 +121,22 @@ class AhkStdlibCsv
     {
         AhkStdlibCsvUnregisterDialect(name)
     }
+
+    static Sniffer(args*)
+    {
+        if args.Length != 0
+            throw TypeError("Sniffer() takes no arguments", -1)
+        return AhkStdlibCsvSniffer()
+    }
+
+    static field_size_limit(args*)
+    {
+        if args.Length = 0
+            return AhkStdlibCsvFieldSizeLimit()
+        if args.Length = 1
+            return AhkStdlibCsvFieldSizeLimit(args[1])
+        throw TypeError("field_size_limit() takes at most 1 argument (" args.Length " given)", -1)
+    }
 }
 
 class AhkStdlibCsvReader
@@ -318,7 +334,56 @@ class AhkStdlibCsvDictWriter
     }
 }
 
+class AhkStdlibCsvSniffer
+{
+    sniff(sample, delimiters := unset)
+    {
+        delimiter := AhkStdlibCsvSniffDelimiter(sample, delimiters?)
+        return AhkStdlibCsvDialect({ delimiter: delimiter })
+    }
+
+    has_header(sample)
+    {
+        rows := AhkStdlibCsvParse(AhkStdlibCsvSourceFromText(sample), AhkStdlibCsvDialect()).Rows
+        if rows.Length < 2
+            return false
+
+        header := rows[1]
+        score := 0
+        Loop header.Length {
+            column := A_Index
+            headerNumeric := AhkStdlibCsvSnifferIsNumber(header[column])
+            dataNumeric := 0
+            dataSeen := 0
+            Loop Min(rows.Length - 1, 20) {
+                row := rows[A_Index + 1]
+                if column > row.Length || row[column] = ""
+                    continue
+                dataSeen += 1
+                if AhkStdlibCsvSnifferIsNumber(row[column])
+                    dataNumeric += 1
+            }
+            if dataSeen > 0 && !headerNumeric && dataNumeric > 0
+                score += 1
+            else if dataSeen > 0 && headerNumeric && dataNumeric = dataSeen
+                score -= 1
+        }
+
+        return score > 0
+    }
+}
+
 stdlib.csv := AhkStdlibCsv
+
+AhkStdlibCsvFieldSizeLimit(value := unset)
+{
+    static limit := 131072
+    if !IsSet(value)
+        return limit
+    oldLimit := limit
+    limit := Integer(value)
+    return oldLimit
+}
 
 AhkStdlibCsvRegistry()
 {
@@ -510,10 +575,10 @@ AhkStdlibCsvParse(source, dialect)
 
             if dialect.escapechar != "" && ch = dialect.escapechar {
                 if pos < length {
-                    field .= SubStr(text, pos + 1, 1)
+                    AhkStdlibCsvAppendField(&field, SubStr(text, pos + 1, 1))
                     pos += 2
                 } else {
-                    field .= ch
+                    AhkStdlibCsvAppendField(&field, ch)
                     pos += 1
                 }
                 continue
@@ -522,7 +587,7 @@ AhkStdlibCsvParse(source, dialect)
             if ch = dialect.quotechar {
                 nextCh := pos < length ? SubStr(text, pos + 1, 1) : ""
                 if dialect.doublequote && nextCh = dialect.quotechar {
-                    field .= dialect.quotechar
+                    AhkStdlibCsvAppendField(&field, dialect.quotechar)
                     pos += 2
                     continue
                 }
@@ -531,7 +596,7 @@ AhkStdlibCsvParse(source, dialect)
                 continue
             }
 
-            field .= ch
+            AhkStdlibCsvAppendField(&field, ch)
             pos += 1
             continue
         }
@@ -543,10 +608,10 @@ AhkStdlibCsvParse(source, dialect)
 
         if dialect.escapechar != "" && ch = dialect.escapechar {
             if pos < length {
-                field .= SubStr(text, pos + 1, 1)
+                AhkStdlibCsvAppendField(&field, SubStr(text, pos + 1, 1))
                 pos += 2
             } else {
-                field .= ch
+                AhkStdlibCsvAppendField(&field, ch)
                 pos += 1
             }
             atFieldStart := false
@@ -597,7 +662,7 @@ AhkStdlibCsvParse(source, dialect)
             continue
         }
 
-        field .= ch
+        AhkStdlibCsvAppendField(&field, ch)
         atFieldStart := false
         afterDelimiter := false
         haveData := true
@@ -617,6 +682,14 @@ AhkStdlibCsvParse(source, dialect)
     }
 
     return { Rows: rows, LineNums: rowLineNums }
+}
+
+AhkStdlibCsvAppendField(&field, text)
+{
+    field .= text
+    limit := AhkStdlibCsvFieldSizeLimit()
+    if StrLen(field) > limit
+        throw AhkStdlibCsvError("field larger than field limit (" limit ")", -1)
 }
 
 AhkStdlibCsvIsArtificialBreak(artificialBreaks, pos)
@@ -784,6 +857,101 @@ AhkStdlibCsvArrayContains(values, needle)
             return true
     }
     return false
+}
+
+AhkStdlibCsvSniffDelimiter(sample, delimiters := unset)
+{
+    candidates := AhkStdlibCsvSnifferCandidates(delimiters?)
+    best := ""
+    bestScore := -1
+    lines := AhkStdlibCsvSnifferLines(sample)
+    for candidate in candidates {
+        counts := []
+        for line in lines {
+            count := AhkStdlibCsvCountChar(line, candidate)
+            if count > 0
+                counts.Push(count)
+        }
+        if counts.Length = 0
+            continue
+        score := counts.Length * 100 - AhkStdlibCsvCountVariance(counts)
+        if score > bestScore {
+            bestScore := score
+            best := candidate
+        }
+    }
+    if best = ""
+        throw AhkStdlibCsvError("Could not determine delimiter", -1)
+    return best
+}
+
+AhkStdlibCsvSnifferCandidates(delimiters := unset)
+{
+    source := IsSet(delimiters) ? delimiters : ",`t; :|"
+    result := []
+    Loop Parse, source {
+        if A_LoopField != "" && !AhkStdlibCsvArrayContains(result, A_LoopField)
+            result.Push(A_LoopField)
+    }
+    return result
+}
+
+AhkStdlibCsvSnifferLines(sample)
+{
+    lines := []
+    current := ""
+    Loop Parse, sample {
+        ch := A_LoopField
+        if ch = "`r"
+            continue
+        if ch = "`n" {
+            if current != ""
+                lines.Push(current)
+            current := ""
+            continue
+        }
+        current .= ch
+    }
+    if current != ""
+        lines.Push(current)
+    return lines
+}
+
+AhkStdlibCsvCountChar(text, needle)
+{
+    count := 0
+    Loop Parse, text {
+        if A_LoopField = needle
+            count += 1
+    }
+    return count
+}
+
+AhkStdlibCsvCountVariance(values)
+{
+    if values.Length <= 1
+        return 0
+    minValue := values[1]
+    maxValue := values[1]
+    for value in values {
+        if value < minValue
+            minValue := value
+        if value > maxValue
+            maxValue := value
+    }
+    return maxValue - minValue
+}
+
+AhkStdlibCsvSnifferIsNumber(value)
+{
+    if value = ""
+        return false
+    try {
+        Float(value)
+        return true
+    } catch {
+        return false
+    }
 }
 
 AhkStdlibCsvFormatWrongFields(fields)

@@ -600,3 +600,62 @@ try {
 } catch TypeError as err {
     collections_example_most_common_decimal_two_limit_error := err.Message
 }
+
+collections_example_deque := stdlib.collections.deque([1, 2], 3)
+collections_example_deque.append(3)
+collections_example_deque.appendleft(0)
+collections_example_deque.append(4)
+collections_example_deque.rotate(1)
+collections_example_deque_popped_right := collections_example_deque.pop()
+collections_example_deque_popped_left := collections_example_deque.popleft()
+collections_example_deque.extend([5, 6])
+collections_example_deque.extendleft([-1, -2])
+collections_example_deque_values := []
+for value in collections_example_deque
+    collections_example_deque_values.Push(value)
+
+collections_example_defaultdict := stdlib.collections.defaultdict((*) => [])
+collections_example_defaultdict["a"].Push(1)
+collections_example_defaultdict_missing := collections_example_defaultdict["b"]
+collections_example_defaultdict_pairs := []
+for key, value in collections_example_defaultdict
+    collections_example_defaultdict_pairs.Push([key, value])
+
+collections_example_ordered := stdlib.collections.OrderedDict([["a", 1], ["b", 2]])
+collections_example_ordered.move_to_end("a")
+collections_example_ordered_last := collections_example_ordered.popitem()
+collections_example_ordered["c"] := 3
+collections_example_ordered.move_to_end("c", false)
+collections_example_ordered_pairs := []
+for key, value in collections_example_ordered
+    collections_example_ordered_pairs.Push([key, value])
+
+collections_example_chain := stdlib.collections.ChainMap(Map("a", 1), Map("a", 2, "b", 3))
+collections_example_chain["c"] := 4
+collections_example_chain_child := collections_example_chain.new_child(Map("z", 9))
+collections_example_chain_a := collections_example_chain["a"]
+collections_example_chain_b := collections_example_chain["b"]
+collections_example_chain_c := collections_example_chain["c"]
+collections_example_chain_child_depth := collections_example_chain_child.maps.Length
+
+collections_example_point_type := stdlib.collections.namedtuple("Point", "x y")
+collections_example_point := collections_example_point_type.Call(2, 3)
+collections_example_point_replaced := collections_example_point._replace({ kwargs: Map("y", 5) })
+collections_example_point_made := collections_example_point_type._make([7, 8])
+collections_example_point_fields := collections_example_point_type._fields
+collections_example_point_asdict := []
+for key, value in collections_example_point._asdict()
+    collections_example_point_asdict.Push([key, value])
+
+collections_example_userdict := stdlib.collections.UserDict(Map("a", 1))
+collections_example_userdict["b"] := 2
+collections_example_userdict_pairs := []
+for key, value in collections_example_userdict
+    collections_example_userdict_pairs.Push([key, value])
+collections_example_userlist := stdlib.collections.UserList([1, 2])
+collections_example_userlist.append(3)
+collections_example_userlist_values := []
+for value in collections_example_userlist
+    collections_example_userlist_values.Push(value)
+collections_example_userstring := stdlib.collections.UserString("ahk")
+collections_example_userstring_upper := collections_example_userstring.upper().data

@@ -15,3 +15,13 @@ decimal_example_abs := stdlib.operator.abs(stdlib.decimal.Decimal("-1.25"))
 decimal_example_normalized := stdlib.decimal.Decimal("500.000").normalize()
 decimal_example_fraction_eq := stdlib.operator.eq(stdlib.decimal.Decimal("1.5"), stdlib.fractions.Fraction(3, 2))
 decimal_example_fraction_lt := stdlib.operator.lt(stdlib.decimal.Decimal("1.5"), stdlib.fractions.Fraction(2, 1))
+decimal_example_rounding := stdlib.decimal.ROUND_HALF_EVEN
+decimal_example_default_context := stdlib.decimal.getcontext()
+decimal_example_custom_context := stdlib.decimal.Context({ prec: 7, rounding: stdlib.decimal.ROUND_DOWN })
+decimal_example_context_manager := stdlib.decimal.localcontext(decimal_example_custom_context)
+decimal_example_entered_context := decimal_example_context_manager.__enter__()
+decimal_example_entered_context.prec := 11
+decimal_example_context_prec_inside := stdlib.decimal.getcontext().prec
+decimal_example_context_manager.__exit__(stdlib.None, stdlib.None, stdlib.None)
+decimal_example_context_prec_after := stdlib.decimal.getcontext().prec
+decimal_example_signal := stdlib.decimal.DivisionByZero()

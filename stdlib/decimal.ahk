@@ -2,9 +2,126 @@
 
 #Include <stdlib\init>
 
+class AhkStdlibDecimalDecimalException extends Error
+{
+}
+
+class AhkStdlibDecimalClamped extends AhkStdlibDecimalDecimalException
+{
+}
+
+class AhkStdlibDecimalRounded extends AhkStdlibDecimalDecimalException
+{
+}
+
+class AhkStdlibDecimalInexact extends AhkStdlibDecimalDecimalException
+{
+}
+
+class AhkStdlibDecimalSubnormal extends AhkStdlibDecimalDecimalException
+{
+}
+
+class AhkStdlibDecimalUnderflow extends AhkStdlibDecimalInexact
+{
+}
+
+class AhkStdlibDecimalOverflow extends AhkStdlibDecimalInexact
+{
+}
+
+class AhkStdlibDecimalDivisionByZero extends AhkStdlibDecimalDecimalException
+{
+}
+
+class AhkStdlibDecimalInvalidOperation extends AhkStdlibDecimalDecimalException
+{
+}
+
+class AhkStdlibDecimalConversionSyntax extends AhkStdlibDecimalInvalidOperation
+{
+}
+
+class AhkStdlibDecimalDivisionImpossible extends AhkStdlibDecimalInvalidOperation
+{
+}
+
+class AhkStdlibDecimalDivisionUndefined extends AhkStdlibDecimalInvalidOperation
+{
+}
+
+class AhkStdlibDecimalInvalidContext extends AhkStdlibDecimalInvalidOperation
+{
+}
+
+class AhkStdlibDecimalFloatOperation extends AhkStdlibDecimalDecimalException
+{
+}
+
 class AhkStdlibDecimal
 {
+    static ROUND_CEILING := "ROUND_CEILING"
+    static ROUND_FLOOR := "ROUND_FLOOR"
+    static ROUND_UP := "ROUND_UP"
+    static ROUND_DOWN := "ROUND_DOWN"
+    static ROUND_HALF_UP := "ROUND_HALF_UP"
+    static ROUND_HALF_DOWN := "ROUND_HALF_DOWN"
+    static ROUND_HALF_EVEN := "ROUND_HALF_EVEN"
+    static ROUND_05UP := "ROUND_05UP"
+    static HAVE_CONTEXTVAR := true
+    static HAVE_THREADS := true
+    static MAX_PREC := 999999999999999999
+    static MAX_EMAX := 999999999999999999
+    static MIN_EMIN := -999999999999999999
+    static MIN_ETINY := -1999999999999999997
     static Decimal := AhkStdlibDecimalValueClass
+    static Context := AhkStdlibDecimalContextClass
+    static DefaultContext := AhkStdlibDecimalContext()
+    static BasicContext := AhkStdlibDecimalContext({ prec: 9, rounding: "ROUND_HALF_UP", traps: ["Clamped", "InvalidOperation", "DivisionByZero", "Overflow", "Underflow"] })
+    static ExtendedContext := AhkStdlibDecimalContext({ prec: 9, rounding: "ROUND_HALF_EVEN", traps: [] })
+    static DecimalException := AhkStdlibDecimalDecimalException
+    static Clamped := AhkStdlibDecimalClamped
+    static Rounded := AhkStdlibDecimalRounded
+    static Inexact := AhkStdlibDecimalInexact
+    static Subnormal := AhkStdlibDecimalSubnormal
+    static Underflow := AhkStdlibDecimalUnderflow
+    static Overflow := AhkStdlibDecimalOverflow
+    static DivisionByZero := AhkStdlibDecimalDivisionByZero
+    static InvalidOperation := AhkStdlibDecimalInvalidOperation
+    static ConversionSyntax := AhkStdlibDecimalConversionSyntax
+    static DivisionImpossible := AhkStdlibDecimalDivisionImpossible
+    static DivisionUndefined := AhkStdlibDecimalDivisionUndefined
+    static InvalidContext := AhkStdlibDecimalInvalidContext
+    static FloatOperation := AhkStdlibDecimalFloatOperation
+
+    static getcontext(args*)
+    {
+        if args.Length != 0
+            throw TypeError("getcontext() takes no arguments (" args.Length " given)", -1)
+        return AhkStdlibDecimalCurrentContext()
+    }
+
+    static setcontext(args*)
+    {
+        if args.Length != 1
+            throw TypeError("setcontext() takes exactly one argument (" args.Length " given)", -1)
+        if !(args[1] is AhkStdlibDecimalContext)
+            throw TypeError("argument must be a context", -1)
+        AhkStdlibDecimalCurrentContext(args[1].copy())
+        return stdlib.None
+    }
+
+    static localcontext(args*)
+    {
+        if args.Length > 1
+            throw TypeError("localcontext() takes at most 1 argument (" args.Length " given)", -1)
+        if args.Length = 1 {
+            if !(args[1] is AhkStdlibDecimalContext)
+                throw TypeError("optional argument must be a context", -1)
+            return AhkStdlibDecimalLocalContext(args[1])
+        }
+        return AhkStdlibDecimalLocalContext()
+    }
 }
 
 class AhkStdlibDecimalValueClass
@@ -192,7 +309,145 @@ class AhkStdlibDecimalValue
     }
 }
 
+class AhkStdlibDecimalContextClass
+{
+    static Call(thisClass, args*)
+    {
+        if args.Length > 1
+            throw TypeError("Context() takes at most 1 argument (" args.Length " given)", -1)
+        return args.Length = 1 ? AhkStdlibDecimalContext(args[1]) : AhkStdlibDecimalContext()
+    }
+}
+
+class AhkStdlibDecimalContext
+{
+    __New(options := unset)
+    {
+        this.prec := AhkStdlibDecimalContextOption(options?, "prec", 28)
+        this.rounding := AhkStdlibDecimalContextOption(options?, "rounding", "ROUND_HALF_EVEN")
+        this.Emin := AhkStdlibDecimalContextOption(options?, "Emin", -999999)
+        this.Emax := AhkStdlibDecimalContextOption(options?, "Emax", 999999)
+        this.capitals := AhkStdlibDecimalContextOption(options?, "capitals", 1)
+        this.clamp := AhkStdlibDecimalContextOption(options?, "clamp", 0)
+        AhkStdlibDecimalValidateInteger(this.prec)
+        AhkStdlibDecimalValidateInteger(this.Emin)
+        AhkStdlibDecimalValidateInteger(this.Emax)
+        AhkStdlibDecimalValidateInteger(this.capitals)
+        AhkStdlibDecimalValidateInteger(this.clamp)
+        AhkStdlibDecimalValidateRounding(this.rounding)
+        trapNames := AhkStdlibDecimalContextOption(options?, "traps", ["InvalidOperation", "DivisionByZero", "Overflow"])
+        this.flags := AhkStdlibDecimalSignalMap([])
+        this.traps := AhkStdlibDecimalSignalMap(trapNames)
+    }
+
+    copy()
+    {
+        trapNames := []
+        for name, enabled in this.traps {
+            if enabled
+                trapNames.Push(name)
+        }
+        return AhkStdlibDecimalContext({
+            prec: this.prec,
+            rounding: this.rounding,
+            Emin: this.Emin,
+            Emax: this.Emax,
+            capitals: this.capitals,
+            clamp: this.clamp,
+            traps: trapNames
+        })
+    }
+}
+
+class AhkStdlibDecimalLocalContext
+{
+    __New(context := unset)
+    {
+        if IsSet(context)
+            this.context := context.copy()
+    }
+
+    __enter__()
+    {
+        this.previous := AhkStdlibDecimalCurrentContext()
+        nextContext := HasProp(this, "context") ? this.context.copy() : this.previous.copy()
+        AhkStdlibDecimalCurrentContext(nextContext)
+        return nextContext
+    }
+
+    __exit__(excType, exc, tb)
+    {
+        AhkStdlibDecimalCurrentContext(this.previous)
+        return false
+    }
+}
+
 stdlib.decimal := AhkStdlibDecimal
+
+AhkStdlibDecimalCurrentContext(value := unset)
+{
+    static current := unset
+    if IsSet(value) {
+        current := value
+        return current
+    }
+    if !IsSet(current)
+        current := AhkStdlibDecimal.DefaultContext.copy()
+    return current
+}
+
+AhkStdlibDecimalContextOption(options := unset, name := "", defaultValue := unset)
+{
+    if IsSet(options) {
+        if options is Map {
+            if options.Has(name)
+                return options[name]
+        } else if IsObject(options) && HasProp(options, name) {
+            return options.%name%
+        }
+    }
+    return defaultValue
+}
+
+AhkStdlibDecimalValidateInteger(value)
+{
+    if !(value is Integer)
+        throw TypeError("an integer is required", -1)
+}
+
+AhkStdlibDecimalValidateRounding(value)
+{
+    if AhkStdlibDecimalArrayContains(AhkStdlibDecimalRoundingNames(), value)
+        return
+    throw TypeError("valid values for rounding are:`n  [ROUND_CEILING, ROUND_FLOOR, ROUND_UP, ROUND_DOWN,`n   ROUND_HALF_UP, ROUND_HALF_DOWN, ROUND_HALF_EVEN,`n   ROUND_05UP]", -1)
+}
+
+AhkStdlibDecimalRoundingNames()
+{
+    return ["ROUND_CEILING", "ROUND_FLOOR", "ROUND_UP", "ROUND_DOWN", "ROUND_HALF_UP", "ROUND_HALF_DOWN", "ROUND_HALF_EVEN", "ROUND_05UP"]
+}
+
+AhkStdlibDecimalSignalNames()
+{
+    return ["Clamped", "InvalidOperation", "DivisionByZero", "Overflow", "Underflow", "Subnormal", "Inexact", "Rounded", "FloatOperation"]
+}
+
+AhkStdlibDecimalSignalMap(enabledNames)
+{
+    result := Map()
+    for name in AhkStdlibDecimalSignalNames()
+        result[name] := AhkStdlibDecimalArrayContains(enabledNames, name)
+    return result
+}
+
+AhkStdlibDecimalArrayContains(values, needle)
+{
+    for value in values {
+        if value = needle
+            return true
+    }
+    return false
+}
 
 AhkStdlibDecimalNormalize(value)
 {
