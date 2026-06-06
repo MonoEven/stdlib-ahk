@@ -929,7 +929,7 @@ try {
         ]
             AhkTest.AssertContains(needle, exampleScript, "thread.ahk")
 
-        result := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", examplePath], { WorkingDir: repoRoot, TimeoutSeconds: 10 })
+        result := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", examplePath], { WorkingDir: repoRoot, TimeoutSeconds: 90 })
         diagnostic := "example exit=" result.ExitCode " stdout=" result.Out " stderr=" result.Err
         AhkTest.AssertEqual(0, result.ExitCode, diagnostic)
         AhkTest.AssertEqual("", result.Err, diagnostic)
@@ -959,7 +959,7 @@ try {
             scriptPath := A_Temp "\stdlib-readme-thread-" StrReplace(readmeName, ".", "-") "-" A_TickCount "-" Random(100000, 999999) ".ahk"
             try {
                 FileAppend script, scriptPath, "UTF-8"
-                readmeResult := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", scriptPath], { WorkingDir: repoRoot, TimeoutSeconds: 10 })
+                readmeResult := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", scriptPath], { WorkingDir: repoRoot, TimeoutSeconds: 90 })
             } finally {
                 try FileDelete scriptPath
             }

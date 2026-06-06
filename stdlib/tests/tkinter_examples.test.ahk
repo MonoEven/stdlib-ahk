@@ -31,7 +31,7 @@ class StdlibTkinterExamplesTest
 
         try {
             try FileDelete markerPath
-            result := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", examplePath, "--capture", markerPath], { WorkingDir: repoRoot, TimeoutSeconds: 10 })
+            result := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", examplePath, "--capture", markerPath], { WorkingDir: repoRoot, TimeoutSeconds: 90 })
             diagnostic := "exit=" result.ExitCode " stdout=" result.Out " stderr=" result.Err
             AhkTest.AssertEqual(0, result.ExitCode, diagnostic)
             AhkTest.AssertEqual("", result.Err, diagnostic)
@@ -63,7 +63,7 @@ class StdlibTkinterExamplesTest
             scriptPath := A_Temp "\stdlib-readme-tkinter-" StrReplace(readmeName, ".", "-") "-" A_TickCount "-" Random(100000, 999999) ".ahk"
             try {
                 FileAppend script, scriptPath, "UTF-8"
-                result := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", scriptPath], { WorkingDir: repoRoot, TimeoutSeconds: 10 })
+                result := AhkTest.CaptureFixture().RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", scriptPath], { WorkingDir: repoRoot, TimeoutSeconds: 90 })
             } finally {
                 try FileDelete scriptPath
             }

@@ -12,70 +12,42 @@ each promoted module.
 `unset`-related language features. It is currently developed and tested with
 AutoHotkey v2.0.26 and v2.1-alpha.30.
 
-The `stdlib.tkinter` slice includes bundled Tcl/Tk runtime DLLs
-(`tcl86t.dll` and `tk86t.dll`) for `useTk` support. Their CPython 3.10.11
-source and SHA256 verification report are tracked in
-`stdlib\tkinter\lib\README.md` and `stdlib\tkinter\lib\SHA256SUMS`.
+Local behavior probes use Python 3.10.11 as the authority.
 
-For a standalone live GUI demo, run `stdlib\examples\tkinter_gui.ahk`.
-The `stdlib\examples\asyncio.ahk` regression example demonstrates the current
-single-threaded cooperative `Future` / `Task` / `sleep` / `gather` / sync
-primitive / queue surface, event-loop lifecycle and `call_at(...)` time
-scheduling, covered AHK-callable `asyncio.coroutine(...)` wrapping, covered
-`wrap_future(asyncio.Future)` identity, the single-threaded
-`run_coroutine_threadsafe(...)` bridge, plus the Windows child-watcher public
-functions that currently raise
-`NotImplementedError` like local Python 3.10.11.
-For AHK-side convenience, `stdlib.await(awaitable, options?)` runs covered
-asyncio awaitables to completion when no event loop is already running.
-`stdlib.decorate(target, decorators*)` mirrors Python decorator application
-order for AHK callables and class-like objects; it does not add Python `@`
-syntax to the AHK parser.
-`stdlib\examples\array.ahk` demonstrates fixed-type arrays, covered sequence
-operations, binary / unicode conversion, and file round-trips.
-`stdlib\examples\base64.ahk` demonstrates standard, URL-safe, wrapped-bytes,
-and Base16 codecs.
-`stdlib\examples\binascii.ahk` demonstrates hexlify/unhexlify, crc32, and
-Base64 ASCII helpers.
-`stdlib\examples\bisect.ahk` demonstrates zero-based insertion points, key
-functions, and sequence/insert targets.
-`stdlib\examples\calendar.ahk` demonstrates Gregorian date helpers, names,
-week headers, `timegm`, and `Calendar` month grids.
-`stdlib\examples\collections.ahk` demonstrates `Counter` plus the core
-`deque`, `defaultdict`, `OrderedDict`, `ChainMap`, `namedtuple`, `UserDict`,
-`UserList`, and `UserString` public surface.
-`stdlib\examples\contextlib.ahk` demonstrates `nullcontext`, `suppress`,
-`closing`, `ContextDecorator`, `ExitStack`, and AHK-target `redirect_stdout` /
-`redirect_stderr` context behavior.
-`stdlib\examples\copy.ahk` demonstrates shallow/deep copy behavior, custom
-copy hooks, recursive cycles, `Error` / `error`, and the public
-`dispatch_table` shape.
-`stdlib\examples\csv.ahk` demonstrates reader/writer, dict reader/writer,
-dialects, `field_size_limit`, and `Sniffer` delimiter/header helpers.
-`stdlib\examples\datetime.ahk` demonstrates date/time/datetime/timedelta
-behavior, module year bounds, `tzinfo`, `timezone.utc`, and fixed-offset
-`timezone` basics.
-`stdlib\examples\decimal.ahk` demonstrates Decimal arithmetic plus rounding
-constants, contexts, `getcontext` / `setcontext` / `localcontext`, and signal
-exception classes.
-The `stdlib.thread` slice is process-backed: AHK submits script fragments,
-Windows system DLL calls start an independent AutoHotkey interpreter process,
-and the main interpreter polls result objects through `Thread` and
-`ResultQueue`, exchanges JSON-safe values through `Channel`, or shares bounded
-byte regions through `SharedMemory` guarded by a named mutex. Shared AHK object
-state uses `SharedObject` broker/proxy handles: the real object stays in the
-main interpreter and workers marshal JSON-safe operations back to it.
-`ThreadPool` adds bounded task scheduling with `Future` results, cancellation
-of queued work, timeout-aware `result(...)`, and `stdlib.await(future, ...)`
-support. A `worker_source` / `task` protocol can keep hidden worker
-interpreters alive for JSON-safe tasks, while dynamic `{ source: ... }` tasks
-remain one-shot worker scripts.
-`SharedMemory` also exposes explicit raw `address` / `ptr()` and fixed-width
-`get(...)` / `put(...)` slots for low-level worker coordination. Worker scripts
-run with `#NoTrayIcon` and captured stdout/stderr. This deliberately does not
-execute current-interpreter AHK object state on a foreign OS thread.
+## Runtime Assets
+
+| Area | Notes |
+| --- | --- |
+| `stdlib.tkinter` | Bundles `tcl86t.dll` and `tk86t.dll` for `useTk`. Source and SHA256 notes are in `stdlib\tkinter\lib`. |
+
+## Coverage And Examples
+
+<details>
+<summary>Promoted example index</summary>
+
+| Example | Main coverage |
+| --- | --- |
+| `stdlib\examples\array.ahk` | Fixed-type arrays, sequence operations, binary/unicode conversion, file round-trips. |
+| `stdlib\examples\asyncio.ahk` | Cooperative futures/tasks, event-loop lifecycle, scheduling, queues, `stdlib.await(...)`. |
+| `stdlib\examples\base64.ahk` | Standard, URL-safe, wrapped-bytes, and Base16 codecs. |
+| `stdlib\examples\binascii.ahk` | Hexlify/unhexlify, CRC32, Base64 ASCII helpers. |
+| `stdlib\examples\bisect.ahk` | Zero-based insertion points, key functions, sequence/insert targets. |
+| `stdlib\examples\calendar.ahk` | Gregorian helpers, names, week headers, `timegm`, `Calendar` grids. |
+| `stdlib\examples\collections.ahk` | `Counter`, `deque`, `defaultdict`, `OrderedDict`, `ChainMap`, named/user containers. |
+| `stdlib\examples\contextlib.ahk` | `nullcontext`, `suppress`, `closing`, `ContextDecorator`, `ExitStack`, redirects. |
+| `stdlib\examples\copy.ahk` | Shallow/deep copy, custom hooks, cycles, `Error` / `error`, `dispatch_table`. |
+| `stdlib\examples\csv.ahk` | Reader/writer, dict reader/writer, dialects, `field_size_limit`, `Sniffer`. |
+| `stdlib\examples\datetime.ahk` | Date/time/datetime/timedelta, bounds, `tzinfo`, fixed-offset `timezone`. |
+| `stdlib\examples\decimal.ahk` | Decimal arithmetic, contexts, rounding constants, signal classes. |
+| `stdlib\examples\init.ahk` | Root helpers including `stdlib.await(...)` and `stdlib.decorate(...)`. |
+| `stdlib\examples\thread.ahk` | Process-backed workers, channels, shared memory, shared-object broker, pools. |
+| `stdlib\examples\tkinter_gui.ahk` | Live tkinter / ttk window with variables, layout, callbacks, canvas, and tree data. |
+
+</details>
 
 ## Quick Start
+
+### Small Module
 
 ```ahk
 #Requires AutoHotkey v2.0
@@ -87,6 +59,9 @@ bisect_example_left := stdlib.bisect.bisect_left(bisect_example_values, 2)
 bisect_example_right := stdlib.bisect.bisect_right(bisect_example_values, 2)
 stdlib.bisect.insort_right(bisect_example_values, 2)
 ```
+
+<details>
+<summary>Thread worker, channel, shared memory, and pool example</summary>
 
 ```ahk
 #Requires AutoHotkey v2.0
@@ -167,6 +142,11 @@ persistent_pool.shutdown()
 channel.close()
 memory.close()
 ```
+
+</details>
+
+<details>
+<summary>tkinter / ttk live window example</summary>
 
 ```ahk
 #Requires AutoHotkey v2.0
@@ -267,6 +247,8 @@ update_demo(*) {
 update_demo()
 root.mainloop()
 ```
+
+</details>
 
 ## Design Rules
 

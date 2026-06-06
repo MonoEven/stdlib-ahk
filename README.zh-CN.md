@@ -12,62 +12,42 @@
 `unset` 相关语言特性。当前开发和测试环境为 AutoHotkey v2.0.26 与
 v2.1-alpha.30。
 
-`stdlib.tkinter` 切片包含用于 `useTk` 支持的 Tcl/Tk 运行时 DLL
-（`tcl86t.dll` 与 `tk86t.dll`）。其 CPython 3.10.11 来源与 SHA256
-校验报告已随 `stdlib\tkinter\lib\README.md` 和
-`stdlib\tkinter\lib\SHA256SUMS` 一起纳入仓库。
+本机行为探针以 Python 3.10.11 为权威。
 
-如需查看独立的实时 GUI 示例，可以运行 `stdlib\examples\tkinter_gui.ahk`。
-`stdlib\examples\asyncio.ahk` 回归示例展示当前单线程协作式
-`Future` / `Task` / `sleep` / `gather` / 同步原语 / 队列接口、event-loop
-生命周期与 `call_at(...)` 时间调度，已覆盖的 AHK callable
-`asyncio.coroutine(...)` 包装、`wrap_future(asyncio.Future)` identity 行为、
-单线程 `run_coroutine_threadsafe(...)` bridge，以及本机
-Python 3.10.11 在 Windows 上会抛出 `NotImplementedError` 的 child-watcher
-公开函数。
-作为 AHK 侧便利入口，`stdlib.await(awaitable, options?)` 可在没有正在运行的
-事件循环时把已覆盖的 asyncio awaitable 跑到完成。
-`stdlib.decorate(target, decorators*)` 按 Python decorator 的应用顺序包装
-AHK callable 和类对象；它不会让 AHK 解析器支持 Python 的 `@` 语法。
-`stdlib\examples\array.ahk` 展示固定类型数组、已覆盖的序列操作、二进制 /
-unicode 转换和文件往返。
-`stdlib\examples\base64.ahk` 展示 standard、URL-safe、wrapped-bytes 和
-Base16 codec。
-`stdlib\examples\binascii.ahk` 展示 hexlify/unhexlify、crc32 和 Base64
-ASCII helper。
-`stdlib\examples\bisect.ahk` 展示 zero-based 插入点、key 函数和
-sequence/insert 目标。
-`stdlib\examples\calendar.ahk` 展示 Gregorian 日期 helper、名称、week
-header、`timegm` 和 `Calendar` 月表。
-`stdlib\examples\collections.ahk` 展示 `Counter` 以及核心 `deque`、
-`defaultdict`、`OrderedDict`、`ChainMap`、`namedtuple`、`UserDict`、
-`UserList` 和 `UserString` public surface。
-`stdlib\examples\contextlib.ahk` 展示 `nullcontext`、`suppress`、
-`closing`、`ContextDecorator`、`ExitStack`，以及面向 AHK target 的
-`redirect_stdout` / `redirect_stderr` context 行为。
-`stdlib\examples\copy.ahk` 展示 shallow/deep copy 行为、自定义 copy hook、
-递归 cycle、`Error` / `error`，以及公开 `dispatch_table` 形状。
-`stdlib\examples\csv.ahk` 展示 reader/writer、dict reader/writer、dialect、
-`field_size_limit` 和 `Sniffer` delimiter/header helper。
-`stdlib\examples\datetime.ahk` 展示 date/time/datetime/timedelta 行为、模块
-year bounds、`tzinfo`、`timezone.utc` 和 fixed-offset `timezone` 基础行为。
-`stdlib\examples\decimal.ahk` 展示 Decimal 运算、rounding 常量、context、
-`getcontext` / `setcontext` / `localcontext` 和 signal 异常类。
-`stdlib.thread` 切片采用 process-backed 模型：AHK 提交脚本片段，Windows
-系统 DLL 调用启动独立 AutoHotkey 解释器进程，主解释器通过 `Thread` 和
-`ResultQueue` 轮询结果对象，通过 `Channel` 交换 JSON-safe 值，或通过带
-named mutex 保护的 `SharedMemory` 共享有界字节区域。共享 AHK 对象状态通过
-`SharedObject` broker/proxy handle 实现：真实对象仍由主解释器持有，worker
-只把 JSON-safe 操作编组回主解释器执行。`ThreadPool` 提供有界任务调度、
-`Future` 结果、queued work 取消、带 timeout 的 `result(...)`，并支持
-`stdlib.await(future, ...)`。`worker_source` / `task` 协议可以让隐藏 worker
-解释器常驻执行 JSON-safe 任务；动态 `{ source: ... }` 任务仍然是一次性
-worker 脚本。`SharedMemory` 也暴露显式 raw
-`address` / `ptr()` 和固定宽度 `get(...)` / `put(...)` slot，用于底层 worker
-协调。worker 脚本使用 `#NoTrayIcon` 并捕获 stdout/stderr。它不会把当前解释器
-里的 AHK 对象状态放到外部 OS 线程中执行。
+## 运行时资源
+
+| 范围 | 说明 |
+| --- | --- |
+| `stdlib.tkinter` | 内置用于 `useTk` 的 `tcl86t.dll` 与 `tk86t.dll`；来源和 SHA256 说明位于 `stdlib\tkinter\lib`。 |
+
+## 覆盖与示例
+
+<details>
+<summary>已提升示例索引</summary>
+
+| 示例 | 主要覆盖 |
+| --- | --- |
+| `stdlib\examples\array.ahk` | 固定类型数组、序列操作、二进制/unicode 转换、文件往返。 |
+| `stdlib\examples\asyncio.ahk` | 协作式 future/task、event loop 生命周期、调度、队列、`stdlib.await(...)`。 |
+| `stdlib\examples\base64.ahk` | standard、URL-safe、wrapped-bytes、Base16 codec。 |
+| `stdlib\examples\binascii.ahk` | hexlify/unhexlify、CRC32、Base64 ASCII helper。 |
+| `stdlib\examples\bisect.ahk` | zero-based 插入点、key 函数、sequence/insert 目标。 |
+| `stdlib\examples\calendar.ahk` | Gregorian helper、名称、week header、`timegm`、`Calendar` 月表。 |
+| `stdlib\examples\collections.ahk` | `Counter`、`deque`、`defaultdict`、`OrderedDict`、`ChainMap`、named/user container。 |
+| `stdlib\examples\contextlib.ahk` | `nullcontext`、`suppress`、`closing`、`ContextDecorator`、`ExitStack`、redirect。 |
+| `stdlib\examples\copy.ahk` | shallow/deep copy、自定义 hook、cycle、`Error` / `error`、`dispatch_table`。 |
+| `stdlib\examples\csv.ahk` | reader/writer、dict reader/writer、dialect、`field_size_limit`、`Sniffer`。 |
+| `stdlib\examples\datetime.ahk` | date/time/datetime/timedelta、边界、`tzinfo`、fixed-offset `timezone`。 |
+| `stdlib\examples\decimal.ahk` | Decimal 运算、context、rounding 常量、signal 异常类。 |
+| `stdlib\examples\init.ahk` | 根 helper，包括 `stdlib.await(...)` 和 `stdlib.decorate(...)`。 |
+| `stdlib\examples\thread.ahk` | process-backed worker、channel、shared memory、shared-object broker、线程池。 |
+| `stdlib\examples\tkinter_gui.ahk` | 实时 tkinter / ttk 窗口、变量、布局、回调、canvas、tree 数据。 |
+
+</details>
 
 ## 快速开始
+
+### 小模块示例
 
 ```ahk
 #Requires AutoHotkey v2.0
@@ -79,6 +59,9 @@ bisect_example_left := stdlib.bisect.bisect_left(bisect_example_values, 2)
 bisect_example_right := stdlib.bisect.bisect_right(bisect_example_values, 2)
 stdlib.bisect.insort_right(bisect_example_values, 2)
 ```
+
+<details>
+<summary>Thread worker、channel、shared memory 和线程池示例</summary>
 
 ```ahk
 #Requires AutoHotkey v2.0
@@ -159,6 +142,11 @@ persistent_pool.shutdown()
 channel.close()
 memory.close()
 ```
+
+</details>
+
+<details>
+<summary>tkinter / ttk 实时窗口示例</summary>
 
 ```ahk
 #Requires AutoHotkey v2.0
@@ -259,6 +247,8 @@ update_demo(*) {
 update_demo()
 root.mainloop()
 ```
+
+</details>
 
 ## 设计规则
 
