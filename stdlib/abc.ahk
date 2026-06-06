@@ -313,6 +313,7 @@ AhkStdlibAbcClassHasAbstractCache(cls)
 AhkStdlibAbcCollectAbstractMethods(cls)
 {
     abstractMethods := Map()
+    seenMethods := Map()
     if !IsObject(cls) || !HasProp(cls, "Prototype")
         return abstractMethods
 
@@ -320,12 +321,18 @@ AhkStdlibAbcCollectAbstractMethods(cls)
     while IsObject(currentProto) {
         if HasMethod(currentProto, "OwnProps") {
             for name, member in currentProto.OwnProps() {
-                if !abstractMethods.Has(name) && AhkStdlibAbcMemberIsAbstract(member)
+                if seenMethods.Has(name)
+                    continue
+                seenMethods[name] := true
+                if AhkStdlibAbcMemberIsAbstract(member)
                     abstractMethods[name] := true
             }
         } else if HasMethod(currentProto, "__Enum") {
             for name, member in currentProto {
-                if !abstractMethods.Has(name) && AhkStdlibAbcMemberIsAbstract(member)
+                if seenMethods.Has(name)
+                    continue
+                seenMethods[name] := true
+                if AhkStdlibAbcMemberIsAbstract(member)
                     abstractMethods[name] := true
             }
         }

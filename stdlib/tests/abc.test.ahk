@@ -109,6 +109,24 @@ class StdlibAbcTest
         AhkTest.AssertSame(StdlibAbcPublicAbstractDynamic, stdlib.abc.update_abstractmethods(StdlibAbcPublicAbstractDynamic))
         AhkTest.AssertTrue(stdlib.abc.isabstract(StdlibAbcPublicAbstractDynamic))
     }
+
+    static TestUpdateAbstractMethodsConcreteOverrideClearsInheritedAbstract()
+    {
+        StdlibAbcUpdateBase.Prototype.need := stdlib.abc.abstractmethod((self) => "base")
+        StdlibAbcUpdateConcrete.Prototype.need := (self) => "concrete"
+        StdlibAbcUpdateReabstract.Prototype.need := stdlib.abc.abstractmethod((self) => "again")
+
+        AhkTest.AssertSame(StdlibAbcUpdateBase, stdlib.abc.update_abstractmethods(StdlibAbcUpdateBase))
+        AhkTest.AssertSame(StdlibAbcUpdateConcrete, stdlib.abc.update_abstractmethods(StdlibAbcUpdateConcrete))
+        AhkTest.AssertSame(StdlibAbcUpdateLeaf, stdlib.abc.update_abstractmethods(StdlibAbcUpdateLeaf))
+        AhkTest.AssertSame(StdlibAbcUpdateReabstract, stdlib.abc.update_abstractmethods(StdlibAbcUpdateReabstract))
+
+        AhkTest.AssertTrue(stdlib.abc.isabstract(StdlibAbcUpdateBase))
+        AhkTest.AssertFalse(stdlib.abc.isabstract(StdlibAbcUpdateConcrete))
+        AhkTest.AssertTrue(stdlib.abc.isabstract(StdlibAbcUpdateLeaf))
+        AhkTest.AssertTrue(stdlib.abc.isabstract(StdlibAbcUpdateReabstract))
+        AhkTest.AssertEqual("concrete", StdlibAbcUpdateConcrete.Prototype.need.Call(StdlibAbcUpdateConcrete()))
+    }
 }
 
 class StdlibAbcForeign
@@ -136,6 +154,26 @@ class StdlibAbcVirtualRegistryUnrelated
 }
 
 class StdlibAbcPublicAbstractDynamic
+{
+    static AhkStdlibAbstractMethods := Map()
+}
+
+class StdlibAbcUpdateBase
+{
+    static AhkStdlibAbstractMethods := Map()
+}
+
+class StdlibAbcUpdateConcrete extends StdlibAbcUpdateBase
+{
+    static AhkStdlibAbstractMethods := Map()
+}
+
+class StdlibAbcUpdateLeaf extends StdlibAbcUpdateBase
+{
+    static AhkStdlibAbstractMethods := Map()
+}
+
+class StdlibAbcUpdateReabstract extends StdlibAbcUpdateBase
 {
     static AhkStdlibAbstractMethods := Map()
 }

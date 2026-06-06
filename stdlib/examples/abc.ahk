@@ -51,3 +51,35 @@ abc_example_dynamic_abstract.Prototype.need := stdlib.abc.abstractmethod((self) 
 abc_example_update_stale := stdlib.abc.isabstract(abc_example_dynamic_abstract)
 abc_example_update_return := stdlib.abc.update_abstractmethods(abc_example_dynamic_abstract)
 abc_example_update_after := stdlib.abc.isabstract(abc_example_dynamic_abstract)
+
+class abc_example_update_base
+{
+    static AhkStdlibAbstractMethods := Map()
+}
+
+class abc_example_update_concrete extends abc_example_update_base
+{
+    static AhkStdlibAbstractMethods := Map()
+}
+
+class abc_example_update_leaf extends abc_example_update_base
+{
+    static AhkStdlibAbstractMethods := Map()
+}
+
+class abc_example_update_reabstract extends abc_example_update_base
+{
+    static AhkStdlibAbstractMethods := Map()
+}
+
+abc_example_update_base.Prototype.need := stdlib.abc.abstractmethod((self) => "base")
+abc_example_update_concrete.Prototype.need := (self) => "concrete"
+abc_example_update_reabstract.Prototype.need := stdlib.abc.abstractmethod((self) => "again")
+stdlib.abc.update_abstractmethods(abc_example_update_base)
+stdlib.abc.update_abstractmethods(abc_example_update_concrete)
+stdlib.abc.update_abstractmethods(abc_example_update_leaf)
+stdlib.abc.update_abstractmethods(abc_example_update_reabstract)
+abc_example_update_base_isabstract := stdlib.abc.isabstract(abc_example_update_base)
+abc_example_update_concrete_isabstract := stdlib.abc.isabstract(abc_example_update_concrete)
+abc_example_update_leaf_isabstract := stdlib.abc.isabstract(abc_example_update_leaf)
+abc_example_update_reabstract_isabstract := stdlib.abc.isabstract(abc_example_update_reabstract)

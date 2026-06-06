@@ -5871,6 +5871,26 @@ wrapper objects and covered underlying callables according to the probe, and
 abstract-method cache when a class opts into that cache. AHK helper
 `stdlib.abc.issubclass(subclass, cls)` now accompanies
 `stdlib.abc.isinstance(instance, cls)` for the covered virtual-subclass checks.
+Fresh Python 3.10.11 evidence from
+`.codex/abc_update_abstractmethods_probe.py` and
+`.codex/abc_update_abstractmethods_probe.output.json` confirms that
+`update_abstractmethods(cls)` recomputes inherited abstract-method state,
+concrete subclass implementations clear same-name abstract methods inherited
+from a base class, same-name abstract overrides remain abstract, subclasses
+without an override inherit the abstract method, non-class inputs are returned
+unchanged, and the function returns the original class object.
+Fresh AHK evidence for this update slice includes focused red
+`.codex/abc-update-override-red-20260606.txt` failing because a concrete
+subclass override was still treated as abstract, focused green
+`.codex/abc-update-override-green-focused-20260606.txt` passing 1/1 after
+tracking seen subclass members while walking prototype ancestry, full
+`.codex/abc-update-override-final-green-20260606.txt` passing
+`stdlib/tests/abc.test.ahk` 6/6, root smoke
+`.codex/abc-update-override-stdlib-focused-20260606.txt` passing
+`stdlib/tests/stdlib.test.ahk` 232/232, and validation
+`.codex/abc-update-override-validate-20260606.txt` passing `stdlib/abc.ahk`,
+`stdlib/tests/abc.test.ahk`, `stdlib/tests/stdlib.test.ahk`, and
+`stdlib/examples/abc.ahk` at `TimeoutSeconds 90`.
 The earlier cache-token slice remains covered:
 `.codex/abc_cache_register_probe.py` confirmed that
 `get_cache_token()` returns an `int`, rejects positional arguments as

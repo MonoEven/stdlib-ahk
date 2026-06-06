@@ -27,6 +27,7 @@ Local behavior probes use Python 3.10.11 as the authority.
 
 | Example | Main coverage |
 | --- | --- |
+| `stdlib\examples\abc.ahk` | Abstract markers, virtual subclass registration, cache tokens, `update_abstractmethods`. |
 | `stdlib\examples\array.ahk` | Fixed-type arrays, sequence operations, binary/unicode conversion, file round-trips. |
 | `stdlib\examples\asyncio.ahk` | Cooperative futures/tasks, event-loop lifecycle, scheduling, queues, `stdlib.await(...)`. |
 | `stdlib\examples\base64.ahk` | Standard, URL-safe, wrapped-bytes, and Base16 codecs. |

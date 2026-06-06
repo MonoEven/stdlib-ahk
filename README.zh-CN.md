@@ -27,6 +27,7 @@ v2.1-alpha.30。
 
 | 示例 | 主要覆盖 |
 | --- | --- |
+| `stdlib\examples\abc.ahk` | abstract marker、virtual subclass registration、cache token、`update_abstractmethods`。 |
 | `stdlib\examples\array.ahk` | 固定类型数组、序列操作、二进制/unicode 转换、文件往返。 |
 | `stdlib\examples\asyncio.ahk` | 协作式 future/task、event loop 生命周期、调度、队列、`stdlib.await(...)`。 |
 | `stdlib\examples\base64.ahk` | standard、URL-safe、wrapped-bytes、Base16 codec。 |
