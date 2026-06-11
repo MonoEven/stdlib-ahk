@@ -1033,7 +1033,7 @@ class StdlibCollectionsTest
         AhkTest.AssertEqual(3, child.maps.Length)
         AhkTest.AssertEqual([["z", 9]], stdlib_collections_test_pairs(child.maps[1]))
 
-        AhkTest.AssertEqual("Point", pointType.__name__)
+        AhkTest.AssertEqual("Point", pointType.__name)
         AhkTest.AssertEqual(["x", "y"], pointType._fields)
         AhkTest.AssertEqual([2, 3], stdlib_collections_test_array(point))
         AhkTest.AssertEqual(2, point.x)

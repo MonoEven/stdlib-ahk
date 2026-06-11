@@ -33,7 +33,7 @@ class StdlibCsvTest
 
     static TestDialectsExposePythonDefaults()
     {
-        AhkTest.AssertEqual("1.0", stdlib.csv.__version__)
+        AhkTest.AssertEqual("1.0", stdlib.csv.__version)
         AhkTest.AssertEqual(["excel", "excel-tab", "unix"], stdlib.csv.list_dialects())
 
         excel := stdlib.csv.get_dialect("excel")

@@ -38,8 +38,10 @@ class StdlibTypesTest
     {
         module := stdlib.types.ModuleType("demo", "module docs")
 
-        AhkTest.AssertEqual("demo", module.__name__)
-        AhkTest.AssertEqual("module docs", module.__doc__)
+        AhkTest.AssertEqual("demo", module.__name)
+        AhkTest.AssertEqual("module docs", module.__doc)
+        AhkTest.AssertFalse(HasProp(module, "__name__"))
+        AhkTest.AssertFalse(HasProp(module, "__doc__"))
     }
 }
 

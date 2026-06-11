@@ -367,7 +367,7 @@ class AhkStdlibDecimalLocalContext
             this.context := context.copy()
     }
 
-    __enter__()
+    __enter()
     {
         this.previous := AhkStdlibDecimalCurrentContext()
         nextContext := HasProp(this, "context") ? this.context.copy() : this.previous.copy()
@@ -375,7 +375,7 @@ class AhkStdlibDecimalLocalContext
         return nextContext
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         AhkStdlibDecimalCurrentContext(this.previous)
         return false

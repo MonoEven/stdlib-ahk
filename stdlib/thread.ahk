@@ -1149,7 +1149,7 @@ class AhkStdlibThreadWeakSet
         return this.AhkStdlibItems.Has(item)
     }
 
-    __len__()
+    __len()
     {
         return this.AhkStdlibItems.Count
     }

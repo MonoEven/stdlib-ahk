@@ -66,6 +66,135 @@ class StdlibIoTest
         AhkTest.RaisesMatch(OSError, "Can't do nonzero cur-relative seeks", (*) => stdlib.io.StringIO("abc").seek(1, stdlib.io.SEEK_CUR))
         AhkTest.RaisesMatch(OSError, "Can't do nonzero cur-relative seeks", (*) => stdlib.io.StringIO("abc").seek(1, stdlib.io.SEEK_END))
     }
+
+    static TestBytesIOReadsWritesAndTracksPositionLikePython310()
+    {
+        AhkTest.AssertEqual([], stdlib.io.BytesIO(stdlib.None).getvalue())
+        AhkTest.AssertEqual([], stdlib.io.BytesIO().getvalue())
+        AhkTest.AssertEqual([0, 97, 255], stdlib.io.BytesIO([0, 97, 255]).getvalue())
+
+        stream := stdlib.io.BytesIO([97, 98, 99, 10, 120, 121])
+        AhkTest.AssertEqual([97, 98], stream.read(2))
+        AhkTest.AssertEqual(2, stream.tell())
+        AhkTest.AssertEqual([99, 10], stream.readline())
+        AhkTest.AssertEqual(4, stream.tell())
+        AhkTest.AssertEqual([120, 121], stream.read())
+
+        writer := stdlib.io.BytesIO()
+        AhkTest.AssertEqual(2, writer.write([97, 98]))
+        AhkTest.AssertEqual(5, writer.seek(5))
+        AhkTest.AssertEqual(1, writer.write([120]))
+        AhkTest.AssertEqual([97, 98, 0, 0, 0, 120], writer.getvalue())
+        AhkTest.AssertEqual(6, writer.tell())
+
+        overwrite := stdlib.io.BytesIO([97, 98, 99, 100, 101, 102])
+        AhkTest.AssertEqual(2, overwrite.seek(2))
+        AhkTest.AssertEqual(2, overwrite.write([90, 90]))
+        AhkTest.AssertEqual([97, 98, 90, 90, 101, 102], overwrite.getvalue())
+        AhkTest.AssertEqual(4, overwrite.tell())
+    }
+
+    static TestBytesIOReadlineReadlinesSeekTruncateAndCloseLikePython310()
+    {
+        lineStream := stdlib.io.BytesIO([97, 10, 98, 98, 10, 99, 99, 99])
+        AhkTest.AssertEqual([97, 10], lineStream.readline())
+        AhkTest.AssertEqual([98], lineStream.readline(1))
+        AhkTest.AssertEqual([[98, 10], [99, 99, 99]], lineStream.readlines())
+
+        AhkTest.AssertEqual(3, stdlib.io.BytesIO([97, 98, 99]).seek(0, stdlib.io.SEEK_END))
+        AhkTest.AssertEqual(0, stdlib.io.BytesIO([97, 98, 99]).seek(0, stdlib.io.SEEK_CUR))
+        AhkTest.AssertEqual(1, stdlib.io.BytesIO([97, 98, 99]).seek(1, stdlib.io.SEEK_CUR))
+
+        truncate := stdlib.io.BytesIO([97, 98, 99, 100, 101])
+        AhkTest.AssertEqual(3, truncate.seek(3))
+        AhkTest.AssertEqual(3, truncate.truncate())
+        AhkTest.AssertEqual([97, 98, 99], truncate.getvalue())
+        AhkTest.AssertEqual(3, truncate.tell())
+
+        truncateExtend := stdlib.io.BytesIO([97, 98, 99])
+        AhkTest.AssertEqual(5, truncateExtend.truncate(5))
+        AhkTest.AssertEqual([97, 98, 99], truncateExtend.getvalue())
+
+        closed := stdlib.io.BytesIO([97, 98, 99])
+        AhkTest.AssertSame(stdlib.None, closed.close())
+        AhkTest.AssertTrue(closed.closed)
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.read())
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.write([120]))
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.getvalue())
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.seek(0))
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.tell())
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.truncate())
+    }
+
+    static TestBytesIORejectsPythonStyleInvalidArguments()
+    {
+        AhkTest.RaisesMatch(TypeError, "a bytes-like object is required, not 'str'", (*) => stdlib.io.BytesIO("abc"))
+        AhkTest.RaisesMatch(TypeError, "a bytes-like object is required, not 'int'", (*) => stdlib.io.BytesIO(1))
+        AhkTest.RaisesMatch(TypeError, "a bytes-like object is required, not 'str'", (*) => stdlib.io.BytesIO().write("x"))
+        AhkTest.RaisesMatch(TypeError, "argument should be integer or None, not 'str'", (*) => stdlib.io.BytesIO([97, 98, 99]).read("x"))
+        AhkTest.RaisesMatch(ValueError, "negative seek value -1", (*) => stdlib.io.BytesIO([97, 98, 99]).seek(-1))
+        AhkTest.RaisesMatch(ValueError, "invalid whence \(99, should be 0, 1 or 2\)", (*) => stdlib.io.BytesIO([97, 98, 99]).seek(0, 99))
+        AhkTest.RaisesMatch(ValueError, "negative size value -1", (*) => stdlib.io.BytesIO([97, 98, 99]).truncate(-1))
+        AhkTest.RaisesMatch(ValueError, "byte must be in range\(0, 256\)", (*) => stdlib.io.BytesIO([256]))
+    }
+
+    static TestBytesIOFileLikeMethodsFollowPython310()
+    {
+        stream := stdlib.io.BytesIO([97, 98, 99, 100, 101, 102])
+
+        AhkTest.AssertTrue(stream.readable())
+        AhkTest.AssertTrue(stream.writable())
+        AhkTest.AssertTrue(stream.seekable())
+        AhkTest.AssertFalse(stream.isatty())
+        AhkTest.AssertSame(stdlib.None, stream.flush())
+        AhkTest.AssertEqual([97, 98], stream.read1(2))
+        AhkTest.AssertEqual([99, 100, 101, 102], stream.read1())
+
+        readintoTarget := Buffer(4, 0)
+        readintoStream := stdlib.io.BytesIO([97, 98, 99, 100, 101, 102])
+        AhkTest.AssertEqual(4, readintoStream.readinto(readintoTarget))
+        AhkTest.AssertEqual([97, 98, 99, 100], StdlibIoTest.BufferBytes(readintoTarget))
+        AhkTest.AssertEqual(4, readintoStream.tell())
+
+        readintoLimitedTarget := Buffer(4, 0)
+        readintoLimitedStream := stdlib.io.BytesIO([120, 121])
+        AhkTest.AssertEqual(2, readintoLimitedStream.readinto(readintoLimitedTarget))
+        AhkTest.AssertEqual([120, 121, 0, 0], StdlibIoTest.BufferBytes(readintoLimitedTarget))
+        AhkTest.AssertEqual(2, readintoLimitedStream.tell())
+
+        readinto1Target := Buffer(3, 0)
+        readinto1Stream := stdlib.io.BytesIO([97, 98, 99, 100, 101, 102])
+        AhkTest.AssertEqual(3, readinto1Stream.readinto1(readinto1Target))
+        AhkTest.AssertEqual([97, 98, 99], StdlibIoTest.BufferBytes(readinto1Target))
+        AhkTest.AssertEqual(3, readinto1Stream.tell())
+
+        writer := stdlib.io.BytesIO()
+        lineBytes := Buffer(1, 0)
+        NumPut("UChar", 100, lineBytes, 0)
+        AhkTest.AssertSame(stdlib.None, writer.writelines([[97, 98], [99], lineBytes]))
+        AhkTest.AssertEqual([97, 98, 99, 100], writer.getvalue())
+
+        AhkTest.RaisesMatch(stdlib.io.UnsupportedOperation, "^fileno$", (*) => stdlib.io.BytesIO().fileno())
+        AhkTest.RaisesMatch(stdlib.io.UnsupportedOperation, "^detach$", (*) => stdlib.io.BytesIO().detach())
+        AhkTest.RaisesMatch(TypeError, "readinto\(\) argument must be read-write bytes-like object, not str", (*) => stdlib.io.BytesIO([97, 98, 99]).readinto("xxxx"))
+        AhkTest.RaisesMatch(TypeError, "a bytes-like object is required, not 'str'", (*) => stdlib.io.BytesIO().writelines(["x"]))
+
+        closed := stdlib.io.BytesIO([97, 98, 99])
+        closed.close()
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.readable())
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.writable())
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.seekable())
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.isatty())
+        AhkTest.RaisesMatch(ValueError, "I/O operation on closed file\.", (*) => closed.flush())
+    }
+
+    static BufferBytes(buffer)
+    {
+        bytes := []
+        loop buffer.Size
+            bytes.Push(NumGet(buffer, A_Index - 1, "UChar"))
+        return bytes
+    }
 }
 
 AhkTest.Collect(StdlibIoTest)

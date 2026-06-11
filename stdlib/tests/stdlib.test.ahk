@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
 
 #Include <stdlib\ahktest>
 #Include <stdlib\abc>
@@ -58,6 +58,7 @@
 #Include <stdlib\string>
 #Include <stdlib\textwrap>
 #Include <stdlib\tkinter>
+#Include <stdlib\pillow>
 
 class StdlibBootstrapCounterSubclass extends AhkStdlibCollectionsCounter
 {
@@ -83,6 +84,17 @@ class StdlibBootstrapTest
         AhkTest.AssertTrue(HasMethod(stdlib.string, "capwords"))
         AhkTest.AssertTrue(HasMethod(stdlib.textwrap, "dedent"))
         AhkTest.AssertTrue(HasMethod(stdlib.thread, "Thread"))
+        AhkTest.AssertTrue(HasProp(stdlib.pillow, "Image"))
+        AhkTest.AssertTrue(HasMethod(stdlib.pillow.Image, "new"))
+        AhkTest.AssertTrue(HasMethod(stdlib.pillow.Image, "open"))
+    }
+
+    static PillowUsesStdlibNamespace()
+    {
+        AhkTest.AssertTrue(HasProp(stdlib, "pillow"))
+        AhkTest.AssertTrue(HasProp(stdlib.pillow, "Image"))
+        AhkTest.AssertTrue(HasMethod(stdlib.pillow.Image, "new"))
+        AhkTest.AssertTrue(HasMethod(stdlib.pillow.Image, "open"))
     }
 
     static AhkTestRaisesUsesAhkNaming()
@@ -769,6 +781,21 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual(0, result.Failed, diagnostic)
         AhkTest.AssertEqual(1, result.Passed, diagnostic)
         AhkTest.AssertContains("capture process timed out after 0.05s", result.Entries[1].Captured.Err)
+    }
+
+    static AhkTestCaptureRunArgsWaitsForGuiChildProcess()
+    {
+        suite := AhkTest.CreateSuite("capture child process wait")
+
+        suite.Fixture("capture", (*) => AhkTest.CaptureFixture())
+        suite.Test("waits for child process", (capture) => stdlib_test_capture_child_process_waits(capture), { Fixtures: ["capture"] })
+        result := suite.Run({ Quiet: true })
+        diagnostic := result.Entries.Length > 0 && HasProp(result.Entries[1], "Error") ? result.Entries[1].Error.Message : ""
+
+        AhkTest.AssertEqual(0, result.Errors, diagnostic)
+        AhkTest.AssertEqual(0, result.Failed, diagnostic)
+        AhkTest.AssertEqual(1, result.Passed, diagnostic)
+        AhkTest.AssertContains("stdout:waited", result.Entries[1].Captured.Out)
     }
 
     static AhkTestCaptureRunArgsDrainsLargeOutput()
@@ -3526,7 +3553,7 @@ class StdlibBootstrapTest
         marker := stdlib.abc.abstractmethod((value) => value)
         baseBefore := StdlibBootstrapAbcForeign.Prototype.Base
 
-        AhkTest.AssertEqual(true, marker.__isabstractmethod__)
+        AhkTest.AssertEqual(true, marker.__isabstractmethod)
         AhkTest.AssertEqual(5, marker.Call(5))
 
         stdlib.abc.ABC.register(StdlibBootstrapAbcForeign)
@@ -3542,7 +3569,7 @@ class StdlibBootstrapTest
 
         AhkTest.AssertSame(stdlib.types.FunctionType, stdlib.types.LambdaType)
         AhkTest.AssertEqual("stdlib", namespace.name)
-        AhkTest.AssertEqual("stdlib", stdlib.types.ModuleType("stdlib").__name__)
+        AhkTest.AssertEqual("stdlib", stdlib.types.ModuleType("stdlib").__name)
     }
 
     static OperatorUsesStdlibNamespace()
@@ -3687,7 +3714,7 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual("bBuhHiIlLqQfd", stdlib.array.typecodes)
         AhkTest.AssertEqual("i", values.typecode)
         AhkTest.AssertEqual(4, values.itemsize)
-        AhkTest.AssertEqual("", values.append(4))
+        AhkTest.AssertSame(stdlib.None, values.append(4))
         AhkTest.AssertEqual([1, 2, 3, 4], values.tolist())
         AhkTest.AssertEqual(4, values[3])
         AhkTest.AssertEqual(3, bufferInfo[2])
@@ -3784,7 +3811,7 @@ class StdlibBootstrapTest
         Color := stdlib.enum.Enum("Color", "RED GREEN BLUE")
         AutoColor := stdlib.enum.Enum("AutoColor", [["RED", stdlib.enum.auto()], ["GREEN", stdlib.enum.auto()]])
 
-        AhkTest.AssertEqual("Color", Color.__name__)
+        AhkTest.AssertEqual("Color", Color.__name)
         AhkTest.AssertEqual("RED", Color.RED.name)
         AhkTest.AssertEqual(1, Color.RED.value)
         AhkTest.AssertEqual("Color.RED", String(Color.RED))
@@ -3977,17 +4004,17 @@ class StdlibBootstrapTest
         decorator := stdlib.contextlib.ContextDecorator(StdlibBootstrapContextlibDecoratorCore(events))
         decorated := decorator.Call((value) => stdlib_bootstrap_contextlib_decorated(events, value))
 
-        AhkTest.AssertEqual("seed", nullctx.__enter__())
-        AhkTest.AssertSame(closer, stdlib.contextlib.closing(closer).__enter__())
-        AhkTest.AssertTrue(suppressCtx.__exit__(ValueError, ValueError("x", -1), stdlib.None))
-        AhkTest.AssertSame(stream, redirect.__enter__())
+        AhkTest.AssertEqual("seed", nullctx.__enter())
+        AhkTest.AssertSame(closer, stdlib.contextlib.closing(closer).__enter())
+        AhkTest.AssertTrue(suppressCtx.__exit(ValueError, ValueError("x", -1), stdlib.None))
+        AhkTest.AssertSame(stream, redirect.__enter())
         redirect.write("captured")
-        AhkTest.AssertFalse(redirect.__exit__(stdlib.None, stdlib.None, stdlib.None))
+        AhkTest.AssertFalse(redirect.__exit(stdlib.None, stdlib.None, stdlib.None))
         AhkTest.AssertEqual("captured", stream.getvalue())
         stack.callback(stdlib_bootstrap_contextlib_callback, events, "one")
         stack.callback(stdlib_bootstrap_contextlib_callback, events, "two")
         AhkTest.AssertEqual("entered", stack.enter_context(StdlibBootstrapContextlibStackContext(events)))
-        AhkTest.AssertFalse(stack.__exit__(stdlib.None, stdlib.None, stdlib.None))
+        AhkTest.AssertFalse(stack.__exit(stdlib.None, stdlib.None, stdlib.None))
         AhkTest.AssertEqual(42, decorated.Call(21))
         AhkTest.AssertEqual([
             "enter",
@@ -4227,7 +4254,7 @@ class StdlibBootstrapTest
         teeCopies := stdlib.itertools.tee([1, 2, 3], 2)
         rootTrueTeeCopies := stdlib.itertools.tee([7, 8], stdlib.True)
         rootFalseTeeCopies := stdlib.itertools.tee(42, stdlib.False)
-        teeCloneType := teeCopies[1].__class__
+        teeCloneType := teeCopies[1].__class
         AhkTest.AssertTrue(teeCopies is AhkStdlibTuple)
         AhkTest.AssertEqual([1, 2, 3], stdlib_bootstrap_array(teeCopies[1]))
         AhkTest.AssertEqual([1, 2, 3], stdlib_bootstrap_array(teeCopies[2]))
@@ -4278,6 +4305,26 @@ class StdlibBootstrapTest
         AhkTest.RaisesMatch(TypeError, "'object' object is not iterable", (*) => stdlib.tuple({}))
     }
 
+    static RootNamespaceExposesSliceBuiltin()
+    {
+        stopOnly := stdlib.slice(3)
+        bounded := stdlib.slice(1, 4)
+        stepped := stdlib.slice(1, 5, 2)
+        reversed := stdlib.slice(stdlib.None, stdlib.None, -1)
+        negativeBounds := stdlib.slice(-4, -1)
+
+        AhkTest.AssertSame(stdlib.None, stopOnly.start)
+        AhkTest.AssertEqual(3, stopOnly.stop)
+        AhkTest.AssertSame(stdlib.None, stopOnly.step)
+        AhkTest.AssertEqual("slice(None, 3, None)", stopOnly.__Repr())
+        AhkTest.AssertEqual([0, 3, 1], stopOnly.indices(5))
+        AhkTest.AssertEqual([1, 4, 1], bounded.indices(5))
+        AhkTest.AssertEqual([1, 5, 2], stepped.indices(5))
+        AhkTest.AssertEqual([4, -1, -1], reversed.indices(5))
+        AhkTest.AssertEqual([1, 4, 1], negativeBounds.indices(5))
+        AhkTest.RaisesMatch(ValueError, "^slice step cannot be zero$", (*) => stdlib.slice(stdlib.None, stdlib.None, 0).indices(5))
+    }
+
     static RootNamespaceExposesBooleanBuiltins()
     {
         AhkTest.AssertSame(stdlib.True, stdlib.True)
@@ -4312,6 +4359,9 @@ class StdlibBootstrapTest
         keyError := stdlib.KeyError("missing", -1)
         attributeError := stdlib.AttributeError("no attr", -1)
         moduleNotFoundError := stdlib.ModuleNotFoundError("No module named 'pwd'", -1)
+        overflowError := stdlib.OverflowError("too large", -1)
+        eofError := stdlib.EOFError("read() didn't return enough bytes", -1)
+        processLookupError := stdlib.ProcessLookupError("", -1)
 
         AhkTest.AssertTrue(runtimeError is stdlib.RuntimeError)
         AhkTest.AssertTrue(runtimeError is Error)
@@ -4334,6 +4384,15 @@ class StdlibBootstrapTest
         AhkTest.AssertTrue(moduleNotFoundError is stdlib.ModuleNotFoundError)
         AhkTest.AssertTrue(moduleNotFoundError is Error)
         AhkTest.AssertEqual("No module named 'pwd'", moduleNotFoundError.Message)
+        AhkTest.AssertTrue(overflowError is stdlib.OverflowError)
+        AhkTest.AssertTrue(overflowError is Error)
+        AhkTest.AssertEqual("too large", overflowError.Message)
+        AhkTest.AssertTrue(eofError is stdlib.EOFError)
+        AhkTest.AssertTrue(eofError is Error)
+        AhkTest.AssertEqual("read() didn't return enough bytes", eofError.Message)
+        AhkTest.AssertTrue(processLookupError is stdlib.ProcessLookupError)
+        AhkTest.AssertTrue(processLookupError is OSError)
+        AhkTest.AssertEqual("", processLookupError.Message)
     }
 
     static RootNamespaceAwaitRunsAsyncioAwaitables()
@@ -4381,19 +4440,19 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual([2, 3], addTwoThree.args)
         AhkTest.RaisesMatch(TypeError, "does not support item assignment|readonly", (*) => observedArgs[1] := 99)
         AhkTest.AssertEqual(5, addTwoThree.Call())
-        AhkTest.AssertEqual("functools", addTwo.__module__)
-        AhkTest.AssertEqual("partial(func, *args, **keywords) - new function with partial application`n    of the given arguments and keywords.`n", addTwo.__doc__)
-        AhkTest.AssertTrue(addTwo.__dict__ is Map)
-        AhkTest.AssertEqual(0, addTwo.__dict__.Count)
-        AhkTest.AssertSame(addTwo.__dict__, addTwo.__dict__)
+        AhkTest.AssertEqual("functools", addTwo.__module)
+        AhkTest.AssertEqual("partial(func, *args, **keywords) - new function with partial application`n    of the given arguments and keywords.`n", addTwo.__doc)
+        AhkTest.AssertTrue(addTwo.__dict is Map)
+        AhkTest.AssertEqual(0, addTwo.__dict.Count)
+        AhkTest.AssertSame(addTwo.__dict, addTwo.__dict)
         addTwo.custom := 42
         AhkTest.AssertEqual(42, addTwo.custom)
-        AhkTest.AssertTrue(addTwo.__dict__.Has("custom"))
-        AhkTest.AssertEqual(42, addTwo.__dict__["custom"])
-        AhkTest.RaisesMatch(TypeError, "__dict__ must be set to a dictionary, not a 'int'", (*) => addTwo.__dict__ := 5)
-        AhkTest.RaisesMatch(TypeError, "__dict__ must be set to a dictionary, not a 'list'", (*) => addTwo.__dict__ := [])
-        AhkTest.RaisesMatch(TypeError, "__dict__ must be set to a dictionary, not a 'NoneType'", (*) => addTwo.__dict__ := stdlib.None)
-        reducedPartial := statefulPartial.__reduce__()
+        AhkTest.AssertTrue(addTwo.__dict.Has("custom"))
+        AhkTest.AssertEqual(42, addTwo.__dict["custom"])
+        AhkTest.RaisesMatch(TypeError, "__dict must be set to a dictionary, not a 'int'", (*) => addTwo.__dict := 5)
+        AhkTest.RaisesMatch(TypeError, "__dict must be set to a dictionary, not a 'list'", (*) => addTwo.__dict := [])
+        AhkTest.RaisesMatch(TypeError, "__dict must be set to a dictionary, not a 'NoneType'", (*) => addTwo.__dict := stdlib.None)
+        reducedPartial := statefulPartial.__reduce()
         reducedPartialState := reducedPartial[3]
         AhkTest.AssertTrue(reducedPartial is AhkStdlibTuple)
         AhkTest.AssertEqual(3, reducedPartial.Length)
@@ -4406,33 +4465,33 @@ class StdlibBootstrapTest
         AhkTest.AssertTrue(reducedPartialState[3] is Map)
         AhkTest.AssertEqual(0, reducedPartialState[3].Count)
         AhkTest.AssertSame(stdlib.None, reducedPartialState[4])
-        statefulPartial.__setstate__(stdlib.tuple([stdlib_bootstrap_add, stdlib.tuple([2]), Map("b", 5), stdlib.None]))
+        statefulPartial.__setstate(stdlib.tuple([stdlib_bootstrap_add, stdlib.tuple([2]), Map("b", 5), stdlib.None]))
         AhkTest.AssertEqual([2], statefulPartial.args)
         AhkTest.AssertEqual(5, statefulPartial.keywords["b"])
         AhkTest.AssertEqual(7, statefulPartial.Call())
-        statefulPartial.__setstate__(stdlib.tuple([stdlib_bootstrap_add, stdlib.tuple([2]), Map("b", 5), []]))
-        AhkTest.AssertEqual(0, statefulPartial.__dict__.Length)
+        statefulPartial.__setstate(stdlib.tuple([stdlib_bootstrap_add, stdlib.tuple([2]), Map("b", 5), []]))
+        AhkTest.AssertEqual(0, statefulPartial.__dict.Length)
         AhkTest.AssertEqual(7, statefulPartial.Call())
-        statefulPartial.__setstate__(stdlib.tuple([stdlib_bootstrap_add, stdlib.tuple([2]), Map("b", 5), stdlib.tuple()]))
-        AhkTest.AssertEqual(0, statefulPartial.__dict__.Length)
+        statefulPartial.__setstate(stdlib.tuple([stdlib_bootstrap_add, stdlib.tuple([2]), Map("b", 5), stdlib.tuple()]))
+        AhkTest.AssertEqual(0, statefulPartial.__dict.Length)
         AhkTest.AssertEqual(7, statefulPartial.Call())
-        statefulPartial.__setstate__(stdlib.tuple([stdlib_bootstrap_add, stdlib.tuple([2]), stdlib.None, stdlib.None]))
+        statefulPartial.__setstate(stdlib.tuple([stdlib_bootstrap_add, stdlib.tuple([2]), stdlib.None, stdlib.None]))
         AhkTest.AssertTrue(statefulPartial.keywords is Map)
         AhkTest.AssertEqual(0, statefulPartial.keywords.Count)
-        AhkTest.AssertTrue(statefulPartial.__dict__ is Map)
-        AhkTest.AssertEqual(0, statefulPartial.__dict__.Count)
+        AhkTest.AssertTrue(statefulPartial.__dict is Map)
+        AhkTest.AssertEqual(0, statefulPartial.__dict.Count)
         AhkTest.AssertEqual(7, statefulPartial.Call(5))
-        statefulPartial.__setstate__(stdlib.tuple([stdlib_bootstrap_add, stdlib.tuple([2]), stdlib.None, 5]))
+        statefulPartial.__setstate(stdlib.tuple([stdlib_bootstrap_add, stdlib.tuple([2]), stdlib.None, 5]))
         AhkTest.AssertTrue(statefulPartial.keywords is Map)
         AhkTest.AssertEqual(0, statefulPartial.keywords.Count)
-        AhkTest.AssertEqual(5, statefulPartial.__dict__)
+        AhkTest.AssertEqual(5, statefulPartial.__dict)
         AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => statefulPartial.custom := 42)
         AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => statefulPartial.custom)
         AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => statefulPartial.DeleteProp("custom"))
         AhkTest.AssertEqual(7, statefulPartial.Call(5))
-        AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => statefulPartial.__reduce__())
-        AhkTest.RaisesMatch(TypeError, "partial\.__setstate__\(\) takes exactly one argument \(0 given\)", (*) => statefulPartial.__setstate__())
-        AhkTest.RaisesMatch(TypeError, "invalid partial state", (*) => statefulPartial.__setstate__(42))
+        AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => statefulPartial.__reduce())
+        AhkTest.RaisesMatch(TypeError, "partial\.__setstate\(\) takes exactly one argument \(0 given\)", (*) => statefulPartial.__setstate())
+        AhkTest.RaisesMatch(TypeError, "invalid partial state", (*) => statefulPartial.__setstate(42))
         AhkTest.AssertRegex(stdlib.functools.partial(stdlib_bootstrap_add, stdlib.True, stdlib.False).__Repr(), "^functools\.partial\(<function stdlib_bootstrap_add at 0x[0-9A-F]+>, True, False\)$")
         addOne.keywords["c"] := 5
         AhkTest.AssertEqual(8, addOne.Call(2))
@@ -4812,6 +4871,13 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual("abcZ", stream.getvalue())
         stream.close()
         AhkTest.AssertTrue(stream.closed)
+
+        bytes := stdlib.io.BytesIO([65, 66, 10, 67])
+        AhkTest.AssertEqual([65, 66], bytes.read(2))
+        AhkTest.AssertEqual([10], bytes.readline())
+        AhkTest.AssertEqual(4, bytes.seek(0, stdlib.io.SEEK_END))
+        AhkTest.AssertEqual(1, bytes.write([255]))
+        AhkTest.AssertEqual([65, 66, 10, 67, 255], bytes.getvalue())
     }
 
     static FractionsUsesStdlibNamespace()
@@ -4858,10 +4924,10 @@ class StdlibBootstrapTest
             AhkTest.AssertSame(stdlib.None, stdlib.decimal.setcontext(custom))
             AhkTest.AssertEqual(7, stdlib.decimal.getcontext().prec)
             localContext := stdlib.decimal.localcontext()
-            entered := localContext.__enter__()
+            entered := localContext.__enter()
             entered.prec := 11
             AhkTest.AssertEqual(11, stdlib.decimal.getcontext().prec)
-            AhkTest.AssertFalse(localContext.__exit__(stdlib.None, stdlib.None, stdlib.None))
+            AhkTest.AssertFalse(localContext.__exit(stdlib.None, stdlib.None, stdlib.None))
             AhkTest.AssertEqual(7, stdlib.decimal.getcontext().prec)
         } finally {
             stdlib.decimal.setcontext(original)
@@ -5167,6 +5233,7 @@ AhkTest.Test("stdlib ahktest validates report run option values", (*) => StdlibB
 AhkTest.Test("stdlib ahktest captures child process output", (*) => StdlibBootstrapTest.AhkTestCapturesChildProcessStdoutAndStderr())
 AhkTest.Test("stdlib ahktest captures child process args safely", (*) => StdlibBootstrapTest.AhkTestCapturesChildProcessArgsSafely())
 AhkTest.Test("stdlib ahktest capture run args times out child processes", (*) => StdlibBootstrapTest.AhkTestCaptureRunArgsTimesOutChildProcesses())
+AhkTest.Test("stdlib ahktest capture run args waits for child processes", (*) => StdlibBootstrapTest.AhkTestCaptureRunArgsWaitsForGuiChildProcess())
 AhkTest.Test("stdlib ahktest capture run args drains large output", (*) => StdlibBootstrapTest.AhkTestCaptureRunArgsDrainsLargeOutput())
 AhkTest.Test("stdlib ahktest capture run args decodes configured encoding", (*) => StdlibBootstrapTest.AhkTestCaptureRunArgsDecodesConfiguredEncoding())
 AhkTest.Test("stdlib ahktest supports runtime skips", (*) => StdlibBootstrapTest.AhkTestSkipNowSkipsRunningTest())
@@ -5333,6 +5400,7 @@ AhkTest.Test("stdlib quopri uses root stdlib namespace", (*) => StdlibBootstrapT
 AhkTest.Test("stdlib html uses root stdlib namespace", (*) => StdlibBootstrapTest.HtmlUsesStdlibNamespace())
 AhkTest.Test("stdlib itertools uses root stdlib namespace", (*) => StdlibBootstrapTest.ItertoolsUsesStdlibNamespace())
 AhkTest.Test("stdlib root namespace exposes tuple builtin", (*) => StdlibBootstrapTest.RootNamespaceExposesTupleBuiltin())
+AhkTest.Test("stdlib root namespace exposes slice builtin", (*) => StdlibBootstrapTest.RootNamespaceExposesSliceBuiltin())
 AhkTest.Test("stdlib root namespace exposes boolean builtins", (*) => StdlibBootstrapTest.RootNamespaceExposesBooleanBuiltins())
 AhkTest.Test("stdlib root namespace exposes NotImplemented builtin", (*) => StdlibBootstrapTest.RootNamespaceExposesNotImplementedBuiltin())
 AhkTest.Test("stdlib root namespace exposes error builtins", (*) => StdlibBootstrapTest.RootNamespaceExposesErrorBuiltins())
@@ -5359,6 +5427,7 @@ AhkTest.Test("stdlib socket uses stdlib namespace", (*) => StdlibBootstrapTest.S
 AhkTest.Test("stdlib shutil uses stdlib namespace", (*) => StdlibBootstrapTest.ShutilUsesStdlibNamespace())
 AhkTest.Test("stdlib tempfile uses stdlib namespace", (*) => StdlibBootstrapTest.TempfileUsesStdlibNamespace())
 AhkTest.Test("stdlib time uses stdlib namespace", (*) => StdlibBootstrapTest.TimeUsesStdlibNamespace())
+AhkTest.Test("stdlib pillow uses root stdlib namespace", (*) => StdlibBootstrapTest.PillowUsesStdlibNamespace())
 
 stdlib_test_raise_value_error()
 {
@@ -5514,6 +5583,29 @@ stdlib_test_capture_child_process_timeout(capture)
     AhkTest.AssertFalse(InStr(processResult.Out, "late output"), diagnostic)
 }
 
+stdlib_test_capture_child_process_waits(capture)
+{
+    scriptPath := A_Temp "\ahktest-capture-wait-" A_TickCount ".ahk"
+    markerPath := A_Temp "\ahktest-capture-wait-" A_TickCount ".txt"
+    script := '#Requires AutoHotkey v2.0`n#ErrorStdOut "UTF-8"`nSleep 300`nFileAppend "marker:waited", A_Args[1], "UTF-8"`nFileAppend "stdout:waited``n", "*", "UTF-8"`nExitApp 3`n'
+    try {
+        FileAppend script, scriptPath, "UTF-8"
+        processResult := capture.RunArgs(A_AhkPath, ["/ErrorStdOut=UTF-8", scriptPath, markerPath], { TimeoutSeconds: 2 })
+        marker := FileExist(markerPath) ? FileRead(markerPath, "UTF-8") : ""
+    } finally {
+        if FileExist(scriptPath)
+            FileDelete scriptPath
+        if FileExist(markerPath)
+            FileDelete markerPath
+    }
+    diagnostic := "exit=" processResult.ExitCode " timedOut=" (processResult.TimedOut ? "true" : "false") " stdout=" processResult.Out " stderr=" processResult.Err " marker=" marker
+    AhkTest.AssertFalse(processResult.TimedOut, diagnostic)
+    AhkTest.AssertEqual(3, processResult.ExitCode, diagnostic)
+    AhkTest.AssertContains("stdout:waited", processResult.Out, diagnostic)
+    AhkTest.AssertEqual("", processResult.Err, diagnostic)
+    AhkTest.AssertEqual("marker:waited", marker, diagnostic)
+}
+
 stdlib_test_capture_child_process_large_output(capture)
 {
     scriptPath := A_Temp "\ahktest-capture-large-" A_TickCount ".ahk"
@@ -5658,13 +5750,13 @@ class StdlibBootstrapContextlibStackContext
         this.events := events
     }
 
-    __enter__()
+    __enter()
     {
         this.events.Push("enter")
         return "entered"
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         this.events.Push(["exit", AhkStdlibIsNone(excType) ? stdlib.None : excType])
         return false
@@ -5678,13 +5770,13 @@ class StdlibBootstrapContextlibDecoratorCore
         this.events := events
     }
 
-    __enter__()
+    __enter()
     {
         this.events.Push("decorator-enter")
         return this
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         this.events.Push(["decorator-exit", AhkStdlibIsNone(excType) ? stdlib.None : excType])
         return false
@@ -5987,7 +6079,7 @@ stdlib_bootstrap_itertools_mul(a, b)
 stdlib_bootstrap_enum_member_names(enumType)
 {
     result := []
-    for name, value in enumType.__members__
+    for name, value in enumType.__members
         result.Push(name)
     return result
 }

@@ -97,8 +97,9 @@ small TDD slices. Current direct modules:
 - `stdlib\uuid.ahk`
 - `stdlib\inspect.ahk`
 - `stdlib\tkinter.ahk`
+- `stdlib\pillow.ahk`
 
-The framework manifest currently tracks `58` total module slots: `58` direct,
+The framework manifest currently tracks `59` total module slots: `59` direct,
 `0` candidate, and `0` native-quarantine.
 
 Current verified wrapper baseline is
@@ -2873,7 +2874,7 @@ The preceding tkinter.ttk promotion extends the covered themed-widget submodule
 slice with `ttk.Treeview.reattach(item, parent, index)`. A fresh Python 3.10.11
 probe confirmed that local `Treeview.reattach` exists, has signature
 `(self, item, parent, index)`, is the same function object as `Treeview.move`
-with `__name__ == "move"`, returns `None`, reattaches detached items to the root
+with `__name == "move"`, returns `None`, reattaches detached items to the root
 or a parent at the requested index, and reports missing/extra positional
 TypeErrors using `Treeview.move()` in the message. The AHK surface now preserves
 that alias shape as a prefixed-internal Treeview method delegating to `move`,
@@ -3922,7 +3923,7 @@ the observed Python 3.10.11 `ValueError` / `TypeError` text. The AHK surface
 now exposes `stdlib.tkinter.EventType(value)` for the covered value-code
 constructor behavior and also preserves existing callback event objects by
 giving them `.type.name`, `.type.value`, and value-string conversion. Full
-enum metaclass behavior, `__members__`, member attribute access such as
+enum metaclass behavior, `__members`, member attribute access such as
 `EventType.ButtonPress`, `repr(...)`, and str-subclass equality remain
 intentionally unclaimed until focused slices cover them. Fresh promotion gates
 include the focused red test failing at missing `EventType` in 16ms, the
@@ -3935,7 +3936,7 @@ known stderr line `plain fallback`.
 
 The preceding tkinter Event promotion closes the public empty event-object
 constructor slice. Fresh Python 3.10.11 probes confirmed that `tkinter.Event`
-has signature `()`, creates an object with an empty `__dict__`, does not
+has signature `()`, creates an object with an empty `__dict`, does not
 predefine `widget`, `x`, `y`, `type`, or `char`, accepts normal dynamic
 attribute assignment, and raises `TypeError("Event() takes no arguments")` for
 extra positional arguments. The AHK surface now exposes
@@ -5458,8 +5459,10 @@ global class definitions.
 The root namespace currently exposes `stdlib.None`, `stdlib.NotImplemented`,
 `stdlib.NotImplementedError`, `stdlib.RuntimeError`, `stdlib.StopIteration`,
 `stdlib.KeyError`, `stdlib.AttributeError`, `stdlib.SystemError`,
-`stdlib.ModuleNotFoundError`, `stdlib.True`, `stdlib.False`,
-`stdlib.tuple(...)`, `stdlib.await(...)`, and `stdlib.decorate(...)`.
+`stdlib.ModuleNotFoundError`, `stdlib.OverflowError`, `stdlib.EOFError`,
+`stdlib.ProcessLookupError`, `stdlib.True`, `stdlib.False`,
+`stdlib.tuple(...)`, `stdlib.slice(...)`, `stdlib.await(...)`, and
+`stdlib.decorate(...)`.
 
 The root namespace currently exposes builtins-style helpers:
 `stdlib.None` as the shared AHK sentinel for Python `None` semantics where
@@ -5468,11 +5471,16 @@ the shared Python `NotImplemented` sentinel for covered provider-protocol and
 type-name parity paths, `stdlib.NotImplementedError` /
 `stdlib.RuntimeError` / `stdlib.StopIteration` / `stdlib.KeyError` /
 `stdlib.AttributeError` / `stdlib.SystemError` /
-`stdlib.ModuleNotFoundError` as root-level builtin-style
-error classes for covered parity paths, `stdlib.True` / `stdlib.False` as
+`stdlib.ModuleNotFoundError` / `stdlib.OverflowError` / `stdlib.EOFError` /
+`stdlib.ProcessLookupError` as root-level builtin-style error classes for
+covered parity paths, `stdlib.True` / `stdlib.False` as
 root-level shared boolean singleton values, and `stdlib.tuple(...)` as a first
 root-level tuple constructor for cases where
 the direct module surface needs stable Python-like readonly tuple materialization.
+It now also exposes `stdlib.slice(...)` as a root-level Python-slice carrier for
+AHK call sites that cannot use Python's colon slice syntax directly: covered
+paths support `slice(stop)`, `slice(start, stop)`, `slice(start, stop, step)`,
+observable `.start` / `.stop` / `.step`, `.__Repr()`, and `.indices(length)`.
 It also exposes AHK-side convenience helpers: `stdlib.await(awaitable, options?)`
 for covered asyncio and thread futures, and
 `stdlib.decorate(target, decorators*)` for Python-style decorator application
@@ -5542,7 +5550,339 @@ cases, preserves the earlier sequence slice for `.count(x)`, `.index(x)`,
 `.remove(x)`, `.pop(i=-1)`, and `.reverse()`, and adds `__Len`,
 `__Compare`, `__Add`, `__Mul`, `__Contains`, and `__LengthHint` hooks wired
 through `stdlib.operator` for the covered array truth, contains, equality,
-addition, and multiplication paths. Fresh AHK evidence includes focused red
+addition, and multiplication paths. The current in-place special-method slice
+uses fresh Python 3.10.11 evidence from
+`.codex/array_inplace_special_methods_probe.py` plus
+`.codex/array_inplace_special_methods_probe.output.json` confirming direct
+in-place add mutation and self return, wrong-kind and non-array
+errors, in-place multiply mutation and self return for positive, zero, `True`,
+and `False` counts, float count `TypeError`, and reverse multiply returning a
+new repeated array without mutating the source. The AHK surface now exposes
+AHK-style no-tail lower-case analogues `__iadd`, `__imul`, and `__rmul` on
+`AhkStdlibArrayValue` while preserving the existing
+`stdlib.operator` sequence hooks. Fresh AHK evidence includes
+`.codex/array-inplace-special-methods-red-report.txt` erroring because
+`AhkStdlibArrayValue` had no `__iadd` method, focused green
+`.codex/array-inplace-special-methods-green-focused-report.txt` passing 1/1,
+module green `.codex/array-inplace-special-methods-module-green-report.txt`
+passing `stdlib/tests/array.test.ahk` 23/23, and root smoke
+`.codex/array-inplace-special-methods-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233. Follow-up example capture
+`.codex/array-inplace-special-methods-example-array-report.txt` loaded
+`stdlib/examples/array.ahk` without warning/error, and validation
+`.codex/array-inplace-special-methods-validate-report.txt` passed
+`stdlib/array.ahk`, related tests, and `stdlib/examples/array.ahk` at
+`TimeoutSeconds 90`. The current copy interop slice also exposes Python's
+observed array copy / deepcopy hook behavior through AHK-style no-tail
+`__copy` and `__deepcopy` methods consumed by `stdlib.copy.copy(...)` and
+`stdlib.copy.deepcopy(...)`:
+shallow and deep copies preserve `typecode` / `itemsize`, return distinct
+arrays, and keep subsequent source/copy mutations independent. Fresh Python
+3.10.11 evidence in `.codex/array_copy_deepcopy_probe.py` plus
+`.codex/array_copy_deepcopy_probe.output.json` confirmed those copy hooks and
+independent mutation behavior. The current root-slice / array-slice interop
+slice uses fresh Python 3.10.11 evidence from `.codex/array_slice_probe.py`
+plus `.codex/array_slice_probe.output.json` confirming covered
+`slice(...).indices(...)` normalization, `array.array` slicing reads returning
+same-type arrays, ordinary slice assignment with resize, extended slice
+assignment with same-size enforcement, ordinary and extended slice deletion,
+wrong-typecode assignment `TypeError("bad argument type for built-in operation")`,
+list assignment `TypeError("can only assign array (not \"list\") to array slice")`,
+extended-size mismatch `ValueError`, and zero-step `ValueError("slice step cannot be zero")`.
+The AHK surface covers those paths with `arrayValue[stdlib.slice(...)]` for
+read/write and `arrayValue.Delete(stdlib.slice(...))` as the AHK syntax
+replacement for Python `del array_value[...]`. Fresh AHK evidence for this
+slice includes root focused red `.codex/init-slice-red-report.txt` failing
+because `stdlib` had no `slice`, array focused red
+`.codex/array-slice-red-report.txt` failing for the same missing root helper,
+root focused green `.codex/init-slice-green-focused-report.txt` passing 1/1,
+array focused green `.codex/array-slice-green-focused-report.txt` passing 1/1,
+module green `.codex/array-slice-module-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 8/8, root smoke
+`.codex/array-slice-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/array-slice-validate-report.txt` passing `stdlib/init.ahk`,
+`stdlib/array.ahk`, `stdlib/tests/stdlib.test.ahk`,
+`stdlib/tests/array.test.ahk`, `stdlib/examples/init.ahk`, and
+`stdlib/examples/array.ahk` at `TimeoutSeconds 90`. The follow-up operator
+interop slice uses fresh Python 3.10.11 evidence from
+`.codex/array_operator_slice_probe.py` plus
+`.codex/array_operator_slice_probe.output.json` confirming
+`operator.getitem(...)`, `operator.setitem(...)`, and `operator.delitem(...)`
+with array slices. The AHK surface already routed get/set through the custom
+array indexer, and now routes `stdlib.operator.delitem(arrayValue,
+stdlib.slice(...))` through the array `Delete(...)` protocol. Fresh AHK
+evidence includes `.codex/array-operator-slice-red-report.txt` failing because
+`delitem` left the target unchanged, focused green
+`.codex/array-operator-slice-green-focused-report.txt` passing 1/1, module
+green `.codex/array-operator-slice-module-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 9/9, operator regression
+`.codex/array-operator-slice-operator-green-report.txt` passing
+`stdlib/tests/operator.test.ahk` 12/12, root smoke
+`.codex/array-operator-slice-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/array-operator-slice-validate-report.txt` passing `stdlib/init.ahk`,
+`stdlib/array.ahk`, `stdlib/operator.ahk`, related tests, and
+`stdlib/examples/init.ahk` / `stdlib/examples/array.ahk` at
+`TimeoutSeconds 90`. The current slice-RHS snapshot slice uses fresh Python
+3.10.11 evidence from `.codex/array_slice_self_assignment_probe.py` plus
+`.codex/array_slice_self_assignment_probe.output.json` confirming that
+`array_value[::-1] = array_value` reads the original RHS snapshot and produces
+the reversed array, ordinary self slice assignment can resize from the original
+RHS, and stepped assignment from a slice copy keeps the expected values. The
+AHK surface now clones the replacement array at the `stdlib.slice(...)`
+assignment boundary before mutating the target, so extended self assignment no
+longer reads values already overwritten by earlier positions. Fresh AHK
+evidence includes `.codex/array-slice-self-assignment-red-report.txt` failing
+because `a[::-1] = a` produced `[1, 2, 2, 1]`, focused green
+`.codex/array-slice-self-assignment-green-focused-report.txt` passing 1/1,
+module green `.codex/array-slice-self-assignment-module-green-report.txt`
+passing `stdlib/tests/array.test.ahk` 19/19, and root smoke
+`.codex/array-slice-self-assignment-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233. Follow-up example capture
+`.codex/array-slice-self-assignment-example-array-report.txt` loaded
+`stdlib/examples/array.ahk` without warning/error, and validation
+`.codex/array-slice-self-assignment-validate-report.txt` passed
+`stdlib/array.ahk`, related tests, and `stdlib/examples/array.ahk` at
+`TimeoutSeconds 90`. The current bounded-index slice uses fresh Python 3.10.11
+evidence from `.codex/array_index_bounds_probe.py` plus
+`.codex/array_index_bounds_probe.output.json` confirming
+`array.index(x, start, stop)` with positive and negative bounds, not-found
+`ValueError("array.index(x): x not in array")`, slice-index `TypeError` for
+non-integer bounds, and Python 3.10 arity messages. The AHK surface now covers
+those paths through `arrayValue.index(x, start?, stop?)`. Fresh AHK evidence
+includes `.codex/array-index-bounds-red-report.txt` failing because the old
+implementation rejected a second argument, focused green
+`.codex/array-index-bounds-green-focused-report.txt` passing 1/1, module green
+`.codex/array-index-bounds-module-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 10/10, root smoke
+`.codex/array-index-bounds-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/array-index-bounds-validate-report.txt` passing `stdlib/array.ahk`,
+`stdlib/tests/array.test.ahk`, `stdlib/tests/stdlib.test.ahk`, and
+`stdlib/examples/array.ahk` at `TimeoutSeconds 90`. The current extend/fromlist
+input-rule slice uses fresh Python 3.10.11 evidence from
+`.codex/array_extend_fromlist_probe.py` plus
+`.codex/array_extend_fromlist_probe.output.json` confirming that
+`extend(array)` requires an array of the same kind, ordinary list-style
+iterables still extend successfully, and `fromlist(...)` accepts list while
+rejecting tuple/array inputs with `TypeError("arg must be list")`. The AHK
+surface now enforces those covered rules while preserving generic iterable
+`extend(...)` for non-array inputs. Fresh AHK evidence includes
+`.codex/array-extend-fromlist-red-report.txt` failing because wrong-typecode
+array extension raised no exception, focused green
+`.codex/array-extend-fromlist-green-focused-report.txt` passing 1/1, module
+green `.codex/array-extend-fromlist-module-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 11/11, root smoke
+`.codex/array-extend-fromlist-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/array-extend-fromlist-validate-report.txt` passing `stdlib/array.ahk`,
+`stdlib/tests/array.test.ahk`, `stdlib/tests/stdlib.test.ahk`, and
+`stdlib/examples/array.ahk` at `TimeoutSeconds 90`. The current append/extend
+return-protocol slice uses fresh Python 3.10.11 evidence from
+`.codex/array_append_extend_return_probe.py` plus
+`.codex/array_append_extend_return_probe.output.json` confirming that
+successful `append(...)`, `extend(list)`, `extend(array)`, and unicode
+`extend(str)` all return `None` while mutating the target. The AHK surface now
+returns root `stdlib.None` from those successful mutation methods instead of an
+empty string, and the root namespace smoke was updated to assert that protocol.
+Fresh AHK evidence includes `.codex/array-append-extend-return-red-report.txt`
+failing because `append(...)` returned `""`, focused green
+`.codex/array-append-extend-return-green-focused-report.txt` passing 1/1,
+module green `.codex/array-append-extend-return-module-green-report.txt`
+passing `stdlib/tests/array.test.ahk` 20/20, root smoke
+`.codex/array-append-extend-return-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233 after synchronizing the root smoke
+assertion, example capture
+`.codex/array-append-extend-return-example-array-report.txt` loading
+`stdlib/examples/array.ahk` without warning/error, and validation
+`.codex/array-append-extend-return-validate-report.txt` passing
+`stdlib/array.ahk`, related tests, and `stdlib/examples/array.ahk` at
+`TimeoutSeconds 90`. The current integer-bounds
+slice uses fresh Python 3.10.11 evidence from
+`.codex/array_integer_bounds_probe.py` plus
+`.codex/array_integer_bounds_probe.output.json` confirming min/max acceptance
+and OverflowError text for the covered signed/unsigned 1-, 2-, and 4-byte
+integer typecodes, plus observed 8-byte baseline evidence kept for backlog
+where AHK's signed-64 integer ceiling limits full unsigned-64 coverage. The AHK
+surface now rejects covered out-of-range integer writes before `NumPut` can
+truncate/wrap them, and adds root `stdlib.OverflowError` as the Python-style
+error class used by these paths. Fresh AHK evidence includes
+`.codex/array-integer-bounds-red-report.txt` failing because an out-of-range
+value raised no exception, focused green
+`.codex/array-integer-bounds-green-focused-report.txt` passing 1/1, root error
+builtin focused green `.codex/array-overflow-root-error-green-report.txt`
+passing 1/1, module green `.codex/array-integer-bounds-module-green-report.txt`
+passing `stdlib/tests/array.test.ahk` 12/12, root smoke
+`.codex/array-integer-bounds-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/array-integer-bounds-validate-report.txt` passing `stdlib/init.ahk`,
+`stdlib/array.ahk`, `stdlib/tests/array.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, `stdlib/examples/init.ahk`, and
+`stdlib/examples/array.ahk` at `TimeoutSeconds 90`. The current readonly /
+fromfile EOF slice uses fresh Python 3.10.11 evidence from
+`.codex/array_readonly_fromfile_probe.py` plus
+`.codex/array_readonly_fromfile_probe.output.json` confirming
+`typecode` and `itemsize` readonly `AttributeError` messages, successful exact
+`fromfile(...)`, zero-count reads, negative-count and non-integer-count errors,
+short reads raising `EOFError("read() didn't return enough bytes")`, complete
+items already read being appended before that EOF, and non-item-aligned short
+reads raising `ValueError("bytes length not a multiple of item size")` without
+mutation. The AHK surface now exposes root `stdlib.EOFError`, keeps
+`arrayValue.typecode` and `.itemsize` readonly, and preserves those covered
+short-read mutation rules. Fresh AHK evidence includes
+`.codex/array-readonly-fromfile-red-report.txt` failing because `typecode`
+assignment raised no exception, root red
+`.codex/array-eoferror-root-red-report.txt` erroring because `stdlib.EOFError`
+was absent, focused green
+`.codex/array-readonly-fromfile-green-focused-report.txt` passing 1/1, root
+focused green `.codex/array-eoferror-root-green-focused-report.txt` passing
+1/1, module green `.codex/array-readonly-fromfile-module-green-report.txt`
+passing `stdlib/tests/array.test.ahk` 13/13, and root smoke
+`.codex/array-readonly-fromfile-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233 at `TimeoutSeconds 90`. The current
+string-initializer rule slice uses fresh Python 3.10.11 evidence from
+`.codex/array_string_initializer_probe.py` plus
+`.codex/array_string_initializer_probe.output.json` confirming that string
+initializers are accepted for `typecode "u"`, rejected for non-unicode
+typecodes with `TypeError("cannot use a str to initialize an array with
+typecode 'x'")`, `extend("...")` appends characters for unicode arrays while
+non-unicode arrays still fail item conversion, and `fromlist("...")` still
+raises `TypeError("arg must be list")`. The AHK surface now rejects non-`u`
+string constructor inputs before per-character validation while preserving the
+covered unicode and extend/fromlist paths. Fresh AHK evidence includes
+`.codex/array-string-initializer-red-report.txt` failing because
+`array("i", "12")` reported the per-item integer-conversion error, focused
+green `.codex/array-string-initializer-green-focused-report.txt` passing 1/1,
+module green `.codex/array-string-initializer-module-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 14/14, root smoke
+`.codex/array-string-initializer-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/array-string-initializer-validate-report.txt` passing
+`stdlib/array.ahk`, related tests, and `stdlib/examples/array.ahk` at
+`TimeoutSeconds 90`. The current bytes-initializer slice uses fresh Python
+3.10.11 evidence from `.codex/array_bytes_initializer_probe.py` plus
+`.codex/array_bytes_initializer_probe.output.json` confirming that
+`array("i", bytes)` and bytearray-style inputs initialize from raw bytes,
+`array("u", bytes)` initializes unicode storage from raw bytes on this local
+Windows Python build, and short byte payloads raise
+`ValueError("bytes length not a multiple of item size")`. The AHK surface now
+treats `Buffer` initializer inputs as bytes-like objects and routes them
+through the existing `frombytes(...)` path before generic iterable handling,
+while preserving the same short-buffer error. Fresh AHK evidence includes
+`.codex/array-bytes-initializer-red-report.txt` erroring because `Buffer` was
+not iterable, focused green
+`.codex/array-bytes-initializer-green-focused-report.txt` passing 1/1, module
+green `.codex/array-bytes-initializer-module-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 21/21, and root smoke
+`.codex/array-bytes-initializer-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233. Follow-up example capture
+`.codex/array-bytes-initializer-example-array-report.txt` loaded
+`stdlib/examples/array.ahk` without warning/error, and validation
+`.codex/array-bytes-initializer-validate-report.txt` passed
+`stdlib/array.ahk`, related tests, and `stdlib/examples/array.ahk` at
+`TimeoutSeconds 90`. The current bytes-extend slice uses fresh Python 3.10.11
+evidence from `.codex/array_bytes_extend_probe.py` plus
+`.codex/array_bytes_extend_probe.output.json` confirming that `extend(bytes)`
+and bytearray-style payloads iterate byte values, successful extension returns
+`None`, unicode arrays reject byte integers with
+`TypeError("array item must be unicode character")`, and constructor bytes-like
+initialization remains raw-byte based. The AHK surface now treats `Buffer`
+payloads to `extend(...)` as byte iterables while keeping
+`array(typecode, Buffer)` on the raw `frombytes(...)` initializer path. Fresh
+AHK evidence includes `.codex/array-bytes-extend-red-report.txt` erroring
+because `Buffer` was not iterable, focused green
+`.codex/array-bytes-extend-green-focused-report.txt` passing 1/1, module green
+`.codex/array-bytes-extend-module-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 22/22, and root smoke
+`.codex/array-bytes-extend-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233. Follow-up example capture
+`.codex/array-bytes-extend-example-array-report.txt` loaded
+`stdlib/examples/array.ahk` without warning/error, and validation
+`.codex/array-bytes-extend-validate-report.txt` passed `stdlib/array.ahk`,
+related tests, and `stdlib/examples/array.ahk` at `TimeoutSeconds 90`. The current unicode-repr slice uses fresh Python 3.10.11
+evidence from `.codex/array_unicode_repr_probe.py` plus
+`.codex/array_unicode_repr_probe.output.json` confirming `array("u")` empty
+repr, compact `array('u', 'Az')` non-empty repr, quote selection, backslash,
+newline, tab, and `\xNN` control-character escaping. The AHK surface now
+special-cases non-empty unicode arrays in `.__Repr()` through the covered
+Python-style string repr while leaving numeric array reprs on the list form.
+Fresh AHK evidence includes `.codex/array-unicode-repr-red-report.txt` failing
+because unicode arrays were represented as `['A', 'z']`, focused green
+`.codex/array-unicode-repr-green-focused-report.txt` passing 1/1, module green
+`.codex/array-unicode-repr-module-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 15/15, root smoke
+`.codex/array-unicode-repr-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/array-unicode-repr-validate-report.txt` passing `stdlib/array.ahk`,
+related tests, and `stdlib/examples/array.ahk` at `TimeoutSeconds 90`. The
+current bool-value type slice uses fresh Python 3.10.11 evidence from
+`.codex/array_bool_values_probe.py` plus
+`.codex/array_bool_values_probe.output.json` confirming that `True` and
+`False` construct and append as `1` / `0` for all covered integer typecodes
+`bB hH iI lL qQ`, as `1.0` / `0.0` for float typecodes `f` and `d`, and still
+raise `TypeError("array item must be unicode character")` for unicode arrays.
+The AHK surface now maps root `stdlib.True` / `stdlib.False` through the same
+numeric storage conversion while preserving unicode rejection. Fresh AHK
+evidence includes `.codex/array-bool-values-red-report.txt` erroring because
+root bool reached `NumPut` as an object, focused green
+`.codex/array-bool-values-green-focused-report.txt` passing 1/1, module green
+`.codex/array-bool-values-module-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 16/16, root smoke
+`.codex/array-bool-values-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/array-bool-values-validate-report.txt` passing `stdlib/array.ahk`,
+related tests, and `stdlib/examples/array.ahk` at `TimeoutSeconds 90`. The
+current bool-index/count slice uses fresh Python 3.10.11 evidence from
+`.codex/array_bool_index_probe.py` plus
+`.codex/array_bool_index_probe.output.json` confirming that `True` and
+`False` act as indexes `1` and `0` for get, set, delete, `pop(...)`, and
+`insert(...)`, act as start bounds for `index(...)`, and act as repeat counts
+for multiplication. The AHK surface now maps root `stdlib.True` /
+`stdlib.False` through those same index/count paths, including
+`arrayValue[stdlib.True]`, `arrayValue.Delete(stdlib.True)`,
+`arrayValue.pop(stdlib.True)`, `arrayValue.insert(stdlib.False, value)`, and
+`stdlib.operator.mul(arrayValue, stdlib.True)`. Fresh AHK evidence includes
+`.codex/array-bool-index-red-report.txt` erroring because root bool was not an
+integer index, focused green `.codex/array-bool-index-green-focused-report.txt`
+passing 1/1, module green `.codex/array-bool-index-module-green-report.txt`
+passing `stdlib/tests/array.test.ahk` 17/17, root smoke
+`.codex/array-bool-index-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/array-bool-index-validate-report.txt` passing `stdlib/array.ahk`,
+related tests, and `stdlib/examples/array.ahk` at `TimeoutSeconds 90`. The
+current bool-search/remove slice uses fresh Python 3.10.11 evidence from
+`.codex/array_bool_search_probe.py` plus
+`.codex/array_bool_search_probe.output.json` confirming that `True` and
+`False` compare as numeric `1` and `0` for `count(...)`, `index(...)`,
+`remove(...)`, and containment on numeric arrays, while unicode arrays still do
+not treat root bool singletons as matching characters. The AHK surface now
+normalizes the search needle for non-unicode arrays through the same scalar
+conversion used by numeric storage, so `stdlib.array.array("i", [0, 1])`
+matches `stdlib.True` and `stdlib.False` in search/removal paths while
+preserving unicode rejection/no-match behavior. Fresh AHK evidence includes
+`.codex/array-bool-search-red-report.txt` failing because root bool search
+returned count `0`, focused green
+`.codex/array-bool-search-green-focused-report.txt` passing 1/1, module green
+`.codex/array-bool-search-module-green-report.txt` passing
+`stdlib/tests/array.test.ahk` 18/18, root smoke
+`.codex/array-bool-search-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/array-bool-search-validate-report.txt` passing `stdlib/array.ahk`,
+related tests, and `stdlib/examples/array.ahk` at `TimeoutSeconds 90`. Earlier fresh AHK evidence includes focused red
+`.codex/array-copy-deepcopy-red-report.txt` erroring because the generic object
+deepcopy path hit `Type mismatch`, focused green
+`.codex/array-copy-deepcopy-green-focused-report.txt` passing 1/1, module green
+`.codex/array-copy-deepcopy-module-green-serial-report.txt` passing
+`stdlib/tests/array.test.ahk` 7/7, copy regression
+`.codex/array-copy-deepcopy-copy-regression-serial-report.txt` passing
+`stdlib/tests/copy.test.ahk` 3/3, root smoke
+`.codex/array-copy-deepcopy-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 232/232, and validation
+`.codex/array-copy-deepcopy-validate-report.txt` passing `stdlib/array.ahk`,
+`stdlib/tests/array.test.ahk`, `stdlib/tests/copy.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/array.ahk` at
+`TimeoutSeconds 90`. Earlier fresh AHK evidence includes focused red
 `.codex/array-sequence-dunder-red-report.txt` failing because
 `AhkStdlibArrayValue` had no `__Len`, final module green
 `.codex/array-sequence-dunder-final-green-report.txt` passing
@@ -5692,7 +6032,24 @@ module `.codex/base64-standard-bytes-b16-final-green-report.txt` passing
 `.codex/base64-standard-bytes-b16-validate-report.txt` validating
 `stdlib/base64.ahk`, `stdlib/tests/base64.test.ahk`,
 `stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/base64.ahk` at
-`TimeoutSeconds 90`. The earlier alphabetical pass slice added URL-safe Base64 encoding and
+`TimeoutSeconds 90`. The current Base32 follow-up uses fresh Python 3.10.11
+evidence from `.codex/base64_base32_probe.py` plus
+`.codex/base64_base32_probe.output.json` confirming `MAXBINSIZE == 57`,
+`MAXLINESIZE == 76`, `b32encode(...)`, `b32decode(...)`,
+`b32hexencode(...)`, and `b32hexdecode(...)` for empty, ASCII, and binary
+payloads, bytes and ASCII-string decode input, default lowercase rejection,
+`casefold=True`, standard Base32 `map01`, and observed bad-padding /
+bad-type errors. The AHK surface now covers those Base32 and Base32hex paths;
+Base85/Ascii85 and file-object `encode(...)` / `decode(...)` APIs remain
+explicit backlog. Fresh AHK evidence includes focused red
+`.codex/base64-base32-red-report.txt` erroring because
+`stdlib.base64.MAXBINSIZE` was absent, focused green
+`.codex/base64-base32-green-focused-report.txt` passing 1/1, module green
+`.codex/base64-base32-module-report.txt` passing `stdlib/tests/base64.test.ahk`
+5/5, root smoke `.codex/base64-base32-stdlib-root-report.txt` passing 1/1,
+and validation `.codex/base64-base32-validate-report.txt` passing
+`stdlib/base64.ahk`, `stdlib/tests/base64.test.ahk`, and
+`stdlib/examples/base64.ahk` at `TimeoutSeconds 90`. The earlier alphabetical pass slice added URL-safe Base64 encoding and
 decoding, including the probed `b"\xfb\xff" -> b"-_8="` and `b"-_8=" ->
 b"\xfb\xff"` behavior, ASCII-string decode input, and the observed local
 arity/type-error wording for missing arguments, too many positional arguments,
@@ -5710,6 +6067,26 @@ bool-like `validate` acceptance, non-ASCII decode payloads, invalid
 covered `b64encode(...)` / `b64decode(...)` branches. To keep the public root
 budget stable at 57 slots, one native-quarantine slot has been reclaimed in
 favor of this concrete Python stdlib root.
+
+The current Base85 follow-up uses fresh Python 3.10.11 evidence from
+`.codex/base64_base85_probe.py` plus
+`.codex/base64_base85_probe.output.json` confirming `b85encode(...)`,
+`b85decode(...)`, `a85encode(...)`, and `a85decode(...)` for empty, ASCII, and
+binary payloads, bytes and ASCII-string decode input, b85 padding, Ascii85
+Adobe framing, fold-spaces shorthand, zero shorthand, padded Ascii85 output,
+default whitespace ignoring, and observed bad-type decode errors. The AHK
+surface now covers those core Base85 and Ascii85 paths with project-standard
+options objects for keyword-only Ascii85 options such as `{ adobe: true }`,
+`{ foldspaces: true }`, and `{ pad: true }`; `wrapcol`, custom `ignorechars`,
+and deeper malformed-input parity remain backlog. Fresh AHK evidence includes
+focused red `.codex/base64-base85-red-report.txt` erroring because
+`stdlib.base64.b85encode` was absent, focused green
+`.codex/base64-base85-green-focused-report.txt` passing 1/1, module green
+`.codex/base64-base85-module-report.txt` passing `stdlib/tests/base64.test.ahk`
+6/6, root smoke `.codex/base64-base85-stdlib-root-report.txt` passing 1/1,
+and validation `.codex/base64-base85-validate-report.txt` passing
+`stdlib/base64.ahk`, `stdlib/tests/base64.test.ahk`, and
+`stdlib/examples/base64.ahk` at `TimeoutSeconds 90`.
 
 `stdlib.getpass` is now direct as a first slice of Python 3.10.11 `getpass`,
 promoted onto the public Python-path root as `stdlib.getpass.*`. The current
@@ -5871,6 +6248,141 @@ wrapper objects and covered underlying callables according to the probe, and
 abstract-method cache when a class opts into that cache. AHK helper
 `stdlib.abc.issubclass(subclass, cls)` now accompanies
 `stdlib.abc.isinstance(instance, cls)` for the covered virtual-subclass checks.
+The current functional-surface slice also covers `ABCMeta.__subclasshook__`
+semantics through AHK-visible no-tail `static __subclasshook(subclass)` methods:
+`True` accepts a class for both `issubclass(...)` and `isinstance(...)`,
+`False` rejects even an actual subclass, `stdlib.NotImplemented` falls back to
+ordinary inheritance / virtual registry checks, and any other return value
+raises `stdlib.assert.AssertionError("__subclasshook__ must return either False, True, or NotImplemented")`.
+Fresh Python 3.10.11 evidence includes `.codex/abc_subclasshook_probe.py` and
+`.codex/abc_subclasshook_probe.output.json`. Fresh AHK evidence includes
+focused red `.codex/abc-subclasshook-red-report.txt` failing because
+`issubclass(...)` did not dispatch the hook, focused green
+`.codex/abc-subclasshook-green-focused-report.txt` passing 1/1 after adding hook
+dispatch and instance-class recovery, module green
+`.codex/abc-subclasshook-module-report.txt` passing `stdlib/tests/abc.test.ahk`
+7/7, and root smoke `.codex/abc-subclasshook-root-filter-report.txt` passing
+1/1 at `TimeoutSeconds 90`. Follow-up serial gates
+`.codex/abc-subclasshook-validate-report.txt` and
+`.codex/abc-subclasshook-example-report.txt` validated the changed AHK files and
+captured `stdlib/examples/abc.ahk` without warning/error.
+The current register-cycle follow-up uses fresh Python 3.10.11 evidence from
+`.codex/abc_register_cycle_probe.py` plus
+`.codex/abc_register_cycle_probe.output.json` confirming that registering a
+base class as a virtual subclass of its child raises
+`RuntimeError("Refusing to create an inheritance cycle")`, while self-register
+and foreign virtual registration still return the registered class. The AHK
+surface now refuses the same virtual inheritance cycle before mutating the
+registry or cache token. Fresh AHK evidence includes focused red
+`.codex/abc-register-cycle-red-report.txt` failing because no exception was
+thrown, focused green `.codex/abc-register-cycle-green-focused-report.txt`
+passing 1/1, module green `.codex/abc-register-cycle-module-report.txt`
+passing `stdlib/tests/abc.test.ahk` 8/8, root filter
+`.codex/abc-register-cycle-root-filter-report.txt` passing 1/1, changed-file
+validate `.codex/abc-register-cycle-validate-report.txt` passing, and example
+capture `.codex/abc-register-cycle-example-report.txt` loading
+`stdlib/examples/abc.ahk` without warning/error at `TimeoutSeconds 90`.
+The current virtual-registry transitivity follow-up uses fresh Python 3.10.11
+evidence from `.codex/abc_virtual_registry_transitive_probe.py` plus
+`.codex/abc_virtual_registry_transitive_probe.output.json` confirming that
+`Root.register(Mid)` and `Mid.register(Leaf)` make `Leaf`, `Leaf()` and a real
+`RealLeaf extends Leaf` visible through `Root`, with each first registration
+incrementing the cache token by one. The AHK registry lookup now recursively
+checks registered ABC registries while guarding cycles with an internal visited
+map, and instance checks recover the current prototype's class before using the
+same virtual-registry relation. Fresh AHK evidence includes focused red
+`.codex/abc-virtual-registry-transitive-red-report.txt` failing because
+`issubclass(Leaf, Root)` was false, focused green
+`.codex/abc-virtual-registry-transitive-green-focused-report.txt` passing 1/1,
+module green `.codex/abc-virtual-registry-transitive-module-report.txt` passing
+`stdlib/tests/abc.test.ahk` 10/10, root filter
+`.codex/abc-virtual-registry-transitive-root-filter-report.txt` passing 11/11,
+changed-file validate `.codex/abc-virtual-registry-transitive-validate-report.txt`
+passing, and example capture
+`.codex/abc-virtual-registry-transitive-example-report.txt` loading
+`stdlib/examples/abc.ahk` without warning/error at `TimeoutSeconds 90`.
+The current abstract-instantiation follow-up uses fresh Python 3.10.11 evidence
+from `.codex/abc_abstract_instantiation_probe.py` plus
+`.codex/abc_abstract_instantiation_probe.output.json` confirming that
+`abc.ABC` subclasses with non-empty `__abstractmethods__` raise
+`TypeError("Can't instantiate abstract class ... with abstract method need")`,
+concrete overrides instantiate normally, and dynamically added abstract methods
+only affect instantiation after `abc.update_abstractmethods(cls)`. The AHK
+surface now checks `AhkStdlibAbstractMethods` from the inherited
+`AhkStdlibAbcBase.__New` path and blocks covered abstract class construction
+with the same observable message shape. This covers classes that use the
+stdlib ABC carrier and preserve its construction path; full Python metaclass
+mechanics remain unclaimed. Fresh AHK evidence includes focused red
+`.codex/abc-abstract-instantiation-red-report.txt` failing because abstract
+instantiation threw nothing, focused green
+`.codex/abc-abstract-instantiation-green-focused-report.txt` passing 1/1,
+module green `.codex/abc-abstract-instantiation-module-report.txt` passing
+`stdlib/tests/abc.test.ahk` 11/11, root filter
+`.codex/abc-abstract-instantiation-root-filter-report.txt` passing 12/12,
+changed-file validate `.codex/abc-abstract-instantiation-validate-report.txt`
+passing, and example capture
+`.codex/abc-abstract-instantiation-example-report.txt` loading
+`stdlib/examples/abc.ahk` without warning/error at `TimeoutSeconds 90`.
+The register-decorator coverage follow-up uses fresh Python 3.10.11 evidence
+from `.codex/abc_register_decorator_probe.py` plus
+`.codex/abc_register_decorator_probe.output.json` confirming that
+`@Root.register` returns the decorated class, increments the cache token once,
+and makes decorated instances virtual instances of `Root`. The AHK coverage
+uses `stdlib.decorate(Target, (cls) => Root.register(cls))`, matching the
+observable decorator result while respecting AHK's unbound class-method
+reference semantics. This slice was a coverage addition rather than an
+implementation fix: focused
+`.codex/abc-register-decorator-focused-report.txt` passed 1/1, module
+`.codex/abc-register-decorator-module-report.txt` passed
+`stdlib/tests/abc.test.ahk` 12/12, root filter
+`.codex/abc-register-decorator-root-filter-report.txt` passed 13/13,
+changed-file validate `.codex/abc-register-decorator-validate-report.txt`
+passed, and captured example
+`.codex/abc-register-decorator-example-report.txt` loaded
+`stdlib/examples/abc.ahk` without warning/error at `TimeoutSeconds 90`.
+The current `abstractproperty` follow-up uses fresh Python 3.10.11 evidence from
+`.codex/abc_abstractproperty_probe.py` plus
+`.codex/abc_abstractproperty_probe.output.json` confirming that zero-argument,
+one-argument, and four-argument construction is accepted, missing
+`fget`/`fset`/`fdel` slots are `None`, non-callable `fget` values are accepted
+at construction time, wrapper objects report `__isabstractmethod__ == True`,
+and five positional arguments raise
+`TypeError("property() takes at most 4 arguments (5 given)")`. The AHK surface
+now exposes AHK-visible no-tail `__isabstractmethod`, stores missing slots as
+`stdlib.None`, and provides explicit `Get(instance)`, `Set(instance, value)`,
+and `Delete(instance)` helpers for the currently supported descriptor-like
+property operations. Fresh AHK evidence includes focused red
+`.codex/abc-abstractproperty-red-report.txt` failing because zero-argument
+construction still raised a missing-`fget` error, focused green
+`.codex/abc-abstractproperty-green-focused-report.txt` passing 1/1 with
+constructor, non-callable, and getter/setter/deleter assertions, module green
+`.codex/abc-abstractproperty-module-report.txt` passing
+`stdlib/tests/abc.test.ahk` 8/8, root filter
+`.codex/abc-abstractproperty-root-filter-report.txt` passing 9/9, changed-file
+validate `.codex/abc-abstractproperty-validate-report.txt` passing, and example
+capture `.codex/abc-abstractproperty-example-report.txt` loading
+`stdlib/examples/abc.ahk` without warning/error at `TimeoutSeconds 90`.
+The current descriptor-helper error slice uses fresh Python 3.10.11 evidence
+from `.codex/abc_descriptor_helpers_probe.py` plus
+`.codex/abc_descriptor_helpers_probe.output.json` confirming that
+`abstractmethod(1)`, `abstractstaticmethod(1)`, and `abstractclassmethod(1)`
+raise `AttributeError("'int' object has no attribute '__isabstractmethod__'")`,
+while missing / extra `abstractstaticmethod` and `abstractclassmethod`
+arguments use the probed `abstractstaticmethod.__init__()` /
+`abstractclassmethod.__init__()` TypeError text. The AHK surface now marks
+abstract-capable AHK objects without requiring callability at construction time
+and raises the same probed AttributeError for primitive values. Fresh AHK
+evidence includes focused red
+`.codex/abc-descriptor-helper-errors-red-report.txt` failing because
+`abstractmethod(1)` still raised TypeError, focused green
+`.codex/abc-descriptor-helper-errors-green-focused-report.txt` passing 1/1,
+module green `.codex/abc-descriptor-helper-errors-module-report.txt` passing
+`stdlib/tests/abc.test.ahk` 9/9, root filter
+`.codex/abc-descriptor-helper-errors-root-filter-report.txt` passing 10/10,
+changed-file validate `.codex/abc-descriptor-helper-errors-validate-report.txt`
+passing, and example capture
+`.codex/abc-descriptor-helper-errors-example-report.txt` loading
+`stdlib/examples/abc.ahk` without warning/error at `TimeoutSeconds 90`.
 Fresh Python 3.10.11 evidence from
 `.codex/abc_update_abstractmethods_probe.py` and
 `.codex/abc_update_abstractmethods_probe.output.json` confirms that
@@ -6163,7 +6675,25 @@ surface now includes cooperative `EventLoop` ready/timer queues, `Handle` /
 `stop()`, Future done-callback
 registration/removal/scheduling, `asyncio.sleep(...)`, and `asyncio.gather(...)`
 for covered Future inputs, plus `Queue`, `PriorityQueue`, and `LifoQueue`
-nowait operations. The latest lifecycle/time slice uses fresh Python 3.10.11
+nowait operations. The current `gather(...)` follow-up uses fresh Python
+3.10.11 evidence from `.codex/asyncio_gather_return_exceptions_probe.py` plus
+`.codex/asyncio_gather_return_exceptions_probe.output.json` confirming default
+exception propagation, `return_exceptions=True` result collection, and empty
+gather result behavior. The AHK surface accepts the project-standard keyword
+object form `stdlib.asyncio.gather(a, b, { return_exceptions: true })`, collects
+child `Error` objects into result slots, and preserves the default propagation
+path. Fresh AHK evidence includes focused red
+`.codex/asyncio-gather-return-exceptions-red-report.txt` erroring because the
+options object was treated as an awaitable, focused green
+`.codex/asyncio-gather-return-exceptions-green-focused-report.txt` passing 1/1,
+module green `.codex/asyncio-gather-return-exceptions-module-green-report.txt`
+passing `stdlib/tests/asyncio.test.ahk` 16/16, root smoke
+`.codex/asyncio-gather-return-exceptions-stdlib-root-report.txt` passing
+`stdlib/tests/stdlib.test.ahk` 233/233, and validation
+`.codex/asyncio-gather-return-exceptions-validate-report.txt` passing
+`stdlib/asyncio.ahk`, `stdlib/tests/asyncio.test.ahk`,
+`stdlib/tests/stdlib.test.ahk`, and `stdlib/examples/asyncio.ahk` at
+`TimeoutSeconds 90`. The latest lifecycle/time slice uses fresh Python 3.10.11
 evidence from `.codex/asyncio_loop_lifecycle_time_probe.py` plus JSON output to
 cover `loop.time()` returning a float, initial / running / post-run / closed
 `is_running()` and `is_closed()` states, `call_at(loop.time(), ...)`,
@@ -6237,6 +6767,30 @@ passing 14/14 in 31 ms. This
 Task surface is intentionally single-threaded and protocol-based: it supports
 AHK objects with `AhkStdlibAsyncioStep(...)` as awaitables, but does not claim
 native Python `async def` syntax compatibility. The follow-up synchronization
+slice for `asyncio.to_thread(...)` uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_to_thread_probe.py` plus
+`.codex/asyncio_to_thread_probe.output.json` confirming the public signature
+`(func, /, *args, **kwargs)`, coroutine return shape, callable result delivery,
+exception propagation, missing-`func` TypeError, bad-callable TypeError, and
+Python's real worker-thread identity difference. The AHK surface now removes
+the previous NotImplemented placeholder for AHK callables: awaiting
+`stdlib.asyncio.to_thread(func, args*)` calls the supplied callable, returns its
+result, propagates callable errors through the asyncio Future/Task path, and
+raises `TypeError("'int' object is not callable")` for primitive non-callables.
+This slice does not yet claim Python's real background-thread identity or
+`**kwargs` parity; those remain the next hard offload bridge tasks. Fresh AHK
+evidence includes focused red
+`.codex/asyncio-to-thread-callable-red-report.txt` erroring because awaiting
+`to_thread(...)` still raised NotImplementedError, focused green
+`.codex/asyncio-to-thread-callable-green-focused-report.txt` passing 1/1,
+module green `.codex/asyncio-to-thread-callable-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 25/25, root filter
+`.codex/asyncio-to-thread-callable-root-filter-report.txt` passing 27/27,
+changed-file validate `.codex/asyncio-to-thread-callable-validate-report.txt`
+passing, and example capture
+`.codex/asyncio-to-thread-callable-example-report.txt` loading
+`stdlib/examples/asyncio.ahk` without warning/error at `TimeoutSeconds 90`.
+The follow-up synchronization
 slice uses fresh Python 3.10.11 evidence from `.codex/asyncio_sync_queue_probe.py`
 to cover `Lock`, `Event`, `Semaphore`, `BoundedSemaphore`, and async
 `Queue.put(...)` / `Queue.get(...)` / `Queue.join()` / `Queue.task_done()`
@@ -6294,8 +6848,363 @@ passing. The earlier Future slice continues to cover construction,
 `Future.get_loop()`, pending/finished/cancelled state transitions,
 `cancel(msg)`, `result()`, `exception()`, `set_result(...)`,
 `set_exception(...)`, covered repr shapes, and `asyncio.isfuture(...)`.
-Native Python coroutine object interop, stream/network/subprocess APIs, thread
-handoff APIs, and full Python parameter/error parity remain explicit
+The current exception-class slice uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_exception_classes_probe.py` plus
+`.codex/asyncio_exception_classes_probe.output.json` to cover direct public
+exception constructors. `IncompleteReadError(partial, expected)` now extends
+root `EOFError`, stores `.partial` and `.expected`, and generates the observed
+`"3 bytes read on a total of ... expected bytes"` message including the
+`undefined` wording for `expected=None`; `LimitOverrunError(message, consumed)`
+stores `.consumed` while preserving the message. Fresh AHK evidence includes
+focused red `.codex/asyncio-exception-classes-red-report.txt` failing because
+`IncompleteReadError` was not an `EOFError`, focused green
+`.codex/asyncio-exception-classes-green-focused-report.txt` passing 1/1, module
+green `.codex/asyncio-exception-classes-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 25/25, and root filter
+`.codex/asyncio-exception-classes-root-filter-report.txt` passing 2/2 at
+`TimeoutSeconds 90`. Follow-up serial gates
+`.codex/asyncio-exception-classes-validate-report.txt` and
+`.codex/asyncio-exception-classes-example-report.txt` validated the changed AHK
+files and captured `stdlib/examples/asyncio.ahk` without warning/error.
+The earlier network/subprocess coroutine-surface follow-up uses fresh Python 3.10.11
+evidence from `.codex/asyncio_missing_coroutine_surface_probe.py` plus
+`.codex/asyncio_missing_coroutine_surface_probe.output.json` confirming
+`asyncio.open_connection(...)`, `asyncio.start_server(...)`,
+`asyncio.create_subprocess_exec(...)`, and
+`asyncio.create_subprocess_shell(...)` exist and return Python coroutine
+objects when called. The earlier AHK surface exposed the network entry points
+as covered step-awaitables but still raised `NotImplementedError` when awaited;
+that public surface placeholder has now been superseded by the localhost TCP
+runtime slice below. Fresh historical AHK evidence for the public-name surface
+includes focused red
+`.codex/asyncio-missing-coroutine-surface-red-report.txt` failing because
+`stdlib.asyncio.open_connection` was absent, focused green
+`.codex/asyncio-missing-coroutine-surface-green-focused-report.txt` passing
+1/1, module green `.codex/asyncio-missing-coroutine-surface-module-report.txt`
+passing `stdlib/tests/asyncio.test.ahk` 17/17, root filter
+`.codex/asyncio-missing-coroutine-surface-root-filter-report.txt` passing
+2/2, and example capture `.codex/asyncio-missing-coroutine-surface-example-report.txt`
+loading `stdlib/examples/asyncio.ahk` without warning/error.
+The current network follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_network_probe.py` plus `.codex/asyncio_network_probe.output.json`
+confirming a localhost TCP echo path: `asyncio.start_server(...)` returns a
+serving `Server` with a bound `127.0.0.1` socket, `asyncio.open_connection(...)`
+returns `StreamReader` / `StreamWriter`, the client can write `hello`, the
+server handler reads it and writes `HELLO`, and `server.close()` flips
+`is_serving()` to false. The AHK surface now implements the covered IPv4
+localhost TCP path through Winsock-backed nonblocking polling in the existing
+single-threaded event loop, creates real `StreamReader` / `StreamWriter` pairs,
+and starts handler step-awaitables as tasks. This slice does not claim DNS,
+IPv6, SSL, Unix sockets, socket options, full transport/protocol APIs, or
+production-grade selector/proactor semantics. Fresh AHK evidence includes
+focused red `.codex/asyncio-network-red-report.txt` erroring because
+`asyncio.start_server()` still raised `NotImplementedError`, focused green
+`.codex/asyncio-network-green-focused-report.txt` passing 1/1, module green
+`.codex/asyncio-network-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 31/31, root filter
+`.codex/asyncio-network-root-filter-report.txt` passing 33/33, changed-file
+validate `.codex/asyncio-network-validate-report.txt` passing, and captured
+example `.codex/asyncio-network-example-report.txt` loading
+`stdlib/examples/asyncio.ahk` without warning/error at `TimeoutSeconds 90`.
+The TCP stream extra-info follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_network_extra_info_probe.py` plus
+`.codex/asyncio_network_extra_info_probe.output.json` confirming
+`StreamWriter.get_extra_info("sockname")` and `"peername"` return localhost
+address tuples with integer ports on both client and server sides, missing keys
+return `None`, and missing keys with an explicit default return that default.
+The AHK socket transport now exposes the covered `sockname` / `peername`
+metadata through Winsock `getsockname` / `getpeername` while preserving default
+fallback behavior for unknown keys. This slice does not claim the full
+transport metadata catalog. Fresh AHK evidence includes focused red
+`.codex/asyncio-network-extra-info-red-report.txt` erroring because
+`get_extra_info("sockname")` returned the `None` sentinel, focused green
+`.codex/asyncio-network-extra-info-green-focused-report.txt` passing 1/1,
+module green `.codex/asyncio-network-extra-info-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 32/32, root filter
+`.codex/asyncio-network-extra-info-root-filter-report.txt` passing 34/34,
+changed-file validate `.codex/asyncio-network-extra-info-validate-report.txt`
+passing, and captured example
+`.codex/asyncio-network-extra-info-example-report.txt` loading
+`stdlib/examples/asyncio.ahk` without warning/error at `TimeoutSeconds 90`.
+The current subprocess follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_subprocess_wait_probe.py` plus
+`.codex/asyncio_subprocess_wait_probe.output.json` confirming that awaiting
+`asyncio.create_subprocess_exec(...)` and `asyncio.create_subprocess_shell(...)`
+returns a `Process` object with integer `pid`, `returncode is None` before
+`await process.wait()`, and `wait()` returns and stores the process exit code.
+The AHK surface now starts hidden Windows child processes through
+`CreateProcessW`, returns `AhkStdlibAsyncioProcess`, exposes `pid` and
+AHK-visible `returncode`, and implements `Process.wait()` as a covered
+awaitable using `WaitForSingleObject` / `GetExitCodeProcess`. This slice does
+not yet claim stdout/stderr pipes, `communicate()`, signal, terminate, kill, or
+network stream parity. Fresh AHK evidence includes focused red
+`.codex/asyncio-subprocess-wait-red-report.txt` erroring because
+`create_subprocess_exec(...)` still awaited to NotImplementedError, focused
+green `.codex/asyncio-subprocess-wait-green-focused-report.txt` passing 1/1,
+module green `.codex/asyncio-subprocess-wait-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 26/26, root filter
+`.codex/asyncio-subprocess-wait-root-filter-report.txt` passing 28/28,
+changed-file validate `.codex/asyncio-subprocess-wait-validate-report.txt`
+passing, and example capture `.codex/asyncio-subprocess-wait-example-report.txt`
+loading `stdlib/examples/asyncio.ahk` without warning/error at
+`TimeoutSeconds 90`.
+The subprocess pipe follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_subprocess_communicate_probe.py` plus
+`.codex/asyncio_subprocess_communicate_probe.output.json` confirming
+`asyncio.subprocess.PIPE == -1`, `stdout=PIPE` and `stderr=PIPE` expose
+`StreamReader` objects, `await process.communicate()` returns captured stdout
+and stderr bytes, updates `returncode`, and no-pipe `communicate()` returns
+`[None, None]`. The AHK surface now exposes `stdlib.asyncio.subprocess.PIPE`,
+accepts the project-standard trailing options object
+`{ stdout: stdlib.asyncio.subprocess.PIPE, stderr: ... }`, starts hidden
+Windows child processes with inherited temporary output handles, and returns
+captured stdout/stderr as Buffers from `Process.communicate()`. This slice does
+not yet claim stdin input, `STDOUT`, `DEVNULL`, streaming reads from the
+returned `StreamReader` placeholders, or signal/terminate/kill behavior. Fresh
+AHK evidence includes focused red
+`.codex/asyncio-subprocess-communicate-red-report.txt` erroring because
+`stdlib.asyncio.subprocess.PIPE` was absent, focused green
+`.codex/asyncio-subprocess-communicate-green-focused-report.txt` passing 1/1,
+module green `.codex/asyncio-subprocess-communicate-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 27/27, root filter
+`.codex/asyncio-subprocess-communicate-root-filter-report.txt` passing 29/29,
+changed-file validate
+`.codex/asyncio-subprocess-communicate-validate-report.txt` passing, and
+example capture `.codex/asyncio-subprocess-communicate-example-report.txt`
+loading `stdlib/examples/asyncio.ahk` without warning/error at
+`TimeoutSeconds 90`.
+The subprocess stdin-pipe follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_subprocess_stdin_probe.py` plus
+`.codex/asyncio_subprocess_stdin_probe.output.json` confirming that
+`stdin=asyncio.subprocess.PIPE` exposes a `StreamWriter`, `communicate(input)`
+writes bytes to the child process, returns captured stdout/stderr bytes, updates
+`returncode`, and raises `AttributeError("'NoneType' object has no attribute
+'write'")` when input is supplied without a stdin pipe. The AHK surface now
+accepts `{ stdin: stdlib.asyncio.subprocess.PIPE }`, creates an inherited child
+stdin read pipe plus a parent write handle, exposes `process.stdin` as an
+`AhkStdlibAsyncioStreamWriter`, and closes stdin after writing
+`Process.communicate(input)`. This slice still does not claim `STDOUT`,
+`DEVNULL`, interactive streaming reads from the returned pipe placeholders, or
+signal/terminate/kill behavior. Fresh AHK evidence includes focused red
+`.codex/asyncio-subprocess-stdin-red-report.txt` erroring because
+`AhkStdlibAsyncioProcess` had no `stdin` property, focused green
+`.codex/asyncio-subprocess-stdin-green-focused-report.txt` passing 1/1, module
+green `.codex/asyncio-subprocess-stdin-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 28/28, root filter
+`.codex/asyncio-subprocess-stdin-root-filter-report.txt` passing 30/30,
+changed-file validate `.codex/asyncio-subprocess-stdin-validate-report.txt`
+passing, and captured example
+`.codex/asyncio-subprocess-stdin-example-report.txt` loading
+`stdlib/examples/asyncio.ahk` without warning/error at `TimeoutSeconds 90`.
+The subprocess lifecycle-control follow-up uses fresh Python 3.10.11 evidence
+from `.codex/asyncio_subprocess_lifecycle_probe.py` plus
+`.codex/asyncio_subprocess_lifecycle_probe.output.json` confirming that on the
+local Windows runtime `Process.terminate()`, `Process.kill()`, and
+`Process.send_signal(signal.SIGTERM)` all return `None`, and after
+`await wait()` leave `returncode == 1`. The AHK surface now exposes
+`terminate()`, `kill()`, and `send_signal(signal)` on real
+`AhkStdlibAsyncioProcess` objects and routes the covered Windows behavior
+through `TerminateProcess(..., 1)`. Non-termination signal semantics beyond the
+covered `SIGTERM`/exit-code path remain unclaimed. Fresh AHK evidence includes focused red
+`.codex/asyncio-subprocess-lifecycle-red-report.txt` erroring because
+`AhkStdlibAsyncioProcess` had no `terminate` method, focused green
+`.codex/asyncio-subprocess-lifecycle-green-focused-report.txt` passing 1/1,
+module green `.codex/asyncio-subprocess-lifecycle-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 29/29, root filter
+`.codex/asyncio-subprocess-lifecycle-root-filter-report.txt` passing 31/31,
+changed-file validate
+`.codex/asyncio-subprocess-lifecycle-validate-report.txt` passing, and captured
+example `.codex/asyncio-subprocess-lifecycle-example-report.txt` loading
+`stdlib/examples/asyncio.ahk` without warning/error at `TimeoutSeconds 90`.
+The follow-up completed the already-exited process error branch with fresh
+Python 3.10.11 evidence from `.codex/asyncio_subprocess_process_lookup_probe.py`
+plus `.codex/asyncio_subprocess_process_lookup_probe.output.json` confirming
+that `ProcessLookupError("")` is an `OSError`, has an empty message, and is
+raised by `terminate()`, `kill()`, and `send_signal(15)` after a process has
+already exited with returncode `0`. The AHK surface now exposes root
+`stdlib.ProcessLookupError` and raises it from `AhkStdlibAsyncioProcess`
+control methods when `returncode` is already set or the Windows process is no
+longer active. Fresh AHK evidence includes root focused red
+`.codex/process-lookup-root-red-report.txt` erroring because the root namespace
+had no `ProcessLookupError`, asyncio focused red
+`.codex/asyncio-subprocess-process-lookup-red-report.txt` erroring for the same
+missing root class, root focused green
+`.codex/process-lookup-root-green-focused-report.txt` passing 1/1, asyncio
+focused green `.codex/asyncio-subprocess-process-lookup-green-focused-report.txt`
+passing 1/1, module green
+`.codex/asyncio-subprocess-process-lookup-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 31/31, root filter
+`.codex/asyncio-subprocess-process-lookup-root-filter-report.txt` passing
+33/33, changed-file validate
+`.codex/asyncio-subprocess-process-lookup-validate-report.txt` passing, and
+captured examples `.codex/process-lookup-example-init-report.txt` and
+`.codex/asyncio-subprocess-process-lookup-example-asyncio-report.txt` loading
+the init and asyncio examples without warning/error at `TimeoutSeconds 90`.
+The subprocess stdio-constant follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_subprocess_constants_probe.py` plus
+`.codex/asyncio_subprocess_constants_probe.output.json` confirming
+`asyncio.subprocess.PIPE == -1`, `STDOUT == -2`, `DEVNULL == -3`, stderr
+merged into stdout when `stderr=STDOUT`, stdout/stderr discarded and returned
+as `None` when redirected to `DEVNULL`, and stdin `DEVNULL` causing an immediate
+EOF returncode of `0` for the covered child. The AHK surface now implements
+`stderr: stdlib.asyncio.subprocess.STDOUT` by reusing the child stdout handle
+and implements `stdin`/`stdout`/`stderr: stdlib.asyncio.subprocess.DEVNULL` via
+inheritable Windows `NUL` handles. This slice still does not claim interactive
+streaming pipe transports beyond the covered `communicate()` capture path.
+Fresh AHK evidence includes focused red
+`.codex/asyncio-subprocess-constants-red-report.txt` failing because stderr was
+not merged and leaked to the captured test stderr, focused green
+`.codex/asyncio-subprocess-constants-green-focused-report.txt` passing 1/1,
+module green `.codex/asyncio-subprocess-constants-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 30/30, root filter
+`.codex/asyncio-subprocess-constants-root-filter-report.txt` passing 32/32,
+changed-file validate
+`.codex/asyncio-subprocess-constants-validate-report.txt` passing, and captured
+example `.codex/asyncio-subprocess-constants-example-report.txt` loading
+`stdlib/examples/asyncio.ahk` without warning/error at `TimeoutSeconds 90`.
+The public import-surface follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_public_surface_names_probe.py` plus
+`.codex/asyncio_public_surface_names_probe.output.json` confirming that local
+`dir(asyncio)` includes 107 public names and that the previously missing
+submodule names are module objects with `__name__` values such as
+`asyncio.events`, `asyncio.streams`, and `sys`; it also records the public
+class signatures for `IocpProactor`, `StreamReader`,
+`StreamReaderProtocol`, and `StreamWriter`. The AHK surface exposes the
+missing public submodule names as lightweight module placeholders with AHK
+no-tail `.__name` metadata. That import-surface slice did not claim real stream
+runtime behavior by itself. Fresh AHK evidence includes focused red
+`.codex/asyncio-public-surface-red-report.txt` failing because
+`stdlib.asyncio.base_events` was absent, focused green
+`.codex/asyncio-public-surface-green-focused-report.txt` passing 1/1, module
+green `.codex/asyncio-public-surface-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 18/18, root filter
+`.codex/asyncio-public-surface-root-filter-report.txt` passing 2/2, example
+capture `.codex/asyncio-public-surface-example-report.txt` passing while also
+asserting the example source contains no `System.Text.RegularExpressions` /
+`MatchEvaluator` pollution, and validation
+`.codex/asyncio-public-surface-validate-report.txt` passing
+`stdlib/asyncio.ahk`, `stdlib/tests/asyncio.test.ahk`, and
+`stdlib/examples/asyncio.ahk` at `TimeoutSeconds 90`.
+The stream follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_stream_behavior_probe.py` plus
+`.codex/asyncio_stream_behavior_probe.output.json` to cover observable
+`StreamReader`, `StreamReaderProtocol`, and `StreamWriter` behavior instead of
+class-name placeholders. Covered `StreamReader` behavior now includes
+`feed_data(...)`, `feed_eof()`, `at_eof()`, `read(0)`, `read(n)` returning
+available bytes without waiting to fill `n`, `read()` after EOF, `readline()`,
+`readexactly(n)`, `readuntil(separator)`, and `IncompleteReadError` carrying
+no-tail AHK-visible `.partial` and `.expected` fields. Covered protocol/writer
+behavior includes `StreamReaderProtocol.data_received(...)` /
+`eof_received()` feeding the reader and `StreamWriter` delegating
+`write(...)`, `writelines(...)`, `write_eof()`, `can_write_eof()`, `close()`,
+`is_closing()`, `get_extra_info(...)`, and immediate-complete `drain()` to an
+AHK transport object. Fresh AHK evidence includes focused red
+`.codex/asyncio-stream-red-report.txt` failing because `StreamReader()` still
+returned `AhkStdlibAsyncioPublicClassInstance`, focused green
+`.codex/asyncio-stream-green-focused-report.txt` passing 1/1, stream-focused
+`.codex/asyncio-streams-focused-report.txt` passing 2/2, module green
+`.codex/asyncio-streams-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 20/20, root filter
+`.codex/asyncio-streams-root-filter-report.txt` passing 2/2, example validate
+`.codex/asyncio-streams-example-validate-report.txt` passing, and changed-file
+validate `.codex/asyncio-streams-validate-report.txt` passing
+`stdlib/asyncio.ahk`, `stdlib/tests/asyncio.test.ahk`, and
+`stdlib/examples/asyncio.ahk` at `TimeoutSeconds 90`.
+The IocpProactor follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_iocp_proactor_lifecycle_probe.py` plus
+`.codex/asyncio_iocp_proactor_lifecycle_probe.output.json` to cover the
+no-socket lifecycle portion of `asyncio.IocpProactor`: signature
+`(concurrency=4294967295)`, `IocpProactor(0)` and `IocpProactor(1)`
+construction, the observed public method names, empty `select(0)` /
+`select(0.001)` results, `set_loop(None)`, idempotent `close()`, and the
+closed-proactor `select(0)` TypeError
+`GetQueuedCompletionStatus() argument 1 must be int, not None`. The AHK surface
+now exposes a real `AhkStdlibAsyncioIocpProactor` lifecycle object with those
+covered behaviors and controlled `NotImplementedError` for pipe/file operations
+and other socket variants that remain backlog. Fresh AHK evidence includes
+focused red `.codex/asyncio-iocp-proactor-red-report.txt` erroring because
+`IocpProactor(0)` was rejected, focused green
+`.codex/asyncio-iocp-proactor-green-focused-report.txt` passing 1/1, module
+green `.codex/asyncio-iocp-proactor-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 21/21, root filter
+`.codex/asyncio-iocp-proactor-root-filter-report.txt` passing 2/2, and
+changed-file validate `.codex/asyncio-iocp-proactor-validate-report.txt`
+passing `stdlib/asyncio.ahk`, `stdlib/tests/asyncio.test.ahk`, and
+`stdlib/examples/asyncio.ahk` at `TimeoutSeconds 90`. The asyncio example now
+exercises construction, empty `select(...)`, `set_loop(...)`, repeated
+`close()`, and the closed-select error path.
+The IocpProactor socket-ops follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_iocp_socket_ops_probe.py` plus
+`.codex/asyncio_iocp_socket_ops_probe.output.json` confirming that a manually
+pumped `asyncio.IocpProactor` returns `_OverlappedFuture` objects for
+`connect(sock, address)`, `send(sock, bytes)`, and `recv(sock, n)`, with
+observable results of the socket object itself, sent byte count `4`, and
+received bytes `PING` over a localhost TCP echo server. The AHK surface now
+covers the public `stdlib.asyncio.IocpProactor.connect/send/recv` path for
+`stdlib.socket.socket()` TCP sockets using Winsock-backed awaitables integrated
+with `stdlib.await(...)`; this is a covered single-threaded emulation of the
+observable result protocol, not a claim of true Windows IOCP overlapped
+completion internals. Fresh AHK evidence includes focused red
+`.codex/asyncio-iocp-socket-ops-red-report.txt` erroring because
+`IocpProactor.connect()` still raised `NotImplementedError`, focused green
+`.codex/asyncio-iocp-socket-ops-green-focused-report.txt` passing 1/1, module
+green `.codex/asyncio-iocp-socket-ops-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 33/33, root filter
+`.codex/asyncio-iocp-socket-ops-root-filter-report.txt` passing 35/35,
+changed-file validate `.codex/asyncio-iocp-socket-ops-validate-report.txt`
+passing, and captured example
+`.codex/asyncio-iocp-socket-ops-example-report.txt` loading
+`stdlib/examples/asyncio.ahk` without warning/error at `TimeoutSeconds 90`.
+The protocol/transport base follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_protocol_transport_base_probe.py` plus
+`.codex/asyncio_protocol_transport_base_probe.output.json` to cover another
+set of class-object placeholders. `BaseProtocol`, `Protocol`,
+`DatagramProtocol`, `SubprocessProtocol`, and `BufferedProtocol` now construct
+distinct AHK objects and cover the observed no-op callback methods:
+`connection_made(...)`, `connection_lost(...)`, `pause_writing()`,
+`resume_writing()`, `data_received(...)`, `eof_received()`,
+`datagram_received(...)`, `error_received(...)`, `pipe_data_received(...)`,
+`pipe_connection_lost(...)`, `process_exited()`, `get_buffer(...)`, and
+`buffer_updated(...)`. `BaseTransport`, `ReadTransport`, `WriteTransport`,
+`Transport`, `DatagramTransport`, and `SubprocessTransport` now construct
+distinct base objects, cover `BaseTransport.get_extra_info(...)` for extra data
+and defaults, and expose the observed abstract methods as
+`stdlib.NotImplementedError` rather than missing-method failures. Real
+network/subprocess transport implementations remain backlog. Fresh AHK
+evidence includes protocol focused red `.codex/asyncio-protocol-red-report.txt`
+failing because `Protocol()` still returned `AhkStdlibAsyncioBaseProtocol`,
+transport focused red `.codex/asyncio-transport-red-report.txt` erroring
+because `BaseTransport(extra)` rejected the extra argument, focused green
+`.codex/asyncio-protocol-green-focused-report.txt` and
+`.codex/asyncio-transport-green-focused-report.txt` each passing 1/1, module
+green `.codex/asyncio-protocol-transport-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 23/23, root filter
+`.codex/asyncio-protocol-transport-root-filter-report.txt` passing 2/2, and
+changed-file validate `.codex/asyncio-protocol-transport-validate-report.txt`
+passing `stdlib/asyncio.ahk`, `stdlib/tests/asyncio.test.ahk`, and
+`stdlib/examples/asyncio.ahk` at `TimeoutSeconds 90`.
+The server lifecycle follow-up uses fresh Python 3.10.11 evidence from
+`.codex/asyncio_server_lifecycle_probe.py` plus
+`.codex/asyncio_server_lifecycle_probe.output.json` to cover
+`AbstractServer` and an empty-socket `Server` without claiming real socket
+serving. `AbstractServer` now exposes the observed abstract method surface
+(`close()`, `get_loop()`, `is_serving()`, `start_serving()`,
+`serve_forever()`, and `wait_closed()`) as `stdlib.NotImplementedError`.
+`Server` is no longer an alias to the abstract empty object: the covered
+no-socket lifecycle stores `.sockets`, returns its loop from `get_loop()`,
+tracks `is_serving()`, has `start_serving()` complete with `None`, returns a
+pending Future from `serve_forever()`, cancels that Future on `close()`, and
+settles `wait_closed()` after close. Fresh AHK evidence includes focused red
+`.codex/asyncio-server-red-report.txt` failing because `AbstractServer` methods
+were missing, focused green `.codex/asyncio-server-green-focused-report.txt`
+passing 1/1, module green `.codex/asyncio-server-module-report.txt` passing
+`stdlib/tests/asyncio.test.ahk` 24/24, root filter
+`.codex/asyncio-server-root-filter-report.txt` passing 2/2, and changed-file
+validate `.codex/asyncio-server-validate-report.txt` passing
+`stdlib/asyncio.ahk`, `stdlib/tests/asyncio.test.ahk`, and
+`stdlib/examples/asyncio.ahk` at `TimeoutSeconds 90`.
+Native Python coroutine object interop, real stream/network/subprocess APIs,
+thread handoff APIs, and full Python parameter/error parity remain explicit
 maintenance backlog. Separately, the root namespace now includes the AHK-only
 bridge `stdlib.await(awaitable, options?)`, implemented in `stdlib\init.ahk`,
 which delegates covered asyncio awaitables to an explicit loop or to
@@ -6881,7 +7790,7 @@ functional API shapes that are directly expressible in AHK: whitespace/comma
 separated member text, plain name arrays, explicit `[name, value]` pair lists,
 ordered plain-object / `Map` name-value inputs, optional `{ start: value }`
 numbering for name lists, member lookup by `.NAME`, `["NAME"]`, and
-`EnumType(value)`, ordered iteration over enum members, ordered `__members__`
+`EnumType(value)`, ordered iteration over enum members, ordered `__members`
 iteration, plus covered member `.name`, `.value`, `String(member)`, and
 `__Repr()` behavior. Covered error branches currently match the local Python
 3.10.11 baseline for bare `Enum()` call wording via `EnumMeta.__call__`,
@@ -6898,7 +7807,7 @@ slice covers `stdlib.copy.copy(x)` and `stdlib.copy.deepcopy(x)` for observable
 shapes that are straightforward to express in AHK today: shallow and deep
 copying of lists, maps, plain objects, tuple-like `stdlib.tuple(...)` values,
 immutable scalar passthrough for covered `str`/`int`-style inputs, custom
-`__copy__()` and `__deepcopy__(memo)` hooks, and recursive cycle preservation
+`__copy()` and `__deepcopy(memo)` hooks, and recursive cycle preservation
 through memoized deep-copy traversal. Covered behavior currently matches the
 local Python 3.10.11 probe for list/dict nested-identity differences between
 shallow and deep copy, `tuple` shallow identity vs deep copy rematerialization
@@ -6941,7 +7850,7 @@ surface.
 promoted onto the public Python-path root as `stdlib.contextlib.*`. The covered
 surface includes `stdlib.contextlib.nullcontext`, `stdlib.contextlib.suppress`,
 and `stdlib.contextlib.closing` for observable object behavior exercised by the
-local Python baseline: `__enter__` return values, `__exit__` suppression
+local Python baseline: `__enter` return values, `__exit` suppression
 decisions, Python-style `repr(...)` object shapes, zero-argument `suppress()`
 permissiveness, `closing(...)` calling `.close()` on exit, and the covered
 arity / bad-exception-type error messages. The current promoted slice also
@@ -7065,6 +7974,1753 @@ Python naming is documentation-only and must not leak into the AHK public API.
 | Config | stdlib-local config object and wrapper options | partial | Current `AhkTest.Configure({ Marks: ... })` and `suite.Configure({ Marks: ... })` register marker names from AHK config objects, `AhkTest.Configure({ AhkRunDefaults: ... })` and `suite.Configure({ AhkRunDefaults: ... })` provide validated run-option defaults, including unknown option rejection, reporting enum validation for `Traceback` and `CaptureReport`, warning-filter shape normalization for `WarningFilter`/`WarningFilters`, and hook-disable id normalization for `DisableHookIds`. The direct AHK surface now also exposes `AhkTest.ConfigureManifest(path, sectionName := "AhkTest")` / `suite.ConfigureManifest(...)` for a first non-AHK JSON manifest slice, recursively converting JSON objects into AHK config objects while normalizing root `stdlib.True` / `stdlib.False` JSON booleans back to native AHK booleans before run-option consumption. `tools\run-ahktest.ps1 -Config path` now loads AHK config files or dispatches `.json` paths through that manifest loader before plugin and test files, and wrapper options cover plugin files, hook id disabling, strict marker registration, filters, list mode, rerun cache, max-fail, xfail debugging, summary/traceback selection, warning filters, and report artifacts. JSON manifest configs may now also provide `AhkTest.DiscoveryRoots` as wrapper-side default discovery targets when `-Target` is omitted; those roots are resolved relative to the JSON config file, and an explicit wrapper `-Target` still takes precedence. The wrapper now forwards only explicitly bound run options into `AhkTest.Run(...)`, so config defaults are not overwritten by empty string, false, or zero CLI defaults; explicit wrapper flags still take precedence. Need broader manifest-based settings for temp dirs and default reporting, plus additional non-AHK config formats. |
 | Cache / rerun | In-memory suite last-failed cache, file-backed last-failed cache, and stepwise state | partial | Current suite instances remember failed/error/strict-xpass rerun keys for in-memory `LastFailed` reruns, `LastFailedCache` persists stable rerun keys across suite instances and wrapper invocations, and stale file-backed last-failed caches now follow local pytest 7.4.3's covered fallback by running the current full collection when none of the cached failed keys exist in the current collected item set. Those stable keys now include source context when available, matching the covered local pytest 7.4.3 duplicate-name multi-file behavior for both `--lf` and `--sw`: same-name tests from different files rerun or resume only from the originally failing source file. When `LastFailed`/`LastFailedCache` is combined with a string `NodeFilter` or an array of exact node ids whose current selection falls entirely outside the cached failure set, ahktest now follows the observed local pytest 7.4.3 explicit-selection slice by executing that explicit selection, preserving prior cached failures after a clean selected pass, and merging newly failing selected nodes into the persisted cache while removing executed cached ids that now pass. If the explicit node-id selection mixes cached and non-cached nodes, the run continues to follow the cached intersection instead of overriding into the whole array. `Stepwise`/`StepwiseCache` stores a single failing rerun key; if that key still exists inside the current selected set, the next run resumes from it and clears after the resumed failure passes. If the cached stepwise key is stale or excluded by the current filtered/node-selected subset, ahktest now follows the observed local pytest 7.4.3 fallback by running the current selection instead, updating to a new failing node when one appears there, and otherwise leaving the prior cached key in place after a clean fallback run. Need richer cache invalidation for broader multi-node and mixed-rerun interactions. |
 | Doctest | AHK doc/example execution strategy | missing | Lower priority than fixtures/capture/approx for stdlib migration. |
+
+## Pillow Extension
+
+`stdlib.pillow` is an explicitly added extension library, not a Python standard
+library module. Its behavior authority is the local Python 3.10.11 environment
+with Pillow 11.3.0, while the AHK implementation uses Windows system DLLs
+instead of a Python subprocess backend. The target backend split is:
+WIC (`windowscodecs.dll`) for image read/decode and pixel-format conversion,
+Direct2D for filters, masks, blending, composition, and geometry/pixel-map
+work, and WIC or GDI+ for save/output. The performance target is to move
+behavior-locked CPU bridges behind these native backends slice by slice; no
+slice should claim Pillow-level or better throughput until fresh local
+benchmarks support that claim. The current promoted foundation uses WIC for
+`Image.open(...)` read/decode and 32bpp BGRA pixel-format conversion, then
+bridges into GDI+ (`gdiplus.dll`) for covered bitmap allocation, pixel access,
+encode, crop, resize, and the first pixel-loop transform bridge; future slices
+should migrate those internals behind the same public API rather than changing
+callers. The first promoted slice covers `stdlib.pillow.Image`:
+`Image.new("RGB", size, color)`, `Image.open(path)`, `.mode`, `.size`,
+`.width`, `.height`, `.format`, `.getpixel(...)`, `.putpixel(...)`,
+`.copy()`, `.crop(...)`, `.resize(...)`, `.save(path)`, `.close()`, and
+Pillow-shaped `__Repr()` text.
+
+Fresh behavior evidence comes from `.codex/pillow_image_core_probe.py` and
+`.codex/pillow_image_core_probe.output.json`, which record Pillow 11.3.0
+behavior for RGB image creation, pixel mutation, copy isolation, crop/resize
+metadata, PNG save/open, and selected `ValueError` / `IndexError` messages.
+Fresh AHK evidence includes focused red
+`.codex/pillow-image-core-red-report.txt` failing at missing
+`#Include <stdlib\pillow>`, focused green
+`.codex/pillow-image-core-green-focused-report.txt` passing 1/1 after the
+GDI+ implementation, module green `.codex/pillow-image-core-module-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 1/1, root filter
+`.codex/pillow-image-core-root-filter-report.txt` passing 2/2, changed-file
+validate `.codex/pillow-image-core-validate-report.txt` passing, and captured
+example `.codex/pillow-image-core-example-report.txt` loading
+`stdlib/examples/pillow.ahk` without warning/error at `TimeoutSeconds 90`.
+
+The current Image module helper follow-up uses fresh local Python 3.10.11
++ Pillow 11.3.0 evidence from `.codex/pillow_image_module_helpers_probe.py`
+and `.codex/pillow_image_module_helpers_probe.output.json` confirming
+`Image.getmodebands`, `Image.getmodebandnames`, `Image.getmodebase`,
+`Image.getmodetype`, `Image.isImageType`, `Image.linear_gradient`, and
+`Image.radial_gradient` for covered mode-table lookups, `L`/`P`/`1`
+gradients, wrong-mode gradient errors, and bad-mode `KeyError` shape. The AHK
+surface now exposes those module-level helpers, keeps the full mode lookup table
+separate from `Image.new(...)` storage support, adds `P` scalar pixel support
+for the promoted gradients, and generates the covered gradients through the
+current pixel bridge. This locks more Pillow `Image` module behavior while the
+target backend remains WIC for read/decode/pixel-format conversion, Direct2D for
+filters, masks, blend, and composition, and WIC or GDI+ for save/output; this
+slice does not claim Direct2D acceleration. Fresh AHK evidence includes focused
+red `.codex/pillow-image-module-helpers-red-report.txt` failing because
+`Image.getmodebands` was missing, focused green
+`.codex/pillow-image-module-helpers-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-module-helpers-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 38/38, root filter
+`.codex/pillow-image-module-helpers-root-filter-report.txt` passing 39/39, and
+captured example `.codex/pillow-image-module-helpers-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The Image endian helper follow-up adds Pillow's public `Image.i32le(...)`,
+`Image.o32le(...)`, and `Image.o32be(...)` module helpers. Fresh local Python
+3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_image_endian_helpers_probe.py` and
+`.codex/pillow-image-endian-helpers-probe.output.json` records signatures,
+little-endian reads from bytes-like data with zero-based offsets, unsigned
+32-bit little/big-endian packing, and the covered missing/extra argument,
+short-buffer, bad-offset, string-input, non-integer, and out-of-range errors.
+The AHK surface maps Python bytes-like inputs to covered `Array` and `Buffer`
+values and maps Pillow's `struct.error` cases to generic AHK `Error` while
+locking the observed messages. Focused red
+`.codex/pillow-image-endian-helpers-red-report.txt` failed because the public
+`i32le` helper was absent; focused green
+`.codex/pillow-image-endian-helpers-green-focused-report.txt` passed 1/1 after
+implementation. Fresh promotion gates include serial module
+`.codex/pillow-image-endian-helpers-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 83/83 at `TimeoutSeconds 90`, and captured
+example `.codex/pillow-image-endian-helpers-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with README/example pollution assertions.
+
+The Image init helper follow-up adds Pillow's public `Image.preinit()` and
+`Image.init()` module helpers. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_image_init_probe.py` and
+`.codex/pillow-image-init-probe.output.json` records the no-argument
+signatures, `preinit()` returning `None`, first `init()` returning `True`,
+subsequent `init()` returning `False`, second `preinit()` returning `None`,
+key extension-registry visibility after plugin initialization, and the covered
+extra-argument TypeErrors. Focused red
+`.codex/pillow-image-init-red-report.txt` failed because the public
+`preinit` helper was absent; focused green
+`.codex/pillow-image-init-green-focused-report.txt` passed 1/1 after
+implementation. Fresh promotion gates include serial module
+`.codex/pillow-image-init-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 84/84 at `TimeoutSeconds 90`, and captured
+example `.codex/pillow-image-init-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with README/example pollution assertions. The current AHK registry is
+eager/default-populated; this slice does not claim exact Python fresh-process
+empty registry state or `registered_extensions()` implicit full plugin-load
+parity.
+
+The Image public registry dictionaries follow-up exposes the public registry
+objects behind the existing registration helpers. Fresh local
+Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_image_registry_dicts_probe.py` and
+`.codex/pillow-image-registry-dicts-probe.output.json` records that
+`Image.OPEN`, `Image.SAVE`, `Image.SAVE_ALL`, `Image.DECODERS`,
+`Image.ENCODERS`, `Image.EXTENSION`, and `Image.MIME` are mutable dictionaries,
+`Image.ID` and `Image.MODES` are mutable lists, registration helpers mutate
+those same objects, format ids are uppercased for open/save/save_all/extension
+/mime registries, decoder and encoder names preserve case, and
+`registered_extensions()` returns the `Image.EXTENSION` object itself. The AHK
+surface now exposes `stdlib.pillow.Image.OPEN`, `SAVE`, `SAVE_ALL`, `DECODERS`,
+`ENCODERS`, `EXTENSION`, `MIME`, `ID`, and `MODES` as the public objects
+backing the existing helper functions. AHK class member lookup is
+case-insensitive, so a normal static `OPEN` declaration collides with the
+existing `Image.open(...)` method; language probes
+`.codex/pillow_registry_case_probe.test.ahk` /
+`.codex/pillow-registry-case-probe-report.txt` and the class `DefineProp`
+probe `.codex/pillow_class_defineprop_case_probe.test.ahk` /
+`.codex/pillow-class-defineprop-case-probe-report.txt` document the chosen
+bridge. Focused red `.codex/pillow-image-registry-dicts-red-report.txt` failed
+because `Image.SAVE` was absent; focused green
+`.codex/pillow-image-registry-dicts-green-focused-report.txt` passed 1/1 after
+the first public properties were added; follow-up focused red
+`.codex/pillow-image-open-registry-dict-red-report.txt` failed because
+`Image.OPEN` still resolved as a method object; focused green
+`.codex/pillow-image-open-registry-dict-green-focused-report.txt` passed 1/1
+after the `DefineProp("OPEN", ...)` bridge was added. Serial module gate
+`.codex/pillow-image-open-registry-dict-module-report.txt` plus
+`.codex/pillow-image-open-registry-dict-module.json` passed
+`stdlib/tests/pillow.test.ahk` 89/89 at `TimeoutSeconds 90`; and captured
+example gate `.codex/pillow-image-open-registry-dict-example-report.txt`
+passed `.codex/pillow_example_capture.test.ahk` 1/1 without warning/error
+output and with explicit `System.Text.RegularExpressions` / `MatchEvaluator`
+pollution assertions.
+
+The Image path-helper follow-up adds Pillow's public `Image.is_path(...)`
+module helper. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_image_is_path_probe.py` and
+`.codex/pillow-image-is-path-probe.output.json` records true results for
+`str`, `bytes`, `pathlib.Path`, and custom `os.PathLike`-style objects, false
+for `bytearray`, `BytesIO`, `None`, `int`, and plain objects, plus the covered
+missing/extra argument `TypeError` messages. The AHK surface now exposes
+`stdlib.pillow.Image.is_path(...)`; AHK coverage maps `String`,
+`stdlib.pathlib.Path`, and objects with `__fspath` as path-like, while
+`stdlib.io.BytesIO`, `stdlib.None`, integers, maps, arrays, and buffers are
+false. Native Python `bytes` path parity remains deferred until the stdlib has
+a distinct bytes path object. Focused red
+`.codex/pillow-image-is-path-red-report.txt` failed because the Image-level
+helper was absent; focused green `.codex/pillow-image-is-path-green-focused-report.txt`
+passed 1/1 after the helper was routed through the shared path predicate;
+serial module gate `.codex/pillow-image-is-path-module-report.txt` and
+structured `.codex/pillow-image-is-path-module.json` passed
+`stdlib/tests/pillow.test.ahk` 86/86 at `TimeoutSeconds 90`; and captured
+example `.codex/pillow-image-is-path-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions.
+
+The Image public errors/constants follow-up adds Pillow's
+`Image.UnidentifiedImageError`, `Image.DecompressionBombWarning`,
+`Image.DecompressionBombError`, `Image.MAX_IMAGE_PIXELS`, and
+`Image.WARN_POSSIBLE_FORMATS` surface. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_image_public_errors_probe.py` and
+`.codex/pillow-image-public-errors-probe.output.json` records the class names,
+modules, MROs, empty and non-empty messages, `OSError` / `RuntimeWarning`
+classification, and constants `89478485` / `False`. The AHK surface exposes the
+three class objects and constructors under `stdlib.pillow.Image`; the
+unidentified-image error extends `OSError`, the decompression-bomb error extends
+`Error`, and the warning extends the current stdlib warning base. Focused red
+`.codex/pillow-image-public-errors-red-report.txt` failed because
+`Image.MAX_IMAGE_PIXELS` was absent; focused green
+`.codex/pillow-image-public-errors-green-focused-report.txt` passed 1/1 after
+the public attributes/classes were added; serial module gate
+`.codex/pillow-image-public-errors-module-report.txt` plus
+`.codex/pillow-image-public-errors-module.json` passed
+`stdlib/tests/pillow.test.ahk` 87/87 at `TimeoutSeconds 90`; and captured
+example gate `.codex/pillow-image-public-errors-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions. An earlier parallel AHK gate attempt produced a no-status/BOM-only
+runner artifact and was not used as promotion evidence; the trusted module and
+example gates are the later serial reruns.
+
+The Image compression constants follow-up adds Pillow's public integer
+strategy constants `Image.DEFAULT_STRATEGY`, `Image.FILTERED`,
+`Image.HUFFMAN_ONLY`, `Image.RLE`, `Image.FIXED`, and `Image.WEB`. Fresh local
+Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_image_compression_constants_probe.py` and
+`.codex/pillow-image-compression-constants-probe.output.json` records plain
+`int` values `0`, `1`, `2`, `3`, `4`, and `0`, plus representative ordering
+checks. Focused red `.codex/pillow-image-compression-constants-red-report.txt`
+failed because `Image.DEFAULT_STRATEGY` was absent; focused green
+`.codex/pillow-image-compression-constants-green-focused-report.txt` passed
+1/1 after the constants were added; serial module gate
+`.codex/pillow-image-compression-constants-module-report.txt` plus
+`.codex/pillow-image-compression-constants-module.json` passed
+`stdlib/tests/pillow.test.ahk` 90/90 at `TimeoutSeconds 90`; and captured
+example gate `.codex/pillow-image-compression-constants-example-report.txt`
+passed `.codex/pillow_example_capture.test.ahk` 1/1 without warning/error
+output and with explicit `System.Text.RegularExpressions` / `MatchEvaluator`
+pollution assertions. Top-level enum compatibility aliases such as
+`Image.TRANSPOSE` remain unclaimed because AHK static property lookup is
+case-insensitive; `.codex/pillow_static_property_defineprop_case_probe.test.ahk`
+and `.codex/pillow-static-property-defineprop-case-probe-report.txt` show that
+a `DefineProp("TRANSPOSE", ...)` bridge would overwrite both `Image.TRANSPOSE`
+and the nested `Image.Transpose` class access.
+
+The Image legacy alias and handler follow-up adds Pillow's module-level legacy
+integer aliases for the covered `Resampling`, `Transform`, `Transpose`,
+`Dither`, and `Quantize` enum members, plus the public `ImagePointHandler` and
+`ImageTransformHandler` abstract class entries. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_image_legacy_surface_probe.py` and
+`.codex/pillow_image_legacy_surface_probe.output.json` records the plain `int`
+values for `Image.NEAREST`, `LANCZOS`, `BILINEAR`, `BICUBIC`, `BOX`,
+`HAMMING`, `AFFINE`, `EXTENT`, `PERSPECTIVE`, `QUAD`, `MESH`,
+`FLIP_LEFT_RIGHT`, `FLIP_TOP_BOTTOM`, `ROTATE_90`, `ROTATE_180`, `ROTATE_270`,
+`TRANSVERSE`, `NONE`, `ORDERED`, `RASTERIZE`, `FLOYDSTEINBERG`, `WEB`,
+`ADAPTIVE`, `MEDIANCUT`, `MAXCOVERAGE`, `FASTOCTREE`, and `LIBIMAGEQUANT`, and
+records direct instantiation of the handler classes raising Pillow's abstract
+class `TypeError` messages. The AHK surface intentionally keeps
+`Image.TRANSPOSE` as the documented AHK case-insensitive collision with
+`Image.Transpose` rather than replacing the nested enum class path. Focused red
+`.codex/pillow-image-legacy-surface-red-report.txt` plus
+`.codex/pillow-image-legacy-surface-red.json` failed because `Image.NEAREST`
+was absent; focused green `.codex/pillow-image-legacy-surface-green-focused-report.txt`
+plus `.codex/pillow-image-legacy-surface-green-focused.json` passed 1/1 after
+implementation; captured example gate
+`.codex/pillow-image-legacy-surface-example-report.txt` plus
+`.codex/pillow-image-legacy-surface-example.json` passed
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions; and serial module gate
+`.codex/pillow-image-legacy-surface-module-report.txt` plus
+`.codex/pillow-image-legacy-surface-module.json` passed
+`stdlib/tests/pillow.test.ahk` 170/170 at `TimeoutSeconds 90`.
+
+The Image Exif follow-up adds Pillow's public `Image.Exif()` mutable mapping
+surface and upgrades `Image.getexif()` from a plain internal map to the same
+prefixed EXIF object class. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_image_exif_probe.py` and
+`.codex/pillow-image-exif-probe.output.json` records the public class name,
+no-argument constructor, missing constructor-arg `TypeError`, empty mapping
+truth/length/keys/items/get behavior, empty `tobytes()` 20-byte EXIF header,
+missing key `KeyError`, `get_ifd(...)` returning an empty dict for covered
+inputs, mutation/deletion of tags `274` and `305`, and repeated
+`Image.getexif()` returning the same image-owned object. The AHK surface now
+exposes `stdlib.pillow.Image.Exif()` through `AhkStdlibPillowExif extends Map`,
+keeps insertion order internally while matching the probed `keys()` /
+`items()` order for covered updates, returns the probed empty EXIF header, and
+preserves the EXIF object class through image copy/replace paths. This slice
+still only claims in-memory EXIF mapping behavior; WIC/GDI+ file-level EXIF
+decode/serialize and real IFD parsing remain deferred. Focused red
+`.codex/pillow-image-exif-red-report.txt` failed because `Image.Exif` was
+absent; focused green `.codex/pillow-image-exif-green-focused-report.txt`
+passed 1/1 after implementation; trusted serial module gate
+`.codex/pillow-image-exif-module-report.txt` plus
+`.codex/pillow-image-exif-module.json` passed `stdlib/tests/pillow.test.ahk`
+91/91 at `TimeoutSeconds 90`; and captured example gate
+`.codex/pillow-image-exif-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions. An earlier serial module attempt produced a no-status runner
+artifact and was not used as promotion evidence; the trusted module gate is the
+later serial rerun.
+
+The ExifTags follow-up adds Pillow's public `PIL.ExifTags` data surface as
+`stdlib.pillow.ExifTags`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_exiftags_probe.py` and
+`.codex/pillow-exiftags-probe.output.json` records module-level `TAGS` and
+`GPSTAGS` dictionaries, their lengths (`273` and `32`), representative EXIF
+and GPS tag names, the absence of `TAGS_V2` / `TAGS_V2_GROUPS` in this local
+Pillow version, and the enum-like `Base`, `GPS`, `IFD`, `Interop`, and
+`LightSource` public constants. The AHK surface now exposes
+`stdlib.pillow.ExifTags.TAGS` and `.GPSTAGS` as shared Maps populated from the
+local Pillow 11.3.0 tag tables, plus cached namespace objects for the covered
+enum-like constants. This slice is tag metadata only; it does not claim file
+EXIF parsing, TIFF tag decoding, or complete IntEnum method parity. Focused
+red `.codex/pillow-exiftags-red-report.txt` failed because
+`stdlib.pillow.ExifTags` was absent; focused green
+`.codex/pillow-exiftags-green-focused-report.txt` passed 1/1 after the public
+module surface was added; trusted serial module gate
+`.codex/pillow-exiftags-module-report.txt` plus
+`.codex/pillow-exiftags-module.json` passed `stdlib/tests/pillow.test.ahk`
+92/92 at `TimeoutSeconds 90`; and captured example gate
+`.codex/pillow-exiftags-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions.
+
+The TiffTags follow-up adds Pillow's public `PIL.TiffTags` metadata surface as
+`stdlib.pillow.TiffTags`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_tifftags_probe.py` and
+`.codex/pillow-tifftags-probe.output.json` records constants, `TagInfo`
+namedtuple fields/defaults/repr, `lookup(tag, group := None)`, `TAGS`
+(`266` entries, including tuple-key enum rows), `TAGS_V2` (`110` entries),
+empty `TYPES`, `LIBTIFF_CORE` (`36` entries), and `TAGS_V2_GROUPS` (`3`
+groups: `34665`, `34853`, and `40965`). The AHK surface now exposes
+`TiffTags.TAGS`, `.TAGS_V2`, `.TAGS_V2_GROUPS`, `.TYPES`,
+`.LIBTIFF_CORE`, `.TagInfo(...)`, and `.lookup(...)`. Integer tag lookup and
+group lookup follow Pillow semantics; tuple-key legacy enum rows from
+`TAGS` are exposed with their probe-recorded string keys such as
+`"(259, 5)"`, because AHK `Map` object keys do not provide Python tuple value
+identity. This slice claimed metadata and lookup behavior only; TIFF image
+I/O was promoted in the later built-in TIFF follow-up below.
+Focused red `.codex/pillow-tifftags-red-report.txt` failed because
+`stdlib.pillow.TiffTags` was absent; focused green
+`.codex/pillow-tifftags-green-focused-report.txt` passed 1/1 after the module
+surface and data tables were added; trusted serial module gate
+`.codex/pillow-tifftags-module-report.txt` plus
+`.codex/pillow-tifftags-module.json` passed `stdlib/tests/pillow.test.ahk`
+93/93 at `TimeoutSeconds 90`; and captured example gate
+`.codex/pillow-tifftags-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions.
+
+The built-in TIFF image I/O follow-up extends `Image.open(...)` and
+`Image.save(...)` to TIFF path and file-like streams for the covered RGB, L,
+and RGBA round-trips. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence
+from `.codex/pillow_image_tiff_builtin_probe.py` and
+`.codex/pillow-image-tiff-builtin-probe.output.json` records `.tif` and
+`.tiff` registration, little-endian TIFF stream prefixes, `format == "TIFF"`,
+`format_description == "Adobe TIFF"`, RGB/L/RGBA pixel round-trips, and
+formats-filter `UnidentifiedImageError` behavior. The AHK surface now detects
+TIFF magic bytes for file-like opens, keeps WIC decode for TIFF pixel reads,
+uses TIFF IFD metadata to preserve grayscale `L` mode, and writes baseline
+8-bit `L` TIFF byte streams for path and caller-owned file-like save targets.
+Focused red `.codex/pillow-image-tiff-builtin-red-report.txt` captured the
+missing/incomplete TIFF behavior before implementation; focused green
+`.codex/pillow-image-tiff-builtin-green-focused-report.txt` passed 1/1 after
+the TIFF metadata parser and `L` encoder were added; trusted serial module gate
+`.codex/pillow-image-tiff-builtin-module-report.txt` plus
+`.codex/pillow-image-tiff-builtin-module.json` passed
+`stdlib/tests/pillow.test.ahk` 94/94 at `TimeoutSeconds 90`. The example was
+updated to exercise TIFF path and file-like grayscale round-trips; captured
+example gate `.codex/pillow-image-tiff-builtin-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions.
+
+The features follow-up adds Pillow's public `PIL.features` capability-query
+surface as `stdlib.pillow.features`. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_features_probe.py` and
+`.codex/pillow-features-probe.output.json` records the module/codecs/features
+tables, supported module/codec/feature list order, `check(...)` and
+`version(...)` dispatch behavior, specialized `check_module` /
+`check_codec` / `check_feature` and version helpers, unknown-name
+`ValueError` messages for specialized helpers, unknown `check(...)`
+`UserWarning`, deprecated WebP feature `DeprecationWarning`, and
+`pilinfo(out=..., supported_formats=False)` returning `None` while writing
+Pillow 11.3.0 information. The AHK surface exposes
+`stdlib.pillow.features.modules`, `.codecs`, `.features`, `check(...)`,
+`version(...)`, `check_module(...)`, `version_module(...)`,
+`check_codec(...)`, `version_codec(...)`, `check_feature(...)`,
+`version_feature(...)`, supported-list helpers, and `pilinfo(...)` against the
+covered local Pillow 11.3.0 build matrix. Focused red
+`.codex/pillow-features-red-report.txt` failed because
+`stdlib.pillow.features` was absent; focused green
+`.codex/pillow-features-green-focused-report.txt` passed 1/1 after
+implementation; trusted serial module gate `.codex/pillow-features-module-report.txt`
+plus `.codex/pillow-features-module.json` passed
+`stdlib/tests/pillow.test.ahk` 95/95 at `TimeoutSeconds 90`; and captured
+example gate `.codex/pillow-features-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions.
+
+The JpegPresets follow-up adds Pillow's public `PIL.JpegPresets.presets`
+data surface as `stdlib.pillow.JpegPresets.presets`. Fresh local Python 3.10.11
+plus Pillow 11.3.0 evidence from `.codex/pillow_jpegpresets_probe.py` and
+`.codex/pillow-jpegpresets-probe.output.json` records that the module exposes
+`presets` but no `samplings` attribute, the nine preset names, each
+`subsampling` value, and all two-table 64-entry quantization matrices. The AHK
+surface exposes the complete preset map with the covered quantization data and
+keeps it mutable like the Python module dictionary; AHK `Map` key enumeration
+uses AHK map ordering, so this slice claims the data keys and values rather
+than Python insertion-order parity. Focused red
+`.codex/pillow-jpegpresets-red-report.txt` failed because
+`stdlib.pillow.JpegPresets` was absent; focused green
+`.codex/pillow-jpegpresets-green-focused-report.txt` passed 1/1 after
+implementation; trusted serial module gate
+`.codex/pillow-jpegpresets-module-report.txt` plus
+`.codex/pillow-jpegpresets-module.json` passed `stdlib/tests/pillow.test.ahk`
+96/96 at `TimeoutSeconds 90`; and captured example gate
+`.codex/pillow-jpegpresets-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions. JPEG save `quality="web_high"` style preset routing remains future
+`JpegImagePlugin` / save-parameter work and is not claimed by this data slice.
+
+The ContainerIO follow-up adds Pillow's public `PIL.ContainerIO.ContainerIO`
+bounded file-like region reader as `stdlib.pillow.ContainerIO.ContainerIO(...)`.
+Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_containerio_probe.py` and
+`.codex/pillow-containerio-probe.output.json` records the public module names,
+constructor arity errors, binary and text EOF behavior, region-relative
+`tell()`, clamped `seek(...)` including unknown-mode default-to-set behavior,
+`read(0)` reading the remaining region, `readline(...)`, `readlines(n)` as a
+line-count limit, iterator StopIteration message, context-manager close
+cascade, `readable`/`writable`/`seekable`/`isatty`, and delegated
+`flush`/`fileno`/`close` plus write/truncate `NotImplementedError` paths. The
+AHK surface follows the covered behavior while keeping the project-wide AHK
+magic names `__Enter`/`__Exit` instead of Python's trailing-dunder names.
+Focused red `.codex/pillow-containerio-red-report.txt` failed because
+`stdlib.pillow.ContainerIO` was absent; focused green
+`.codex/pillow-containerio-green-focused-report.txt` passed 1/1 after
+implementation; trusted serial module gate
+`.codex/pillow-containerio-module-report.txt` plus
+`.codex/pillow-containerio-module.json` passed `stdlib/tests/pillow.test.ahk`
+97/97 at `TimeoutSeconds 90`; and captured example gate
+`.codex/pillow-containerio-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions.
+
+The AvifImagePlugin follow-up adds the first real Pillow
+`PIL.AvifImagePlugin` helper/registry slice as
+`stdlib.pillow.AvifImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_avifimageplugin_probe.py` and
+`.codex/pillow-avifimageplugin-probe.output.json` records the public module
+names, `SUPPORTED`, `DECODE_CODEC_CHOICE`, `DEFAULT_MAX_THREADS`,
+`get_codec_version(...)`, `_get_default_max_threads()`, `_accept(...)` for
+`avif`/`avis`/`mif1`/`msf1` and rejected brands, the unsupported-AVIF accept
+message, `AvifImageFile` format metadata, and invalid AVIF save parameter
+errors for `quality` and `advanced`. A captured WIC feasibility probe
+`.codex/pillow_avif_wic_probe.test.ahk` /
+`.codex/pillow-avif-wic-probe-report.txt` shows the current Windows imaging
+backend does not decode the local Pillow-generated AVIF sample, so actual AVIF
+decode/save remains a backend task and is not claimed by this slice. The AHK
+surface exposes the covered helpers, registers AVIF save/save_all/mime entries,
+and routes `Image.save(..., "AVIF", params)` through Pillow-style parameter
+validation before reporting that the AVIF encode backend is unavailable.
+Focused red `.codex/pillow-avifimageplugin-red-report.txt` failed because
+`stdlib.pillow.AvifImagePlugin` was absent; focused green
+`.codex/pillow-avifimageplugin-green-focused-report.txt` passed 1/1 after
+implementation; trusted serial module gate
+`.codex/pillow-avifimageplugin-module-report.txt` plus
+`.codex/pillow-avifimageplugin-module.json` passed `stdlib/tests/pillow.test.ahk`
+99/99 at `TimeoutSeconds 90`; and captured example gate
+`.codex/pillow-avifimageplugin-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions.
+
+The BmpImagePlugin follow-up adds the first real Pillow
+`PIL.BmpImagePlugin` slice as `stdlib.pillow.BmpImagePlugin`. Fresh local
+Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_bmpimageplugin_probe.py` and
+`.codex/pillow-bmpimageplugin-probe.output.json` records public module names,
+`BIT2MODE`, `SAVE`, `USE_RAW_ALPHA`, `_accept(...)`, `_dib_accept(...)`,
+`i16`/`i32`/`o8`/`o16`/`o32`, direct `BmpImageFile(...)` and
+`DibImageFile(...)` construction from in-memory BMP/DIB streams, format and
+format-description values, mode/size/pixel/compression metadata, and covered
+bad-magic/header/arity errors. The AHK surface exposes the covered public
+maps/helpers and real BMP/DIB factories: `BmpImageFile(...)` reuses the
+existing WIC-backed BMP decode path, while `DibImageFile(...)` wraps a DIB
+payload in a synthesized BMP file header before decoding and then reports
+`format == "DIB"`. RLE decoding and the full Pillow `BmpRleDecoder` plugin
+remain future slices and are not claimed here. Focused red
+`.codex/pillow-bmpimageplugin-red-report.txt` failed because
+`stdlib.pillow.BmpImagePlugin` was absent; focused green
+`.codex/pillow-bmpimageplugin-green-focused-report.txt` passed 1/1 after
+implementation; trusted serial module gate
+`.codex/pillow-bmpimageplugin-module-report.txt` plus
+`.codex/pillow-bmpimageplugin-module.json` passed `stdlib/tests/pillow.test.ahk`
+98/98 at `TimeoutSeconds 90`; and captured example gate
+`.codex/pillow-bmpimageplugin-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions.
+
+The Image DeferredError follow-up adds Pillow's public
+`Image.DeferredError(...)` helper surface. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_image_deferred_error_probe.py` and
+`.codex/pillow-image-deferred-error-probe.output.json` records the class name
+`DeferredError`, module `PIL._util`, object-only MRO, constructor and
+`DeferredError.new(ex)` storage of the wrapped exception, wrapped-exception
+raising on arbitrary attribute access, and covered missing/extra argument
+`TypeError` messages. The AHK surface now exposes
+`stdlib.pillow.Image.DeferredError(...)` and
+`stdlib.pillow.Image.DeferredError.new(...)` through the existing prefixed
+`AhkStdlibPillowDeferredError` helper. Focused red
+`.codex/pillow-image-deferred-error-red-report.txt` failed because
+`Image.DeferredError` was absent; focused green
+`.codex/pillow-image-deferred-error-green-focused-report.txt` passed 1/1 after
+the Image module property and constructor were added; serial module gate
+`.codex/pillow-image-deferred-error-module-report.txt` plus
+`.codex/pillow-image-deferred-error-module.json` passed
+`stdlib/tests/pillow.test.ahk` 88/88 at `TimeoutSeconds 90`; and captured
+example gate `.codex/pillow-image-deferred-error-example-report.txt` passed
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions.
+
+The current Image inspection follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_inspection_probe.py` and
+`.codex/pillow_image_inspection_probe.output.json` confirming `Image.getbands`,
+`Image.getbbox(alpha_only := true)`, `Image.getextrema`, `Image.getcolors`,
+`Image.histogram`, and `Image.getprojection` for covered `RGB`, `L`, `RGBA`,
+and `1` images. The probe locks alpha-only versus all-channel `RGBA` bounding
+boxes, empty-image `None`, banded extrema, color count overflow returning
+`None`, Pillow color ordering, 256-bin-per-band histograms, projection rows,
+and representative `TypeError` / `AttributeError` shapes. The AHK surface now
+exposes these read-only inspection methods through the existing GDI+ pixel
+bridge. This expands real `Image` instance behavior while the target backend
+remains WIC for read/decode/pixel-format conversion, Direct2D for filters,
+masks, blend, and composition, and WIC or GDI+ for save/output; this slice does
+not claim Direct2D acceleration. Fresh AHK evidence includes focused red
+`.codex/pillow-image-inspection-red-report.txt` failing because `getbands` was
+missing, focused green `.codex/pillow-image-inspection-green-focused-report.txt`
+passing 1/1, module `.codex/pillow-image-inspection-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 39/39, root filter
+`.codex/pillow-image-inspection-root-filter-report.txt` passing 40/40, and
+captured example `.codex/pillow-image-inspection-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image data-access follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_data_probe.py` and
+`.codex/pillow_image_data_probe.output.json` confirming `Image.getdata`,
+`Image.tobytes`, `Image.frombytes`, and `Image.putdata` for covered `RGB`,
+`L`, `RGBA`, and `1` images. The probe locks row-major data order, band
+selection, raw byte order, packed `1`-mode bytes, raw `frombytes` mutation,
+`putdata` scale/offset clipping, short `putdata` prefix writes, scalar RGB
+fallback, and representative `ValueError` / `OSError` / `TypeError` shapes.
+The AHK surface now exposes these data-access methods through array-backed byte
+and pixel bridges. This expands the current Pillow data path while the target
+backend remains WIC for read/decode/pixel-format conversion, Direct2D for
+filters, masks, blend, and composition, and WIC or GDI+ for save/output; this
+slice does not claim Direct2D acceleration. Fresh AHK evidence includes focused
+red `.codex/pillow-image-data-red-report.txt` failing because `putdata` was
+missing, focused green `.codex/pillow-image-data-green-focused-report.txt`
+passing 1/1, module `.codex/pillow-image-data-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 40/40, root filter
+`.codex/pillow-image-data-root-filter-report.txt` passing 41/41, and captured
+example `.codex/pillow-image-data-example-report.txt` passing 1/1 through
+`AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image palette follow-up uses fresh local Python 3.10.11 + Pillow
+11.3.0 evidence from `.codex/pillow_image_palette_probe.py` and
+`.codex/pillow_image_palette_probe.output.json` confirming `Image.getpalette`
+and `Image.putpalette` for covered `P` and `L` images, `RGB` and `RGBA`
+rawmodes, default empty palettes, bytes/list palette input, RGB extraction from
+RGBA palettes, RGBA expansion from RGB palettes, palette preservation of image
+data, and representative `ValueError` / `TypeError` shapes. The AHK surface now
+stores palette metadata on image objects and clones it through existing image
+copy paths. This expands `P`-mode behavior while the target backend remains WIC
+for read/decode/pixel-format conversion, Direct2D for filters, masks, blend,
+and composition, and WIC or GDI+ for save/output; this slice does not claim
+Direct2D acceleration. Fresh AHK evidence includes focused red
+`.codex/pillow-image-palette-red-report.txt` failing because `getpalette` was
+missing, focused green `.codex/pillow-image-palette-green-focused-report.txt`
+passing 1/1, module `.codex/pillow-image-palette-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 41/41, root filter
+`.codex/pillow-image-palette-root-filter-report.txt` passing 42/42, and
+captured example `.codex/pillow-image-palette-example-report.txt` passing 1/1
+through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image apply-transparency follow-up uses fresh local Python 3.10.11
++ Pillow 11.3.0 evidence from
+`.codex/pillow_image_apply_transparency_probe.py` and
+`.codex/pillow_image_apply_transparency_probe.output.json` confirming
+`Image.apply_transparency()` for covered `P` images with
+`info["transparency"]` as an integer palette index or bytes-like alpha table.
+The probe also confirms `has_transparency_data` truthiness for alpha-capable
+modes / info transparency / RGBA palettes, no-op behavior for non-`P` images
+and `P` images without a transparency key, deletion of the consumed
+`info["transparency"]` key for `P` conversions, preservation of indexed image
+data, and representative bad string / out-of-range palette-index error shapes.
+The AHK surface now exposes an `info` map on image objects,
+`has_transparency_data`, and `apply_transparency()`, applying transparency into
+the stored RGBA palette while preserving existing `getpalette("RGB")` behavior.
+This remains a CPU metadata/palette bridge over the current image object model
+and does not claim broader Pillow metadata parity. Fresh AHK evidence includes
+focused red `.codex/pillow-image-apply-transparency-red-report.txt` failing
+because `AhkStdlibPillowImage` had no `has_transparency_data` property,
+focused green `.codex/pillow-image-apply-transparency-green-focused-report.txt`
+passing 1/1, module `.codex/pillow-image-apply-transparency-module-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 46/46, and root filter
+`.codex/pillow-image-apply-transparency-root-filter-report.txt` passing 47/47.
+
+The current Image entropy follow-up uses fresh local Python 3.10.11 + Pillow
+11.3.0 evidence from `.codex/pillow_image_entropy_probe.py` and
+`.codex/pillow_image_entropy_probe.output.json` confirming `Image.entropy()`
+for covered `L`, `RGB`, `RGBA`, and `1` images, flat-image `0.0` behavior,
+`L` mask selection, and representative bad-mask, mask-size, and mask-mode
+errors. The AHK surface now exposes `AhkStdlibPillowImage.entropy(...)` through
+the existing histogram bridge and computes `-p * log2(p)` across populated bins.
+This is a behavior lock for the target backend split: WIC handles
+read/decode/pixel-format conversion, Direct2D is intended for accelerated
+filters, masks, blend, composition, histogram/pixel-map work, and WIC or GDI+
+handles save/output. The current entropy implementation remains CPU/pixel-loop
+based and does not claim Direct2D acceleration. Fresh AHK evidence includes
+focused red `.codex/pillow-image-entropy-red-report.txt` failing because
+`AhkStdlibPillowImage` had no `entropy` method, focused green
+`.codex/pillow-image-entropy-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-image-entropy-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 42/42, root filter
+`.codex/pillow-image-entropy-root-filter-report.txt` passing 43/43, and
+captured example `.codex/pillow-image-entropy-example-report.txt` passing 1/1
+through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image reduce follow-up uses fresh local Python 3.10.11 + Pillow
+11.3.0 evidence from `.codex/pillow_image_reduce_probe.py` and
+`.codex/pillow_image_reduce_probe.output.json` confirming `Image.reduce(...)`
+for covered `RGB` and `L` images, integer and two-axis factors, optional source
+box handling, rounded-up target sizes, factor-one copy isolation, and
+representative factor, box, and wrong-mode error shapes. The AHK surface now
+exposes `AhkStdlibPillowImage.reduce(...)` through a CPU block-average bridge
+that preserves the current image object model and EXIF/palette metadata. This
+is a behavior lock for the same target backend split: WIC handles
+read/decode/pixel-format conversion, Direct2D is intended for accelerated
+filters, masks, blend, composition, histogram/pixel-map/reduce work, and WIC or
+GDI+ handles save/output. The current implementation does not yet claim
+Direct2D acceleration or full premultiplied-alpha `LA` / `RGBA` reduce parity.
+Fresh AHK evidence includes focused red
+`.codex/pillow-image-reduce-red-report.txt` failing because
+`AhkStdlibPillowImage` had no `reduce` method, focused green
+`.codex/pillow-image-reduce-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-image-reduce-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 43/43, root filter
+`.codex/pillow-image-reduce-root-filter-report.txt` passing 44/44, and
+captured example `.codex/pillow-image-reduce-example-report.txt` passing 1/1
+through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image thumbnail follow-up uses fresh local Python 3.10.11 + Pillow
+11.3.0 evidence from `.codex/pillow_image_thumbnail_probe.py` and
+`.codex/pillow_image_thumbnail_probe.output.json` confirming
+`Image.thumbnail(...)` in-place behavior for covered `RGB` and `L` images,
+aspect-preserving target-size floor handling, no-op behavior when the requested
+box is larger than the image, representative thumbnail pixels, and size /
+`reducing_gap` error shapes. The AHK surface now exposes
+`AhkStdlibPillowImage.thumbnail(...)` and replaces the image bitmap in place
+after a CPU separable cubic resample bridge. This is a behavior lock for the
+target backend split: WIC handles read/decode/pixel-format conversion, Direct2D
+is intended for accelerated resize/thumbnail/reduce/filter/mask/blend/
+composition work, and WIC or GDI+ handles save/output. The current thumbnail
+implementation does not yet claim Direct2D acceleration or complete Pillow C
+resampler parity outside the covered probe paths. Fresh AHK evidence includes
+focused red `.codex/pillow-image-thumbnail-red-report.txt` failing because
+`AhkStdlibPillowImage` had no `thumbnail` method, focused green
+`.codex/pillow-image-thumbnail-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-image-thumbnail-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 44/44, root filter
+`.codex/pillow-image-thumbnail-root-filter-report.txt` passing 45/45, and
+captured example `.codex/pillow-image-thumbnail-example-report.txt` passing 1/1
+through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image effect_spread follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_effect_spread_probe.py` and
+`.codex/pillow_image_effect_spread_probe.output.json` confirming
+`Image.effect_spread(distance)` returns a new image, preserves mode and size,
+copies pixels exactly for `distance == 0` and negative distances, keeps the
+source image isolated from result mutation, accepts integer distances, and
+raises the observed integer-conversion `TypeError` shapes for float, string,
+and `None` distances. The probe also records that nonzero spread is
+non-deterministic across calls, matching Pillow's random-pixel effect, so the
+AHK test locks the public behavior by asserting size/mode preservation,
+source/result isolation, and that nonzero result pixels come from the original
+image's pixel set rather than claiming deterministic pixel parity. The current
+implementation is a CPU pixel-loop bridge over the existing image object model
+and does not claim Direct2D acceleration. Fresh AHK evidence includes focused
+red `.codex/pillow-image-effect-spread-red-report.txt` failing because
+`AhkStdlibPillowImage` had no `effect_spread` method, focused green
+`.codex/pillow-image-effect-spread-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-effect-spread-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 45/45, and root filter
+`.codex/pillow-image-effect-spread-root-filter-report.txt` passing 46/46.
+
+The current Image frame-method follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_frame_methods_probe.py` and
+`.codex/pillow_image_frame_methods_probe.output.json` confirming base
+single-frame `Image.tell() == 0`, `seek(0)` and `seek(0.0)` returning `None`,
+`verify()` returning `None` without changing decoded pixels, copy `tell()`
+behavior, EOF errors for nonzero / negative / string frame seeks, and
+representative missing/extra positional TypeError shapes. The AHK surface now
+exposes `AhkStdlibPillowImage.tell(...)`, `seek(...)`, and `verify(...)` for
+the covered base-image lifecycle path, which sets up later ImageSequence and
+multi-frame file-handler work without claiming multi-frame format support yet.
+Fresh AHK evidence includes focused red
+`.codex/pillow-image-frame-methods-red-report.txt` failing because
+`AhkStdlibPillowImage` had no `tell` method, focused green
+`.codex/pillow-image-frame-methods-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-frame-methods-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 47/47, and root filter
+`.codex/pillow-image-frame-methods-root-filter-report.txt` passing 48/48.
+
+The current Image remap-palette follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_remap_palette_probe.py` and
+`.codex/pillow_image_remap_palette_probe.output.json` confirming
+`Image.remap_palette(dest_map, source_palette := None)` for covered `P` and
+`L` images. The probe locks `dest_map` reordering, compacted RGB/RGBA palette
+bytes, original-image isolation, `L` returning a `P` image with a generated
+grayscale source palette, `source_palette` override behavior including RGBA
+palette selection when the source palette is longer than 768 bytes,
+transparency-index remapping and deletion for unused transparency, and
+representative illegal-mode / non-integer dest-map / string-source-palette /
+out-of-range dest-map error shapes. It also records Pillow's permissive empty
+dest-map, negative dest-map, and short-source-palette cases, where pixels fall
+back through zero-filled `new_positions` and palette bytes can be empty. The
+AHK surface now exposes `AhkStdlibPillowImage.remap_palette(...)` through a CPU
+palette/pixel remapping bridge that preserves the current public image object
+model; this slice does not claim Direct2D acceleration. Fresh AHK evidence
+includes focused red `.codex/pillow-image-remap-palette-red-report.txt`
+failing because `AhkStdlibPillowImage` had no `remap_palette` method, focused
+green `.codex/pillow-image-remap-palette-green-focused-report.txt` passing
+1/1, module `.codex/pillow-image-remap-palette-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 48/48, root filter
+`.codex/pillow-image-remap-palette-root-filter-report.txt` passing 49/49, and
+captured example `.codex/pillow-image-remap-palette-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image transform follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_transform_probe.py` and
+`.codex/pillow_image_transform_probe.output.json` confirming
+`Image.Transform` and `Image.Resampling` constant values plus
+`Image.transform(size, method, data, resample=NEAREST, fill=1, fillcolor=None)`
+for covered `RGB` and `P` images. The probe locks exact NEAREST pixels for
+`AFFINE`, `EXTENT`, `QUAD`, and `MESH`, fillcolor behavior outside the source
+image, info-copy behavior, palette preservation for `P` images, old-style
+`method.getdata()` compatibility, transform-handler delegation, and
+representative missing-data / unknown-method / invalid-resampling error
+messages. The AHK surface now exposes `Image.Transform`,
+`Image.Resampling`, and `AhkStdlibPillowImage.transform(...)` through a CPU
+geometry bridge that uses center-based NEAREST sampling and reuses the existing
+mesh copy path. This is a behavior lock for later Direct2D geometry and
+resampling acceleration; it does not claim BILINEAR/BICUBIC pixel parity beyond
+covered validation and fallback paths. Fresh AHK evidence includes focused red
+`.codex/pillow-image-transform-red-report.txt` failing because
+`Image.Transform` was missing, focused green
+`.codex/pillow-image-transform-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-image-transform-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 49/49, root filter
+`.codex/pillow-image-transform-root-filter-report.txt` passing 50/50, and
+captured example `.codex/pillow-image-transform-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image quantize follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_quantize_probe.py` and
+`.codex/pillow_image_quantize_probe.output.json` confirming `Image.Dither`
+and `Image.Quantize` constant values plus
+`Image.quantize(colors=256, method=None, kmeans=0, palette=None,
+dither=Image.Dither.FLOYDSTEINBERG)` for covered `RGB`, `L`, and `RGBA`
+images. The probe locks default RGB/RGBA/L palette/data results, `colors=2`
+RGB reduction, quantizing to an explicit `P` palette, representative RGBA
+method restrictions, bad-palette mode errors, RGBA-to-palette errors,
+negative-`kmeans` errors, and bad color-count errors. The AHK surface now
+exposes `Image.Dither`, `Image.Quantize`, and
+`AhkStdlibPillowImage.quantize(...)` through a CPU palette bridge, and fixes
+`P` image conversion to `RGB`/`RGBA` through palette lookup. This locks
+behavior for later WIC/Direct2D palette and pixel-map acceleration; it does
+not claim Direct2D acceleration yet. Fresh AHK evidence includes focused red
+`.codex/pillow-image-quantize-red-report.txt` failing because `Image.Dither`
+was missing, focused green `.codex/pillow-image-quantize-green-focused-report.txt`
+passing 1/1, module `.codex/pillow-image-quantize-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 50/50, root filter
+`.codex/pillow-image-quantize-root-filter-report.txt` passing 51/51, and
+captured example `.codex/pillow-image-quantize-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image instance-surface follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_instance_surface_probe.py`
+and `.codex/pillow_image_instance_surface_probe.output.json` confirming
+`readonly`, `format_description`, `draft(...)`, `get_child_images()`,
+`getxmp()`, `getim()`, `im`, and `tobitmap(...)` for covered newly-created
+images, reopened PNG images, and `1`-mode XBM output. The probe locks
+new-image `readonly == 0`, reopened PNG `readonly == 1`,
+`format_description == "Portable network graphics"` for PNG,
+`draft(...) == None`, empty child-image and XMP containers, Pillow-shaped
+`PyCapsule` / `ImagingCore` repr text, covered `tobitmap("x")` bytes, default
+`image` XBM naming, `ValueError("not a bitmap")` for RGB `tobitmap`, and
+representative extra/missing positional TypeError messages. The AHK surface
+now exposes these instance metadata APIs plus a covered `1`-mode XBM byte
+bridge while keeping the real native image backend encapsulated; this slice
+does not claim raw Pillow ImagingCore pointer interoperability or Direct2D
+acceleration. Fresh AHK evidence includes focused red
+`.codex/pillow-image-instance-surface-red-report.txt` failing because
+`readonly` was missing, focused green
+`.codex/pillow-image-instance-surface-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-instance-surface-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 51/51, root filter
+`.codex/pillow-image-instance-surface-root-filter-report.txt` passing 52/52,
+and captured example `.codex/pillow-image-instance-surface-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image frombytes/frombuffer follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_frombytes_frombuffer_probe.py`
+and `.codex/pillow_image_frombytes_frombuffer_probe.output.json` confirming
+module-level `Image.frombytes(...)` and `Image.frombuffer(...)` for covered
+`RGB`, `L`, `RGBA`, and `1` images. The probe locks RGB/L/RGBA pixel rows,
+`1`-mode packed-bit behavior, `raw` / `BGR` channel swapping, covered
+`frombuffer` `readonly` values, and representative bad-mode, short-data, and
+bad-decoder errors. The AHK surface now exposes
+`stdlib.pillow.Image.frombytes(...)` and `stdlib.pillow.Image.frombuffer(...)`
+by constructing a normal image and routing through the existing raw byte
+decoder; the covered `frombuffer("L", ..., "raw", "L", 0, 1)` path marks the
+result readonly, but this slice does not claim Python bytearray buffer-alias
+sharing yet. Fresh AHK evidence includes focused red
+`.codex/pillow-image-frombytes-frombuffer-red-report.txt` failing because
+`Image.frombytes` was missing, focused green
+`.codex/pillow-image-frombytes-frombuffer-green-focused-report.txt` passing
+1/1, module `.codex/pillow-image-frombytes-frombuffer-module-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 52/52, root filter
+`.codex/pillow-image-frombytes-frombuffer-root-filter-report.txt` passing
+53/53, and captured example
+`.codex/pillow-image-frombytes-frombuffer-example-report.txt` passing 1/1
+through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image effect-mandelbrot follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_effect_mandelbrot_probe.py`
+and `.codex/pillow_image_effect_mandelbrot_probe.output.json` confirming
+`Image.effect_mandelbrot(size, extent, quality)` for covered small `L` images.
+The probe locks mode, size, readonly, representative pixel rows, histogram
+prefix data, zero-width extent behavior, and representative bad-size,
+bad-extent, and bad-quality TypeError messages. The AHK surface now exposes
+`stdlib.pillow.Image.effect_mandelbrot(...)` through a CPU pixel bridge matching
+Pillow 11.3.0's `libImaging` iteration order and escape threshold for the
+covered cases. This is a behavior lock for later Direct2D or compute-style
+pixel generation and does not claim accelerated performance. Fresh AHK
+evidence includes focused red `.codex/pillow-image-effect-mandelbrot-red-report.txt`
+failing because `Image.effect_mandelbrot` was missing, focused green
+`.codex/pillow-image-effect-mandelbrot-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-effect-mandelbrot-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 53/53, root filter
+`.codex/pillow-image-effect-mandelbrot-root-filter-report.txt` passing 54/54,
+and captured example `.codex/pillow-image-effect-mandelbrot-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image effect-noise follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_effect_noise_probe.py` and
+`.codex/pillow-image-effect-noise-probe.output.json` confirming
+`Image.effect_noise(size, sigma)`. The probe locks the public signature, `L`
+mode output, size, readonly state, zero-sigma all-128 pixels, empty-image
+behavior for `[0, 0]`, representative argument errors, and the fact that
+nonzero-sigma rows are non-deterministic. The AHK surface now exposes
+`stdlib.pillow.Image.effect_noise(...)` through a CPU Gaussian-noise bridge
+returning byte-clamped `L` images for the covered cases. This slice deliberately
+does not claim exact Pillow C RNG sequence parity for nonzero sigma; tests lock
+mode/size/range/error behavior plus the deterministic sigma=0 case. Fresh AHK
+evidence includes focused red `.codex/pillow-image-effect-noise-red-report.txt`
+failing because `Image.effect_noise` was missing, focused green
+`.codex/pillow-image-effect-noise-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-effect-noise-module-report.txt` and structured
+`.codex/pillow-image-effect-noise-module.json` passing
+`stdlib/tests/pillow.test.ahk` 85/85 at `TimeoutSeconds 90`, and captured
+example `.codex/pillow-image-effect-noise-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions. A prior module-gate attempt produced no ahktest status artifact and
+is not used as promotion evidence; the trusted module evidence is the later
+85/85 run with JSON output.
+
+The current Image registry follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_image_registry_probe.py` and
+`.codex/pillow_image_registry_probe.output.json` confirming module-level
+`register_open`, `register_save`, `register_save_all`, `register_decoder`,
+`register_encoder`, `register_extension`, `register_extensions`,
+`register_mime`, and `registered_extensions()`. The probe locks return values,
+default extension mapping snapshots, custom extension registration, MIME
+registration, registry membership for open/save/decoder/encoder tables, and
+representative missing-argument `TypeError` messages. The AHK surface now
+stores Pillow-shaped registry maps and returns a cloned extension mapping while
+leaving actual custom plugin decoder/encoder invocation for a later slice. This
+registry layer is Python-level behavior; it does not claim image codec coverage
+or benchmark-backed Pillow performance parity. Fresh AHK evidence includes
+focused red `.codex/pillow-image-registry-red-report.txt` failing because
+`registered_extensions` was missing, focused green
+`.codex/pillow-image-registry-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-image-registry-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 54/54, root filter
+`.codex/pillow-image-registry-root-filter-report.txt` passing 55/55, and
+captured example `.codex/pillow-image-registry-example-report.txt` passing 1/1
+through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current Image codec-registry invocation follow-up uses fresh local Python
+3.10.11 + Pillow 11.3.0 evidence from
+`.codex/pillow_image_codec_registry_probe.py` and
+`.codex/pillow_image_codec_registry_probe.output.json` confirming that
+`Image.frombytes(..., decoder_name, ...)`, instance
+`image.frombytes(..., decoder_name, ...)`, and
+`image.tobytes(encoder_name, ...)` consult registered custom
+decoder/encoder factories before core codecs. The probe locks factory
+argument normalization, `setimage(...)` calls, decoder `decode(data)` result
+handling, encoder `encode(65536)` loop behavior, and representative
+missing/short/error decoder and encoder exception messages. The AHK surface
+now invokes registered decoder/encoder factories for non-`raw` codec names and
+routes successful decoded bytes back through the existing raw byte bridge. This
+is a registry/plugin invocation behavior lock; it does not claim arbitrary
+Pillow file codec parity or benchmark-backed Pillow performance parity. Fresh
+AHK evidence includes focused red
+`.codex/pillow-image-codec-registry-red-report.txt` failing on the old
+non-raw codec path, focused green
+`.codex/pillow-image-codec-registry-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-codec-registry-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 55/55, root filter
+`.codex/pillow-image-codec-registry-root-filter-report.txt` passing 56/56, and
+captured example `.codex/pillow-image-codec-registry-example-report.txt`
+passing 1/1 through the fixed `AhkTest.CaptureFixture().RunArgs(...)` path
+which waits for the real AutoHotkey child process.
+
+The current Image save-registry invocation follow-up uses fresh local Python
+3.10.11 + Pillow 11.3.0 evidence from
+`.codex/pillow_image_save_registry_probe.py` and
+`.codex/pillow_image_save_registry_probe.output.json` confirming that
+`Image.save(...)` consults registered `SAVE` and `SAVE_ALL` handlers after
+format resolution. The probe locks extension-derived format lookup, explicit
+format override, handler arguments `(image, fp, filename)`, handler-visible
+`encoderinfo` / `_default_encoderinfo`, `save_all=True` routing to
+`SAVE_ALL`, `append_images` routing to `SAVE_ALL`, new-file cleanup after a
+handler exception, and representative unknown-extension `ValueError` messages.
+The AHK surface now routes custom registered save handlers through a file
+wrapper with `write(...)` and restores image encoder state after the call; the
+existing GDI+ path remains responsible for built-in PNG/BMP/JPEG output. This
+is a custom registry/plugin save behavior lock; it does not claim arbitrary
+Pillow file codec parity or benchmark-backed Pillow performance parity. Fresh
+AHK evidence includes focused red
+`.codex/pillow-image-save-registry-red-report.txt` failing before
+`Image.save(..., params)` and registry dispatch existed, focused green
+`.codex/pillow-image-save-registry-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-save-registry-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 56/56, root filter
+`.codex/pillow-image-save-registry-root-filter-report.txt` passing 57/57, and
+captured example `.codex/pillow-image-save-registry-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current modes/formats follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_modes_formats_probe.py` and
+`.codex/pillow_modes_formats_probe.output.json` confirming `L` pixels as
+integers, `RGBA` pixels as four-element tuples, and PNG/BMP/JPEG save/open
+format/mode/size behavior. The existing GDI+ backend already satisfied this
+coverage, so no implementation change was required beyond examples and tests.
+Fresh AHK evidence includes focused
+`.codex/pillow-modes-formats-focused-report.txt` passing 1/1, module
+`.codex/pillow-modes-formats-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 2/2, root filter
+`.codex/pillow-modes-formats-root-filter-report.txt` passing 3/3,
+changed-file validate `.codex/pillow-modes-formats-validate-report.txt`
+passing, and captured example `.codex/pillow-modes-formats-example-report.txt`
+loading `stdlib/examples/pillow.ahk` without warning/error at
+`TimeoutSeconds 90`.
+
+The current transform follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_transform_probe.py` and
+`.codex/pillow_transform_probe.output.json` confirming
+`Image.Transpose.FLIP_LEFT_RIGHT == 0`,
+`Image.Transpose.ROTATE_90 == 2`, RGB-to-`L` luma values,
+RGB/RGBA conversion alpha behavior, horizontal flip pixels, transpose rotate
+90 pixels, and `rotate(90)` with and without `expand`. Fresh AHK evidence
+includes focused red `.codex/pillow-transform-red-report.txt` failing at the
+missing `Image.Transpose` surface, focused green
+`.codex/pillow-transform-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-transform-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 3/3, root filter
+`.codex/pillow-transform-root-filter-report.txt` passing 4/4, changed-file
+validate `.codex/pillow-transform-validate-report.txt` passing, and captured
+example `.codex/pillow-transform-example-report.txt` passing 1/1 through
+`AhkTest.CaptureFixture().RunArgs(...)` with explicit checks that
+`stdlib/examples/pillow.ahk` contains no
+`System.Text.RegularExpressions` or `MatchEvaluator` pollution.
+
+The current WIC open follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_rgba_png_probe.py` and
+`.codex/pillow_rgba_png_probe.output.json` confirming that an `RGBA` PNG saved
+with alpha pixels reopens as `format == "PNG"`, `mode == "RGBA"`, preserves
+four-channel pixels, and converts to RGB by dropping alpha channels. The AHK
+`Image.open(path)` path now starts with WIC (`windowscodecs.dll`) decode and
+pixel-format conversion to 32bpp BGRA, scans alpha to choose `RGB` versus
+`RGBA`, and then bridges into the current GDI+ bitmap handle used by the public
+image object. Fresh AHK evidence includes focused red
+`.codex/pillow-rgba-png-open-red-report.txt` failing because the previous
+extension-based path reopened the PNG as `RGB`, focused green
+`.codex/pillow-rgba-png-open-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-rgba-png-open-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 4/4, root filter
+`.codex/pillow-rgba-png-open-root-filter-report.txt` passing 5/5,
+changed-file validate `.codex/pillow-rgba-png-open-validate-report.txt`
+passing, and captured example `.codex/pillow-rgba-png-open-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current blend/composition follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_blend_probe.py` and `.codex/pillow_blend_probe.output.json`
+confirming `Image.blend(image1, image2, alpha)` for RGB, RGBA, and `L` images,
+including alpha values outside `[0, 1]`, channel clipping, result mode/size,
+and `ValueError("images do not match")` for size or mode mismatch. The AHK
+surface now exposes `stdlib.pillow.Image.blend(...)` as a public
+composition-oriented API. The current implementation uses a pixel-loop bridge
+over the existing bitmap object so tests can lock observable Pillow behavior;
+the target backend remains Direct2D for accelerated blend/composition internals.
+Fresh AHK evidence includes focused red `.codex/pillow-blend-red-report.txt`
+failing because the `Image` module had no `blend` method, focused green
+`.codex/pillow-blend-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-blend-module-report.txt` passing `stdlib/tests/pillow.test.ahk`
+5/5, root filter `.codex/pillow-blend-root-filter-report.txt` passing 6/6,
+changed-file validate `.codex/pillow-blend-validate-report.txt` passing, and
+captured example `.codex/pillow-blend-example-report.txt` passing 1/1 through
+`AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current composite/mask follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_composite_probe.py` and
+`.codex/pillow_composite_probe.output.json` confirming
+`Image.composite(image1, image2, mask)` with `L` masks and `RGBA` masks,
+including result pixels, result mode/size driven by the second image, permissive
+input image mode/size differences, `ValueError("images do not match")` for a
+mask smaller than the output image, and `ValueError("bad transparency mask")`
+for unsupported mask modes. The AHK surface now exposes
+`stdlib.pillow.Image.composite(...)` as the second composition-oriented API.
+The current implementation is still a pixel-loop bridge over the existing
+bitmap object, with Direct2D retained as the intended accelerated backend for
+mask/composition internals. Fresh AHK evidence includes focused red
+`.codex/pillow-composite-red-report.txt` failing because the `Image` module had
+no `composite` method, focused green
+`.codex/pillow-composite-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-composite-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 6/6, root filter
+`.codex/pillow-composite-root-filter-report.txt` passing 7/7, changed-file
+validate `.codex/pillow-composite-validate-report.txt` passing, and captured
+example `.codex/pillow-composite-example-report.txt` passing 1/1 through
+`AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current alpha-composite follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_alpha_composite_probe.py` and
+`.codex/pillow_alpha_composite_probe.output.json` confirming
+`Image.alpha_composite(image1, image2)` for same-size `RGBA` images, including
+ordinary semi-transparent overlay pixels, fully transparent/opaque edge cases,
+result `RGBA` mode/size, and `ValueError("images do not match")` for size or
+mode mismatch. The AHK surface now exposes
+`stdlib.pillow.Image.alpha_composite(...)` as another composition-oriented API.
+The current implementation is a pixel-loop bridge with integer alpha math that
+matches the probed Pillow pixels; Direct2D remains the intended backend for
+accelerated alpha composition internals. Fresh AHK evidence includes focused
+red `.codex/pillow-alpha-composite-red-report.txt` failing because the `Image`
+module had no `alpha_composite` method, focused green
+`.codex/pillow-alpha-composite-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-alpha-composite-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 7/7, root filter
+`.codex/pillow-alpha-composite-root-filter-report.txt` passing 8/8,
+changed-file validate `.codex/pillow-alpha-composite-validate-report.txt`
+passing, and captured example `.codex/pillow-alpha-composite-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current paste follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_paste_probe.py` and `.codex/pillow_paste_probe.output.json`
+confirming in-place `Image.paste(...)` for color fill boxes, image paste at a
+point, `L` mask paste, `RGBA` mask paste, point-box clipping when the source is
+wider than the target, `None` return behavior, `ValueError("bad transparency
+mask")` for unsupported mask modes, and the covered malformed-box
+`TypeError`. The AHK image object now exposes `.paste(...)` as an in-place
+composition/fill method. The current implementation is a pixel-loop bridge over
+the existing bitmap object, with Direct2D retained as the intended backend for
+accelerated fill/mask/composition internals. Fresh AHK evidence includes
+focused red `.codex/pillow-paste-red-report.txt` failing because
+`AhkStdlibPillowImage` had no `paste` method, focused green
+`.codex/pillow-paste-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-paste-module-report.txt` passing `stdlib/tests/pillow.test.ahk`
+8/8, root filter `.codex/pillow-paste-root-filter-report.txt` passing 9/9,
+changed-file validate `.codex/pillow-paste-validate-report.txt` passing, and
+captured example `.codex/pillow-paste-example-report.txt` passing 1/1 through
+`AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current channel/alpha follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_channel_alpha_probe.py` and
+`.codex/pillow_channel_alpha_probe.output.json` confirming
+`Image.getchannel(...)` by channel name and integer band index, returned `L`
+channel images, missing-channel and out-of-range errors, and in-place
+`Image.putalpha(...)` with constant alpha, `L` alpha image, `RGB` to `RGBA`,
+`RGBA` alpha replacement, and `L` to `LA` promotion. The AHK surface now
+exposes `.getchannel(...)` and `.putalpha(...)`, and the current mode support
+adds covered `LA` pixel read/write behavior as `[l, a]`. Fresh AHK evidence
+includes focused red `.codex/pillow-channel-alpha-red-report.txt` failing
+because `AhkStdlibPillowImage` had no `getchannel` method, focused green
+`.codex/pillow-channel-alpha-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-channel-alpha-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 9/9, root filter
+`.codex/pillow-channel-alpha-root-filter-report.txt` passing 10/10,
+changed-file validate `.codex/pillow-channel-alpha-validate-report.txt`
+passing, and captured example `.codex/pillow-channel-alpha-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current split/merge follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_split_merge_probe.py` and
+`.codex/pillow_split_merge_probe.output.json` confirming `Image.split()` for
+`RGB`, `RGBA`, and `LA` images, tuple return shape, `L` band images, and
+`Image.merge(...)` for `RGB`, `RGBA`, and `LA`, plus `wrong number of bands`,
+`mode mismatch`, `size mismatch`, and unknown-mode `KeyError` behavior. The
+AHK surface now exposes `.split()` on image instances and
+`stdlib.pillow.Image.merge(mode, bands)` on the Image module, reusing the root
+`stdlib.tuple(...)` carrier for split bands. Fresh AHK evidence includes
+focused red `.codex/pillow-split-merge-red-report.txt` failing because
+`AhkStdlibPillowImage` had no `split` method, focused green
+`.codex/pillow-split-merge-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-split-merge-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 10/10, root filter
+`.codex/pillow-split-merge-root-filter-report.txt` passing 11/11,
+changed-file validate `.codex/pillow-split-merge-validate-report.txt` passing,
+and captured example `.codex/pillow-split-merge-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current point/eval follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_point_eval_probe.py` and
+`.codex/pillow_point_eval_probe.output.json` confirming `Image.point(...)`
+callable and LUT behavior for `L`, `RGB`, `RGBA`, and `LA` images,
+`L`-to-`RGB` LUT mode conversion, `Image.eval(image, function)`, 256-call LUT
+construction semantics for callable functions, channel clipping, and the
+covered `None`, bad-LUT, bad-mode, and callable-mode mismatch error messages.
+The AHK surface now exposes `.point(lut, mode?)` on image instances and
+`stdlib.pillow.Image.eval(image, function)` on the Image module. The current
+implementation is still a pixel-loop bridge over an explicit 256-entry LUT
+builder so public behavior is locked first; this LUT/apply layer is the
+integration point for later Direct2D-backed pixel-map acceleration without
+changing callers. Fresh AHK evidence includes focused red
+`.codex/pillow-point-eval-red-report.txt` failing because
+`AhkStdlibPillowImage` had no `point` method, focused green
+`.codex/pillow-point-eval-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-point-eval-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 11/11, root filter
+`.codex/pillow-point-eval-root-filter-report.txt` passing 12/12,
+changed-file validate `.codex/pillow-point-eval-validate-report.txt` passing,
+and captured example `.codex/pillow-point-eval-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current filter follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_filter_probe.py` and `.codex/pillow_filter_probe.output.json`
+confirming `Image.filter(...)` with ImageFilter classes and `Kernel`
+instances, the built-in `BLUR`, `CONTOUR`, `DETAIL`, `EDGE_ENHANCE`,
+`EDGE_ENHANCE_MORE`, `EMBOSS`, `FIND_EDGES`, `SHARPEN`, `SMOOTH`, and
+`SMOOTH_MORE` kernel parameters, 3x3 and 5x5 boundary-preservation behavior,
+per-channel `RGB` / `RGBA` filtering, custom `Kernel` scale/offset behavior,
+vertical kernel flipping, and the covered bad-filter, bad-kernel-size, and
+bad-coefficient error messages. The AHK surface now exposes
+`stdlib.pillow.ImageFilter`, built-in callable filter-class objects,
+`ImageFilter.Kernel(size, kernel, scale?, offset?)`, and `.filter(filter)` on
+image instances. The current implementation is a CPU kernel bridge over the
+existing pixel object; this is the first public filter surface intended to move
+behind Direct2D effects once enough behavior is locked. Fresh AHK evidence
+includes focused red `.codex/pillow-filter-red-report.txt` failing because
+`stdlib.pillow` had no `ImageFilter` surface, focused green
+`.codex/pillow-filter-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-filter-module-report.txt` passing `stdlib/tests/pillow.test.ahk`
+12/12, root filter `.codex/pillow-filter-root-filter-report.txt` passing
+13/13, changed-file validate `.codex/pillow-filter-validate-report.txt`
+passing, and captured example `.codex/pillow-filter-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current ImageFilter rank-family follow-up uses fresh local Python 3.10.11
++ Pillow 11.3.0 evidence from `.codex/pillow_imagefilter_rank_probe.py` and
+`.codex/pillow_imagefilter_rank_probe.output.json` confirming
+`ImageFilter.RankFilter`, `MinFilter`, `MaxFilter`, `MedianFilter`, and
+`ModeFilter` for covered `L`, `RGB`, and `RGBA` paths. The probe records filter
+object `.size` / `.rank` attributes, rank-family edge expansion, per-band
+RGB/RGBA center pixels, `ModeFilter` boundary-window and replacement-threshold
+behavior, and covered constructor/filter errors including bad even size, bad
+rank, non-numeric median size, and string rank-filter size. The AHK surface now
+exposes these ImageFilter constructors and applies them through a CPU pixel-loop
+bridge. Fresh AHK evidence includes focused red
+`.codex/pillow-imagefilter-rank-red-report.txt` failing because
+`ImageFilter.RankFilter` was missing, focused green
+`.codex/pillow-imagefilter-rank-green-focused-report.txt` passing 1/1, and
+module `.codex/pillow-imagefilter-rank-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 33/33, root filter
+`.codex/pillow-imagefilter-rank-root-filter-report.txt` passing 34/34, and
+captured example `.codex/pillow-imagefilter-rank-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`. This behavior-locks
+another local-window filter family for later Direct2D or pixel-map acceleration;
+the current slice does not claim accelerated backend execution.
+
+The current ImageFilter BoxBlur follow-up uses fresh local Python 3.10.11 +
+Pillow 11.3.0 evidence from `.codex/pillow_imagefilter_boxblur_probe.py` and
+`.codex/pillow_imagefilter_boxblur_probe.output.json` confirming
+`ImageFilter.BoxBlur(radius)` for covered integer scalar radius `1`, tuple
+radius `[1, 0]`, radius `0` copy behavior, `L` matrix rows, and `RGB`/`RGBA`
+center and edge pixels. The probe also records Pillow's negative-radius,
+string-radius, and short-tuple errors. The AHK surface now exposes
+`ImageFilter.BoxBlur` through a separable CPU pixel-loop implementation that
+matches the covered integer-radius Pillow rows and remains a behavior lock for
+later Direct2D blur/effect acceleration. Fresh AHK evidence includes focused
+red `.codex/pillow-imagefilter-boxblur-red-report.txt` failing because
+`ImageFilter.BoxBlur` was missing, focused green
+`.codex/pillow-imagefilter-boxblur-green-focused-report.txt` passing 1/1, and
+module `.codex/pillow-imagefilter-boxblur-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 34/34, root filter
+`.codex/pillow-imagefilter-boxblur-root-filter-report.txt` passing 35/35, and
+captured example `.codex/pillow-imagefilter-boxblur-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`. Non-integer float radius
+parity remains a later Pillow C / Direct2D fidelity slice.
+
+The current ImageFilter GaussianBlur follow-up uses fresh local Python 3.10.11
++ Pillow 11.3.0 evidence from `.codex/pillow_imagefilter_gaussianblur_probe.py`
+and `.codex/pillow_imagefilter_gaussianblur_probe.output.json` confirming
+`ImageFilter.GaussianBlur(radius := 2)` default/scalar/tuple/zero/float radius
+attributes, `L` matrix rows for default radius `2`, scalar radius `1`, tuple
+radius `[1, 0]`, float radius `1.5`, zero-radius copy isolation, `RGB`/`RGBA`
+key pixels, negative-radius no-error behavior, and Pillow's string/short-tuple
+filter-time `TypeError` shape. The AHK surface now exposes
+`ImageFilter.GaussianBlur` through a CPU implementation of Pillow 11.3.0's
+three-pass float box blur approximation, including the C-level float/fixed-point
+weighting needed for pixel parity. This slice locks another blur/effect target
+for later Direct2D acceleration but does not claim that Direct2D acceleration is
+implemented. Fresh AHK evidence includes focused red
+`.codex/pillow-imagefilter-gaussianblur-red-report.txt` failing because
+`ImageFilter.GaussianBlur` was missing, focused green
+`.codex/pillow-imagefilter-gaussianblur-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-imagefilter-gaussianblur-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 35/35, root filter
+`.codex/pillow-imagefilter-gaussianblur-root-filter-report.txt` passing 36/36,
+and captured example `.codex/pillow-imagefilter-gaussianblur-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current ImageFilter UnsharpMask follow-up uses fresh local Python 3.10.11
++ Pillow 11.3.0 evidence from `.codex/pillow_imagefilter_unsharpmask_probe.py`
+and `.codex/pillow_imagefilter_unsharpmask_probe.output.json` confirming
+`ImageFilter.UnsharpMask(radius := 2, percent := 150, threshold := 3)` default
+attributes, explicit radius/percent/threshold attributes, `L` matrix rows for
+default parameters, radius `1` / percent `150` / threshold `0`, threshold `20`,
+percent `0`, percent `250`, radius `0`, negative radius, and `RGB`/`RGBA` key
+pixels. The probe also records that string radius/percent/threshold constructors
+are accepted and fail only when `.filter(...)` calls the Pillow C backend. The
+AHK surface now exposes `ImageFilter.UnsharpMask` through the existing CPU
+Gaussian blur parity backend plus Pillow C's per-channel diff/threshold/clip
+formula. This behavior-locks another effect target for later Direct2D
+acceleration without claiming that acceleration is already implemented. Fresh
+AHK evidence includes focused red
+`.codex/pillow-imagefilter-unsharpmask-red-report.txt` failing because
+`ImageFilter.UnsharpMask` was missing, focused green
+`.codex/pillow-imagefilter-unsharpmask-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-imagefilter-unsharpmask-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 36/36, root filter
+`.codex/pillow-imagefilter-unsharpmask-root-filter-report.txt` passing 37/37,
+and captured example `.codex/pillow-imagefilter-unsharpmask-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current ImageFilter Color3DLUT follow-up uses fresh local Python 3.10.11
++ Pillow 11.3.0 evidence from `.codex/pillow_imagefilter_color3dlut_probe.py`
+and `.codex/pillow_imagefilter_color3dlut_probe.output.json` confirming
+`ImageFilter.Color3DLUT` construction, `generate`, `transform`, `with_normals`,
+normalized coordinates, tuple-table flattening, `__Repr`, RGB/RGBA filtering,
+`target_mode` RGBA output, and common constructor/filter errors. The AHK surface now exposes
+`ImageFilter.Color3DLUT` through a class-style facade and CPU pixel-loop
+trilinear interpolation for the covered RGB/RGBA behavior. This locks another
+Pillow color-transform target while the intended high-performance backend split
+remains WIC for read/decode/pixel-format conversion, Direct2D for filters,
+masks, blend, and composition, and WIC or GDI+ for save/output; this slice does
+not claim Direct2D acceleration yet. Fresh AHK evidence includes focused red
+`.codex/pillow-imagefilter-color3dlut-red-report.txt` failing because
+`ImageFilter.Color3DLUT` was missing, focused green
+`.codex/pillow-imagefilter-color3dlut-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-imagefilter-color3dlut-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 37/37, root filter
+`.codex/pillow-imagefilter-color3dlut-root-filter-report.txt` passing 38/38,
+and captured example `.codex/pillow-imagefilter-color3dlut-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current ImageChops follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_imagechops_probe.py` and
+`.codex/pillow_imagechops_probe.output.json` confirming `ImageChops.add`,
+`subtract`, `add_modulo`, `subtract_modulo`, `multiply`, `screen`,
+`difference`, `lighter`, `darker`, `invert`, `offset`, `constant`, and
+`duplicate` for covered `L`, `RGB`, and `RGBA` images. The probe also records
+scaled add/subtract behavior, wraparound modulo arithmetic, screen/multiply
+integer truncation, offset wrapping with omitted or `None` `yoffset`, constant
+channel clipping, duplicate copy isolation, permissive smaller-image output
+cropping, and `ValueError("images do not match")` for mode mismatch. The AHK
+surface now exposes `stdlib.pillow.ImageChops` as a composition/channel-ops
+module. The current implementation is still a pixel-loop bridge; these
+channel-op and wraparound primitives are intended to migrate behind Direct2D
+blend/composition internals after additional behavior is locked. Fresh AHK
+evidence includes focused red `.codex/pillow-imagechops-red-report.txt`
+failing because `stdlib.pillow` had no `ImageChops` surface, focused green
+`.codex/pillow-imagechops-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-imagechops-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 13/13, root filter
+`.codex/pillow-imagechops-root-filter-report.txt` passing 14/14,
+changed-file validate `.codex/pillow-imagechops-validate-report.txt` passing,
+and captured example `.codex/pillow-imagechops-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current ImageChops blend/light/logical follow-up uses fresh local
+Python 3.10.11 + Pillow 11.3.0 evidence from
+`.codex/pillow_imagechops_blend_light_logical_probe.py` and
+`.codex/pillow_imagechops_blend_light_logical_probe.output.json` confirming
+`ImageChops.blend`, `composite`, `overlay`, `hard_light`, `soft_light`,
+`logical_and`, `logical_or`, and `logical_xor` for covered `L`, `RGB`, `RGBA`,
+and mode `1` images. The probe records Pillow's C-level integer formulas for
+overlay/hard-light/soft-light via the Pillow 11.3.0 source package staged under
+`.codex/pillow-src`, smaller-image cropping for light ops, mode `1`
+`getpixel`/`putpixel` behavior, and covered error messages for non-`1`
+logical inputs, mismatched overlay/blend inputs, and invalid mode `1` tuple
+colors. The AHK surface now exposes these ImageChops functions, with mode `1`
+stored on the existing bitmap bridge while preserving Pillow-visible pixel
+values. Fresh AHK evidence includes focused red
+`.codex/pillow-imagechops-blend-light-logical-red-report.txt` failing because
+`ImageChops.blend` was missing, focused green
+`.codex/pillow-imagechops-blend-light-logical-green-focused-report.txt`
+passing 1/1, and module
+`.codex/pillow-imagechops-blend-light-logical-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 32/32, root filter
+`.codex/pillow-imagechops-blend-light-logical-root-filter-report.txt` passing
+33/33, and captured example
+`.codex/pillow-imagechops-blend-light-logical-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`. These covered channel
+operations remain the behavior lock for later Direct2D-backed
+blend/composition acceleration; the current slice does not claim Direct2D
+acceleration itself.
+
+The current ImageOps follow-up uses fresh Pillow 11.3.0 evidence from
+`.codex/pillow_imageops_probe.py` and `.codex/pillow_imageops_probe.output.json`
+confirming deterministic `ImageOps.invert`, `mirror`, `flip`, `grayscale`,
+`solarize`, `posterize`, `expand`, and `crop` behavior for covered `L`, `RGB`,
+and `RGBA` paths. The probe records Pillow's rounded grayscale luma for
+`ImageOps.grayscale`, `RGBA` grayscale alpha dropping, `RGBA` invert
+`OSError("not supported for mode RGBA")`, scalar and tuple border expansion,
+scalar and tuple crop behavior including empty-height output, solarize threshold
+behavior, posterize masking, and the covered bad-bits `TypeError`. The AHK
+surface now exposes `stdlib.pillow.ImageOps` as a color/geometry operations
+module. Current geometry and pixel operations are still CPU bridges over the
+existing image object, while the target backend remains Direct2D for later
+accelerated pixel maps and geometry. Fresh AHK evidence includes focused red
+`.codex/pillow-imageops-red-report.txt` failing because `stdlib.pillow` had no
+`ImageOps` surface, focused green
+`.codex/pillow-imageops-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-imageops-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 14/14, root filter
+`.codex/pillow-imageops-root-filter-report.txt` passing 15/15,
+changed-file validate `.codex/pillow-imageops-validate-report.txt` passing,
+and captured example `.codex/pillow-imageops-example-report.txt` passing 1/1
+through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The ImageOps contain follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imageops_contain_probe.py` and
+`.codex/pillow_imageops_contain_probe.output.json` confirming
+`ImageOps.contain(image, size, method=Image.Resampling.BICUBIC)` for wide,
+tall, same-size, and narrow-target `RGB`, `L`, and `RGBA` images. The probe
+records Pillow's aspect-ratio size calculations, new-object return behavior
+even when the target size equals the input, and the covered `AttributeError`,
+`IndexError`, `ValueError`, `ZeroDivisionError`, and string-size `TypeError`
+paths. The AHK surface now exposes `stdlib.pillow.ImageOps.contain(...)` and
+keeps the same public image object while delegating resized output through the
+current bitmap bridge. Same-size containment returns a copy to preserve
+semi-transparent `RGBA` pixels until the resize backend is migrated to the
+target accelerated path. Fresh AHK evidence includes focused red
+`.codex/pillow-imageops-contain-red-report.txt` failing because
+`AhkStdlibPillowImageOpsModule` had no `contain` method, focused green
+`.codex/pillow-imageops-contain-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-imageops-contain-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 24/24, and root filter
+`.codex/pillow-imageops-contain-root-filter-report.txt` passing 25/25. This
+keeps the Pillow backend target split explicit: WIC for read/decode/pixel
+format conversion, Direct2D for filters, masks, blend, composition, fills,
+pixel maps, and geometry, and WIC or GDI+ for save/output.
+
+The ImageOps cover/scale follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imageops_cover_scale_probe.py` and
+`.codex/pillow_imageops_cover_scale_probe.output.json` confirming
+`ImageOps.cover(image, size, method=Image.Resampling.BICUBIC)` and
+`ImageOps.scale(image, factor, resample=Image.Resampling.BICUBIC)` for covered
+`RGB`, `L`, and `RGBA` paths. The probe records `cover`'s covering aspect-ratio
+size expansion, `scale` factor sizing, `scale(..., 1)` copy behavior, and the
+covered `AttributeError`, `IndexError`, `ZeroDivisionError`, `TypeError`, and
+`ValueError` paths. The AHK surface now exposes
+`stdlib.pillow.ImageOps.cover(...)` and `stdlib.pillow.ImageOps.scale(...)`.
+This slice intentionally locks functional geometry and error behavior first;
+exact resampling-kernel pixel parity remains a later backend task for the
+Direct2D/GDI+ resize path. Fresh AHK evidence includes focused red
+`.codex/pillow-imageops-cover-scale-red-report.txt` failing because
+`AhkStdlibPillowImageOpsModule` had no `cover` method, focused green
+`.codex/pillow-imageops-cover-scale-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-imageops-cover-scale-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 25/25, and root filter
+`.codex/pillow-imageops-cover-scale-root-filter-report.txt` passing 26/26.
+
+The ImageOps pad/fit follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imageops_pad_fit_probe.py` and
+`.codex/pillow_imageops_pad_fit_probe.output.json` confirming
+`ImageOps.pad(image, size, method=Image.Resampling.BICUBIC, color=None,
+centering=(0.5, 0.5))` and `ImageOps.fit(image, size,
+method=Image.Resampling.BICUBIC, bleed=0.0, centering=(0.5, 0.5))` for
+covered `RGB`, `L`, and `RGBA` paths. The probe records padded background
+placement, same-size copy behavior, fit output sizing, and the covered
+`AttributeError`, `IndexError`, `ZeroDivisionError`, and `TypeError` paths.
+The AHK surface now exposes `stdlib.pillow.ImageOps.pad(...)` and
+`stdlib.pillow.ImageOps.fit(...)`, reusing the existing `contain`, `new`,
+`paste`, `crop`, and `resize` bridges. Exact resampling-kernel and fractional
+crop-box parity remains a later backend task for the Direct2D/GDI+ resize path.
+Fresh AHK evidence includes focused red `.codex/pillow-imageops-pad-fit-red-report.txt`
+failing because `AhkStdlibPillowImageOpsModule` had no `pad` method, focused
+green `.codex/pillow-imageops-pad-fit-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-imageops-pad-fit-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 26/26, and root filter
+`.codex/pillow-imageops-pad-fit-root-filter-report.txt` passing 27/27.
+
+The ImageOps autocontrast follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imageops_autocontrast_probe.py` and
+`.codex/pillow_imageops_autocontrast_probe.output.json` confirming
+`ImageOps.autocontrast(image, cutoff=0, ignore=None, mask=None,
+preserve_tone=False)` for covered `L` and `RGB` paths. The probe records
+per-channel LUT mapping, `ignore`, symmetric `cutoff`, `L` mask histogram
+selection, same-value no-op copy behavior, and the covered `RGBA`
+`OSError`, `AttributeError`, `TypeError`, and mask `ValueError` paths. The AHK
+surface now exposes `stdlib.pillow.ImageOps.autocontrast(...)` through a CPU
+histogram/LUT bridge; this is a public behavior lock before migrating pixel-map
+internals to Direct2D. Fresh AHK evidence includes focused red
+`.codex/pillow-imageops-autocontrast-red-report.txt` failing because
+`AhkStdlibPillowImageOpsModule` had no `autocontrast` method, focused green
+`.codex/pillow-imageops-autocontrast-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-imageops-autocontrast-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 27/27, and root filter
+`.codex/pillow-imageops-autocontrast-root-filter-report.txt` passing 28/28.
+
+The ImageOps equalize follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imageops_equalize_probe.py` and
+`.codex/pillow_imageops_equalize_probe.output.json` confirming
+`ImageOps.equalize(image, mask=None)` for covered `L` and `RGB` paths. The
+probe records identity LUT behavior, a non-trivial `L` histogram mapping,
+optional `L` mask histogram selection, same-value no-op copy behavior, and the
+covered `RGBA` `OSError`, `AttributeError`, and mask `ValueError` paths. The
+AHK surface now exposes `stdlib.pillow.ImageOps.equalize(...)` through a CPU
+histogram/LUT bridge; this shares the pixel-map path intended for later
+Direct2D acceleration. Fresh AHK evidence includes focused red
+`.codex/pillow-imageops-equalize-red-report.txt` failing because
+`AhkStdlibPillowImageOpsModule` had no `equalize` method, focused green
+`.codex/pillow-imageops-equalize-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-imageops-equalize-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 28/28, and root filter
+`.codex/pillow-imageops-equalize-root-filter-report.txt` passing 29/29, plus
+captured example `.codex/pillow-imageops-equalize-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The ImageOps colorize follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imageops_colorize_probe.py` and
+`.codex/pillow_imageops_colorize_probe.output.json` confirming
+`ImageOps.colorize(image, black, white, mid=None, blackpoint=0,
+whitepoint=255, midpoint=127)` for covered `L` input. The probe records RGB
+output mode and size, two-color string and tuple mappings, three-color mapping,
+custom point mapping, source-image non-mutation, and the covered non-`L`
+`AssertionError`, range `AssertionError`, bad-color `ValueError`,
+`None`-image `AttributeError`, and integer-color `TypeError` paths. The AHK
+surface now exposes `stdlib.pillow.ImageOps.colorize(...)` through a CPU RGB
+LUT bridge that uses Python floor-division semantics for negative channel
+slopes; this is a behavior-locked integration point for later Direct2D
+pixel-map acceleration. Fresh AHK evidence includes focused red
+`.codex/pillow-imageops-colorize-red-report.txt` failing because
+`AhkStdlibPillowImageOpsModule` had no `colorize` method, focused green
+`.codex/pillow-imageops-colorize-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-imageops-colorize-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 29/29, root filter
+`.codex/pillow-imageops-colorize-root-filter-report.txt` passing 30/30, and
+captured example `.codex/pillow-imageops-colorize-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The ImageOps deform follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imageops_deform_probe.py` and
+`.codex/pillow_imageops_deform_probe.output.json` confirming
+`ImageOps.deform(image, deformer, resample=Image.Resampling.BILINEAR)` as a
+`getmesh(image)` protocol wrapper over Pillow mesh transforms. The covered
+slice records identity and horizontal-shift axis-aligned mesh behavior for
+`RGB`, horizontal-shift `L` behavior, empty mesh black output, source-image
+non-mutation, new-object return, and covered `None` image/deformer,
+`None` mesh, and malformed mesh item error paths. The AHK surface now exposes
+`stdlib.pillow.ImageOps.deform(...)` through an axis-aligned mesh bridge that
+keeps the public protocol stable while non-axis-aligned perspective mesh and
+high-fidelity resampling remain pending Direct2D geometry/transform backend
+work. Fresh AHK evidence includes focused red
+`.codex/pillow-imageops-deform-red-report.txt` failing because
+`AhkStdlibPillowImageOpsModule` had no `deform` method, focused green
+`.codex/pillow-imageops-deform-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-imageops-deform-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 30/30, root filter
+`.codex/pillow-imageops-deform-root-filter-report.txt` passing 31/31, and
+captured example `.codex/pillow-imageops-deform-example-report.txt` passing
+1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The ImageOps exif_transpose follow-up uses fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_imageops_exif_transpose_probe.py`
+and `.codex/pillow_imageops_exif_transpose_probe.output.json` confirming
+`ImageOps.exif_transpose(image, *, in_place=False)` for covered in-memory EXIF
+Orientation behavior. The probe records Orientation tag `274`, no-orientation
+and Orientation `1` copy returns, Orientation `2` through `8` transpose rows,
+`L` mode Orientation `6`, source-image non-mutation for copy mode, orientation
+removal from returned/transposed images, in-place Orientation `6` mutation with
+`None` return, in-place no-orientation no-op, and the covered `None` image and
+positional `in_place` error text. The AHK surface now exposes
+`Image.getexif()` as an in-memory mutable EXIF map plus
+`stdlib.pillow.ImageOps.exif_transpose(...)`; the covered slice intentionally
+does not yet claim WIC/GDI+ file-level EXIF serialization or XMP cleanup parity.
+Fresh AHK evidence includes focused red
+`.codex/pillow-imageops-exif-transpose-red-report.txt` failing because
+`AhkStdlibPillowImageOpsModule` had no `exif_transpose` method, positional
+keyword-only red `.codex/pillow-imageops-exif-transpose-positional-red-report.txt`
+failing because `exif_transpose(image, true)` did not throw, focused green
+`.codex/pillow-imageops-exif-transpose-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-imageops-exif-transpose-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 31/31, root filter
+`.codex/pillow-imageops-exif-transpose-root-filter-report.txt` passing 32/32,
+and captured example `.codex/pillow-imageops-exif-transpose-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current ImageEnhance follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imageenhance_probe.py` and
+`.codex/pillow_imageenhance_probe.output.json` confirming
+`ImageEnhance.Brightness`, `Color`, `Contrast`, and `Sharpness` for covered
+`RGB`, `L`, and `RGBA` paths, including factors `0`, `0.5`, `1`, `1.5`, and
+negative factors, alpha-preserving degenerate images, rounded luma for color
+and contrast degenerates, `SMOOTH`-based sharpness behavior, and the covered
+bad-image / bad-factor errors. The AHK surface now exposes
+`stdlib.pillow.ImageEnhance` with enhancer objects that provide
+`.enhance(factor)`. The current implementation locks the public Pillow
+behavior through CPU bridges over `Image.blend(...)`, grayscale degenerates,
+and `ImageFilter.SMOOTH`; the target backend remains Direct2D for accelerated
+filters, masks, blend, composition, fill, pixel maps, and geometry once more
+behavior has been fixed by tests. Fresh AHK evidence includes focused red
+`.codex/pillow-imageenhance-red-report.txt` failing because `stdlib.pillow`
+had no `ImageEnhance` surface, focused green
+`.codex/pillow-imageenhance-green-focused-report.txt` passing 1/1, and module
+`.codex/pillow-imageenhance-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 15/15. Final slice gates also passed: root
+filter `.codex/pillow-imageenhance-root-filter-report.txt` passed 16/16,
+changed-file validate `.codex/pillow-imageenhance-validate-report.txt` passed,
+and captured example `.codex/pillow-imageenhance-example-report.txt` passed 1/1
+through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current ImageColor follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imagecolor_probe.py` and
+`.codex/pillow_imagecolor_probe.output.json` confirming
+`ImageColor.getrgb(...)`, `ImageColor.getcolor(...)`, and string-color
+`Image.new(...)` behavior. Covered color specs include short and long hex
+forms with alpha, integer and percent `rgb(...)`, `rgba(...)`, `hsl(...)`,
+`hsv(...)`, `hsb(...)`, Pillow's 148-entry named color map, mode conversion
+to `RGB`, `RGBA`, `L`, `LA`, and `HSV`, plus the covered unknown, too-long,
+`None`, and bad-mode error messages. The AHK surface now exposes
+`stdlib.pillow.ImageColor` and routes string colors through the same parser
+before bitmap allocation. This is a normalization layer for later WIC/GDI+ save
+paths and Direct2D fill/blend/composition internals; it does not change the
+public image object shape. Fresh AHK evidence includes focused red
+`.codex/pillow-imagecolor-red-report.txt` failing because `stdlib.pillow` had
+no `ImageColor` surface, focused green
+`.codex/pillow-imagecolor-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-imagecolor-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 16/16, root filter
+`.codex/pillow-imagecolor-root-filter-report.txt` passing 17/17,
+changed-file validate `.codex/pillow-imagecolor-validate-report.txt` passing,
+and captured example `.codex/pillow-imagecolor-example-report.txt` passing 1/1
+through `AhkTest.CaptureFixture().RunArgs(...)`.
+
+The current ImageDraw follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imagedraw_probe.py`,
+`.codex/pillow_imagedraw_probe.output.json`,
+`.codex/pillow_imagedraw_ellipse_probe.py`, and
+`.codex/pillow_imagedraw_ellipse_probe.output.json`,
+`.codex/pillow_imagedraw_arc_chord_pieslice_probe.py`, and
+`.codex/pillow_imagedraw_arc_chord_pieslice_probe.output.json`,
+`.codex/pillow_imagedraw_circle_rounded_probe.py`, and
+`.codex/pillow_imagedraw_circle_rounded_probe.output.json`,
+`.codex/pillow_imagedraw_regular_polygon_probe.py`, and
+`.codex/pillow_imagedraw_regular_polygon_probe.output.json`,
+`.codex/pillow_imagedraw_bitmap_probe.py`, and
+`.codex/pillow_imagedraw_bitmap_probe.output.json`,
+`.codex/pillow_imagedraw_floodfill_probe.py`, and
+`.codex/pillow_imagedraw_floodfill_probe.output.json` confirming
+`ImageDraw.Draw(image)`, `.point(...)`, `.line(...)`, `.bitmap(...)`,
+`ImageDraw.floodfill(...)`,
+`.rectangle(...)`, `.polygon(...)` including outline `width`, `.regular_polygon(...)`,
+`.ellipse(...)`, `.arc(...)`, `.chord(...)`, `.pieslice(...)`, `.circle(...)`,
+and `.rounded_rectangle(...)` for covered
+`RGB`, `RGBA`, and `L` paths. The probes record `None` return values,
+string-color fills through the ImageColor parser, inclusive rectangle
+coordinates, one-pixel line geometry, alpha-preserving RGBA rectangle, ellipse,
+pieslice, and rounded-rectangle colors, grayscale conversion, a simple filled
+polygon, filled/outlined integer ellipses, arc/chord/pieslice axial-angle
+geometry, circle center/radius mapping, rounded-rectangle radius geometry,
+regular-polygon vertex mapping, polygon outline-width mask clipping,
+bitmap-mask grayscale color/alpha scaling, offscreen clipping, default-fill
+no-op behavior, flood-fill same-color regions, border-bounded regions,
+threshold-tolerant `L` regions, RGBA regions, seed-outside no-op behavior, and
+the covered bad-image / bad-coordinate / bad-width errors.
+The AHK surface now
+exposes
+`stdlib.pillow.ImageDraw` as a geometry/fill drawing module. The current
+implementation is a CPU pixel bridge using `putpixel`, Bresenham line drawing,
+inclusive rectangle fill/outline, scanline polygon fill, and the Pillow 11.3.0
+integer ellipse quarter/segment raster path plus axial-angle arc shape
+filtering; this is the public behavior lock before migrating drawing internals
+to Direct2D geometry and fill paths. The target Pillow backend split is WIC for
+read/decode/pixel-format conversion, Direct2D for filters, masks, blend,
+composition, fills, pixel maps, and geometry, then WIC or GDI+ for
+save/output. Fresh AHK evidence includes focused red
+`.codex/pillow-imagedraw-red-report.txt`
+failing because `stdlib.pillow` had no `ImageDraw` surface, focused green
+`.codex/pillow-imagedraw-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-imagedraw-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 17/17, root filter
+`.codex/pillow-imagedraw-root-filter-report.txt` passing 18/18,
+changed-file validate `.codex/pillow-imagedraw-validate-report.txt` passing,
+and captured example `.codex/pillow-imagedraw-example-report.txt` passing 1/1
+through `AhkTest.CaptureFixture().RunArgs(...)`. The ellipse follow-up evidence
+adds focused red `.codex/pillow-imagedraw-ellipse-red-report.txt` failing
+because `AhkStdlibPillowImageDraw` had no `ellipse` method, focused green
+`.codex/pillow-imagedraw-ellipse-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-imagedraw-ellipse-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 18/18, root filter
+`.codex/pillow-imagedraw-ellipse-root-filter-report.txt` passing 19/19,
+changed-file validate `.codex/pillow-imagedraw-ellipse-validate-report.txt`
+passing, and captured example
+`.codex/pillow-imagedraw-ellipse-example-report.txt` passing 1/1 through
+`AhkTest.CaptureFixture().RunArgs(...)`. The arc/chord/pieslice follow-up
+evidence adds focused red
+`.codex/pillow-imagedraw-arc-chord-pieslice-red-report.txt` failing because
+`AhkStdlibPillowImageDraw` had no `arc` method, focused green
+`.codex/pillow-imagedraw-arc-chord-pieslice-green-focused-report.txt` passing
+1/1, module `.codex/pillow-imagedraw-arc-chord-pieslice-module-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 19/19, root filter
+`.codex/pillow-imagedraw-arc-chord-pieslice-root-filter-report.txt` passing
+20/20, changed-file validate
+`.codex/pillow-imagedraw-arc-chord-pieslice-validate-report.txt` passing, and
+captured example `.codex/pillow-imagedraw-arc-chord-pieslice-example-report.txt`
+passing 1/1 through `AhkTest.CaptureFixture().RunArgs(...)`.
+The circle/rounded-rectangle follow-up evidence adds focused red
+`.codex/pillow-imagedraw-circle-rounded-red-report.txt` failing because
+`AhkStdlibPillowImageDraw` had no `circle` method, focused green
+`.codex/pillow-imagedraw-circle-rounded-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-imagedraw-circle-rounded-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 20/20, root filter
+`.codex/pillow-imagedraw-circle-rounded-root-filter-report.txt` passing 21/21,
+changed-file validate `.codex/pillow-imagedraw-circle-rounded-validate-report.txt`
+passing, and captured example
+`.codex/pillow-imagedraw-circle-rounded-example-report.txt` passing 1/1 through
+`AhkTest.CaptureFixture().RunArgs(...)`.
+The regular-polygon/polygon-width follow-up evidence adds focused red
+`.codex/pillow-imagedraw-regular-polygon-red-report.txt` failing because
+`AhkStdlibPillowImageDraw` had no `regular_polygon` method, focused green
+`.codex/pillow-imagedraw-regular-polygon-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-imagedraw-regular-polygon-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 21/21, root filter
+`.codex/pillow-imagedraw-regular-polygon-root-filter-report.txt` passing 22/22,
+changed-file validate `.codex/pillow-imagedraw-regular-polygon-validate-report.txt`
+passing, and captured example
+`.codex/pillow-imagedraw-regular-polygon-example-report.txt` passing 1/1 through
+`AhkTest.CaptureFixture().RunArgs(...)`.
+The bitmap follow-up evidence adds focused red
+`.codex/pillow-imagedraw-bitmap-red-report.txt` failing because
+`AhkStdlibPillowImageDraw` had no `bitmap` method, focused green
+`.codex/pillow-imagedraw-bitmap-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-imagedraw-bitmap-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 22/22, root filter
+`.codex/pillow-imagedraw-bitmap-root-filter-report.txt` passing 23/23,
+combined changed-file validate
+`.codex/pillow-imagedraw-bitmap-validate-report.txt` passing the pillow module,
+root pillow smoke, and captured example, and captured example
+`.codex/pillow-imagedraw-bitmap-example-report.txt` passing 1/1 through
+`AhkTest.CaptureFixture().RunArgs(...)`.
+The floodfill follow-up evidence adds focused red
+`.codex/pillow-imagedraw-floodfill-red-report.txt` failing because
+`AhkStdlibPillowImageDrawModule` had no `floodfill` method, focused green
+`.codex/pillow-imagedraw-floodfill-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-imagedraw-floodfill-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 23/23, root filter
+`.codex/pillow-imagedraw-floodfill-root-filter-report.txt` passing 24/24,
+combined changed-file validate
+`.codex/pillow-imagedraw-floodfill-validate-report.txt` passing the pillow
+module, root pillow smoke, and captured example, and captured example
+`.codex/pillow-imagedraw-floodfill-example-report.txt` passing 1/1 through
+`AhkTest.CaptureFixture().RunArgs(...)`.
+
+The ordinary ImageDraw text follow-up extends `ImageDraw.Draw(image)` with
+`getfont()`, `text(...)`, `textbbox(...)`, `textlength(...)`,
+`multiline_text(...)`, and `multiline_textbbox(...)` for the covered local
+Pillow default-font path. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_imagedraw_text_probe.py` and
+`.codex/pillow_imagedraw_text_probe.output.json` records `getfont()` returning
+a default `FreeTypeFont`, default and explicit-font `textbbox` / `textlength`
+metrics for `"Hi"`, visible-pixel `text(...)` output, default-spacing
+`multiline_textbbox(...)`, `multiline_text(...)` returning `None`, and the
+covered missing-argument errors. The AHK surface reuses
+`ImageFont.load_default()` and the existing prefixed ImageDraw2 text drawing
+helper, and it also refreshes the default-font `i` glyph width to match the
+fresh Pillow metrics. Anchor, direction, features, language, stroke, embedded
+color, advanced shaping, and arbitrary font backend behavior remain unclaimed
+until focused probes cover them. Fresh AHK evidence includes focused red
+`.codex/pillow-imagedraw-text-red-report.txt` plus
+`.codex/pillow-imagedraw-text-red.json` failing because ordinary
+`ImageDraw.Draw(...)` lacked `getfont`, focused green
+`.codex/pillow-imagedraw-text-green-focused-report.txt` plus
+`.codex/pillow-imagedraw-text-green-focused.json` passing 1/1, related
+ImageDraw regression `.codex/pillow-imagedraw-text-imagedraw-regression-report.txt`
+plus `.codex/pillow-imagedraw-text-imagedraw-regression.json` passing 12/12,
+captured example gate `.codex/pillow-imagedraw-text-example-report.txt` plus
+`.codex/pillow-imagedraw-text-example.json` passing 2/2 without warning/error
+output, and serial module gate `.codex/pillow-imagedraw-text-module-report.txt`
+plus `.codex/pillow-imagedraw-text-module.json` passing
+`stdlib/tests/pillow.test.ahk` 172/172 at `TimeoutSeconds 90`.
+
+The instance alpha-composite follow-up extends `Image.Image` with in-place
+`alpha_composite(image, dest=(0, 0), source=(0, 0))` behavior for the covered
+local Pillow 11.3.0 RGBA path. Fresh Python evidence from
+`.codex/pillow_image_instance_alpha_composite_probe.py`,
+`.codex/pillow_image_instance_alpha_composite_probe.output.json`,
+`.codex/pillow_image_instance_alpha_composite_extra_probe.py`, and
+`.codex/pillow_image_instance_alpha_composite_extra_probe.output.json`
+records `None` return behavior, target mutation, clipped source/destination
+regions, allowed negative destination clipping, target mode validation,
+overlay mode mismatch errors, and covered malformed destination/source
+sequence errors. The AHK implementation reuses the existing alpha-composite
+pixel helper while preserving instance mutation semantics. Fresh AHK evidence
+includes focused red `.codex/pillow-image-instance-alpha-composite-red-report.txt`
+plus `.codex/pillow-image-instance-alpha-composite-red.json` failing because
+`AhkStdlibPillowImage` had no `alpha_composite`, focused green
+`.codex/pillow-image-instance-alpha-composite-green-focused-report.txt` plus
+`.codex/pillow-image-instance-alpha-composite-green-focused.json` passing 1/1,
+related alpha-composite regression
+`.codex/pillow-image-instance-alpha-composite-related-report.txt` plus
+`.codex/pillow-image-instance-alpha-composite-related.json` passing 2/2,
+captured example gate
+`.codex/pillow-image-instance-alpha-composite-example-report.txt` plus
+`.codex/pillow-image-instance-alpha-composite-example.json` passing 2/2, and
+serial Pillow module gate
+`.codex/pillow-image-instance-alpha-composite-module-report.txt` plus
+`.codex/pillow-image-instance-alpha-composite-module.json` passing
+`stdlib/tests/pillow.test.ahk` 173/173 at `TimeoutSeconds 90`. Broader
+arbitrary sequence coercion, non-RGBA conversion paths, and Direct2D-backed
+performance acceleration remain unclaimed until focused probes cover them.
+
+The instance show/Qt bridge follow-up completes the currently probed public
+`Image.Image` instance member surface by adding `show(title=None)`,
+`toqimage()`, and `toqpixmap()`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_image_instance_show_qt_probe.py` and
+`.codex/pillow_image_instance_show_qt_probe.output.json` records
+`Image.show(...)` delegating to `ImageShow.show` while returning `None`, empty
+viewer behavior, extra-position-argument errors, and installed-Qt delegation
+from instance `toqimage()` / `toqpixmap()` into `ImageQt.toqimage` /
+`ImageQt.toqpixmap`. The AHK implementation deliberately reuses the already
+promoted `ImageShow` and `ImageQt` module surfaces instead of duplicating
+viewer or Qt-image conversion logic on the image object. Fresh AHK evidence
+includes focused red `.codex/pillow-image-instance-show-qt-red-report.txt`
+plus `.codex/pillow-image-instance-show-qt-red.json` failing because
+`AhkStdlibPillowImage` had no `show`, focused green
+`.codex/pillow-image-instance-show-qt-green-focused-report.txt` plus
+`.codex/pillow-image-instance-show-qt-green-focused.json` passing 1/1,
+related regression `.codex/pillow-image-instance-show-qt-related-report.txt`
+plus `.codex/pillow-image-instance-show-qt-related.json` passing 4/4,
+captured example gate `.codex/pillow-image-instance-show-qt-example-report.txt`
+plus `.codex/pillow-image-instance-show-qt-example.json` passing 2/2, and
+serial Pillow module gate `.codex/pillow-image-instance-show-qt-module-report.txt`
+plus `.codex/pillow-image-instance-show-qt-module.json` passing
+`stdlib/tests/pillow.test.ahk` 174/174 at `TimeoutSeconds 90`. Qt-not-installed
+`ImportError` behavior and real native Qt binding integration remain unclaimed
+until focused AHK support exists for that environment state.
 
 ## Target Packages
 
@@ -7292,7 +9948,7 @@ The latest alphabetical pass slice adds sequence and insert-target coverage:
 `insert(index, value)` targets, and the missing-`insert` `AttributeError` path.
 Fresh Python 3.10.11 evidence from `.codex/bisect_sequence_protocol_probe.py`
 and `.codex/bisect_sequence_protocol_probe.output.json` confirmed
-`array.array` return values, custom sequence `__len__` / `__getitem__` event
+`array.array` return values, custom sequence `__len` / `__getitem__` event
 order, `insort_left/right` calling `insert(...)` at zero-based indexes, and
 `ProbeSequence` without `insert` raising an attribute error. Fresh AHK evidence
 includes focused red `.codex/bisect-sequence-protocol-red-report.txt` failing
@@ -8466,7 +11122,7 @@ materialization, skips iterable validation when `n=0` like local Python 3.10.11,
 exposes the outer return container itself as a readonly tuple-like object rather
 than a mutable array,
 exposes a Python-style `<itertools._tee object at 0x...>` `__Repr()` shape for
-covered tee clone objects, exposes a callable `clone.__class__` provider so the
+covered tee clone objects, exposes a callable `clone.__class` provider so the
 covered `_tee` type itself can be instantiated from an iterable or another tee
 clone like local Python 3.10.11, and surfaces Python-style arity errors for
 zero or more than two positional arguments, `ValueError("n must be >= 0")`,
@@ -8603,8 +11259,8 @@ for missing callable arguments, plus `TypeError("the first argument must be call
 for covered non-callable first arguments, and currently
 covers positional argument binding through a callable AHK object and exposes the
 Python 3.10 observable `func`, `args`, and `keywords` attributes, plus the
-default `__module__ == "functools"` and exact default `__doc__` text including
-its trailing newline, plus a stable default empty `__dict__` map for covered
+default `__module == "functools"` and exact default `__doc` text including
+its trailing newline, plus a stable default empty `__dict` map for covered
 fresh instances and Python-style dynamic attribute assignment that mirrors
 assigned names into that stable map, including the flattened nested partial shape,
 read-only metadata enforcement, and a stable readonly tuple-like object for `.args`, so
@@ -8613,50 +11269,50 @@ fail with Python-style tuple mutation semantics instead of exposing a mutable
 AHK array view; when a nested
 `partial(partial_obj)` adds no new positional arguments, the wrapped object now
 also preserves the original `.args` tuple identity instead of rebuilding a new
-readonly view. Covered metadata assignment and deletion now also follow the
-observable local Python 3.10.11 behavior for `__module__`, `__doc__`, and
-`__dict__`: `partial.__module__` and `partial.__doc__` may be reassigned, and
-those overrides are now stored in the instance `__dict__`, so covered reads of
-`partial.__dict__['__module__']` / `['__doc__']`, `partial.__reduce__()`, and
-`partial.__setstate__(...)` all roundtrip the same metadata view. Replacing
-`partial.__dict__` with another map object now also clears those overrides and
+readonly view. Covered metadata assignment and deletion now follow the observed
+local Python 3.10.11 behavior while exposing the AHK-style no-tail metadata
+names `__module`, `__doc`, and `__dict`: `partial.__module` and `partial.__doc` may be reassigned, and
+those overrides are now stored in the instance `__dict`, so covered reads of
+`partial.__dict['__module']` / `['__doc']`, `partial.__reduce()`, and
+`partial.__setstate(...)` all roundtrip the same metadata view. Replacing
+`partial.__dict` with another map object now also clears those overrides and
 falls back to the default `"functools"` / built-in doc string just like local
 Python, while assigning non-dictionary values such as covered `int`, `list`, or
 `NoneType` payloads still raises Python-style
-`TypeError("__dict__ must be set to a dictionary, not a '...'")`. Deleting a
-covered assigned `__module__` or `__doc__` entry now removes just that
-`__dict__` override and falls back to the default value, while deleting either
+`TypeError("__dict must be set to a dictionary, not a '...'")`. Deleting a
+covered assigned `__module` or `__doc` entry now removes just that
+`__dict` override and falls back to the default value, while deleting either
 name again without an override now follows the observed local Python 3.10.11
-shape and raises bare `AttributeError("__module__")` /
-`AttributeError("__doc__")` instead of an object-qualified AHK property
-message. Deleting `__dict__` raises `TypeError("cannot delete __dict__")`,
+shape and raises bare `AttributeError("__module")` /
+`AttributeError("__doc")` instead of an object-qualified AHK property
+message. Deleting `__dict` raises `TypeError("cannot delete __dict")`,
 and dynamic attributes written through `partial.custom := ...` are mirrored
-through `partial.__dict__` and can be removed again with
+through `partial.__dict` and can be removed again with
 `stdlib.base.delattr(...)` using Python-style missing-attribute errors after
 deletion, so deleting the same covered dynamic name a second time now raises
 bare `AttributeError("custom")` instead of an object-qualified AHK property
 message, and reading the same missing dynamic name now also raises Python's
 object-qualified `AttributeError("'functools.partial' object has no attribute 'custom'")`
-instead of a host `PropertyError`. The current covered
-metadata slice now also exposes Python 3.10 observable `partial.__reduce__()`
-and `partial.__setstate__(state)` behavior: `__reduce__()` returns the
+instead of a host `PropertyError`. The current covered metadata slice now also
+exposes AHK-style no-tail analogues for Python 3.10's observable partial reduce
+/ setstate behavior: `partial.__reduce()` returns the
 three-part tuple shape headed by the partial type and callable constructor
-args, while `__setstate__()` accepts covered Python-shaped `(func, args,
+args, while `__setstate()` accepts covered Python-shaped `(func, args,
 keywords, dict)` state tuples, updates the public `func` / `args` /
-`keywords` / `__dict__` metadata accordingly, now including covered
-`__module__` / `__doc__` entries supplied through a mapping `dict` state,
+`keywords` / `__dict` metadata accordingly, now including covered
+`__module` / `__doc` entries supplied through a mapping `dict` state,
 Python 3.10's observable acceptance of `[]` and `()` as the state `dict`
 payload, and `keywords=None` normalization back to an empty keyword dict, plus scalar
-non-dictionary state payloads such as `5` preserved through `__dict__`; covered
-non-dictionary state payloads now also make later `__reduce__()` calls raise
+non-dictionary state payloads such as `5` preserved through `__dict`; covered
+non-dictionary state payloads now also make later `__reduce()` calls raise
 Python-style `SystemError("bad argument to internal function")`, and covered
 dynamic attribute writes such as `partial.custom := 42` now also raise that
 same Python-style `SystemError`; covered dynamic attribute reads such as
-`partial.custom`, `partial.__module__`, and `partial.__doc__` on the same
+`partial.custom`, `partial.__module`, and `partial.__doc` on the same
 scalar payload now also raise that same
 Python-style `SystemError`; covered dynamic attribute deletes such as
-`partial.DeleteProp("custom")`, `delattr(partial, "__module__")`, and
-`delattr(partial, "__doc__")` on the same scalar payload now also raise that
+`partial.DeleteProp("custom")`, `delattr(partial, "__module")`, and
+`delattr(partial, "__doc")` on the same scalar payload now also raise that
 same Python-style `SystemError` instead of leaking raw AHK property/method
 errors; and uses Python-style
 `TypeError` wording for the covered zero-argument and invalid-state failures
@@ -8874,14 +11530,197 @@ file-based
 controls, and the broader CPython parser edge-case matrix remain deferred.
 
 `stdlib.io` is a first slice of Python 3.10.11 `io`. It exposes
-`StringIO(...)` plus the `SEEK_SET`, `SEEK_CUR`, and `SEEK_END` constants under
-`stdlib.io`. The initial slice covers in-memory text streams with
-`getvalue()`, `read(...)`, `readline(...)`, `write(...)`, `seek(...)`,
-`tell()`, `truncate(...)`, `close()`, and the `closed` flag, including
-Python-style closed-stream errors, default `None` initial value handling,
-cur/end-relative seek restrictions, and NUL-padding when writing beyond the end
-of the current buffer. `BytesIO`, newline-translation controls, text-wrapper
-classes, and file-backed stream abstractions remain deferred.
+`StringIO(...)`, `BytesIO(...)`, plus the `SEEK_SET`, `SEEK_CUR`, and
+`SEEK_END` constants under `stdlib.io`. The text slice covers in-memory
+`StringIO` streams with `getvalue()`, `read(...)`, `readline(...)`,
+`write(...)`, `seek(...)`, `tell()`, `truncate(...)`, `close()`, and the
+`closed` flag, including Python-style closed-stream errors, default `None`
+initial value handling, cur/end-relative seek restrictions, and NUL-padding
+when writing beyond the end of the current buffer. The byte slice uses AHK
+arrays of integers in the range 0..255 as the public bytes representation and
+covers `BytesIO` construction from `None`, arrays, and `Buffer`, `getvalue()`,
+`read(...)`, `readline(...)`, `readlines(...)`, `write(...)`, Python-style
+`SEEK_SET`/`SEEK_CUR`/`SEEK_END`, `tell()`, `truncate(...)`, `close()`,
+`read1(...)`, `readinto(...)`, `readinto1(...)`, `writelines(...)`, `readable()`,
+`writable()`, `seekable()`, `isatty()`, `flush()`, `fileno()` /
+`detach()` unsupported-operation errors, and `closed` errors.
+Newline-translation controls, text-wrapper classes, `getbuffer()` /
+memoryview parity, and file-backed stream abstractions remain deferred.
+
+2026-06-07 `stdlib.io.BytesIO` promotion: fresh Python 3.10.11 evidence from
+`.codex/io_bytesio_probe.py` and `.codex/io_bytesio_probe.output.json`
+records construction, read/readline/readlines, write overwrite and NUL padding,
+seek/truncate behavior, closed-stream errors, and key invalid-argument
+messages. Focused red `.codex/io-bytesio-red-report.txt` failed because
+`stdlib.io.BytesIO` was absent; focused green
+`.codex/io-bytesio-green-focused-report.txt` passed 3/3; final module gate
+`.codex/io-bytesio-final-module-report.txt` passed `stdlib/tests/io.test.ahk`
+6/6; root smoke `.codex/io-bytesio-root-focused-report.txt` passed 1/1; and
+captured example `.codex/io-bytesio-example-report.txt` passed 1/1 without
+warning/error output. The same slice was wired into Pillow file-like examples
+and tests so built-in PNG/BMP/JPEG save/open now use the shared
+`stdlib.io.BytesIO` surface instead of local ad-hoc memory stream classes.
+
+2026-06-07 `stdlib.io.BytesIO` file-like unification: fresh Python 3.10.11
+evidence from `.codex/io_bytesio_filelike_probe.py` and
+`.codex/io_bytesio_filelike_probe.output.json` records `readable()`,
+`writable()`, `seekable()`, `isatty()`, `flush()`, `read1(...)`,
+`readinto(...)`, `writelines(...)`, `fileno()` / `detach()` unsupported
+operation errors, closed-stream errors for capability probes/flush, and key
+invalid-argument messages. Focused red
+`.codex/io-bytesio-filelike-red-report.txt` failed because `BytesIO` lacked
+`readable()`; focused green `.codex/io-bytesio-filelike-green-focused-report.txt`
+and final module gate `.codex/io-bytesio-filelike-final-module-report.txt`
+passed `stdlib/tests/io.test.ahk` 7/7; captured example gate
+`.codex/io-bytesio-filelike-example-report.txt` passed 1/1 without
+warning/error output. This keeps `stdlib.io.BytesIO` as the shared in-memory
+binary stream for Pillow and later file-like stdlib modules.
+Pillow regression evidence includes
+`.codex/pillow-bytesio-filelike-focused-report.txt` passing 3/3,
+`.codex/pillow-open-builtin-formats-final-focused-report.txt` passing 1/1,
+`.codex/pillow-bytesio-final-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 62/62, and
+`.codex/pillow-bytesio-final-example-report.txt` passing the captured example
+without warning/error output.
+
+2026-06-07 `stdlib.io.BytesIO` `readinto1(...)` unification: fresh Python
+3.10.11 evidence from `.codex/io_bytesio_filelike_probe.py` and
+`.codex/io-bytesio-readinto1-probe.output.json` records that
+`io.BytesIO.readinto1(bytearray(3))` returns `3`, writes the next three bytes,
+and advances the stream position to `3`. Focused red
+`.codex/io-bytesio-readinto1-red-report.txt` failed because
+`AhkStdlibIoBytesIO` had no `readinto1` method; focused green
+`.codex/io-bytesio-readinto1-green-focused-report.txt` passed
+`stdlib/tests/io.test.ahk` 7/7 at `TimeoutSeconds 90`; captured example gate
+`.codex/io-bytesio-readinto1-example-report.txt` passed 1/1 through
+`AhkTest.CaptureFixture().RunArgs(..., ["/ErrorStdOut=UTF-8", examplePath])`
+without warning/error output and with explicit pollution assertions. This keeps
+`readinto(...)` and `readinto1(...)` available through the same shared
+`stdlib.io.BytesIO` object for Pillow-style file-like consumers.
+
+2026-06-07 `stdlib.io.BytesIO` user-requested unification confirmation:
+fresh Python 3.10.11 probes `.codex/io_bytesio_probe.py` and
+`.codex/io_bytesio_filelike_probe.py` were rerun to
+`.codex/io-bytesio-user-fresh-probe.output.json` and
+`.codex/io-bytesio-filelike-user-fresh-probe.output.json`, confirming the
+covered construction, read/write/seek/tell/truncate, line reading, file-like
+capability, `read1(...)`, `readinto(...)`, `readinto1(...)`, `writelines(...)`,
+unsupported-operation, closed-stream, and invalid-argument behavior. Serial
+AHK gate `.codex/io-bytesio-user-module-report.txt` passed
+`stdlib/tests/io.test.ahk` 7/7 at `TimeoutSeconds 90`; captured example gate
+`.codex/io-bytesio-user-example-report.txt` loaded `stdlib/examples/io.ahk`
+without warning/error output; and README/example pollution scan for
+`System.Text.RegularExpressions` / `MatchEvaluator` was clean. Pillow file-like
+tests and examples continue to use `stdlib.io.BytesIO(...)` directly, so no
+separate Pillow-local memory stream was introduced for byte APIs.
+
+2026-06-07 `stdlib.io.BytesIO` current unification recheck: fresh Python
+3.10.11 probes `.codex/io_bytesio_probe.py` and
+`.codex/io_bytesio_filelike_probe.py` were rerun to
+`.codex/io-bytesio-current-unification-probe.output.json` and
+`.codex/io-bytesio-current-filelike-probe.output.json`. The covered behavior
+remains construction from `None`/arrays/`Buffer`, `getvalue()`, read/write
+positioning, line reads, `seek(...)` / `tell()` / `truncate(...)`, file-like
+capability helpers, `read1(...)`, `readinto(...)`, `readinto1(...)`,
+`writelines(...)`, unsupported-operation errors, closed-stream errors, and key
+invalid-argument messages. Serial AHK gate
+`.codex/io-bytesio-current-module-report.txt` passed
+`stdlib/tests/io.test.ahk` 7/7 at `TimeoutSeconds 90`; captured example gate
+`.codex/io-bytesio-current-example-report.txt` passed 1/1 through
+`tools/run-ahktest.ps1 -Target .codex/io_example_capture.test.ahk
+-TimeoutSeconds 90` without warning/error output and with explicit
+ `System.Text.RegularExpressions` / `MatchEvaluator` pollution assertions. This
+confirms `stdlib.io.BytesIO(...)` as the shared in-memory byte stream before
+continuing Pillow file-like and codec work.
+
+2026-06-07 `stdlib.io.BytesIO` pre-Pillow unification gate: per the latest
+library-ordering requirement, the shared `BytesIO` surface was rechecked before
+continuing image work. Fresh Python 3.10.11 probes `.codex/io_bytesio_probe.py`
+and `.codex/io_bytesio_filelike_probe.py` were rerun to
+`.codex/io-bytesio-user-request-probe.output.json` and
+`.codex/io-bytesio-user-request-filelike-probe.output.json`. Serial AHK gate
+`.codex/io-bytesio-user-request-module-report.txt` passed
+`stdlib/tests/io.test.ahk` 7/7 at `TimeoutSeconds 90`, and captured example
+gate `.codex/io-bytesio-user-request-example-report.txt` passed
+`.codex/io_example_capture.test.ahk` 1/1 without warning/error output and with
+the explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions. No separate Pillow-local byte stream is needed; future Pillow and
+file-like stdlib slices should consume `stdlib.io.BytesIO(...)` directly.
+
+2026-06-08 `stdlib.io.BytesIO` Pillow-front unification recheck: before
+resuming Pillow implementation work, the shared `BytesIO` layer was reverified
+as the single in-memory byte stream. Fresh Python 3.10.11 probes
+`.codex/io_bytesio_probe.py` and `.codex/io_bytesio_filelike_probe.py` were
+rerun to `.codex/io-bytesio-pre-pillow-unification-probe.output.json` and
+`.codex/io-bytesio-pre-pillow-filelike-probe.output.json`, preserving the
+covered construction, read/write/seek/tell/truncate, line-reading,
+file-like capability, `read1(...)`, `readinto(...)`, `readinto1(...)`,
+`writelines(...)`, unsupported-operation, closed-stream, and invalid-argument
+behavior. Serial AHK gate `.codex/io-bytesio-pre-pillow-module-report.txt`
+passed `stdlib/tests/io.test.ahk` 7/7 at `TimeoutSeconds 90`; captured example
+gate `.codex/io-bytesio-pre-pillow-example-report.txt` passed
+`.codex/io_example_capture.test.ahk` 1/1 through `tools/run-ahktest.ps1`
+without warning/error output and with explicit `System.Text.RegularExpressions`
+/ `MatchEvaluator` pollution assertions. This keeps Pillow file-like work and
+later stdlib file-like slices on `stdlib.io.BytesIO(...)` instead of separate
+module-local byte stream implementations.
+
+2026-06-08 `stdlib.io.BytesIO` stdlib-unification confirmation: before
+continuing Pillow and the alphabetical stdlib pass, the shared byte stream
+surface was rechecked as the canonical in-memory file-like object. Fresh local
+Python 3.10.11 probes `.codex/io_bytesio_probe.py` and
+`.codex/io_bytesio_filelike_probe.py` were rerun to
+`.codex/io-bytesio-stdlib-unify-fresh-probe.output.json` and
+`.codex/io-bytesio-stdlib-unify-filelike-fresh-probe.output.json`. Serial AHK
+gate `.codex/io-bytesio-stdlib-unify-module-report.txt` passed
+`stdlib/tests/io.test.ahk` 7/7 at `TimeoutSeconds 90`, and captured example
+gate `.codex/io-bytesio-stdlib-unify-example-report.txt` passed
+`.codex/io_example_capture.test.ahk` 1/1 without warning/error output and with
+the explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions. The covered surface remains `BytesIO(...)`, `getvalue()`,
+`read(...)`, `readline(...)`, `readlines(...)`, `read1(...)`,
+`readinto(...)`, `readinto1(...)`, `write(...)`, `writelines(...)`,
+`seek(...)`, `tell()`, `truncate(...)`, `flush()`, capability probes, close
+state, unsupported-operation errors, and key invalid-argument paths.
+
+2026-06-08 `stdlib.io.BytesIO` shared-API recheck before Pillow continuation:
+the user-requested unification step was confirmed before adding more image
+surface. Fresh local Python 3.10.11 probes `.codex/io_bytesio_probe.py` and
+`.codex/io_bytesio_filelike_probe.py` were rerun to
+`.codex/io-bytesio-stdlib-io-unify-fresh-probe.output.json` and
+`.codex/io-bytesio-stdlib-io-unify-filelike-fresh-probe.output.json`.
+Focused AHK gate `.codex/io-bytesio-stdlib-io-unify-focused-report.txt` passed
+the four `StdlibIoTest.TestBytesIO*` tests 4/4 at `TimeoutSeconds 90`; serial
+module gate `.codex/io-bytesio-stdlib-io-unify-module-report.txt` passed
+`stdlib/tests/io.test.ahk` 7/7; and captured example gate
+`.codex/io-bytesio-stdlib-io-unify-example-report.txt` passed
+`.codex/io_example_capture.test.ahk` 1/1 without warning/error output and with
+explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions. No new implementation was needed in this checkpoint because
+`stdlib.io.BytesIO(...)` was already the public shared in-memory byte-stream
+entry; historical introduction red evidence remains
+`.codex/io-bytesio-red-report.txt` and file-like/readinto1 red evidence remains
+`.codex/io-bytesio-filelike-red-report.txt` /
+`.codex/io-bytesio-readinto1-red-report.txt`.
+
+2026-06-08 `stdlib.io.BytesIO` current requested unification: before resuming
+Pillow work, a fresh local Python 3.10.11 probe
+`.codex/io_bytesio_current_unification_probe.py` generated
+`.codex/io-bytesio-current-unification-20260608-probe.output.json`, confirming
+the covered construction, read/write position flow, line reads, relative
+`seek(...)`, `truncate(...)`, file-like capability, `readinto(...)`,
+`readinto1(...)`, `writelines(...)`, unsupported-operation errors, closed-file
+errors, and invalid-argument messages. Focused AHK gate
+`.codex/io-bytesio-current-unification-20260608-focused-report.txt` passed the
+four `StdlibIoTest.TestBytesIO*` tests 4/4 at `TimeoutSeconds 90`; serial
+module gate `.codex/io-bytesio-current-unification-20260608-module-report.txt`
+plus `.codex/io-bytesio-current-unification-20260608-module.json` passed
+`stdlib/tests/io.test.ahk` 7/7; and captured example gate
+`.codex/io-bytesio-current-unification-20260608-example-report.txt` passed
+`.codex/io_example_capture.test.ahk` 1/1 without warning/error output and with
+explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution
+assertions. No implementation change was needed in this checkpoint because
+`stdlib.io.BytesIO(...)` is already the shared public in-memory byte stream.
 
 `stdlib.shutil` is a first slice of Python 3.10.11 `shutil`. It exposes
 `Error`, `SameFileError`, `copyfile(...)`, `copy(...)`, `move(...)`, and
@@ -8937,3 +11776,2449 @@ temporary directories. It exposes `gettempdir()`, `gettempprefix()`,
 The Python 3.10 behavior where an explicit relative `dir` returns a relative
 created path is preserved; this intentionally differs from newer Python
 versions that make `mkdtemp()` absolute.
+
+2026-06-06 no-tail magic surface sweep: AHK-visible pseudo-magic members now
+follow the AutoHotkey convention of a leading double underscore without the
+Python trailing double underscore. The swept runtime/test/example surface now
+uses names such as `__name`, `__dict`, `__module`, `__doc`,
+`__isabstractmethod`, `__func`, `__members`, `__class`, `__version`,
+`__copy`, `__deepcopy`, `__enter`, `__exit`, `__reduce`, `__setstate`,
+`__len`, `__iadd`, `__imul`, and `__rmul`. Python-style names that remain in
+the tree are CPython diagnostic or baseline text such as `__init__`,
+`__index__`, and `__length_hint__`, not AHK-visible stdlib member names.
+Fresh gate evidence for the sweep: `.codex/magic-names-array-red-report.txt`
+failed before implementation because `__iadd` was absent; focused green
+`.codex/magic-names-array-green-focused-report.txt` passed 1/1; affected
+module gates passed `array` 23/23, `copy` 3/3, `contextlib` 3/3, `decimal`
+7/7, `functools` 32/32, `abc` 6/6, `enum` 2/2, `types` 4/4, `csv` 20/20,
+`collections` 64/64, `itertools` 233/233, and `thread` 29/29 at
+`TimeoutSeconds 90`; root smoke `.codex/magic-names-stdlib-root-report.txt`
+passed 233/233; example captures passed `abc`, `array`, `contextlib`, `copy`,
+`decimal`, `enum`, `functools`, and `itertools`; full-tree validation
+`.codex/magic-names-validate-report.txt` passed; framework/layout gates and
+README pollution scans passed. The aggregate full-suite run
+`.codex/magic-names-full-suite-report.txt` timed out at 90 seconds and is not
+claimed as green. A follow-up guard added on 2026-06-06 pins Python-visible
+metadata names to the same AHK no-tail convention: `types.ModuleType` exposes
+`__name` / `__doc` but not `__name__` / `__doc__`, `enum.Enum` exposes
+`__name` / `__members` and enum members expose `__class` but not their
+trailing-dunder forms, and `functools.partial` exposes `__module`, `__doc`,
+and `__dict` but not `__module__`, `__doc__`, or `__dict__`. Fresh focused
+gates passed `types` 4/4, `enum` 2/2, and `functools` 32/32 through
+`tools\run-ahktest.ps1 -AhkExe ..\AutoHotkey.exe -TimeoutSeconds 90`.
+
+2026-06-07 Pillow registered open dispatch follow-up: fresh local Python
+3.10.11 + Pillow 11.3.0 evidence from
+`.codex/pillow_image_open_registry_probe.py` and
+`.codex/pillow_image_open_registry_probe.output.json` confirms that
+`Image.open(path, "r", formats)` reads the first 16 bytes as a prefix, calls
+registered `accept(prefix)` handlers in format order, treats a string accept
+result as a warning rather than acceptance, seeks the file object back to zero
+before `factory(fp, filename)`, and preserves normal file-not-found behavior
+before plugin dispatch. The AHK surface now routes `stdlib.pillow.Image.open`
+through registered `OPEN` handlers when a handler accepts, while falling back to
+the existing WIC decode path for ordinary PNG/BMP/JPEG-style opens. Fresh AHK
+evidence includes focused red `.codex/pillow-image-open-registry-red-report.txt`
+failing before `Image.open(..., mode, formats)` existed, focused green
+`.codex/pillow-image-open-registry-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-open-registry-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 57/57, and the captured pillow example gate after
+example sync. This is registered plugin open dispatch coverage; it does not
+claim arbitrary Pillow decoder parity or benchmark-backed Pillow performance
+parity.
+
+The registered open file-like follow-up extends the same Pillow 11.3.0
+`Image.open` dispatch slice to objects that provide `read`, `seek`, and `tell`.
+The existing fresh Python probe records `io.BytesIO` behavior: filename passed
+to the factory is an empty string, Pillow seeks the object to zero before
+factory invocation, factory `read(7)` leaves the caller-owned stream at offset
+7, and `_exclusive_fp` is false. The AHK registered-open path now detects such
+file-like objects, leaves ownership with the caller, and still keeps ordinary
+path opens on the WIC fallback when no registered handler accepts. Fresh AHK
+evidence includes `.codex/pillow-image-open-filelike-red-report.txt` failing
+because `FileExist` received a file-like object, focused green
+`.codex/pillow-image-open-filelike-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-open-filelike-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 57/57, and captured example
+`.codex/pillow-image-open-filelike-example-report.txt` passing 1/1.
+
+The Pillow registry id normalization follow-up uses fresh local Python 3.10.11
+plus Pillow 11.3.0 evidence from `.codex/pillow_image_registry_case_probe.py`
+and `.codex/pillow_image_registry_case_probe.output.json` confirming that format
+ids passed to `register_open`, `register_save`, `register_save_all`,
+`register_extension`, and `register_mime` are normalized to uppercase registry
+ids, while decoder/encoder names remain exact names. The AHK surface now stores
+custom `SAVE`, `SAVE_ALL`, extension, and MIME format ids under uppercase keys,
+so lowercase custom format registration matches extension-derived saves,
+explicit lowercase `save(..., format)`, and `save_all` routing. Fresh AHK
+evidence includes `.codex/pillow-image-registry-case-red-report.txt` failing
+because `registered_extensions()` returned a lowercase id, focused green
+`.codex/pillow-image-registry-case-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-image-registry-case-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 58/58, and captured example
+`.codex/pillow-image-registry-case-example-report.txt` passing 1/1.
+
+The registered save file-like follow-up extends Pillow 11.3.0 custom
+`Image.save` registry dispatch to caller-owned objects with `write(...)`.
+Fresh local Python evidence from `.codex/pillow_image_save_filelike_probe.py`
+and `.codex/pillow_image_save_filelike_probe.output.json` confirms that
+`image.save(fp, format)` passes `filename == ""`, exposes matching
+`encoderinfo` and `_default_encoderinfo`, routes `save_all=True` and
+`append_images` to `SAVE_ALL`, preserves already-written bytes on handler
+exceptions, requires an explicit format when no filename/extension exists, and
+does not close caller-owned file-like objects. The AHK surface now detects such
+file-like save targets for registered custom handlers, passes the original
+object to the handler, and only closes internally-created path wrappers. Fresh
+AHK evidence includes `.codex/pillow-save-filelike-red-report.txt` failing
+because `FileExist` received a file-like object, focused green
+`.codex/pillow-save-filelike-green-focused-report.txt` passing 1/1, module
+`.codex/pillow-save-filelike-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 59/59, and captured example
+`.codex/pillow-save-filelike-example-report.txt` passing 1/1.
+
+The built-in save file-like follow-up extends the Windows GDI+ encoder path to
+caller-owned `write(...)` targets for explicit `PNG`, `BMP`, and `JPEG`
+formats. Fresh local Python evidence from
+`.codex/pillow_image_save_builtin_filelike_probe.py` and
+`.codex/pillow_image_save_builtin_filelike_probe.output.json` records Pillow
+11.3.0 `BytesIO` behavior: each save returns `None`, writes format-specific
+headers, advances the stream position to the byte length, leaves the stream
+open, and still raises `ValueError("unknown file extension: ")` when no format
+or filename-derived extension exists. The AHK surface now uses the system GDI+
+`GdipSaveImageToStream` API with an in-memory `IStream` / `HGLOBAL`, copies the
+encoded bytes into the caller's `write(...)` target, and keeps ordinary path
+saves on `GdipSaveImageToFile`. Fresh AHK evidence includes
+`.codex/pillow-save-builtin-filelike-red-report.txt` failing because
+`GdipSaveImageToFile` expected a string path, focused green
+`.codex/pillow-save-builtin-filelike-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-save-builtin-filelike-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 60/60, and captured example
+`.codex/pillow-save-builtin-filelike-example-report.txt` passing 1/1.
+
+The built-in open file-like follow-up completes the PNG/BMP/JPEG memory I/O
+round trip for caller-owned objects with `read`, `seek`, and `tell`. Fresh
+local Python evidence from `.codex/pillow_image_open_builtin_filelike_probe.py`
+and `.codex/pillow_image_open_builtin_filelike_probe.output.json` records
+Pillow 11.3.0 `BytesIO` behavior for PNG alpha preservation, BMP/JPEG RGB
+decode, stream ownership, and invalid-input `cannot identify image file`
+errors. The AHK surface now feeds file-like bytes to WIC through
+`CreateStreamOnHGlobal` plus `IWICImagingFactory.CreateDecoderFromStream`,
+preserves caller ownership, detects PNG/BMP/JPEG format from magic bytes, and
+keeps path-based opens on `CreateDecoderFromFilename`. Fresh AHK evidence
+includes `.codex/pillow-open-builtin-filelike-red-report.txt` failing because
+the old WIC filename decode expected a string path, focused green
+`.codex/pillow-open-builtin-filelike-green-focused-report.txt` passing 1/1,
+module `.codex/pillow-open-builtin-filelike-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 61/61, and captured example
+`.codex/pillow-open-builtin-filelike-example-report.txt` passing 1/1.
+
+The ImageStat follow-up adds the first dedicated Pillow statistics submodule
+surface as `stdlib.pillow.ImageStat.Stat(...)`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_image_stat_probe.py` and
+`.codex/pillow_image_stat_probe.output.json` records `ImageStat.Stat(image)`,
+`ImageStat.Stat(image, mask)`, and `ImageStat.Stat(histogram_list)` behavior
+for `count`, `sum`, `sum2`, `mean`, `median`, `rms`, `var`, `stddev`, and
+`extrema`, plus first-argument and mask size/mode errors. The AHK surface now
+routes image inputs through the existing 256-bin `histogram(mask)` path and
+derives the same per-band statistics from the stored histogram, while list
+inputs are treated as precomputed histograms. The same slice also tightens
+histogram mask validation for non-`L` / non-`1` masks to match Pillow's
+`ValueError("bad transparency mask")`. Fresh AHK evidence includes
+`.codex/pillow-image-stat-red-report.txt` failing because `stdlib.pillow` had
+no `ImageStat` property, `.codex/pillow-image-stat-green-focused-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 63/63, plus final module and captured
+example gates after promotion sync.
+
+The ImageSequence follow-up adds the dedicated Pillow frame-sequence helper
+surface as `stdlib.pillow.ImageSequence.Iterator(...)` and
+`stdlib.pillow.ImageSequence.all_frames(...)` for the covered single-frame
+image lifecycle. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_image_sequence_probe.py` and
+`.codex/pillow_image_sequence_probe.output.json` records that `Iterator(image)`
+returns the source image for `next()`, index `0`, and `for` iteration, raises
+`StopIteration("end of sequence")` after the single frame, raises
+`IndexError("end of sequence")` for nonzero/negative/string indices, and raises
+the observed constructor arity and bad-input `AttributeError` messages.
+`all_frames(image)` and `all_frames([images...])` return independent copied
+frames, and `all_frames(image, func)` applies the callable to copied frames.
+The AHK surface now mirrors those covered single-frame paths using the existing
+`seek(0)` / `copy()` / `convert(...)` image lifecycle. Fresh AHK evidence
+includes `.codex/pillow-image-sequence-red-report.txt` failing because
+`stdlib.pillow` had no `ImageSequence` property,
+`.codex/pillow-image-sequence-green-focused-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 64/64 before promotion sync, plus final module
+and captured example gates after promotion sync.
+
+The ImageMode follow-up adds Pillow's mode descriptor helper surface as
+`stdlib.pillow.ImageMode.getmode(...)` and
+`stdlib.pillow.ImageMode.ModeDescriptor(...)`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_image_mode_probe.py` and
+`.codex/pillow_image_mode_probe.output.json` records the
+`ModeDescriptor(mode, bands, basemode, basetype, typestr)` namedtuple fields,
+tuple-like iteration and index access, `_asdict()`, `str`, `repr`, `getmode`
+caching, covered `RGB` / `RGBA` / `L` / `LA` / `P` / `CMYK` / `I;16` mode
+values, direct descriptor construction, and missing/extra/invalid argument
+errors. The AHK surface now returns cached descriptor objects for covered modes,
+with a callable `ModeDescriptor` factory that exposes `_fields` and returns
+immutable tuple-like descriptor values. Fresh AHK evidence includes
+`.codex/pillow-image-mode-red-report.txt` failing because `stdlib.pillow` had
+no `ImageMode` property and `.codex/pillow-image-mode-green-focused-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 65/65 before promotion sync, plus final
+module and captured example gates after promotion sync.
+
+The ImagePalette follow-up adds Pillow's palette helper submodule surface as
+`stdlib.pillow.ImagePalette.ImagePalette(...)`, `raw(...)`, `negative(...)`,
+`wedge(...)`, `sepia(...)`, `make_linear_lut(...)`, and
+`make_gamma_lut(...)`. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence
+from `.codex/pillow_image_palette_probe.py` and
+`.codex/pillow_image_palette_probe.output.json` records construction from mode
+and byte sequences, `copy()` independence, `colors` mapping, `getdata()`,
+`tobytes()` / `tostring()`, RGB and RGBA `getcolor(...)` allocation including
+the RGBA default-alpha key with three-byte palette append behavior, raw palette
+error paths, `negative` / `wedge` / `sepia` generated byte tables, linear and
+gamma LUT helpers, and the covered missing/extra/invalid argument errors. The
+AHK surface uses arrays of bytes as the public bytes representation and keeps
+the existing image-instance palette storage separate from this helper object
+surface. Fresh AHK evidence includes `.codex/pillow-image-palette-red-report.txt`
+failing because `stdlib.pillow` had no `ImagePalette` property,
+`.codex/pillow-image-palette-green-focused-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 66/66 after implementation, and
+`.codex/pillow-image-palette-example-report.txt` passing the captured example
+without warning/error output.
+
+The ImageTransform follow-up adds Pillow's transform descriptor submodule
+surface as `stdlib.pillow.ImageTransform.Transform(...)`,
+`AffineTransform(...)`, `ExtentTransform(...)`, `QuadTransform(...)`,
+`PerspectiveTransform(...)`, and `MeshTransform(...)`. Fresh local Python
+3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_image_transform_probe.py` and
+`.codex/pillow_image_transform_probe.output.json` records descriptor `.data`,
+`.getdata()`, `.transform(size, image)`, method constants for affine/extent/
+quad/perspective/mesh, transformed pixel rows, and covered missing/extra
+argument plus missing `.method` errors. The AHK surface uses prefixed internal
+descriptor classes and delegates descriptor transforms into the already-covered
+`Image.transform(...)` implementation. Fresh AHK evidence includes
+`.codex/pillow-image-transform-red-report.txt` failing because `stdlib.pillow`
+had no `ImageTransform` property, `.codex/pillow-image-transform-green-focused-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 67/67 after implementation,
+`.codex/pillow-image-transform-final-module-report-2.txt` passing the same
+module gate 67/67 in a serial rerun, and
+`.codex/pillow-image-transform-example-report.txt` passing the captured
+example without warning/error output.
+
+The ImagePath follow-up adds Pillow's coordinate path helper surface as
+`stdlib.pillow.ImagePath.Path(...)`. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_image_path_probe.py` and
+`.codex/pillow_image_path_probe.output.json` records construction from flat
+coordinates, coordinate pairs, integer counts, and existing paths; zero-based
+indexing, negative indexing, slice reads, iteration, `tolist()` /
+`tolist(True)`, `getbbox()`, `compact(...)`, affine `transform(...)` with and
+without wrap, mutating `map(...)`, and covered bad-index / coordinate /
+arity errors. The AHK surface uses prefixed internal classes and stores paths
+as float coordinate pairs while exposing the public `stdlib.pillow.ImagePath`
+module object. Fresh AHK evidence includes
+`.codex/pillow-image-path-red-report.txt` failing because `stdlib.pillow` had
+no `ImagePath` property, `.codex/pillow-image-path-green-focused-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 68/68 after implementation,
+`.codex/pillow-image-path-final-module-report.txt` passing the same module
+gate 68/68 in a serial rerun, and
+`.codex/pillow-image-path-final-example-report.txt` passing the captured
+example without warning/error output.
+
+The ImageMath follow-up adds the first real Pillow expression helper surface as
+`stdlib.pillow.ImageMath.unsafe_eval(...)`, `eval(...)`, and
+`lambda_eval(...)`. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_imagemath_probe.py` and
+`.codex/pillow-imagemath-final-probe.output.json` records covered `L` image
+arithmetic, scalar/image order, subtraction, multiplication, division,
+`abs`, `min`, `max`, `equal`, `notequal`, `int(float(A))`, `convert(A, "L")`,
+literal integers, image-name identity, lambda evaluation, deprecated
+`ImageMath.eval(...)` delegation, and bad builtin / dunder-key / unsupported
+RGB / missing-name errors. The AHK surface uses prefixed internal helpers,
+memory-backed `I` / `F` image results for expression output, and a deliberately
+bounded parser for the covered expression subset; full Python expression
+grammar, deprecation-warning parity, and unprobed operator families remain
+deferred. Fresh AHK evidence includes `.codex/pillow-imagemath-red-report.txt`
+failing because `stdlib.pillow` had no `ImageMath` property,
+`.codex/pillow-imagemath-green-focused-report.txt` passing after
+implementation, `.codex/pillow-imagemath-final-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 69/69 at `TimeoutSeconds 90`, and
+`.codex/pillow-imagemath-final-example-report.txt` passing the captured
+example 1/1 without warning/error output.
+
+The ImageFile follow-up adds the first real Pillow parser surface as
+`stdlib.pillow.ImageFile.Parser()` plus the covered module constants
+`MAXBLOCK`, `LOAD_TRUNCATED_IMAGES`, and `ERRORS`. Fresh local Python 3.10.11
+plus Pillow 11.3.0 evidence from `.codex/pillow_imagefile_parser_probe.py` and
+`.codex/pillow-imagefile-parser-final-probe.output.json` records parser initial
+state, bytes-only `feed(...)`, PNG/BMP/JPEG byte parsing, `close()` returning
+the parsed image, no-argument constructor errors, `reset()` reuse behavior,
+and context-manager close semantics. The AHK surface uses the shared
+`stdlib.io.BytesIO` object as the in-memory file-like bridge for accumulated
+bytes and keeps unclaimed Pillow decoder internals bounded to the observed
+parser subset. Fresh AHK evidence includes
+`.codex/pillow-imagefile-parser-red-report.txt` failing because
+`stdlib.pillow` had no `ImageFile` property,
+`.codex/pillow-imagefile-parser-green-focused-report.txt` passing after
+implementation, `.codex/pillow-imagefile-parser-final-module-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 70/70 at `TimeoutSeconds 90`, and
+`.codex/pillow-imagefile-parser-final-example-report.txt` passing the captured
+example 1/1 without warning/error output.
+
+The next ImageFile follow-up extends that surface with Pillow's public base and
+codec/stub helpers: `SAFEBLOCK`, `ImageFile.ImageFile(...)`, `PyCodec(...)`,
+`PyCodecState()`, `PyDecoder(...)`, `PyEncoder(...)`, `StubHandler()`,
+`StubImageFile(...)`, and `raise_oserror(...)`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_imagefile_surface_probe.py` and
+`.codex/pillow_imagefile_surface_probe.output.json` records `SAFEBLOCK`,
+`ERRORS`, `PyCodecState.extents()`, abstract-instantiation behavior for the
+public base classes, `ImageFile.__init__()` / `PyCodec.__init__()` missing-arg
+errors, and the deprecated `raise_oserror(-2)` translation to `OSError("broken
+data stream when reading image file")`. Fresh AHK evidence includes
+`.codex/pillow-imagefile-surface-red-report.txt` plus
+`.codex/pillow-imagefile-surface-red.json` failing because
+`stdlib.pillow.ImageFile` lacked `SAFEBLOCK`, focused green
+`.codex/pillow-imagefile-surface-green-focused-report.txt` plus
+`.codex/pillow-imagefile-surface-green-focused.json` passing 1/1 after the
+minimal public surface implementation, related regressions
+`.codex/pillow-imagefile-parser-related-report.txt`,
+`.codex/pillow-bufr-related-report.txt`, `.codex/pillow-grib-related-report.txt`,
+`.codex/pillow-hdf5-related-report.txt`, `.codex/pillow-msp-related-report.txt`,
+and `.codex/pillow-wmf-related-report.txt` each passing 1/1, and fresh serial
+module gate `.codex/pillow-imagefile-surface-module-gate-report.txt` plus
+`.codex/pillow-imagefile-surface-module-gate.json` passing
+`stdlib/tests/pillow.test.ahk` 175/175 at `TimeoutSeconds 90`.
+
+The ImageFont follow-up adds the first real Pillow font helper surface as
+`stdlib.pillow.ImageFont.load_default(...)`, `MAX_STRING_LENGTH`, and
+`ImageFont.Layout` constants for the covered default-font path. Fresh local
+Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_imagefont_probe.py` and
+`.codex/pillow-imagefont-final-probe.output.json` records `load_default()`,
+positive/zero/negative/string size behavior, `FreeTypeFont` default font
+`getbbox(...)` / `getlength(...)` metrics for covered ASCII strings, and
+`getmask(...)` `ImagingCore` mode/size/bbox/length metadata. The AHK surface
+uses prefixed internal font and mask classes and deliberately bounds this slice
+to default-font metrics; broader TrueType file loading, font search paths,
+shaping, and text drawing are covered by later ordinary ImageDraw and ImageDraw2
+text slices.
+Fresh AHK evidence
+includes `.codex/pillow-imagefont-red-report.txt` failing because
+`stdlib.pillow` had no `ImageFont` property,
+`.codex/pillow-imagefont-green-focused-report.txt` passing after
+implementation, `.codex/pillow-imagefont-final-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 71/71 at `TimeoutSeconds 90`, and
+`.codex/pillow-imagefont-final-example-report.txt` passing the captured example
+1/1 without warning/error output.
+
+The ImageFont base-class follow-up adds Pillow's public
+`ImageFont.ImageFont()` base wrapper for the covered default constructor and
+unloaded-font method behavior. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_imagefont_base_probe.py` and
+`.codex/pillow-imagefont-base-probe.output.json` records the no-argument
+signature, returned `ImageFont` type, empty instance dictionary, absent
+`.font` / `.path` / `.size`, present `getmask(...)`, `getbbox(...)`, and
+`getlength(...)` methods, constructor extra-argument error, missing-text
+TypeErrors, `None` text length-check TypeErrors, and the default
+`AttributeError("'ImageFont' object has no attribute 'font'")` for normal text
+before a concrete font backend is loaded. The AHK surface exposes
+`stdlib.pillow.ImageFont.ImageFont()` through a prefixed
+`AhkStdlibPillowBaseImageFont` class and keeps loaded bitmap and FreeType font
+metrics on their existing concrete classes. Font-core backed base rendering,
+private `_load_pilfont*` helpers, and arbitrary attached `.font` backend
+objects remain deferred until focused probes cover them. Focused red
+`.codex/pillow-imagefont-base-red-report.txt` failed because the public base
+class surface was absent; focused green
+`.codex/pillow-imagefont-base-green-focused-report.txt` passed after
+implementation. Fresh promotion gates include serial module
+`.codex/pillow-imagefont-base-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 82/82 at `TimeoutSeconds 90`, and captured
+example `.codex/pillow-imagefont-base-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with README/example pollution assertions.
+
+The ImageDraw2 follow-up adds the first real Pillow `ImageDraw2` surface as
+`stdlib.pillow.ImageDraw2.Pen(...)`, `Brush(...)`, and `Draw(...)` for the
+covered basic geometry path. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_imagedraw2_probe.py` and
+`.codex/pillow-imagedraw2-final-probe.output.json` records Pen/Brush color and
+width wrapping, `Draw(image).flush()` returning the image, line/rectangle/
+ellipse/polygon pixel matrices for the covered small RGB images, and observed
+constructor/coordinate error messages. The AHK surface wraps the existing
+ImageDraw implementation where the observed semantics match and uses a bounded
+local line/ellipse bridge where Pillow's tiny-shape pixels differ. Text,
+arbitrary render kwargs, and path-related ImageDraw2 behavior remain unclaimed
+until separate probes cover them. Fresh AHK evidence includes
+`.codex/pillow-imagedraw2-red-report.txt` failing because `stdlib.pillow` had
+no `ImageDraw2` property, `.codex/pillow-imagedraw2-green-focused-report.txt`
+passing after implementation, `.codex/pillow-imagedraw2-final-module-report.txt`
+passing `stdlib/tests/pillow.test.ahk` at `TimeoutSeconds 90`, and
+`.codex/pillow-imagedraw2-final-example-report.txt` passing the captured example
+without warning/error output.
+
+The ImageDraw2 arc/chord/pieslice follow-up extends that same surface with
+`Draw.arc(...)`, `Draw.chord(...)`, and `Draw.pieslice(...)` for the covered
+Pen/Brush geometry paths. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_imagedraw2_arc_probe.py` and
+`.codex/pillow-imagedraw2-arc-final-probe.output.json` records the observed
+small-image pixel matrices, confirms Pillow's `arc(...)` ignores Pen width in
+this WCK wrapper path, captures RGB and RGBA target color conversion, and
+records the probed missing-argument and bad-coordinate messages. The AHK
+surface reuses the covered ImageDraw arc/chord/pieslice backend and normalizes
+ImageDraw2 Pen/Brush colors to the target image mode at draw time without
+changing the public `Pen.color` / `Brush.color` values. Fresh AHK evidence
+includes `.codex/pillow-imagedraw2-arc-red-report.txt` failing because
+`AhkStdlibPillowImageDraw2Draw` had no `arc` method,
+`.codex/pillow-imagedraw2-arc-green-focused-report.txt` passing after
+implementation, `.codex/pillow-imagedraw2-arc-final-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` at `TimeoutSeconds 90`, and
+`.codex/pillow-imagedraw2-arc-final-example-report.txt` passing the captured
+example without warning/error output.
+
+The ImageDraw2 settransform/render follow-up extends the same WCK-style helper
+surface with `Draw.settransform(offset)` and the covered direct
+`Draw.render(...)` dispatch paths. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_imagedraw2_transform_probe.py` and
+`.codex/pillow-imagedraw2-transform-final-probe.output.json` records
+`settransform((1, 1))` storing `[1, 0, 1, 0, 1, 1]`, transformed
+line/rectangle/polygon pixel matrices, direct `render("line", ...)` and
+`render("rectangle", ...)` matrices, and the probed missing-argument,
+unpack, unknown-op, and missing-arc-kwargs error messages. The AHK surface
+reuses `ImagePath.Path(...).transform(...)` for the covered integer offset
+path and keeps arbitrary render keyword forwarding unclaimed. Fresh AHK
+evidence includes
+`.codex/pillow-imagedraw2-transform-red-report.txt` failing because
+`AhkStdlibPillowImageDraw2Draw` had no `settransform` method,
+`.codex/pillow-imagedraw2-transform-green-focused-report.txt` passing after
+implementation, `.codex/pillow-imagedraw2-transform-final-module-report.txt`
+passing `stdlib/tests/pillow.test.ahk` at `TimeoutSeconds 90`, and
+`.codex/pillow-imagedraw2-transform-final-example-report.txt` passing the
+captured example without warning/error output.
+
+The ImageDraw2 text follow-up extends the WCK-style helper surface with
+`ImageDraw2.Font(...)`, `Draw.text(...)`, `Draw.textbbox(...)`, and
+`Draw.textlength(...)` for the covered local TrueType path. Fresh local Python
+3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_imagedraw2_text_probe.py` and
+`.codex/pillow-imagedraw2-text-final-probe.output.json` records
+`Font("red", "C:\\Windows\\Fonts\\arial.ttf", 12)` color/font state,
+`FreeTypeFont.getbbox("Hi")`, `FreeTypeFont.getlength("Hi")`,
+`Draw.textbbox((1, 1), "Hi", font)`, `Draw.textlength("Hi", font)`,
+`Draw.text(...)` returning `None` while writing visible pixels, and the probed
+missing-argument, missing-resource, bad-color, `None` font, and transform/text
+error messages. The AHK surface uses prefixed internal font helpers and a GDI+
+text drawing backend for non-memory images with a bounded fallback path; wider
+font discovery, shaping, and arbitrary TrueType pixel-perfect parity remain
+unclaimed until further probes cover them. Fresh AHK evidence includes
+`.codex/pillow-imagedraw2-text-red-report.txt` failing because
+`ImageDraw2.Font` was missing, focused green
+`.codex/pillow-imagedraw2-text-gdi-focused-report.txt` passing after
+implementation, module gate `.codex/pillow-imagedraw2-text-gdi-module-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 75/75 at `TimeoutSeconds 90`, and
+captured example gate `.codex/pillow-imagedraw2-text-gdi-example-report.txt`
+passing 1/1 without warning/error output.
+
+The ImageFont FreeTypeFont variant follow-up extends the covered TrueType font
+object surface with `FreeTypeFont.getname()`, `getmetrics()`, and
+`font_variant(...)` for the local Arial TrueType evidence path. Fresh local
+Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_imagefont_variant_probe.py` and
+`.codex/pillow-imagefont-variant-probe.output.json` records
+`ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", 12)` returning
+`("Arial", "Regular")`, metrics `(11, 3)`, `getbbox("Hi") ==
+(0, 2, 11, 11)`, `getlength("Hi") == 11.34375`, and distinct
+`font_variant()` objects for same-size, size `18`, and explicit font+size `14`
+variants with their probed metrics and text extents. The AHK surface now keeps
+those paths behind the prefixed `AhkStdlibPillowFreeTypeFont` helper and uses
+the same path/size validation errors observed by Pillow. Wider font discovery,
+non-Arial family/style metadata, variable font axes, shaping, and arbitrary
+TrueType metric parity remain unclaimed until dedicated probes cover them.
+Fresh AHK evidence includes `.codex/pillow-imagefont-variant-red-report.txt`
+failing because the font object lacked `getname`, focused green
+`.codex/pillow-imagefont-variant-green-focused-report.txt` passing after
+implementation, serial module gate
+`.codex/pillow-imagefont-variant-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 76/76 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-imagefont-variant-example-report.txt` passing 1/1
+without warning/error output and with README-probe pollution assertions.
+
+The ImageFont TransposedFont follow-up extends the covered font helper surface
+with `stdlib.pillow.ImageFont.TransposedFont(font, orientation=None)`. Fresh
+local Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_imagefont_transposed_probe.py` and the promotion rerun output
+`.codex/pillow-imagefont-transposed-promotion-probe.output.json` records
+default-font and local Arial TrueType wrapping, `.font` identity preservation,
+`orientation`, `getbbox(...)`, `getlength(...)`, and `getmask(...)`
+mode/size/bbox/length behavior for `None`, flip, and rotate orientations,
+plus the covered missing-font, extra-argument, and bad-orientation errors. The
+AHK surface keeps this behind prefixed internal font/mask helpers and reuses
+the covered image transpose constants. Variable font axes, broad shaping, font
+discovery beyond the local Arial evidence path, and pixel-perfect arbitrary
+mask parity remain unclaimed until dedicated probes cover them. Earlier red
+evidence `.codex/pillow-imagefont-transposed-red-report.txt` failed because
+`TransposedFont` was missing; focused green
+`.codex/pillow-imagefont-transposed-green-focused-report.txt` passed after
+implementation. Fresh promotion gates include serial module
+`.codex/pillow-imagefont-transposed-promotion-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 77/77 at `TimeoutSeconds 90`, and captured
+example `.codex/pillow-imagefont-transposed-promotion-example-report.txt`
+passing `.codex/pillow_example_capture.test.ahk` 1/1 without warning/error
+output and with README/example pollution assertions.
+
+The ImageFont bitmap default follow-up adds Pillow's public
+`ImageFont.load_default_imagefont()` helper surface for the covered built-in
+bitmap font path. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_imagefont_load_default_imagefont_probe.py` and
+`.codex/pillow-imagefont-load-default-imagefont-probe.output.json` records the
+returned `ImageFont` object type, absence of `.path` / `.size`, fixed bitmap
+font `getbbox(...)`, `getlength(...)`, and `getmask(...)` mode/size/bbox/len
+behavior for `""`, `"A"`, `"abc"`, and `"Hello"`, plus the covered extra
+argument and `None` text errors. The AHK surface exposes
+`stdlib.pillow.ImageFont.load_default_imagefont()` and keeps the implementation
+behind prefixed internal bitmap font/mask classes. Arbitrary glyph metric
+matrices and pixel-perfect mask contents remain unclaimed until dedicated
+probes cover them.
+Fresh AHK evidence includes focused red
+`.codex/pillow-imagefont-load-default-imagefont-red-report.txt` failing because
+`load_default_imagefont` was missing, focused green
+`.codex/pillow-imagefont-load-default-imagefont-green-focused-report.txt`
+passing after implementation, serial module gate
+`.codex/pillow-imagefont-load-default-imagefont-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 78/78 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-imagefont-load-default-imagefont-example-report.txt`
+passing `.codex/pillow_example_capture.test.ahk` 1/1 without warning/error
+output and with README/example pollution assertions.
+
+The ImageFont bitmap loading follow-up adds Pillow's public
+`ImageFont.load(filename)` and `ImageFont.load_path(filename)` surfaces for
+the covered `.pil` bitmap font metrics path. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_imagefont_load_probe.py` and
+`.codex/pillow-imagefont-load-probe.output.json` records a generated minimal
+`.pil` / sibling `.pbm` font returning an `ImageFont` object with `.file`,
+empty `.info`, `getbbox(...)`, `getlength(...)`, and `getmask(...)`
+mode/size/bbox/len behavior for `""`, `"A"`, `"AB"`, and a missing glyph,
+plus missing/extra argument and missing-file errors for both helpers. The AHK
+surface exposes `stdlib.pillow.ImageFont.load(...)` and
+`stdlib.pillow.ImageFont.load_path(...)` backed by prefixed internal bitmap
+font/mask classes and a `.pil` metric parser. Covered `load_path(...)`
+searches direct paths and the working directory; full Python `sys.path`
+search behavior, bytes path parity, `.gif` / `.png` glyph backing files,
+malformed-font edge-case matrices, and pixel-perfect glyph bitmap contents
+remain deferred until focused probes cover them. Focused red
+`.codex/pillow-imagefont-load-red-report.txt` failed because the public helper
+surface was absent; focused green
+`.codex/pillow-imagefont-load-green-focused-report.txt` passed after
+implementation. Fresh promotion gates include serial module
+`.codex/pillow-imagefont-load-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 81/81 at `TimeoutSeconds 90`, and captured
+example `.codex/pillow-imagefont-load-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with README/example pollution assertions.
+
+The ImageFont FreeTypeFont constructor follow-up adds Pillow's public
+`ImageFont.FreeTypeFont(font, size=10, index=0, encoding="",
+layout_engine=None)` constructor surface for the covered local Arial TrueType
+path. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_imagefont_freetypefont_constructor_probe.py` and the promotion
+rerun `.codex/pillow-imagefont-freetypefont-constructor-fresh-probe.output.json`
+records the public signature, default size `10`, local
+`C:\Windows\Fonts\arial.ttf` constructor behavior, `getname()`,
+`getmetrics()`, `getbbox("Hi")`, `getlength("Hi")`, `getmask("Hi")`
+mode/size/bbox/length metadata, equivalence with `ImageFont.truetype(..., 12)`
+for the covered size-12 path, and the covered missing-font, too-many-args,
+missing-resource, zero-size, and string-size errors. The AHK surface exposes
+`stdlib.pillow.ImageFont.FreeTypeFont(...)` and keeps the implementation behind
+the prefixed `AhkStdlibPillowFreeTypeFont` helper. Wider font discovery,
+non-Arial family/style metadata, variable font axes, shaping, arbitrary
+font-file metric parity, and pixel-perfect mask contents remain unclaimed until
+dedicated probes cover them. Earlier red evidence
+`.codex/pillow-imagefont-freetypefont-constructor-red-report.txt` failed
+because `FreeTypeFont` was missing; focused green
+`.codex/pillow-imagefont-freetypefont-constructor-green-focused-report.txt`
+passed after implementation. Fresh promotion gates include serial module
+`.codex/pillow-imagefont-freetypefont-constructor-fresh-module-report.txt`
+passing `stdlib/tests/pillow.test.ahk` 79/79 at `TimeoutSeconds 90`, and
+captured example
+`.codex/pillow-imagefont-freetypefont-constructor-fresh-example-report.txt`
+passing `.codex/pillow_example_capture.test.ahk` 1/1 without warning/error
+output and with README/example pollution assertions.
+
+The ImageFont helper follow-up adds Pillow's public `ImageFont.is_path(...)`
+and `ImageFont.DeferredError(...)` helper surface for the covered path
+classification and deferred-exception behavior. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_imagefont_helpers_probe.py` and
+`.codex/pillow-imagefont-helpers-probe.output.json` records `is_path(...)`
+returning true for `str`, `bytes`, `pathlib.Path`, and custom
+`os.PathLike`-style objects, false for `bytearray`, `BytesIO`, `None`, `int`,
+and plain objects, plus the covered missing/extra argument errors. The same
+probe records `DeferredError(ex)` and `DeferredError.new(ex)` preserving the
+wrapped exception object and re-raising that same exception from arbitrary
+attribute access. The AHK surface exposes `stdlib.pillow.ImageFont.is_path(...)`
+and `stdlib.pillow.ImageFont.DeferredError(...)`; AHK coverage maps `str`,
+`stdlib.pathlib.Path`, and objects with `__fspath` as path-like, while native
+Python `bytes` path parity remains deferred until the stdlib has a distinct
+bytes path object. Focused red `.codex/pillow-imagefont-helpers-red-report.txt`
+failed because the helper surface was absent; focused green
+`.codex/pillow-imagefont-helpers-green-focused-report.txt` passed after
+implementation. Fresh promotion gates include serial module
+`.codex/pillow-imagefont-helpers-module-report.txt` passing
+`stdlib/tests/pillow.test.ahk` 80/80 at `TimeoutSeconds 90`, and captured
+example `.codex/pillow-imagefont-helpers-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with README/example pollution assertions.
+
+The Pillow BdfFontFile follow-up adds Pillow's public raster font-file
+surfaces `stdlib.pillow.FontFile` and `stdlib.pillow.BdfFontFile` for the
+covered BDF bitmap-font path. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_bdffontfile_probe.py` and
+`.codex/pillow-bdffontfile-probe.output.json` records `FontFile.WIDTH`,
+`FontFile.puti16(...)` big-endian signed 16-bit output, empty
+`FontFile.FontFile()` state and empty-save error, `BdfFontFile.bdf_char(...)`
+for a normal glyph, a zero-width glyph, an out-of-range encoded glyph, and EOF,
+plus `BdfFontFile.BdfFontFile(...)` glyph population, `compile()` bitmap and
+metrics, `save(...)` writing `.pil` metrics plus a PNG-backed `.pbm` glyph
+file, and `ImageFont.load(...)` loading the saved font for bbox/length checks.
+The AHK surface exposes `stdlib.pillow.FontFile.FontFile(...)`,
+`stdlib.pillow.FontFile.puti16(...)`, `stdlib.pillow.BdfFontFile.bdf_char(...)`,
+and `stdlib.pillow.BdfFontFile.BdfFontFile(...)`, backed by prefixed internal
+classes and BDF hex-row decoding. This slice also adds the root `SyntaxError`
+built-in style error because Pillow raises that type for invalid BDF headers.
+Wider BDF property metadata, malformed BDF matrices beyond the covered header
+and empty-font paths, full pixel-perfect bitmap font rendering, and non-BDF
+font-file plugins remain deferred until focused probes cover them. Focused red
+`.codex/pillow-bdffontfile-red-report.txt` failed because the public modules
+were absent; focused green `.codex/pillow-bdffontfile-green-focused-report.txt`
+passed after implementation. Fresh promotion gates include serial module
+`.codex/pillow-bdffontfile-module-report.txt` plus
+`.codex/pillow-bdffontfile-module.json` passing `stdlib/tests/pillow.test.ahk`
+100/100 at `TimeoutSeconds 90`, and captured example
+`.codex/pillow-bdffontfile-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The SunImagePlugin follow-up adds Pillow's Sun Raster image plugin surface as
+`stdlib.pillow.SunImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_sunimageplugin_probe.py` and
+`.codex/pillow_sunimageplugin_probe.output.json` records `_accept`,
+`SunImageFile` format metadata, `.ras` open registration, raw 1/4/8/24/32-bit
+file-like opens, palette type 1 RGB palette conversion, Sun RLE decoding, and
+Pillow's bad magic/depth/file-type/palette/truncated-header plus explicit
+unsupported save behavior. The AHK surface exposes direct construction,
+registered `Image.open(..., ["SUN"])`, raw and RLE in-memory pixel loading, and
+the covered SyntaxError/UnidentifiedImageError/KeyError paths. Save encoding,
+non-type-1 palettes, and wider Sun Raster corpora remain deferred until focused
+Python probes cover them. Fresh AHK evidence includes focused red
+`.codex/pillow-sunimageplugin-red-report.txt` failing because
+`stdlib.pillow.SunImagePlugin` was absent, focused green
+`.codex/pillow-sunimageplugin-green-focused-report.txt` plus
+`.codex/pillow-sunimageplugin-green-focused.json` passing 1/1 after
+implementation, and captured example gate
+`.codex/pillow-sun-tga-example-report.txt` plus
+`.codex/pillow-sun-tga-example.json` passing `.codex/pillow_example_capture.test.ahk`
+2/2 without warning/error output and with System.Text.RegularExpressions /
+MatchEvaluator pollution assertions.
+
+The TgaImagePlugin follow-up adds Pillow's Targa image plugin surface as
+`stdlib.pillow.TgaImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_tgaimageplugin_probe.py` and
+`.codex/pillow_tgaimageplugin_probe.output.json` records `MODES`, `SAVE`,
+`TgaImageFile` format metadata, `.tga`/`.icb`/`.vda`/`.vst` and MIME
+registration, raw and RLE file-like opens for covered modes, palette handling,
+ID section and orientation metadata, exact file-like saves including footer and
+RLE output, and Pillow's bad-header/bad-mode/bad-palette/unsupported-save-mode
+errors. The AHK surface exposes direct construction, registered
+`Image.open(..., ["TGA"])`, registered file-like `Image.save(..., "TGA")`, raw
+and RLE decoding, ID/orientation metadata, palette handling, and covered writer
+output. Broader Truevision edge cases, interleaved images, uncommon palette
+depths, and native Direct2D/WIC acceleration remain deferred until focused
+probes cover them. Fresh AHK evidence includes focused red
+`.codex/pillow-tgaimageplugin-red-report.txt` failing because
+`stdlib.pillow.TgaImagePlugin` was absent, focused green
+`.codex/pillow-tgaimageplugin-green-focused-report.txt` plus
+`.codex/pillow-tgaimageplugin-green-focused.json` passing 1/1 after
+implementation, and captured example gate
+`.codex/pillow-sun-tga-example-report.txt` plus
+`.codex/pillow-sun-tga-example.json` passing `.codex/pillow_example_capture.test.ahk`
+2/2 without warning/error output and with System.Text.RegularExpressions /
+MatchEvaluator pollution assertions.
+
+After both SunImagePlugin and TgaImagePlugin landed, the fresh serial
+Pillow-filtered module gate `.codex/pillow-sun-tga-module-filter-report.txt`
+plus `.codex/pillow-sun-tga-module-filter.json` passed 149/149 at
+`TimeoutSeconds 90`, and the fresh captured example rerun
+`.codex/pillow-sun-tga-example-rerun-report.txt` plus
+`.codex/pillow-sun-tga-example-rerun.json` passed 2/2 without warning/error
+output.
+
+The TiffImagePlugin follow-up adds Pillow's TIFF plugin surface as
+`stdlib.pillow.TiffImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_tiffimageplugin_probe.py` and
+`.codex/pillow_tiffimageplugin_probe.output.json` records TIFF constants,
+`PREFIXES`, `_accept`, `i16`/`i32`/`o8`, `COMPRESSION_INFO`,
+`COMPRESSION_INFO_REV`, representative `OPEN_INFO` / `SAVE_INFO`, `TiffImageFile`
+format metadata, `.tif`/`.tiff` and MIME registration, save/save_all registry
+presence, direct and `Image.open(..., ["TIFF"])` file-like opens, L/RGB pixel
+round-trips, baseline file-like saves, and covered bad-magic/constructor error
+paths. The AHK surface exposes the plugin module, registers TIFF open/save/
+save_all through the existing registry, routes `TiffImageFile` direct opens
+through WIC-backed TIFF decoding with Pillow-style bad-header `SyntaxError`, and
+uses the existing baseline L TIFF writer plus GDI-backed TIFF output for covered
+save paths. Full `ImageFileDirectory_v1` / `ImageFileDirectory_v2`,
+`AppendingTiffWriter`, multi-page TIFF save_all semantics, tiled/strip metadata
+round-trips, compression variants beyond raw/GDI-supported output, and libtiff
+integration remain deferred until focused probes cover them. Fresh AHK evidence
+includes focused red `.codex/pillow-tiffimageplugin-red-report.txt` failing
+because `stdlib.pillow.TiffImagePlugin` was absent, focused green
+`.codex/pillow-tiffimageplugin-green-focused-report.txt` plus
+`.codex/pillow-tiffimageplugin-green-focused.json` passing 1/1 after
+implementation, captured example gate
+`.codex/pillow-tiffimageplugin-example-report.txt` plus
+`.codex/pillow-tiffimageplugin-example.json` passing 2/2 without warning/error
+output, and serial Pillow-filtered module gate
+`.codex/pillow-tiffimageplugin-module-filter-report.txt` plus
+`.codex/pillow-tiffimageplugin-module-filter.json` passing 150/150 at
+`TimeoutSeconds 90`.
+
+The WalImageFile follow-up adds Pillow's Quake2 WAL texture reader surface as
+`stdlib.pillow.WalImageFile`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_walimagefile_probe.py` and
+`.codex/pillow_walimagefile_probe.output.json` records `WalImageFile` format
+metadata, module `open(...)`, `i32`, the full 768-byte `quake2palette`, direct
+file-like construction, P-mode pixel data, `name` / `next_name` metadata, the
+absence of `Image.open` / extension / MIME / save registration, and covered
+constructor/open/short-header/truncated-pixel errors. The AHK surface exposes
+`WalImageFile`, `open(...)`, `i32(...)`, and the full Quake2 palette, parses the
+WAL header and pixel payload directly into a P-mode image, and deliberately
+keeps the module out of the global Image registry to match Pillow's documented
+behavior. Broader Quake2 texture corpora, path-open edge cases beyond the
+covered reader, and unusual malformed headers remain deferred until focused
+probes cover them. Fresh AHK evidence includes focused red
+`.codex/pillow-walimagefile-red-report.txt` failing because
+`stdlib.pillow.WalImageFile` was absent, focused green
+`.codex/pillow-walimagefile-green-focused-report.txt` plus
+`.codex/pillow-walimagefile-green-focused.json` passing 1/1 after
+implementation, captured example gate `.codex/pillow-walimagefile-example-report.txt`
+plus `.codex/pillow-walimagefile-example.json` passing 2/2 without warning/error
+output, and serial Pillow-filtered module gate
+`.codex/pillow-walimagefile-module-filter-report.txt` plus
+`.codex/pillow-walimagefile-module-filter.json` passing 151/151 at
+`TimeoutSeconds 90`.
+
+The WebPImagePlugin follow-up adds the first Pillow WebP plugin slice as
+`stdlib.pillow.WebPImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_webpimageplugin_probe.py` and
+`.codex/pillow_webpimageplugin_probe.output.json` records `SUPPORTED`, VP8
+identifier mode mapping, `_accept(...)`, `WebPImageFile` format metadata,
+open/save/save_all/extension/MIME registry entries, lossless single-frame RGB
+and RGBA file-like round-trips, base animation facts, `_convert_frame(...)`,
+and covered constructor/bad-magic/background-validation errors. The AHK
+surface now exposes the plugin module, registers WEBP, recognizes RIFF/WEBP
+`VP8 ` / `VP8X` / `VP8L` prefixes, uses the Windows WIC bridge for single-frame
+RGB/RGBA direct and registered file-like opens, sets Pillow-compatible
+single-frame `info`, `n_frames`, `is_animated`, `seek`, `tell`, and `load_seek`
+state, parses `ANIM` / full-frame `ANMF` chunks for the covered lossless
+animated stream, reconstructs frame substreams for WIC decode, preserves
+animated `loop`, `background`, `timestamp`, `duration`, `n_frames`, and
+`is_animated` behavior, and keeps `_convert_frame(...)` aligned for covered
+modes. Complex animated blend/dispose composition, ICC/EXIF/XMP chunk
+round-trips, and real WebP encode/save_all output remain deferred until focused
+probes and a verified system/libwebp backend support them. Fresh AHK evidence
+includes focused red
+`.codex/pillow-webpimageplugin-red-report.txt` failing because
+`stdlib.pillow.WebPImagePlugin` was absent, focused green
+`.codex/pillow-webpimageplugin-green-focused-report.txt` plus
+`.codex/pillow-webpimageplugin-green-focused.json` passing 1/1 after
+single-frame implementation, focused animation red
+`.codex/pillow-webpimageplugin-animation-red-report.txt` failing on animated
+mode/frame behavior before the ANMF parser, focused animation green
+`.codex/pillow-webpimageplugin-animation-green-focused-report.txt` plus
+`.codex/pillow-webpimageplugin-animation-green-focused.json` passing 1/1 after
+animation support, captured example gate
+`.codex/pillow-webpimageplugin-example-report.txt` plus
+`.codex/pillow-webpimageplugin-example.json` passing 2/2 without warning/error
+output, and serial Pillow-filtered module gate
+`.codex/pillow-webpimageplugin-module-filter-report.txt` plus
+`.codex/pillow-webpimageplugin-module-filter.json` passing 154/154 at
+`TimeoutSeconds 90`.
+
+The WmfImagePlugin follow-up adds Pillow's Windows metafile stub plugin surface
+as `stdlib.pillow.WmfImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_wmfimageplugin_probe.py` and
+`.codex/pillow_wmfimageplugin_probe.output.json` records the default
+`WmfHandler`, imported little-endian helpers `word`, `short`, and `_long`,
+`_accept(...)`, `WmfStubImageFile` format metadata, WMF and EMF header parsing,
+`.wmf` / `.emf` registry behavior, lack of MIME and SAVE_ALL registration,
+custom handler `open` / `load` / `save` delegation, DPI-driven size updates, and
+invalid-inch / unsupported-header / save-without-handler error paths. The AHK
+surface exposes `WmfImagePlugin`, default and custom handler registration,
+direct and registered file-like WMF/EMF header opens, custom handler-backed
+load/save behavior, and the same registry surface while leaving real Windows
+metafile rasterization to future backend work. Fresh AHK evidence includes
+focused red `.codex/pillow-wmfimageplugin-red-report.txt` failing because
+`stdlib.pillow.WmfImagePlugin` was absent, focused green
+`.codex/pillow-wmfimageplugin-green-focused-report.txt` plus
+`.codex/pillow-wmfimageplugin-green-focused.json` passing 1/1 after
+implementation, captured example gate `.codex/pillow-wmfimageplugin-example-report.txt`
+plus `.codex/pillow-wmfimageplugin-example.json` passing 2/2 without
+warning/error output, and serial Pillow-filtered module gate
+`.codex/pillow-wmfimageplugin-module-filter-report.txt` plus
+`.codex/pillow-wmfimageplugin-module-filter.json` passing 155/155 at
+`TimeoutSeconds 90`.
+
+The XbmImagePlugin follow-up adds Pillow's X11 bitmap plugin surface as
+`stdlib.pillow.XbmImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_xbmimageplugin_probe.py` and
+`.codex/pillow_xbmimageplugin_probe.output.json` records whitespace-tolerant
+`_accept(...)`, `XbmImageFile` format metadata, registered `XBM` open/save
+handlers, `.xbm` extension and `image/xbm` MIME registration, direct and
+registered file-like opens, header parsing, hotspot metadata, XBM tile offsets,
+LSB bitmap byte order, mode `1` file-like saves with hotspot encoder options,
+and covered bad-header, missing-height, truncated-data, unsupported-mode, and
+constructor arity error paths. The AHK surface exposes the same module factory,
+registry shape, direct and `Image.open(..., ["XBM"])` dispatch, mode `1`
+pixel loading/saving, hotspot metadata, and Pillow-style errors for the probed
+inputs. Fresh AHK evidence includes focused red
+`.codex/pillow-xbmimageplugin-red-report.txt` failing because
+`stdlib.pillow.XbmImagePlugin` was absent, focused green
+`.codex/pillow-xbmimageplugin-green-focused-report.txt` plus
+`.codex/pillow-xbmimageplugin-green-focused.json` passing 1/1 after
+implementation, captured example gate
+`.codex/pillow-xbmimageplugin-example-report.txt` plus
+`.codex/pillow-xbmimageplugin-example.json` passing 2/2 without warning/error
+output, and serial Pillow-filtered module gate
+`.codex/pillow-xbmimageplugin-module-filter-report.txt` plus
+`.codex/pillow-xbmimageplugin-module-filter.json` passing 157/157 at
+`TimeoutSeconds 90`.
+
+The XpmImagePlugin follow-up adds Pillow's X11 pixel-map plugin surface as
+`stdlib.pillow.XpmImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_xpmimageplugin_probe.py` and
+`.codex/pillow_xpmimageplugin_probe.output.json` records exact `_accept(...)`
+prefix behavior, `XpmImageFile` format metadata, `XpmDecoder._pulls_fd`,
+registered `XPM` open and `xpm` decoder handlers, `.xpm` extension and
+`image/xpm` MIME registration, lack of save/save_all registration, P-mode
+palette file-like opens with `info["transparency"]` byte keys, RGB opens for
+the `palette_length > 256` branch, XPM tile offsets/decoder args, and covered
+bad-magic, broken-header, unknown-color, missing-color-key, truncated-pixel,
+and constructor arity error paths. The AHK surface exposes the same module
+factory, decoder factory, registry shape, direct and `Image.open(..., ["XPM"])`
+dispatch, lazy P/RGB pixel loading, palette and transparent-key metadata, and
+Pillow-style errors for the probed inputs. Fresh AHK evidence includes focused
+red `.codex/pillow-xpmimageplugin-red-report.txt` failing because
+`stdlib.pillow.XpmImagePlugin` was absent, focused green
+`.codex/pillow-xpmimageplugin-green-focused-report.txt` plus
+`.codex/pillow-xpmimageplugin-green-focused.json` passing 1/1 after
+implementation, captured example gate
+`.codex/pillow-xpmimageplugin-example-report.txt` plus
+`.codex/pillow-xpmimageplugin-example.json` passing 2/2 without warning/error
+output, and serial Pillow-filtered module gate
+`.codex/pillow-xpmimageplugin-module-filter-report.txt` plus
+`.codex/pillow-xpmimageplugin-module-filter.json` passing 158/158 at
+`TimeoutSeconds 90`.
+
+The XVThumbImagePlugin follow-up adds Pillow's XV thumbnail plugin surface as
+`stdlib.pillow.XVThumbImagePlugin`. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_xvthumbimageplugin_probe.py` and
+`.codex/pillow_xvthumbimageplugin_probe.output.json` records `_MAGIC`,
+the 768-byte RGB332 palette, `_accept(...)`, `XVThumbImageFile` format
+metadata, uppercase `XVTHUMB` open registration with no save, extension, or
+MIME registration, comment and whitespace header parsing, P-mode raw tile
+metadata, direct and registered file-like opens, lazy pixel loading, and the
+covered bad-magic, EOF, invalid-size, truncated-pixel, and constructor error
+paths. The AHK surface exposes the same module constants, factory, registry
+shape, P-mode palette images, `Image.open(..., ["XVThumb"])` dispatch, and
+Pillow-style errors for the covered sample headers. Broader unsupported save or
+extension behavior is intentionally absent because Pillow 11.3.0 does not
+register those paths. Fresh AHK evidence includes focused red
+`.codex/pillow-xvthumbimageplugin-red-report.txt` failing because
+`stdlib.pillow.XVThumbImagePlugin` was absent, focused green
+`.codex/pillow-xvthumbimageplugin-green-focused-report.txt` plus
+`.codex/pillow-xvthumbimageplugin-green-focused.json` passing 1/1 after
+implementation, captured example gate
+`.codex/pillow-xvthumbimageplugin-example-report.txt` plus
+`.codex/pillow-xvthumbimageplugin-example.json` passing 2/2 without
+warning/error output, and serial Pillow-filtered module gate
+`.codex/pillow-xvthumbimageplugin-module-filter-report.txt` plus
+`.codex/pillow-xvthumbimageplugin-module-filter.json` passing 156/156 at
+`TimeoutSeconds 90`.
+
+The PpmImagePlugin follow-up adds Pillow's portable-anymap image plugin surface
+as `stdlib.pillow.PpmImagePlugin`. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_ppmimageplugin_probe.py` and
+`.codex/pillow_ppmimageplugin_probe.output.json` records `b_whitespace`,
+`MODES`, `_accept(...)` behavior including the short `b"P"` `IndexError`,
+registry entries for `.pbm`, `.pgm`, `.ppm`, `.pnm`, and `.pfm`, plain
+P1/P2/P3 decoding, raw P4/P5/P6 decoding, 16-bit grayscale P5 decoding, PyP,
+PyRGBA, P0CMYK, and PFM `F` decoding with `info["scale"]` and vertical float
+row ordering. The AHK surface exposes direct `PpmImageFile(...)`,
+registered `Image.open(..., ["PPM"])`, `PpmDecoder`, `PpmPlainDecoder`,
+mode `1`/`L`/`I`/`RGB`/`RGBA`/`F` file-like saves, and the covered
+constructor, header, maxval, plain-token, and unsupported-save errors. Broader
+portable-arbitrary-map variants, exotic float scale/endianness combinations
+beyond the probed PFM sample, and benchmark-backed WIC/Direct2D acceleration
+remain deferred until focused probes cover them. Fresh AHK evidence includes
+`.codex/pillow-ppmimageplugin-red-report.txt` failing because
+`stdlib.pillow.PpmImagePlugin` was absent, focused PFM red
+`.codex/pillow-ppmimageplugin-pfm-red-report.txt` exposing the uncovered float
+decode path, focused green `.codex/pillow-ppmimageplugin-pfm-green-3-report.txt`
+plus `.codex/pillow-ppmimageplugin-pfm-green-3.json` passing after
+implementation, trusted serial module gate
+`.codex/pillow-ppmimageplugin-module-1-report.txt` plus
+`.codex/pillow-ppmimageplugin-module-1.json` passing
+`stdlib/tests/pillow.test.ahk` 143/143 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-ppmimageplugin-example-1-report.txt` plus
+`.codex/pillow-ppmimageplugin-example-1.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The GifImagePlugin follow-up adds the next Pillow plugin surface as
+`stdlib.pillow.GifImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_gifimageplugin_probe.py` and
+`.codex/pillow-gifimageplugin-probe.output.json` records `_accept(...)` for
+GIF87a/GIF89a prefixes, `GifImageFile` metadata, `LoadingStrategy`,
+`LOADING_STRATEGY`, `RAWMODE`, GIF open/save/save_all/extension/MIME registry
+effects, single-frame P-mode GIF87a/GIF89a metadata, palette, tile, pixel
+loading, comment/loop/duration/transparency metadata, `Image.open(...,
+["GIF"])`, P-mode GIF file-like save/open round-trips, a focused two-frame
+`save_all=True` / `append_images` path, and constructor plus bad-image error
+behavior. The AHK surface exposes the public module metadata, registered GIF
+open/save/save_all/MIME/extension behavior, lazy GIF tile loading through a
+small LZW reader, a P-mode GIF writer for covered file-like save/open
+round-trips, and the probed two-frame save_all path with per-frame duration,
+loop metadata, `n_frames`, `is_animated`, `seek`/`tell`, and Pillow's
+second-frame RGB palette expansion. Interlace, disposal composition,
+transparency animation, local palette switching beyond the covered paths,
+optimization, and benchmark-backed native acceleration remain deferred until
+focused probes cover them. Fresh AHK evidence includes
+`.codex/pillow-gifimageplugin-red-report.txt` failing because
+`stdlib.pillow.GifImagePlugin` was absent, focused green
+`.codex/pillow-gifimageplugin-green-focused-report.txt` plus
+`.codex/pillow-gifimageplugin-green-focused.json` passing after
+implementation, trusted serial module gate
+`.codex/pillow-gifimageplugin-module-report.txt` plus
+`.codex/pillow-gifimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 113/113 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-gifimageplugin-example-report.txt` plus
+`.codex/pillow-gifimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+The multiframe follow-up is backed by fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_gif_multiframe_probe.py` and
+`.codex/pillow_gif_multiframe_probe.output.json`, focused red
+`.codex/pillow-gif-multiframe-red-report.txt` plus
+`.codex/pillow-gif-multiframe-red.json` failing because the previous save_all
+path treated the per-frame duration list as a scalar and still wrote a
+single-frame stream, and focused green
+`.codex/pillow-gif-multiframe-green-focused-report.txt` plus
+`.codex/pillow-gif-multiframe-green-focused.json` passing 1/1 after the
+reader/writer/seek update. Captured example gate
+`.codex/pillow-gif-multiframe-example-report.txt` plus
+`.codex/pillow-gif-multiframe-example.json` passed
+`.codex/pillow_example_capture.test.ahk` 2/2, and the serial pillow module
+gate `.codex/pillow-gif-multiframe-module-filter-report.txt` plus
+`.codex/pillow-gif-multiframe-module-filter.json` passed
+`stdlib/tests/pillow.test.ahk` 163/163 at `TimeoutSeconds 90`.
+
+The GimpGradientFile follow-up adds Pillow's public GIMP gradient reader
+surface as `stdlib.pillow.GimpGradientFile`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_gimpgradientfile_probe.py` and
+`.codex/pillow-gimpgradientfile-probe.output.json` records `EPSILON`, the
+`SEGMENTS` order, `linear`/`curved`/`sine`/sphere curve outputs, `.ggr`
+parsing with and without a `Name:` line, multi-segment RGBA palette output,
+and Python error behavior for missing gradient data, `entries=1`, bad magic,
+HSV colour space, bad segment index, bad count, and constructor arity. The AHK
+surface exposes `GradientFile()`, `GimpGradientFile(fp)`, the curve helpers,
+and `getpalette(entries)` returning `[bytes, "RGBA"]` for the covered parser
+path. HSV colour spaces and broader malformed-file diagnostics remain deferred
+until focused probes cover them. Fresh AHK evidence includes
+`.codex/pillow-gimpgradientfile-red-report.txt` failing because
+`stdlib.pillow.GimpGradientFile` was absent, focused green
+`.codex/pillow-gimpgradientfile-green-focused-report.txt` plus
+`.codex/pillow-gimpgradientfile-green-focused.json` passing after
+implementation, and trusted serial module gate
+`.codex/pillow-gimpgradientfile-module-report.txt` plus
+`.codex/pillow-gimpgradientfile-module.json` passing
+`stdlib/tests/pillow.test.ahk` 114/114 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-gimpgradientfile-example-report.txt` plus
+`.codex/pillow-gimpgradientfile-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The GimpPaletteFile follow-up adds Pillow's public GIMP `.gpl` palette reader
+surface as `stdlib.pillow.GimpPaletteFile`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_gimppalettefile_probe.py` and
+`.codex/pillow-gimppalettefile-probe.output.json` records `rawmode="RGB"`,
+`GimpPaletteFile(fp)`, `frombytes(data)`, `getpalette()`, field/comment line
+skipping, constructor-limited 256-color parsing, unlimited `frombytes` parsing,
+long-line limit behavior, and Python error behavior for bad magic, bad entries,
+bad integer tokens, out-of-range byte values, and arity errors. The AHK surface
+exposes `GimpPaletteFile(fp)` and `frombytes(data)` with `getpalette()`
+returning `[bytes, "RGB"]` for the covered parser path. The slice is focused on
+RGB byte palette loading; broader malformed-file diagnostics remain deferred
+until focused probes cover them. Fresh AHK evidence includes
+`.codex/pillow-gimppalettefile-red-report.txt` plus
+`.codex/pillow-gimppalettefile-red.json` failing because
+`stdlib.pillow.GimpPaletteFile` was absent, focused green
+`.codex/pillow-gimppalettefile-green-focused-report.txt` plus
+`.codex/pillow-gimppalettefile-green-focused.json` passing after
+implementation, trusted serial module gate
+`.codex/pillow-gimppalettefile-module-report.txt` plus
+`.codex/pillow-gimppalettefile-module.json` passing
+`stdlib/tests/pillow.test.ahk` 115/115 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-gimppalettefile-example-report.txt` plus
+`.codex/pillow-gimppalettefile-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The BufrStubImagePlugin follow-up adds Pillow's BUFR stub adapter surface as
+`stdlib.pillow.BufrStubImagePlugin`. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_bufrstubimageplugin_probe.py` and
+`.codex/pillow-bufrstubimageplugin-probe.output.json` records `_accept(...)`
+for `BUFR` and `ZCZC` prefixes, `BufrStubImageFile` format metadata, registry
+effects for open/save/`.bufr`, no-handler save failure, direct invalid-file
+`SyntaxError`, handler `open(...)` callbacks seeing the stub `format="BUFR"`,
+`mode="F"`, `size=(1, 1)`, and handler `save(...)` callbacks receiving the
+image, file-like target, and filename. The AHK surface exposes
+`register_handler(...)`, `_accept(...)`, `BufrStubImageFile`, registered
+`Image.open(..., ["BUFR"])`, and registered `Image.save(..., "BUFR")` for the
+covered stub-handler path. Real BUFR meteorological decoding remains delegated
+to user-installed handlers and is not claimed by this slice. Fresh AHK evidence
+includes `.codex/pillow-bufrstubimageplugin-red-report.txt` failing because
+`stdlib.pillow.BufrStubImagePlugin` was absent, focused green
+`.codex/pillow-bufrstubimageplugin-green-focused-report.txt` passing after
+implementation, trusted serial module gate
+`.codex/pillow-bufrstubimageplugin-module-report.txt` plus
+`.codex/pillow-bufrstubimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 102/102 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-bufrstubimageplugin-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The GribStubImagePlugin follow-up adds Pillow's GRIB stub adapter surface as
+`stdlib.pillow.GribStubImagePlugin`. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_gribstubimageplugin_probe.py` and
+`.codex/pillow-gribstubimageplugin-probe.output.json` records `_accept(...)`
+for `GRIB` prefixes with byte 8 equal to `1`, rejection of wrong marker bytes
+and bad magic, short `GRIB` `IndexError("index out of range")`,
+`GribStubImageFile` format metadata, registry effects for open/save/`.grib`,
+no-handler save failure, direct invalid-file `SyntaxError`, handler
+`open(...)` callbacks seeing the stub `format="GRIB"`, `mode="F"`,
+`size=(1, 1)`, and handler `save(...)` callbacks receiving the image,
+file-like target, and filename. The AHK surface exposes `register_handler(...)`,
+`_accept(...)`, `GribStubImageFile`, registered `Image.open(..., ["GRIB"])`,
+and registered `Image.save(..., "GRIB")` for the covered stub-handler path.
+Real GRIB meteorological decoding remains delegated to user-installed handlers
+and is not claimed by this slice. Fresh AHK evidence includes
+`.codex/pillow-gribstubimageplugin-red-report.txt` plus
+`.codex/pillow-gribstubimageplugin-red.json` failing because
+`stdlib.pillow.GribStubImagePlugin` was absent, focused green
+`.codex/pillow-gribstubimageplugin-green-focused-report.txt` plus
+`.codex/pillow-gribstubimageplugin-green-focused.json` passing after
+implementation, trusted serial module gate
+`.codex/pillow-gribstubimageplugin-module-report.txt` plus
+`.codex/pillow-gribstubimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 116/116 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-gribstubimageplugin-example-report.txt` plus
+`.codex/pillow-gribstubimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The Hdf5StubImagePlugin follow-up adds Pillow's HDF5 stub adapter surface as
+`stdlib.pillow.Hdf5StubImagePlugin`. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_hdf5stubimageplugin_probe.py` and
+`.codex/pillow-hdf5stubimageplugin-probe.output.json` records `_accept(...)`
+for the eight-byte HDF5 signature `89 48 44 46 0D 0A 1A 0A`, rejection of
+short and malformed prefixes, `HDF5StubImageFile` format metadata, registry
+effects for open/save/`.h5`/`.hdf`, no-handler save failure, direct invalid-file
+`SyntaxError("Not an HDF file")`, handler `open(...)` callbacks seeing the stub
+`format="HDF5"`, `mode="F"`, `size=(1, 1)`, and handler `save(...)` callbacks
+receiving the image, file-like target, and filename. The AHK surface exposes
+`register_handler(...)`, `_accept(...)`, `HDF5StubImageFile`, registered
+`Image.open(..., ["HDF5"])`, and registered `Image.save(..., "HDF5")` for the
+covered stub-handler path. Real HDF5 dataset decoding remains delegated to
+user-installed handlers and is not claimed by this slice. Fresh AHK evidence
+includes `.codex/pillow-hdf5stubimageplugin-red-report.txt` plus
+`.codex/pillow-hdf5stubimageplugin-red.json` failing because
+`stdlib.pillow.Hdf5StubImagePlugin` was absent, focused green
+`.codex/pillow-hdf5stubimageplugin-green-focused-report.txt` plus
+`.codex/pillow-hdf5stubimageplugin-green-focused.json` passing after
+implementation, trusted serial module gate
+`.codex/pillow-hdf5stubimageplugin-module-report.txt` plus
+`.codex/pillow-hdf5stubimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 117/117 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-hdf5stubimageplugin-example-report.txt` plus
+`.codex/pillow-hdf5stubimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The IcnsImagePlugin follow-up adds Pillow's Mac OS icon container surface as
+`stdlib.pillow.IcnsImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_icnsimageplugin_probe.py` and
+`.codex/pillow-icnsimageplugin-probe.output.json` records `MAGIC`,
+`HEADERSIZE`, `enable_jpeg2k`, `_accept(...)`, `nextheader(...)`, `IcnsFile`
+block dictionaries, `itersizes()`, `bestsize()`, `dataforsize(...)`,
+PNG-backed `getimage(...)`, `IcnsImageFile` metadata and lazy-size behavior,
+registered `.icns`/MIME/open/save effects, ICNS save TOC layout, and key
+constructor/header/unsupported-subimage errors. The AHK surface exposes
+`IcnsFile`, `IcnsImageFile`, `nextheader(...)`, `_accept(...)`, registered
+`Image.open(..., ["ICNS"])`, and registered `Image.save(..., "ICNS")` for the
+covered PNG-backed ICNS path. Legacy 32-bit RGB/RLE resources, mask merging
+beyond the covered PNG path, JPEG2000 icon resources, and benchmark-backed
+native acceleration remain deferred and are not claimed by this slice. Fresh
+AHK evidence includes `.codex/pillow-icnsimageplugin-red-report.txt` plus
+`.codex/pillow-icnsimageplugin-red.json` failing because
+`stdlib.pillow.IcnsImagePlugin` was absent, focused green
+`.codex/pillow-icnsimageplugin-green-report.txt` plus
+`.codex/pillow-icnsimageplugin-green.json` passing after implementation,
+trusted serial module gate `.codex/pillow-icnsimageplugin-module-2.json`
+passing `stdlib/tests/pillow.test.ahk` 118/118 at `TimeoutSeconds 90`, and
+captured example gate `.codex/pillow-icnsimageplugin-example-report.txt` plus
+`.codex/pillow-icnsimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The IcoImagePlugin follow-up adds Pillow's Windows icon container surface as
+`stdlib.pillow.IcoImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_icoimageplugin_probe.py` and
+`.codex/pillow-icoimageplugin-probe.output.json` records `_MAGIC`,
+`IconHeader._fields`, `_accept(...)` for ICO/CUR/short/empty prefixes,
+PNG-backed ICO save/open output, `append_images`, `bitmap_format="bmp"`,
+`IcoFile` entry parsing/sorting, `sizes()`, `getentryindex(...)`,
+`getimage(...)`, frame loading, `IcoImageFile` metadata, size switching and load
+behavior, registry `.ico`/MIME/open/save effects, and key constructor/bad magic
+errors. The AHK surface exposes `IconHeader`, `IcoFile`, `IcoImageFile`,
+registered `Image.open(..., ["ICO"])`, and registered `Image.save(..., "ICO")`
+for the covered PNG-backed and BMP-DIB-backed file-like ICO paths. Full AND-mask
+recovery for lower-bit-depth DIB icons, every palette edge, and
+benchmark-backed native acceleration remain deferred. Fresh AHK evidence
+includes `.codex/pillow-icoimageplugin-red-report.txt` plus
+`.codex/pillow-icoimageplugin-red.json` failing because
+`stdlib.pillow.IcoImagePlugin` was absent, focused green
+`.codex/pillow-icoimageplugin-green-report.txt` plus
+`.codex/pillow-icoimageplugin-green.json` passing after implementation,
+trusted serial module gate `.codex/pillow-icoimageplugin-module-report.txt`
+plus `.codex/pillow-icoimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 119/119 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-icoimageplugin-example-report.txt` plus
+`.codex/pillow-icoimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The ImImagePlugin follow-up adds Pillow's IFUNC IM image-memory format surface
+as `stdlib.pillow.ImImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_imimageplugin_probe.py` and
+`.codex/pillow-imimageplugin-probe.output.json` records public constants,
+`TAGS`/`OPEN`/`SAVE` mapping entries, `number(...)`, `.im` registry effects,
+text-header parsing, comments, numeric size/frame/scale metadata, L/RGB/P and
+LUT-backed file-like opens, `rawmode`, multi-frame `seek(...)`/`tell(...)`,
+P-mode palette round-trips, IM save output layout, and key constructor/open/save
+errors. The AHK surface exposes `ImImageFile`, `number(...)`, `TAGS`, `OPEN`,
+`SAVE`, registered `Image.open(..., ["IM"])`, registered
+`Image.save(..., "IM")`, frame lifecycle, palette metadata, and file-like IM
+read/write for the covered L/RGB/P paths. Lower-level bit-decoder variants,
+legacy LabEye transpose rawmodes, every integer/float rawmode combination, and
+benchmark-backed native acceleration remain deferred. Fresh AHK evidence
+includes `.codex/pillow-imimageplugin-red-report.txt` plus
+`.codex/pillow-imimageplugin-red.json` failing because
+`stdlib.pillow.ImImagePlugin` was absent, focused green
+`.codex/pillow-imimageplugin-green-report.txt` plus
+`.codex/pillow-imimageplugin-green.json` passing after implementation, trusted
+serial module gate `.codex/pillow-imimageplugin-module-report.txt` plus
+`.codex/pillow-imimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 120/120 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-imimageplugin-example-report.txt` plus
+`.codex/pillow-imimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The ImageCms follow-up adds Pillow's color-management module surface as
+`stdlib.pillow.ImageCms`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_imagecms_probe.py` and
+`.codex/pillow-imagecms-probe.output.json` records `DESCRIPTION`, `VERSION`,
+`versions()` with its Pillow 12 deprecation warning, `Intent`/`Direction`/
+`Flags` enum-like values, legacy `FLAGS` values including `GRIDPOINTS(...)`,
+`PyCMSError`, built-in `sRGB`/`LAB`/`XYZ` profile creation, `ImageCmsProfile`
+wrapping and file-like reopening from `tobytes()`, sRGB profile metadata,
+`getProfileName`/`getProfileInfo`/description/copyright/manufacturer/model,
+default intent and supported-intent checks, plus sRGB-to-sRGB
+`buildTransform`, `applyTransform`, in-place application, and
+`profileToProfile` identity behavior that attaches `icc_profile` bytes to the
+output image. The AHK surface exposes `ImageCmsProfile`, `ImageCmsTransform`,
+`createProfile(...)`, `getOpenProfile(...)`, `buildTransform(...)`,
+`buildTransformFromOpenProfiles(...)`, `buildProofTransform(...)` error
+surface, `applyTransform(...)`, `profileToProfile(...)`, profile metadata
+helpers, `get_display_profile(...)`, `versions()`, `Intent`, `Direction`,
+`Flags`, and legacy `FLAGS[...]` access. Arbitrary ICC file parsing, non-sRGB
+color conversion, proof transforms, display-profile discovery, native
+LittleCMS/WCS integration, and benchmark-backed acceleration remain deferred.
+Because AutoHotkey object property names are case-insensitive and class/instance
+objects reserve `Flags`, the implementation backs both public `Flags` and
+legacy `FLAGS[...]` through one enum-like object with dictionary indexing for
+legacy flag names. Fresh AHK evidence includes
+`.codex/pillow-imagecms-red-report.txt` plus `.codex/pillow-imagecms-red.json`
+failing because `stdlib.pillow.ImageCms` was absent, focused green
+`.codex/pillow-imagecms-green-report.txt` plus
+`.codex/pillow-imagecms-green.json` passing after implementation, trusted
+serial module gate `.codex/pillow-imagecms-module-report.txt` plus
+`.codex/pillow-imagecms-module.json` passing `stdlib/tests/pillow.test.ahk`
+121/121 at `TimeoutSeconds 90`, and captured example gate
+`.codex/pillow-imagecms-example-report.txt` plus
+`.codex/pillow-imagecms-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The ImageGrab follow-up adds Pillow's Windows screen/clipboard grabber surface
+as `stdlib.pillow.ImageGrab`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_imagegrab_probe.py` and
+`.codex/pillow-imagegrab-probe.output.json` records the public `grab(...)` and
+`grabclipboard()` signatures, Windows `RGB` 1x1 screen capture return shape,
+keyword-option capture behavior, current empty-clipboard behavior, and the
+covered `bbox`, `xdisplay`, and arity error paths. The AHK surface exposes
+`grab(...)` using GDI/GDI+ screen capture into an `RGB` image with direct bbox
+capture for small regions, keyword options for `bbox`, `include_layered_windows`,
+`all_screens`, `xdisplay`, and `window`, plus `grabclipboard()` for CF_HDROP
+file lists, PNG clipboard data, DIB clipboard data, or `None`. Cross-platform
+X11/macOS grabbers, deeper window-print edge cases, broader clipboard format
+ordering, and benchmark-backed Direct2D/WIC capture acceleration remain
+deferred. Fresh AHK evidence includes `.codex/pillow-imagegrab-red-report.txt`
+plus `.codex/pillow-imagegrab-red.json` failing because
+`stdlib.pillow.ImageGrab` was absent, focused green
+`.codex/pillow-imagegrab-green-report.txt` plus
+`.codex/pillow-imagegrab-green.json` passing after implementation, trusted
+serial module gate `.codex/pillow-imagegrab-module-report.txt` plus
+`.codex/pillow-imagegrab-module.json` passing `stdlib/tests/pillow.test.ahk`
+122/122 at `TimeoutSeconds 90`, and captured example gate
+`.codex/pillow-imagegrab-example-report.txt` plus
+`.codex/pillow-imagegrab-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The ImageMorph follow-up adds Pillow's binary morphology surface as
+`stdlib.pillow.ImageMorph`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_imagemorph_probe.py` and
+`.codex/pillow-imagemorph-probe.output.json` records module constants,
+`LutBuilder` default/known-pattern LUT construction, pattern permutation,
+`MorphOp.apply`, `match`, `get_on_pixels`, `load_lut`, `save_lut`, `set_lut`,
+and covered error paths for bad patterns, missing LUTs, wrong LUT file sizes,
+and non-`L` images. The AHK surface exposes `LUT_SIZE`, `ROTATION_MATRIX`,
+`MIRROR_MATRIX`, `LutBuilder`, and `MorphOp`, including the Pillow C extension's
+inner-pixel morphology rule and zero boundary behavior for `L` images. Wider
+Pillow morphology image corpus parity, non-list bytearray identity quirks beyond
+the covered raw LUT object case, and backend acceleration remain deferred. Fresh
+AHK evidence includes `.codex/pillow-imagemorph-red-report.txt` plus
+`.codex/pillow-imagemorph-red.json` failing because `stdlib.pillow.ImageMorph`
+was absent, focused green `.codex/pillow-imagemorph-green-focused-report.txt`
+plus `.codex/pillow-imagemorph-green-focused.json` passing after
+implementation, trusted serial module gate
+`.codex/pillow-imagemorph-module-report.txt` plus
+`.codex/pillow-imagemorph-module.json` passing `stdlib/tests/pillow.test.ahk`
+123/123 at `TimeoutSeconds 90`, and captured example gate
+`.codex/pillow-imagemorph-example-report.txt` plus
+`.codex/pillow-imagemorph-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The ImageQt follow-up adds Pillow's Qt image bridge surface as
+`stdlib.pillow.ImageQt`. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence
+from `.codex/pillow_imageqt_probe.py` and
+`.codex/pillow-imageqt-probe.output.json` records the local `PySide6` / `side6`
+binding selection, `rgb(...)` packing, `align8to32(...)` scanline padding,
+`_toqclass_helper(...)` data/format/color-table output for covered image modes,
+`toqimage(...)`, `fromqimage(...)`, `toqpixmap(...)`, `fromqpixmap(...)`, path
+inputs, and the missing-argument / unsupported-mode / non-QImage error paths.
+The AHK surface exposes Qt-like wrapper objects for the covered bridge behavior
+without requiring a live Qt GUI runtime. Native Qt object identity, direct
+PySide/PyQt interop, and broader Qt application lifecycle fidelity remain
+deferred. Fresh AHK evidence includes `.codex/pillow-imageqt-red-report.txt`
+plus `.codex/pillow-imageqt-red.json` failing because `stdlib.pillow.ImageQt`
+was absent, focused green `.codex/pillow-imageqt-green-focused-report.txt` plus
+`.codex/pillow-imageqt-green-focused.json` passing after implementation,
+trusted serial module gate `.codex/pillow-imageqt-module-report.txt` plus
+`.codex/pillow-imageqt-module.json` passing `stdlib/tests/pillow.test.ahk`
+124/124 at `TimeoutSeconds 90`, and captured example gate
+`.codex/pillow-imageqt-example-report.txt` plus
+`.codex/pillow-imageqt-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The ImageShow follow-up adds Pillow's viewer registry and viewer base surface
+as `stdlib.pillow.ImageShow`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_imageshow_probe.py` and
+`.codex/pillow-imageshow-probe.output.json` records the local default
+`WindowsViewer` / `IPythonViewer` registration, `register(...)` append/prepend
+and class-instantiation behavior, `show(...)` stopping after the first truthy
+viewer, `Viewer` base format/options/get_format/get_command/show_file errors,
+covered mode conversion before `show_image(...)`, Windows command generation,
+and Unix display command helpers with title quoting. The AHK surface exposes
+the covered registry, base viewer, Windows/Mac/Unix/XDG/Display/Gm/Eog/XV and
+IPython viewer objects, plus deterministic command construction without
+launching external viewer processes during tests. Real OS viewer process
+lifecycle, shell execution, IPython frontend rendering, and broader platform
+availability detection remain deferred. Fresh AHK evidence includes
+`.codex/pillow-imageshow-red-report.txt` plus
+`.codex/pillow-imageshow-red.json` failing because
+`stdlib.pillow.ImageShow` was absent, focused green
+`.codex/pillow-imageshow-green-focused-report.txt` plus
+`.codex/pillow-imageshow-green-focused.json` passing after implementation,
+trusted serial module gate `.codex/pillow-imageshow-module-report.txt` plus
+`.codex/pillow-imageshow-module.json` passing `stdlib/tests/pillow.test.ahk`
+125/125 at `TimeoutSeconds 90`, and captured example gate
+`.codex/pillow-imageshow-example-report.txt` plus
+`.codex/pillow-imageshow-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The ImageTk follow-up adds Pillow's Tk image bridge surface as
+`stdlib.pillow.ImageTk`. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence
+from `.codex/pillow_imagetk_probe.py` and
+`.codex/pillow-imagetk-probe.output.json` records `PhotoImage`, `BitmapImage`,
+`getimage(...)`, `_get_image_from_kw(...)`, `_pyimagingtkcall(...)`, generated
+`pyimageN` names, image/file/data construction, paste replacement behavior,
+bitmap mode validation, and the covered missing-image / missing-size /
+non-photo error paths. The AHK surface exposes an in-memory Tk-compatible bridge
+without requiring a live Tk interpreter or GUI window. Native Tk object
+identity, Tcl command dispatch, and full Tk lifecycle fidelity remain deferred.
+Fresh AHK evidence includes `.codex/pillow-imagetk-red-report.txt` plus
+`.codex/pillow-imagetk-red.json` failing because `stdlib.pillow.ImageTk` was
+absent, focused green `.codex/pillow-imagetk-green-focused-report.txt` plus
+`.codex/pillow-imagetk-green-focused.json` passing after implementation,
+trusted serial module gate `.codex/pillow-imagetk-module-report.txt` plus
+`.codex/pillow-imagetk-module.json` passing `stdlib/tests/pillow.test.ahk`
+126/126 at `TimeoutSeconds 90`, and captured example gate
+`.codex/pillow-imagetk-example-report.txt` plus
+`.codex/pillow-imagetk-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The ImageWin follow-up adds Pillow's Windows DIB display bridge surface as
+`stdlib.pillow.ImageWin`. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence
+from `.codex/pillow_imagewin_probe.py` and
+`.codex/pillow-imagewin-probe.output.json` records public names, `HDC`/`HWND`
+handle wrappers, `Dib` construction from modes and images, local backend mode
+normalization (`RGBA`/`CMYK` to `RGB` and `P` rejected as `ValueError` on this
+machine), BGR/gray display-memory `tobytes(...)` with 4-byte scanline padding,
+`frombytes(...)`, boxed and full-image `paste(...)`, `draw(...)`,
+`expose(...)`, `query_palette(...)`, and the covered handle / size / mode error
+paths. The AHK surface exposes `HDC`, `HWND`, `Dib`, `Window`, and
+`ImageWindow` wrappers without creating real OS windows during tests. Native
+Windows DC blitting, real window message loops, palette realization, and
+hardware-display side effects remain deferred. Fresh AHK evidence includes
+`.codex/pillow-imagewin-red-report.txt` plus `.codex/pillow-imagewin-red.json`
+failing because `stdlib.pillow.ImageWin` was absent, focused green
+`.codex/pillow-imagewin-green-focused-report.txt` plus
+`.codex/pillow-imagewin-green-focused.json` passing after implementation,
+trusted serial module gate `.codex/pillow-imagewin-module-report.txt` plus
+`.codex/pillow-imagewin-module.json` passing `stdlib/tests/pillow.test.ahk`
+127/127 at `TimeoutSeconds 90`, and captured example gate
+`.codex/pillow-imagewin-example-report.txt` plus
+`.codex/pillow-imagewin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The ImtImagePlugin follow-up adds Pillow's IM Tools grayscale image plugin
+surface as `stdlib.pillow.ImtImagePlugin`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_imtimageplugin_probe.py` and
+`.codex/pillow-imtimageplugin-probe.output.json` records the public names,
+`field` pattern, `ImtImageFile` format metadata, direct constructor behavior,
+`Image.open(..., ["IMT"])` registry behavior, the absence of an IMT extension
+registration, `raw` tile metadata, L-mode pixel loading, and the covered
+`SyntaxError`/`OSError` paths for non-text headers, unsupported `pixel n16`, and
+truncated payloads. The AHK surface exposes `field`, `ImtImageFile`, registered
+`Image.open(..., ["IMT"])`, no `.imt` extension, prefix accept filtering so
+unrelated image opens fall through to other decoders, and path/file-like parsing
+without relying on Python-only file methods. Fresh AHK evidence includes
+`.codex/pillow-imtimageplugin-red-report.txt` plus
+`.codex/pillow-imtimageplugin-red.json` failing because
+`stdlib.pillow.ImtImagePlugin` was absent, focused green
+`.codex/pillow-imtimageplugin-green-focused-report.txt` plus
+`.codex/pillow-imtimageplugin-green-focused.json` passing after implementation,
+trusted serial module gate `.codex/pillow-imtimageplugin-module-report.txt` plus
+`.codex/pillow-imtimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 128/128 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-imtimageplugin-example-report.txt` plus
+`.codex/pillow-imtimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions. The
+example gate now includes the example file directly in the outer ahktest wrapper
+instead of starting a nested AutoHotkey process, so warning/error output remains
+captured by `tools\run-ahktest.ps1` without child-process popups.
+
+The IptcImagePlugin follow-up adds Pillow's IPTC/NAA datastream surface as
+`stdlib.pillow.IptcImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_iptcimageplugin_probe.py` and
+`.codex/pillow-iptcimageplugin-probe.output.json` records `COMPRESSION`,
+`_i`, `_i8`, `i16`, `i32`, deprecated `i`/`dump`/`PAD`, `IptcImageFile`
+format metadata, `.iim` extension registration, duplicate IPTC metadata tag
+aggregation, `getiptcinfo`, raw L pixel loading, direct construction,
+`Image.open(..., ["IPTC"])`, and the covered bad magic, bad compression,
+illegal field length, and missing-fp errors. The AHK surface exposes the same
+covered helper surface, parses IPTC field headers with string keys for tuple
+tags, preserves duplicate metadata as lists of byte arrays, uses `BytesIO` for
+file-like fixtures, and registers an accept predicate so bad IPTC prefixes fall
+through to `cannot identify image file` under `Image.open(...)` without a GUI
+popup. JPEG-compressed IPTC tile decoding, TIFF/JPEG embedded IPTC extraction,
+and broader malformed-field edge cases remain deferred until fresh probes cover
+them. Fresh AHK evidence includes `.codex/pillow-iptcimageplugin-red-report.txt`
+plus `.codex/pillow-iptcimageplugin-red.json` failing because
+`stdlib.pillow.IptcImagePlugin` was absent, final focused green
+`.codex/pillow-iptcimageplugin-final-focused-report.txt` plus
+`.codex/pillow-iptcimageplugin-final-focused.json` passing 1/1 after implementation,
+trusted serial module gate `.codex/pillow-iptcimageplugin-final-module-report.txt`
+plus `.codex/pillow-iptcimageplugin-final-module.json` passing
+`stdlib/tests/pillow.test.ahk` 129/129 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-iptcimageplugin-final-example-report.txt` plus
+`.codex/pillow-iptcimageplugin-final-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The Jpeg2KImagePlugin follow-up adds Pillow's JPEG 2000 metadata plugin surface
+as `stdlib.pillow.Jpeg2KImagePlugin`. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_jpeg2kimageplugin_probe.py` and
+`.codex/pillow-jpeg2kimageplugin-probe.output.json` records public
+`BoxReader`, `Jpeg2KImageFile`, `_accept`, `_save`, JPEG2000 format metadata,
+JP2 and J2K prefix acceptance, `.jp2`/`.j2k`/`.jpc`/`.jpf`/`.jpx`/`.j2c`
+extension registration, MIME `image/jp2`, resolution-box DPI conversion,
+JP2/JPX header metadata including custom mimetype and CMYK colr mapping, J2K
+codestream size/mode/comment metadata, nested box reading, and covered bad magic,
+invalid box, short-read, open fallback, and missing-fp errors. The AHK surface
+parses synthetic JP2/J2K byte streams through `stdlib.io.BytesIO`, exposes
+direct construction and `Image.open(..., ["JPEG2000"])`, preserves Pillow-shaped
+tile descriptors, and keeps `_save` registered with Pillow's covered encoder
+unavailable error. Full JPEG 2000 pixel codestream decoding/encoding, advanced
+boxes, multi-tile image data, color management beyond the covered metadata, and
+performance claims remain deferred until fresh probes and WIC/codec-backed
+implementation evidence cover them. Fresh AHK evidence includes
+`.codex/pillow-jpeg2kimageplugin-red-report.txt` plus
+`.codex/pillow-jpeg2kimageplugin-red.json` failing because
+`stdlib.pillow.Jpeg2KImagePlugin` was absent, final focused green
+`.codex/pillow-jpeg2kimageplugin-final-focused-report.txt` plus
+`.codex/pillow-jpeg2kimageplugin-final-focused.json` passing 1/1 after
+implementation, trusted serial module gate
+`.codex/pillow-jpeg2kimageplugin-final-module-report.txt` plus
+`.codex/pillow-jpeg2kimageplugin-final-module.json` passing
+`stdlib/tests/pillow.test.ahk` 130/130 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-jpeg2kimageplugin-final-example-report.txt` plus
+`.codex/pillow-jpeg2kimageplugin-final-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The JpegImagePlugin follow-up adds Pillow's JPEG metadata plugin surface as
+`stdlib.pillow.JpegImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_jpegimageplugin_probe.py` and
+`.codex/pillow-jpegimageplugin-probe.output.json` records public `APP`, `COM`,
+`DQT`, `SOF`, `Skip`, `JpegImageFile`, `RAWMODE`, `MARKER`, `_accept`, `_save`,
+`_save_cjpeg`, `get_sampling`, `jpeg_factory`, `i16`, `i32`, `o8`, `o16`,
+`samplings`, and `zigzag_index`, plus JPEG registry effects, JFIF density/DPI,
+SOF layer/sampling metadata, quantization table ordering, direct `BytesIO`
+construction, and `Image.open(..., ["JPEG"])` behavior. The AHK surface parses
+covered JPEG marker streams without invoking pixel decode for metadata-only
+inputs, delegates covered file-like JPEG saves to the existing GDI+ output
+bridge, and keeps command-line `cjpeg` save behavior explicitly unsupported.
+Full JPEG encoder controls, EXIF/ICC/MP marker coverage, progressive and
+restart-marker edge cases, rendered metadata-only scan decoding, full command
+line `cjpeg` integration, and benchmark-backed native acceleration remain
+deferred until fresh probes and backend evidence cover them. Fresh AHK evidence
+includes `.codex/pillow-jpegimageplugin-red-report.txt` plus
+`.codex/pillow-jpegimageplugin-red.json` failing because
+`stdlib.pillow.JpegImagePlugin` was absent, final focused green
+`.codex/pillow-jpegimageplugin-final-focused-report.txt` plus
+`.codex/pillow-jpegimageplugin-final-focused.json` passing 1/1 after
+implementation, trusted serial module gate
+`.codex/pillow-jpegimageplugin-final-module-report.txt` plus
+`.codex/pillow-jpegimageplugin-final-module.json` passing
+`stdlib/tests/pillow.test.ahk` 131/131 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-jpegimageplugin-final-example-report.txt` plus
+`.codex/pillow-jpegimageplugin-final-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The McIdasImagePlugin follow-up adds Pillow's MCIDAS area-file metadata surface
+as `stdlib.pillow.McIdasImagePlugin`. Fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_mcidasimageplugin_probe.py` and
+`.codex/pillow-mcidasimageplugin-probe.output.json` records public
+`McIdasImageFile`, `_accept`, MCIDAS format metadata, Image registry behavior
+without default extension or MIME registration, big-endian area descriptor
+parsing, 1-byte `L` pixel loads, 2-byte `I;16B` and 4-byte `I` raw tile
+metadata, and Pillow's bad magic, unsupported bytes-per-pixel, missing-fp, and
+extra-argument errors. The AHK surface mirrors those covered descriptor,
+registry, direct `BytesIO`, and `Image.open(..., ["MCIDAS"])` paths while
+leaving broader satellite-product semantics deferred until fresh probes cover
+them. Fresh AHK evidence includes `.codex/pillow-mcidasimageplugin-red-report.txt`
+plus `.codex/pillow-mcidasimageplugin-red.json` failing because
+`stdlib.pillow.McIdasImagePlugin` was absent, final focused green
+`.codex/pillow-mcidasimageplugin-final-focused-report.txt` plus
+`.codex/pillow-mcidasimageplugin-final-focused.json` passing 1/1 after
+implementation, trusted serial module gate
+`.codex/pillow-mcidasimageplugin-module-report.txt` plus
+`.codex/pillow-mcidasimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 132/132 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-mcidasimageplugin-example-2-report.txt` plus
+`.codex/pillow-mcidasimageplugin-example-2.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The MicImagePlugin follow-up adds Pillow's Microsoft Image Composer container
+surface as `stdlib.pillow.MicImagePlugin`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_micimageplugin_probe.py` and
+`.codex/pillow-micimageplugin-probe.output.json` records public
+`MicImageFile`, `TiffImagePlugin`, `_accept`, the OLE magic prefix, `.mic`
+extension registration, no MIME registration, constructor arity errors using
+Pillow's `TiffImageFile.__init__` wording, invalid-OLE and no-image-entry
+`SyntaxError` paths, fake-OLE `.ACI/Image` TIFF stream loading, close behavior,
+and `Image.open(..., ["MIC"])` fallback to unidentified-image errors when the
+registered factory rejects a candidate. The AHK surface mirrors the covered
+OLE adapter shape with an injectable `olefile` module, routes `.ACI/Image`
+streams through the existing TIFF byte-stream decoder, and intentionally leaves
+real OLE directory parsing deferred until native OLE evidence covers it.
+Fresh AHK evidence includes `.codex/pillow-micimageplugin-red-report.txt` plus
+`.codex/pillow-micimageplugin-red.json` failing because
+`stdlib.pillow.MicImagePlugin` was absent, focused green
+`.codex/pillow-micimageplugin-green-focused-2-report.txt` plus
+`.codex/pillow-micimageplugin-green-focused-2.json` passing 1/1 after
+implementation, trusted serial module gate
+`.codex/pillow-micimageplugin-module-1-report.txt` plus
+`.codex/pillow-micimageplugin-module-1.json` passing
+`stdlib/tests/pillow.test.ahk` 133/133 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-micimageplugin-example-2-report.txt` plus
+`.codex/pillow-micimageplugin-example-2.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The MpegImagePlugin follow-up adds Pillow's MPEG stream identifier surface as
+`stdlib.pillow.MpegImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_mpegimageplugin_probe.py` and
+`.codex/pillow-mpegimageplugin-probe.output.json` records public `BitStream`,
+`MpegImageFile`, `_accept`, MPEG sequence-header magic, bit-level
+peek/read/skip/next behavior, `.mpg`/`.mpeg` extension registration,
+`video/mpeg` MIME registration, RGB mode and size metadata from 12-bit
+width/height fields, empty tile metadata, Pillow's non-decoding
+`load()` -> `OSError("cannot load this image")` behavior, and bad magic,
+short stream, missing-fp, arity, and unidentified-image fallback errors. The
+AHK surface mirrors the covered metadata-only parser and keeps actual MPEG
+video decoding explicitly out of scope until fresh probes and a backend
+evidence path cover it. Fresh AHK evidence includes
+`.codex/pillow-mpegimageplugin-red-report.txt` plus
+`.codex/pillow-mpegimageplugin-red.json` failing because
+`stdlib.pillow.MpegImagePlugin` was absent, focused green
+`.codex/pillow-mpegimageplugin-green-focused-3-report.txt` plus
+`.codex/pillow-mpegimageplugin-green-focused-3.json` passing 1/1 after
+implementation, trusted serial module gate
+`.codex/pillow-mpegimageplugin-module-report.txt` plus
+`.codex/pillow-mpegimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 134/134 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-mpegimageplugin-example-report.txt` plus
+`.codex/pillow-mpegimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The MpoImagePlugin follow-up adds Pillow's Multi-Picture Object surface as
+`stdlib.pillow.MpoImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_mpoimageplugin_probe.py` and
+`.codex/pillow-mpoimageplugin-probe.output.json` records `MpoImageFile`,
+`_save`, `_save_all`, MPF APP2 metadata parsing, no standalone `MPO` open/id
+registration, `.mpo` extension and `image/mpo` MIME registration, JPEG-factory
+`Image.open(..., ["JPEG"])` promotion to `MPO`, `formats=["MPO"]` `KeyError`,
+`adopt(...)` same-object promotion, `n_frames`/`is_animated`/`readonly`,
+`seek(...)`/`tell(...)`, malformed MPO errors, and single-frame JPEG-style plus
+multi-frame MPF file-like save behavior. The AHK surface mirrors the covered
+container behavior while keeping per-frame JPEG decoding delegated to the
+existing JPEG/WIC path. Fresh AHK evidence includes
+`.codex/pillow-mpoimageplugin-red-report.txt` plus
+`.codex/pillow-mpoimageplugin-red.json` failing because
+`stdlib.pillow.MpoImagePlugin` was absent, final validate evidence
+`.codex/pillow-mpoimageplugin-final-validate-report.txt` passing
+`stdlib/pillow.ahk`, `stdlib/tests/pillow.test.ahk`,
+`stdlib/examples/pillow.ahk`, and `.codex/pillow_example_capture.test.ahk`,
+focused final gate `.codex/pillow-mpoimageplugin-final-focused-report.txt`
+plus `.codex/pillow-mpoimageplugin-final-focused.json` passing 1/1,
+trusted serial module gate `.codex/pillow-mpoimageplugin-final-module-report.txt`
+plus `.codex/pillow-mpoimageplugin-final-module.json` passing
+`stdlib/tests/pillow.test.ahk` 135/135 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-mpoimageplugin-final-example-report.txt` plus
+`.codex/pillow-mpoimageplugin-final-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+The save_all sequence follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_mpo_saveall_sequence_probe.py` and
+`.codex/pillow_mpo_saveall_sequence_probe.output.json` confirming that an
+already-open animated MPO source saved again with `save_all=True` expands its
+own `ImageSequence` frames, returns `None`, writes an MPF-backed two-frame MPO,
+reopens as `MPO` with `n_frames == 2`, keeps seek-out-of-range as
+`EOFError("attempt to seek outside sequence")`, and leaves the source positioned
+on frame 1 after iteration. The AHK `_save_all` path now expands the source and
+each `append_images` sequence through the existing ImageSequence iterator before
+building the MPF byte stream. Fresh AHK evidence includes focused red
+`.codex/pillow-mpo-saveall-sequence-red-report.txt` plus
+`.codex/pillow-mpo-saveall-sequence-red.json` failing because the resaved stream
+lacked `MPF`, focused green
+`.codex/pillow-mpo-saveall-sequence-green-focused-report.txt` plus
+`.codex/pillow-mpo-saveall-sequence-green-focused.json` passing 1/1, MPO filter
+`.codex/pillow-mpo-saveall-sequence-mpo-filter-report.txt` plus
+`.codex/pillow-mpo-saveall-sequence-mpo-filter.json` passing 2/2, captured
+example gate `.codex/pillow-mpo-saveall-sequence-example-report.txt` plus
+`.codex/pillow-mpo-saveall-sequence-example.json` passing 2/2, and serial
+pillow module gate `.codex/pillow-mpo-saveall-sequence-module-filter-report.txt`
+plus `.codex/pillow-mpo-saveall-sequence-module-filter.json` passing
+`stdlib/tests/pillow.test.ahk` 164/164 at `TimeoutSeconds 90`.
+
+The seek type-rule follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_mpo_seek_type_probe.py` and
+`.codex/pillow_mpo_seek_type_probe.output.json` confirming
+`MpoImageFile.seek(...)` behavior for `"1"`, `1.2`, `None`, `[]`, `True`, and
+`False`: string/`None`/list values fail in Python's `<` comparison with
+type-specific `TypeError` messages, an in-range float fails during frame-offset
+indexing with `TypeError("list indices must be integers or slices, not float")`,
+and bool values are accepted as frame numbers. The AHK `seek(...)` path now
+preserves those covered public errors while keeping ordinary EOF bounds errors
+unchanged. Fresh AHK evidence includes focused red
+`.codex/pillow-mpo-seek-type-red-report.txt` plus
+`.codex/pillow-mpo-seek-type-red.json` failing because `"1"` was coerced and no
+exception was thrown, focused green
+`.codex/pillow-mpo-seek-type-green-focused-report.txt` plus
+`.codex/pillow-mpo-seek-type-green-focused.json` passing 1/1, MPO filter
+`.codex/pillow-mpo-seek-type-mpo-filter-report.txt` plus
+`.codex/pillow-mpo-seek-type-mpo-filter.json` passing 3/3, captured example
+gate `.codex/pillow-mpo-seek-type-example-report.txt` plus
+`.codex/pillow-mpo-seek-type-example.json` passing 2/2, and serial pillow
+module gate `.codex/pillow-mpo-seek-type-module-filter-report.txt` plus
+`.codex/pillow-mpo-seek-type-module-filter.json` passing
+`stdlib/tests/pillow.test.ahk` 165/165 at `TimeoutSeconds 90`.
+
+The `_getmp()` follow-up uses fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_mpo_getmp_probe.py` and
+`.codex/pillow_mpo_getmp_probe.output.json` confirming ordinary JPEG
+`JpegImageFile._getmp()` returns `None`, MPO images opened through
+`Image.open(..., formats=["JPEG"])` keep `info["mp"]`, `_getmp()` returns a
+new MP dict rather than `im.mpinfo`, malformed raw MP TIFF data without
+`0xB001` raises `SyntaxError("malformed MP Index (no number of images)")`, and
+bound extra arguments raise Pillow's `JpegImageFile._getmp()` arity
+`TypeError`. The AHK JPEG image class now exposes `_getmp()`, MPO adoption
+keeps an `info["mp"]` clone, and the covered malformed raw MP data path raises
+the probed `SyntaxError`. Fresh AHK evidence includes focused red
+`.codex/pillow-mpo-getmp-red-report.txt` plus
+`.codex/pillow-mpo-getmp-red.json` failing because `info["mp"]` was absent,
+focused green `.codex/pillow-mpo-getmp-green-focused-report.txt` plus
+`.codex/pillow-mpo-getmp-green-focused.json` passing 1/1, MPO filter
+`.codex/pillow-mpo-getmp-mpo-filter-report.txt` plus
+`.codex/pillow-mpo-getmp-mpo-filter.json` passing 4/4, captured example gate
+`.codex/pillow-mpo-getmp-example-report.txt` plus
+`.codex/pillow-mpo-getmp-example.json` passing 2/2, and serial pillow module
+gate `.codex/pillow-mpo-getmp-module-filter-report.txt` plus
+`.codex/pillow-mpo-getmp-module-filter.json` passing
+`stdlib/tests/pillow.test.ahk` 166/166 at `TimeoutSeconds 90`.
+
+The MP Entry Attribute follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_mpo_attribute_probe.py` and
+`.codex/pillow_mpo_attribute_probe.output.json` confirming Pillow's bitfield
+parsing for `DependentParentImageFlag`, `DependentChildImageFlag`,
+`RepresentativeImageFlag`, `Reserved`, `ImageDataFormat`, mapped MP types such
+as `Multi-Frame Image: (Multi-Angle)` and `Large Thumbnail (Full HD
+Equivalent)`, unknown MP types, and malformed-MPO fallback behavior where an
+unsupported non-JPEG image-data format emits `UserWarning("Image appears to be a
+malformed MPO file, it will be interpreted as a base JPEG file")` and returns a
+base JPEG object while retaining `info["mp"]`. The AHK MPO parser now mirrors
+the covered attribute map, validates unsupported image-data formats during MPO
+promotion, and lets the JPEG factory warn and return the base JPEG for that
+covered malformed-MPO path. Fresh AHK evidence includes focused red
+`.codex/pillow-mpo-attribute-red-report.txt` plus
+`.codex/pillow-mpo-attribute-red.json` failing because the first parsed flag was
+false, focused green `.codex/pillow-mpo-attribute-green-focused-report.txt`
+plus `.codex/pillow-mpo-attribute-green-focused.json` passing 1/1, MPO filter
+`.codex/pillow-mpo-attribute-mpo-filter-report.txt` plus
+`.codex/pillow-mpo-attribute-mpo-filter.json` passing 5/5, captured example
+gate `.codex/pillow-mpo-attribute-example-report.txt` plus
+`.codex/pillow-mpo-attribute-example.json` passing 2/2, and serial pillow
+module gate `.codex/pillow-mpo-attribute-module-filter-report.txt` plus
+`.codex/pillow-mpo-attribute-module-filter.json` passing
+`stdlib/tests/pillow.test.ahk` 167/167 at `TimeoutSeconds 90`.
+
+The Ultra HDR APP1 follow-up uses fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_mpo_ultrahdr_probe.py` and
+`.codex/pillow_mpo_ultrahdr_probe.output.json` confirming the JPEG factory's
+special MPO handling: ordinary MPO bytes opened through
+`Image.open(..., formats=["JPEG"])` promote to `MPO`; bytes with an APP1 payload
+containing ` hdrgm:Version="` stay as a base `JPEG` object with no `n_frames`
+while retaining `info["mp"]`; bytes with an APP1 payload lacking that HDRGM
+marker still promote to `MPO`; and direct `MpoImagePlugin.MpoImageFile(...)`
+still promotes the HDRGM-marked bytes to `MPO` with two frames. The AHK JPEG
+factory now detects the covered Ultra HDR APP1 marker before MPO adoption when
+called through the JPEG fallback path, while the direct MPO constructor keeps
+using the non-fallback path. Fresh AHK evidence includes focused red
+`.codex/pillow-mpo-ultrahdr-red-report.txt` plus
+`.codex/pillow-mpo-ultrahdr-red.json` failing because HDRGM-marked bytes still
+promoted to `MPO`, focused green
+`.codex/pillow-mpo-ultrahdr-green-focused-report.txt` plus
+`.codex/pillow-mpo-ultrahdr-green-focused.json` passing 1/1, MPO filter
+`.codex/pillow-mpo-ultrahdr-mpo-filter-report.txt` plus
+`.codex/pillow-mpo-ultrahdr-mpo-filter.json` passing 6/6, captured example gate
+`.codex/pillow-mpo-ultrahdr-example-report.txt` plus
+`.codex/pillow-mpo-ultrahdr-example.json` passing 2/2, and serial pillow module
+gate `.codex/pillow-mpo-ultrahdr-module-filter-report.txt` plus
+`.codex/pillow-mpo-ultrahdr-module-filter.json` passing
+`stdlib/tests/pillow.test.ahk` 168/168 at `TimeoutSeconds 90`.
+
+The MPO `load_seek(...)` follow-up uses fresh local Python 3.10.11 plus Pillow
+11.3.0 evidence from `.codex/pillow_mpo_load_seek_probe.py` and
+`.codex/pillow_mpo_load_seek_probe.output.json` confirming that direct
+`MpoImagePlugin.MpoImageFile(...)` and JPEG-factory MPO images expose the
+underlying file pointer through `fp.tell()`: `load_seek(pos)` returns `None` and
+moves that pointer to `pos`, frame `seek(1)` moves it to the second-frame byte
+offset, negative positions raise `ValueError("negative seek value -1")`, and
+missing `pos` raises Pillow's bound-method `TypeError`. The AHK JPEG/MPO path
+now keeps a file-like `fp` on opened JPEG images, carries it through MPO
+adoption, moves it on frame `seek(...)`, and delegates MPO `load_seek(...)` to
+that file-like object's `seek(...)`. Fresh AHK evidence includes focused red
+`.codex/pillow-mpo-load-seek-red-report.txt` plus
+`.codex/pillow-mpo-load-seek-red.json` failing because the MPO image lacked a
+public `fp`, focused green `.codex/pillow-mpo-load-seek-green-focused-report.txt`
+plus `.codex/pillow-mpo-load-seek-green-focused.json` passing 1/1, MPO filter
+`.codex/pillow-mpo-load-seek-mpo-filter-report.txt` plus
+`.codex/pillow-mpo-load-seek-mpo-filter.json` passing 7/7, captured example
+gate `.codex/pillow-mpo-load-seek-example-report.txt` plus
+`.codex/pillow-mpo-load-seek-example.json` passing 2/2, and serial pillow
+module gate `.codex/pillow-mpo-load-seek-module-filter-report.txt` plus
+`.codex/pillow-mpo-load-seek-module-filter.json` passing
+`stdlib/tests/pillow.test.ahk` 169/169 at `TimeoutSeconds 90`.
+
+The MspImagePlugin follow-up adds Pillow's Windows Paint MSP surface as
+`stdlib.pillow.MspImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_mspimageplugin_probe.py` and
+`.codex/pillow-mspimageplugin-probe.output.json` records `MspImageFile`,
+`MspDecoder`, `_accept`, `_save`, DanM raw and LinS RLE signatures, `.msp`
+extension/open/save/decoder registration, no MIME registration, mode `1`
+row-padded byte behavior, raw/RLE file-like open summaries, zero-length RLE row
+handling, MSP file-like save output, and bad magic/checksum/truncated row-map,
+truncated row, corrupted row, unsupported save mode, and arity error paths.
+The AHK surface mirrors those covered paths and updates the shared mode `1`
+raw byte bridge to use Pillow-style row padding for non-byte-aligned widths.
+Fresh AHK evidence includes `.codex/pillow-mspimageplugin-red-report.txt` plus
+`.codex/pillow-mspimageplugin-red.json` failing because
+`stdlib.pillow.MspImagePlugin` was absent, focused green
+`.codex/pillow-mspimageplugin-green-5-report.txt` plus
+`.codex/pillow-mspimageplugin-green-5.json` passing 1/1, trusted serial module
+gate `.codex/pillow-mspimageplugin-module-1-report.txt` plus
+`.codex/pillow-mspimageplugin-module-1.json` passing
+`stdlib/tests/pillow.test.ahk` 136/136 at `TimeoutSeconds 90`, final validate
+`.codex/pillow-mspimageplugin-validate-2-report.txt` passing the Pillow
+implementation/test/example/capture files, and captured example gate
+`.codex/pillow-mspimageplugin-example-1-report.txt` plus
+`.codex/pillow-mspimageplugin-example-1.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The PaletteFile follow-up adds Pillow's Teragon-style palette reader surface
+as `stdlib.pillow.PaletteFile`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_palettefile_probe.py` and
+`.codex/pillow_palettefile_probe.output.json` records `PaletteFile(fp)`,
+default 256-entry grayscale RGB palette construction, comment-line skipping,
+Python `bytes.split()` whitespace handling, two-field gray shorthand,
+four-field RGB replacement, ignored out-of-range palette indexes, `_binary.o8`
+wraparound for component values, `getpalette()` returning `(palette, "RGB")`,
+and long-line, empty-line, invalid-int, bad field-count, constructor arity, and
+`getpalette` arity error paths. The AHK implementation mirrors this parser as
+an independent module with no `Image.open` or save registration. Fresh AHK
+evidence includes `.codex/pillow-palettefile-red-report.txt` plus
+`.codex/pillow-palettefile-red.json` failing because
+`stdlib.pillow.PaletteFile` was absent, focused green
+`.codex/pillow-palettefile-green-focused-report.txt` plus
+`.codex/pillow-palettefile-green-focused.json` passing 1/1, captured example
+gate `.codex/pillow-palettefile-example-report.txt` plus
+`.codex/pillow-palettefile-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions, and
+trusted serial module gate `.codex/pillow-palettefile-module-filter-report.txt`
+plus `.codex/pillow-palettefile-module-filter.json` passing the Pillow-filtered
+`stdlib/tests` gate 159/159 at `TimeoutSeconds 90`.
+
+The PcfFontFile follow-up adds Pillow's portable compiled font reader surface
+as `stdlib.pillow.PcfFontFile`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_pcffontfile_probe.py` and
+`.codex/pillow_pcffontfile_probe.output.json` records the PCF constants,
+`BYTES_PER_ROW`, `sz(...)`, compressed metrics, property string/int parsing,
+bitmap row-padding and bit-order behavior for mode `1` glyphs, BDF encoding
+mapping, inherited `FontFile.compile()` metric packing, and bad magic, wrong
+bitmap count, constructor arity, and missing-null `sz` error paths. The AHK
+implementation mirrors the covered bitmap-font reader and keeps PCF independent
+from `Image.open` registration, matching Pillow's font-file module shape.
+Fresh AHK evidence includes `.codex/pillow-pcffontfile-red-report.txt` plus
+`.codex/pillow-pcffontfile-red.json` failing because
+`stdlib.pillow.PcfFontFile` was absent, focused green
+`.codex/pillow-pcffontfile-green-focused-report.txt` plus
+`.codex/pillow-pcffontfile-green-focused.json` passing 1/1, and trusted serial
+module gate `.codex/pillow-pcffontfile-module-filter-report.txt` plus
+`.codex/pillow-pcffontfile-module-filter.json` passing the Pillow-filtered
+`stdlib/tests/pillow.test.ahk` gate 159/159 at `TimeoutSeconds 90`. The promotion also updates
+`stdlib/examples/pillow.ahk` and the captured example regression to exercise PCF
+constants, helpers, glyph pixels, and compile output.
+
+The PSDraw follow-up adds Pillow's PostScript drawing writer surface as
+`stdlib.pillow.PSDraw`. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence
+from `.codex/pillow_psdraw_probe.py` and
+`.codex/pillow_psdraw_probe.output.json` records `PSDraw.PSDraw`
+construction, file-like output, `EDROFF_PS`, `VDI_PS`, and `ERROR_PS` byte
+constants, document lifecycle output, ISO font setup and reencode caching,
+line, rectangle, and text PostScript operators, EPS image delegation, and
+missing-coordinate, short-rectangle, non-string text, setfont-before-document,
+bad-image, and constructor/order error paths. The AHK surface exposes
+`stdlib.pillow.PSDraw`, the three PostScript constant byte strings, file-like
+writer behavior, and covered EPS image output through the existing EPS save
+bridge. Fresh AHK evidence includes `.codex/pillow-psdraw-red-report.txt` plus
+`.codex/pillow-psdraw-red.json` failing because `stdlib.pillow.PSDraw` was
+absent, focused green `.codex/pillow-psdraw-green-focused-report.txt` plus
+`.codex/pillow-psdraw-green-focused.json` passing 1/1, trusted serial module
+gate `.codex/pillow-psdraw-module-filter-report.txt` plus
+`.codex/pillow-psdraw-module-filter.json` passing the Pillow-filtered
+`stdlib/tests/pillow.test.ahk` gate 160/160 at `TimeoutSeconds 90`, and
+captured example gate `.codex/pillow-psdraw-example-report.txt` plus
+`.codex/pillow-psdraw-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output.
+
+The TarIO follow-up adds Pillow's tar-subfile stream reader surface as
+`stdlib.pillow.TarIO`. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence
+from `.codex/pillow_tario_probe.py` and
+`.codex/pillow_tario_probe.output.json` records public `TarIO.TarIO`
+construction from a tar path and member name, 512-byte header scanning, member
+names from the first 100 header bytes, octal file sizes from the tar size
+field, data offsets, bounded reads through `ContainerIO`, `read`, `readline`,
+`seek`, `tell`, `readable`, `writable`, `seekable`, `isatty`, `close`, empty
+members, missing members, empty headers, truncated archives, missing tar files,
+and constructor arity errors. The AHK surface exposes `stdlib.pillow.TarIO`
+with a prefixed `AhkStdlibPillowTarIO` class, reuses the covered
+`ContainerIO` region reader, and keeps the member stream independent from image
+format registration. Fresh AHK evidence includes
+`.codex/pillow-tario-red-report.txt` plus `.codex/pillow-tario-red.json`
+failing because `stdlib.pillow.TarIO` was absent, focused green
+`.codex/pillow-tario-green-focused-report.txt` plus
+`.codex/pillow-tario-green-focused.json` passing 1/1, captured example gate
+`.codex/pillow-tario-example-report.txt` plus
+`.codex/pillow-tario-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions, and
+trusted serial module gate `.codex/pillow-tario-module-filter-report.txt` plus
+`.codex/pillow-tario-module-filter.json` passing
+`stdlib/tests/pillow.test.ahk` 161/161 at `TimeoutSeconds 90`.
+
+The PdfParser follow-up adds Pillow's low-level PDF helper surface as
+`stdlib.pillow.PdfParser`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_pdfparser_probe.py` and
+`.codex/pillow_pdfparser_probe.output.json` records public names,
+`encode_text`, `decode_text`, `PdfFormatError`, `check_format_condition`,
+`IndirectReference`, `IndirectObjectDef`, `PdfName`, `PdfArray`, `PdfDict`,
+`PdfBinary`, `PdfStream`, `pdf_repr`, `XrefTable`, and minimal `PdfParser`
+writer behavior. The AHK surface uses prefixed internal classes, exposes the
+module at `stdlib.pillow.PdfParser`, and treats `stdlib.True` /
+`stdlib.False` as Python bool values so ordinary AHK `1` and `0` remain PDF
+numbers. Fresh AHK evidence includes `.codex/pillow-pdfparser-red-report.txt`
+plus `.codex/pillow-pdfparser-red.json` failing because
+`stdlib.pillow.PdfParser` was absent, focused green
+`.codex/pillow-pdfparser-green-focused-report.txt` plus
+`.codex/pillow-pdfparser-green-focused.json` passing 1/1, captured example
+gate `.codex/pillow-pdfparser-example-report.txt` plus
+`.codex/pillow-pdfparser-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions, and
+trusted serial module gate `.codex/pillow-pdfparser-module-filter-report.txt`
+plus `.codex/pillow-pdfparser-module-filter.json` passing
+`stdlib/tests/pillow.test.ahk` 162/162 at `TimeoutSeconds 90`.
+
+The report follow-up adds Pillow's `PIL.report` public entry point as
+`stdlib.pillow.report`. Fresh local Python 3.10.11 plus Pillow 11.3.0 evidence
+from `.codex/pillow_report_probe.py` and
+`.codex/pillow_report_probe.output.json` records `public_names == ["pilinfo"]`,
+`report.pilinfo is features.pilinfo`, import-time `features.pilinfo(false)`
+stdout behavior in Python, support-summary output containing
+`Pillow 11.3.0` and `--- TKINTER support ok`, and optional supported-format
+output containing `JPEG image/jpeg`. The AHK surface exposes
+`stdlib.pillow.report.pilinfo(...)` as a delegated alias of
+`stdlib.pillow.features.pilinfo(...)`, while avoiding automatic stdout on
+include/access so examples and tests stay quiet. Fresh AHK evidence includes
+`.codex/pillow-report-red-report.txt` plus `.codex/pillow-report-red.json`
+failing because `stdlib.pillow.report` was absent, focused green
+`.codex/pillow-report-green-focused-report.txt` plus
+`.codex/pillow-report-green-focused.json` passing 1/1, captured example gate
+`.codex/pillow-report-example-report.txt` plus
+`.codex/pillow-report-example.json` passing `.codex/pillow_example_capture.test.ahk`
+2/2 without warning/error output and with System.Text.RegularExpressions /
+MatchEvaluator pollution assertions, and trusted serial module gate
+`.codex/pillow-report-module-filter-report.txt` plus
+`.codex/pillow-report-module-filter.json` passing `stdlib/tests/pillow.test.ahk`
+163/163 at `TimeoutSeconds 90`.
+
+The PalmImagePlugin follow-up adds Pillow's output-only Palm pixmap save
+surface as `stdlib.pillow.PalmImagePlugin`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_palmimageplugin_probe.py` and
+`.codex/pillow-palmimageplugin-probe.output.json` records
+`_Palm8BitColormapValues`, `build_prototype_image`,
+`Palm8BitColormapImage`, `_FLAGS`, `_COMPRESSION_TYPES`, `_save`, uppercase
+`PALM` save registration, `.palm` extension registration, `image/palm` MIME
+registration, no open/id registration, mode `1` inverted row-padded Palm
+file-like saves, `P` mode custom-colormap file-like saves, empty-palette `P`
+save behavior, and current Pillow 11.3.0 `L`/invalid-mode/arity error paths.
+The AHK implementation mirrors the covered output-only behavior and keeps the
+Palm colormap generated from the same 256-entry ordering as Pillow. Fresh AHK
+evidence includes `.codex/pillow-palmimageplugin-red-report.txt` plus
+`.codex/pillow-palmimageplugin-red.json` failing because
+`stdlib.pillow.PalmImagePlugin` was absent, focused green
+`.codex/pillow-palmimageplugin-green-1-report.txt` plus
+`.codex/pillow-palmimageplugin-green-1.json` passing 1/1, trusted serial module
+gate `.codex/pillow-palmimageplugin-module-1-report.txt` plus
+`.codex/pillow-palmimageplugin-module-1.json` passing
+`stdlib/tests/pillow.test.ahk` 137/137 at `TimeoutSeconds 90`, final validate
+`.codex/pillow-palmimageplugin-validate-2-report.txt` passing the Pillow
+implementation/test/example/capture files, and captured example gate
+`.codex/pillow-palmimageplugin-example-1-report.txt` plus
+`.codex/pillow-palmimageplugin-example-1.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The PcdImagePlugin follow-up adds Pillow's Kodak PhotoCD metadata loader
+surface as `stdlib.pillow.PcdImagePlugin`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_pcdimageplugin_probe.py` and
+`.codex/pillow-pcdimageplugin-probe.output.json` records `PcdImageFile`,
+registered `.pcd` extension/open behavior with no accept function, `PCD` id
+registration, RGB 768x512 metadata, `pcd` tile metadata at offset `96 * 2048`,
+orientation post-rotate metadata for values 1 and 3, `load_end()` behavior for
+the covered metadata-only path, no-pixel-data `load()` errors, and bad
+magic/short file/arity/formats error paths. The AHK implementation mirrors the
+covered metadata-only behavior and intentionally leaves real PhotoCD pixel
+decoding to a future backend slice. Fresh AHK evidence includes
+`.codex/pillow-pcdimageplugin-red-report.txt` plus
+`.codex/pillow-pcdimageplugin-red.json` failing because
+`stdlib.pillow.PcdImagePlugin` was absent, focused green
+`.codex/pillow-pcdimageplugin-green-2-report.txt` plus
+`.codex/pillow-pcdimageplugin-green-2.json` passing 1/1, trusted serial module
+gate `.codex/pillow-pcdimageplugin-module-1-report.txt` plus
+`.codex/pillow-pcdimageplugin-module-1.json` passing
+`stdlib/tests/pillow.test.ahk` 138/138 at `TimeoutSeconds 90`, final validate
+`.codex/pillow-pcdimageplugin-validate-1-report.txt` passing the Pillow
+implementation/test/example/capture files, and captured example gate
+`.codex/pillow-pcdimageplugin-example-1-report.txt` plus
+`.codex/pillow-pcdimageplugin-example-1.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The PcxImagePlugin follow-up adds Pillow's Paintbrush PCX plugin surface as
+`stdlib.pillow.PcxImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_pcximageplugin_probe.py` and
+`.codex/pillow-pcximageplugin-probe.output.json` records `PcxImageFile`,
+`SAVE`, `_accept(...)`, imported binary helpers `i16`/`o8`/`o16`, `_save`,
+registered `.pcx` extension/open/save/MIME behavior, `PCX` id registration,
+1/L/P/RGB RLE file-like opens and saves, `dpi` metadata, `pcx` tile metadata,
+P-mode palette handling, L-mode grayscale palette output, and bad
+prefix/short accept/bad size/unknown mode/unsupported save mode/arity error
+paths. The AHK implementation mirrors the covered file-like paths and keeps
+native acceleration/deeper legacy PCX variants for later focused probes. Fresh
+AHK evidence includes `.codex/pillow-pcximageplugin-red-report.txt` plus
+`.codex/pillow-pcximageplugin-red.json` failing because
+`stdlib.pillow.PcxImagePlugin` was absent, focused green
+`.codex/pillow-pcximageplugin-green-1-report.txt` plus
+`.codex/pillow-pcximageplugin-green-1.json` passing 1/1, trusted serial module
+gate `.codex/pillow-pcximageplugin-module-1-report.txt` plus
+`.codex/pillow-pcximageplugin-module-1.json` passing
+`stdlib/tests/pillow.test.ahk` 139/139 at `TimeoutSeconds 90`, final validate
+`.codex/pillow-pcximageplugin-validate-1-report.txt` passing the Pillow
+implementation/test/example/capture files, and captured example gate
+`.codex/pillow-pcximageplugin-example-1-report.txt` plus
+`.codex/pillow-pcximageplugin-example-1.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The PdfImagePlugin follow-up adds Pillow's output-only PDF plugin surface as
+`stdlib.pillow.PdfImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_pdfimageplugin_probe.py` and
+`.codex/pillow-pdfimageplugin-probe.output.json` records save/save_all
+registration, `.pdf` extension and `application/pdf` MIME behavior, no
+registered PDF open/id entry, RGB/L DCT PDF image streams, P-mode indexed
+ASCIIHex streams, mode `1` CCITT metadata when local libtiff is available,
+title/author metadata, dpi/resolution MediaBox calculation, multi-page
+`append_images`, and unsupported-mode plus arity error paths. The AHK
+implementation mirrors the covered file-like and path save behavior with a
+small PDF writer that emits catalog/pages/page/content/image objects, xref,
+trailer, and Info metadata while leaving deeper compression/backend
+optimization for later WIC/GDI+/Direct2D work. Fresh AHK evidence includes
+`.codex/pillow-pdfimageplugin-red-report.txt` plus
+`.codex/pillow-pdfimageplugin-red.json` failing because
+`stdlib.pillow.PdfImagePlugin` was absent, focused green
+`.codex/pillow-pdfimageplugin-green-2-report.txt` plus
+`.codex/pillow-pdfimageplugin-green-2.json` passing 1/1, trusted serial module
+gate `.codex/pillow-pdfimageplugin-module-1-report.txt` plus
+`.codex/pillow-pdfimageplugin-module-1.json` passing
+`stdlib/tests/pillow.test.ahk` 140/140 at `TimeoutSeconds 90`, final validate
+`.codex/pillow-pdfimageplugin-validate-1-report.txt` passing the Pillow
+implementation/test/example/capture files, and captured example gate
+`.codex/pillow-pdfimageplugin-example-2-report.txt` plus
+`.codex/pillow-pdfimageplugin-example-2.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The PixarImagePlugin follow-up adds Pillow's open-only PIXAR raster plugin
+surface as `stdlib.pillow.PixarImagePlugin`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_pixarimageplugin_probe.py` and
+`.codex/pillow-pixarimageplugin-probe.output.json` records `_accept(...)`,
+the imported little-endian `i16(...)` helper, `PixarImageFile` format metadata,
+registered `.pxr` extension/open behavior, `PIXAR` id registration, absence of
+save/save_all/MIME registration, direct constructor and
+`Image.open(..., ["PIXAR"])` RGB raw file-like loads from offset 1024, tile
+metadata, and bad magic/unknown channel-depth/arity error paths. The AHK
+implementation mirrors the covered RGB dumped-raster path and keeps other
+unimplemented historical PIXAR modes explicit through the same
+`not identified by this driver` error. While validating the full Pillow module,
+current clipboard evidence in `.codex/pillow-imagegrab-clipboard-formats.json`
+showed a 10,300,360 byte `CF_DIB`; `ImageGrab.grabclipboard()` now avoids
+turning oversized DIB clipboard payloads into AHK byte arrays during smoke
+tests while preserving smaller DIB decode behavior. Fresh AHK evidence includes
+`.codex/pillow-pixarimageplugin-red-report.txt` plus
+`.codex/pillow-pixarimageplugin-red.json` failing because
+`stdlib.pillow.PixarImagePlugin` was absent, focused green
+`.codex/pillow-pixarimageplugin-green-1-report.txt` plus
+`.codex/pillow-pixarimageplugin-green-1.json` passing 1/1, ImageGrab guard
+green `.codex/pillow-imagegrab-large-dib-guard-green-report.txt` plus
+`.codex/pillow-imagegrab-large-dib-guard-green.json` passing 1/1, trusted
+serial module gate `.codex/pillow-pixarimageplugin-module-4-report.txt` plus
+`.codex/pillow-pixarimageplugin-module-4.json` passing
+`stdlib/tests/pillow.test.ahk` 141/141 at `TimeoutSeconds 90`, final validate
+`.codex/pillow-pixarimageplugin-validate-1-report.txt` passing the Pillow
+implementation/test/example/capture files, and captured example gate
+`.codex/pillow-pixarimageplugin-example-1-report.txt` plus
+`.codex/pillow-pixarimageplugin-example-1.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The PngImagePlugin follow-up adds Pillow's PNG plugin surface as
+`stdlib.pillow.PngImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_pngimageplugin_probe.py` and
+`.codex/pillow_pngimageplugin_probe.output.json` records `_MAGIC`, `_accept`,
+`i16`/`i32`/`o8`/`o16`/`o32`, `_crc32`, `is_cid`, `PngInfo.add`,
+`add_text`, `add_itxt`, `iTXt`, `putchunk`, `getchunks`, registry entries,
+direct and `Image.open(..., ["PNG"])` metadata reads, and file-like PNG
+metadata saves. The AHK implementation mirrors the covered RGB/RGBA/L
+metadata path with a lightweight PNG writer for chunk ordering and stored zlib
+blocks, while keeping the existing native save path for plain image output.
+Fresh AHK evidence includes `.codex/pillow-pngimageplugin-red-report.txt` plus
+`.codex/pillow-pngimageplugin-red.json` failing because
+`stdlib.pillow.PngImagePlugin` was absent, focused green
+`.codex/pillow-pngimageplugin-green-5-report.txt` plus
+`.codex/pillow-pngimageplugin-green-5.json` passing 1/1, trusted serial module
+gate `.codex/pillow-pngimageplugin-module-2-report.txt` plus
+`.codex/pillow-pngimageplugin-module-2.json` passing
+`stdlib/tests/pillow.test.ahk` 142/142 at `TimeoutSeconds 90`, captured
+example gate `.codex/pillow-pngimageplugin-example-2-report.txt` plus
+`.codex/pillow-pngimageplugin-example-2.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions, and
+final validate `.codex/pillow-pngimageplugin-validate-1-report.txt` covering
+the Pillow implementation/test/example/capture files.
+
+The CurImagePlugin follow-up adds Pillow's Windows cursor plugin surface as
+`stdlib.pillow.CurImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_curimageplugin_probe.py` and
+`.codex/pillow-curimageplugin-probe.output.json` records `_accept(...)` for CUR
+headers, rejection of ICO/short prefixes, `CurImageFile` format metadata,
+registered `.cur` extension/open behavior, direct constructor type-arity
+errors, bad-header `SyntaxError`, no-entry `SyntaxError`, DIB-backed file-like
+CUR opening, and multi-entry cursor selection choosing the largest image. The
+AHK surface exposes `_accept(...)`, `CurImageFile`, registered `Image.open(...,
+["CUR"])`, and the covered DIB-backed RGB cursor decode path. PNG-in-CUR,
+alpha/AND mask recovery, full ICO/CUR matrix coverage, and benchmark-backed
+native acceleration remain deferred. Fresh AHK evidence includes
+`.codex/pillow-curimageplugin-red-report.txt` failing because
+`stdlib.pillow.CurImagePlugin` was absent, focused green
+`.codex/pillow-curimageplugin-green-focused-report.txt` passing after
+implementation, trusted serial module gate
+`.codex/pillow-curimageplugin-module-report.txt` plus
+`.codex/pillow-curimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 103/103 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-curimageplugin-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The DcxImagePlugin follow-up adds Pillow's Intel DCX container plugin surface as
+`stdlib.pillow.DcxImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_dcximageplugin_probe.py` and
+`.codex/pillow-dcximageplugin-probe.output.json` records `MAGIC=987654321`,
+`_accept(...)` for DCX headers, rejection of PCX/short prefixes,
+`DcxImageFile` format metadata, `_close_exclusive_fp_after_loading=False`,
+registered `.dcx` extension/open behavior, direct constructor type-arity
+errors, bad-header `SyntaxError`, seek-out-of-range `EOFError`, single-frame
+open metadata, and same-size multi-frame RGB PCX payload seek/tell/pixel
+behavior. The AHK surface exposes `MAGIC`, `_accept(...)`, `DcxImageFile`,
+registered `Image.open(..., ["DCX"])`, `n_frames`, `is_animated`, and
+`seek(...)`/`tell(...)` for the covered DCX container path with RGB PCX RLE
+frames. Standalone `PcxImagePlugin`, 1-bit/L/P PCX modes, mixed-size DCX frame
+reload quirks, palette metadata, compressed/legacy PCX variants, and native
+acceleration remain deferred until focused probes cover them. Fresh AHK
+evidence includes `.codex/pillow-dcximageplugin-red-report.txt` failing because
+`stdlib.pillow.DcxImagePlugin` was absent, focused green
+`.codex/pillow-dcximageplugin-green-focused-report.txt` passing after
+implementation, trusted serial module gate
+`.codex/pillow-dcximageplugin-module-report.txt` plus
+`.codex/pillow-dcximageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 104/104 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-dcximageplugin-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The DdsImagePlugin follow-up adds Pillow's DirectDraw Surface plugin surface as
+`stdlib.pillow.DdsImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_ddsimageplugin_probe.py` and
+`.codex/pillow-ddsimageplugin-probe.output.json` records `DDS_MAGIC`,
+`DDSD`/`DXGI_FORMAT`/`D3DFMT` public enum values/string/repr behavior,
+`_accept(...)` for `DDS ` prefixes, `DdsImageFile` format metadata, registered
+`.dds` extension/open/save/`dds_rgb` decoder behavior, RGB/RGBA/L/LA raw DDS
+file-like save/open round-trips, and direct bad-header/type-arity/save-option
+errors. The AHK surface exposes the constants, enum-like member objects, an AHK
+`DDSD.combine(...)` helper for Python IntFlag-style combinations that cannot be
+spelled with object `|` in AutoHotkey v2 syntax, `DdsImageFile`, registered
+`Image.open(..., ["DDS"])`, and `Image.save(..., "DDS")` for the covered raw
+DDS paths. Compressed BCn/DX10/BC7 decoding and encoding, palette-indexed DDS,
+volume/cubemap/mipmap metadata, wider DDS matrix coverage, and
+benchmark-backed WIC/Direct2D/GDI+ acceleration remain deferred until focused
+probes cover them. Fresh AHK evidence includes
+`.codex/pillow-ddsimageplugin-red-report.txt` failing because
+`stdlib.pillow.DdsImagePlugin` was absent, focused green
+`.codex/pillow-ddsimageplugin-green-focused-report.txt` passing after
+implementation, trusted serial module gate
+`.codex/pillow-ddsimageplugin-module-report.txt` plus
+`.codex/pillow-ddsimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 105/105 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-ddsimageplugin-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The EpsImagePlugin follow-up adds Pillow's Encapsulated PostScript plugin
+surface as `stdlib.pillow.EpsImagePlugin`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_epsimageplugin_probe.py` and
+`.codex/pillow-epsimageplugin-probe.output.json` records `_accept(...)` for
+`%!PS` and Mac binary EPS prefixes, `EpsImageFile` format metadata and
+`mode_map`, registry effects for `.eps`/`.ps`/MIME/open/save, local
+Ghostscript absence (`has_ghostscript() == False`), EPS header parsing for
+direct, `(atend)` trailer, `ImageData`, and Mac-preview offset files, RGB/L
+file-like EPS saves with Pillow's PostScript header and hex pixel payloads, and
+direct bad-header/type-arity/save-mode/Ghostscript-load errors. The AHK surface
+exposes `has_ghostscript`, `gs_binary`, `gs_windows_binary`, `_accept(...)`,
+`EpsImageFile`, metadata-only `Image.open(..., ["EPS"])`/direct constructor
+parsing, and `Image.save(..., "EPS")` for the covered RGB/L file-like save
+paths. Actual Ghostscript raster rendering, installed-Ghostscript command
+integration, CMYK save/load, PostScript transparency rendering, and broader EPS
+variants remain deferred until focused probes run on an environment with the
+required backend. Fresh AHK evidence includes
+`.codex/pillow-epsimageplugin-red-report.txt` failing because
+`stdlib.pillow.EpsImagePlugin` was absent, focused green
+`.codex/pillow-epsimageplugin-green-focused-report.txt` passing after
+implementation, trusted serial module gate
+`.codex/pillow-epsimageplugin-module-report.txt` plus
+`.codex/pillow-epsimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 106/106 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-epsimageplugin-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The FitsImagePlugin follow-up adds Pillow's FITS image plugin surface as
+`stdlib.pillow.FitsImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_fitsimageplugin_probe.py` and
+`.codex/pillow-fitsimageplugin-probe.output.json` records `_accept(...)` for
+`SIMPLE` prefixes, `FitsImageFile` format metadata, registered `.fit`/`.fits`
+extension/open behavior, registered `fits_gzip` decoder metadata, uncompressed
+FITS header parsing for `BITPIX` 8/16/32/-32/-64, `NAXIS=1` size behavior,
+compressed `BINTABLE`/`ZIMAGE`/`GZIP_1` tile metadata, and bad-header,
+truncated, no-image-data, and constructor type-arity errors. The AHK surface
+exposes `_accept(...)`, `FitsImageFile`, `Image.open(..., ["FITS"])`, raw
+mode/size/tile metadata for the covered header cases, and FITS registry
+entries. Actual raw FITS pixel decoding, `fits_gzip` decompression into pixel
+rows, broader FITS extensions, WCS/header metadata APIs beyond Pillow's parsed
+tile surface, and benchmark-backed native acceleration remain deferred until
+focused probes cover them. Fresh AHK evidence includes
+`.codex/pillow-fitsimageplugin-red-report.txt` failing because
+`stdlib.pillow.FitsImagePlugin` was absent, focused green
+`.codex/pillow-fitsimageplugin-green-focused-report.txt` passing after
+implementation, trusted serial module gate
+`.codex/pillow-fitsimageplugin-module-report.txt` plus
+`.codex/pillow-fitsimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 107/107 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-fitsimageplugin-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The FliImagePlugin follow-up adds Pillow's Autodesk FLI/FLC animation plugin
+surface as `stdlib.pillow.FliImagePlugin`. Fresh local Python 3.10.11 plus
+Pillow 11.3.0 evidence from `.codex/pillow_fliimageplugin_probe.py` and
+`.codex/pillow-fliimageplugin-probe.output.json` records `_accept(...)` for
+FLI/FLC magic values and allowed flags, `FliImageFile` format metadata,
+`_close_exclusive_fp_after_loading=False`, registered `.fli`/`.flc` extension
+and open behavior, FLI-vs-FLC duration handling, default grayscale palette,
+palette chunks 4 and 11, prefix-chunk handling, single and animated frame
+metadata, `seek(0)`/`tell()` behavior, frame tile metadata, and bad-header,
+missing-frame, type-arity, and seek-out-of-range errors. The AHK surface
+exposes `_accept(...)`, `FliImageFile`, `Image.open(..., ["FLI"])`,
+`n_frames`, `is_animated`, `info["duration"]`, `palette`, `decodermaxblock`,
+`tile`, `seek(...)`, and `tell()` for the covered metadata path. Actual FLI
+pixel decoding, frame delta application, load-time decoder integration, wider
+palette/subchunk variants, multi-frame rendered pixel verification, and
+benchmark-backed native acceleration remain deferred until focused probes cover
+them. Fresh AHK evidence includes `.codex/pillow-fliimageplugin-red-report.txt`
+failing because `stdlib.pillow.FliImagePlugin` was absent, focused green
+`.codex/pillow-fliimageplugin-green-focused-report.txt` passing after
+implementation, trusted serial module gate
+`.codex/pillow-fliimageplugin-module-report.txt` plus
+`.codex/pillow-fliimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 108/108 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-fliimageplugin-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The FpxImagePlugin follow-up adds Pillow's FlashPix metadata plugin surface as
+`stdlib.pillow.FpxImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_fpximageplugin_probe.py` and
+`.codex/pillow-fpximageplugin-probe.output.json` records OLE magic
+`_accept(...)`, `FpxImageFile` format metadata, registered `.fpx` extension and
+open behavior, Pillow's public `MODES` mapping, fake-OLE `OleFileIO` metadata
+parsing for RGB raw tiles, L raw tiles, RGBA fill tiles, JPEG/YCC tile-prefix
+metadata, `maxid`, `stream`, `rawmode`, `tile`, `tile_prefix`, `jpeg_keys`,
+and invalid OLE, bad root CLSID, invalid band count, unknown mode, subimage
+mismatch, unknown compression, and constructor type-arity errors. The AHK
+surface exposes `_accept(...)`, replaceable `olefile`, `MODES`,
+`FpxImageFile`, `Image.open(..., ["FPX"])`, and the covered metadata-only
+tile surface. Real compound-file OLE parsing, rendered FPX pixel decoding, JPEG
+table integration at load time, broader FlashPix property sets, and
+benchmark-backed native acceleration remain deferred until focused probes cover
+them. Fresh AHK evidence includes `.codex/pillow-fpximageplugin-red-report.txt`
+failing because `stdlib.pillow.FpxImagePlugin` was absent, focused green
+`.codex/pillow-fpximageplugin-green-focused-report.txt` plus
+`.codex/pillow-fpximageplugin-green-focused.json` passing after implementation,
+trusted serial module gate `.codex/pillow-fpximageplugin-module-report.txt`
+plus `.codex/pillow-fpximageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 109/109 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-fpximageplugin-example-report.txt` plus
+`.codex/pillow-fpximageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The FtexImagePlugin follow-up adds Pillow's FTEX texture metadata and
+uncompressed-image path as `stdlib.pillow.FtexImagePlugin`. Fresh local Python
+3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_fteximageplugin_probe.py` and
+`.codex/pillow-fteximageplugin-probe.output.json` records `_accept(...)` for
+`FTEX` prefixes, the public `Format.DXT1` and `Format.UNCOMPRESSED` enum
+surface, `FtexImageFile` format metadata, registered `.ftc`/`.ftu` extension
+and open behavior, uncompressed RGB file-like direct and
+`Image.open(..., ["FTEX"])` pixel loading, DXT1 `bcn` tile metadata, bad magic,
+truncated header, unknown texture format, multi-format assertion, and
+constructor type-arity errors. The AHK surface exposes `_accept(...)`,
+`Format`, `FtexImageFile`, `Image.open(..., ["FTEX"])`, uncompressed RGB raw
+tile metadata with lazy pixel loading, DXT1 `bcn` tile metadata, and FTEX
+registry entries. Multi-format files, additional mipmap levels, rendered DXT1
+BCN decoding, broader FTEX variants, and benchmark-backed native acceleration
+remain deferred until focused probes cover them. Fresh AHK evidence includes
+`.codex/pillow-fteximageplugin-red-report.txt` failing because
+`stdlib.pillow.FtexImagePlugin` was absent, focused green
+`.codex/pillow-fteximageplugin-green-focused-report.txt` plus
+`.codex/pillow-fteximageplugin-green-focused.json` passing after
+implementation, trusted serial module gate
+`.codex/pillow-fteximageplugin-module-report.txt` plus
+`.codex/pillow-fteximageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 110/110 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-fteximageplugin-example-report.txt` plus
+`.codex/pillow-fteximageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The GbrImagePlugin follow-up adds Pillow's GIMP brush loader surface as
+`stdlib.pillow.GbrImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_gbrimageplugin_probe.py` and
+`.codex/pillow-gbrimageplugin-probe.output.json` records `_accept(...)` for
+version 1 and version 2 `.gbr` headers, `GbrImageFile` format metadata,
+registered `.gbr` extension/open behavior, version 2 grayscale brush
+`spacing` and byte-comment metadata, version 1 RGBA byte-comment metadata, L
+and RGBA pixel loading, `_data_size`, and bad header, unsupported version,
+invalid size, unsupported color depth, bad magic, and constructor type-arity
+errors. The AHK surface exposes `_accept(...)`, `GbrImageFile`,
+`Image.open(..., ["GBR"])`, v1/v2 header parsing, L/RGBA in-memory pixels,
+`info["comment"]`, v2 `info["spacing"]`, `_data_size`, and registry entries.
+Unsupported Pillow-adjacent version 3 float brushes, decompression-bomb edge
+coverage, and benchmark-backed native acceleration remain deferred until
+focused probes cover them. Fresh AHK evidence includes
+`.codex/pillow-gbrimageplugin-red-report.txt` failing because
+`stdlib.pillow.GbrImagePlugin` was absent, focused green
+`.codex/pillow-gbrimageplugin-green-focused-report.txt` plus
+`.codex/pillow-gbrimageplugin-green-focused.json` passing after
+implementation, trusted serial module gate
+`.codex/pillow-gbrimageplugin-module-report.txt` plus
+`.codex/pillow-gbrimageplugin-module.json` passing
+`stdlib/tests/pillow.test.ahk` 111/111 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-gbrimageplugin-example-report.txt` plus
+`.codex/pillow-gbrimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The GdImageFile follow-up adds Pillow's direct GD loader surface as
+`stdlib.pillow.GdImageFile`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_gdimagefile_probe.py` and
+`.codex/pillow-gdimagefile-probe.output.json` records the public
+`GdImageFile` factory metadata, module-level `open(...)`, big-endian `i16(...)`
+and `i32(...)` helpers, file-like and path opens, P-mode palette-index pixel
+loading, `RGBX` raw palette metadata, `info["transparency"]` for indices below
+256, true-color header offset handling, and the important Python behavior that
+GD is not registered with `Image.open(...)` or `.gd` extensions. The AHK
+surface exposes `GdImageFile.GdImageFile(...)`, `GdImageFile.open(...)`, lazy
+raw-tile pixel loading, path and file-like inputs, and `Image.open(...,
+["GD"])` raising `KeyError('GD')` instead of silently using the generic WIC
+path. This slice also hardens the Pillow internal binary file reader against
+BOM-like image magic such as GD's `FF FE` header by forcing raw reads from byte
+zero. Compressed GD2 variants, GD save support, decompression-bomb edge
+coverage, and benchmark-backed native acceleration remain deferred until
+focused probes cover them. Fresh AHK evidence includes
+`.codex/pillow-gdimagefile-red-report.txt` failing because
+`stdlib.pillow.GdImageFile` was absent, focused green
+`.codex/pillow-gdimagefile-green-focused-report.txt` plus
+`.codex/pillow-gdimagefile-green-focused.json` passing after implementation,
+trusted serial module gate `.codex/pillow-gdimagefile-module-report.txt` plus
+`.codex/pillow-gdimagefile-module.json` passing
+`stdlib/tests/pillow.test.ahk` 112/112 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-gdimagefile-example-report.txt` plus
+`.codex/pillow-gdimagefile-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The BlpImagePlugin follow-up adds the next Pillow plugin surface as
+`stdlib.pillow.BlpImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_blpimageplugin_probe.py` and
+`.codex/pillow-blpimageplugin-probe.output.json` records `Format`,
+`Encoding`, and `AlphaEncoding` enum values/string/repr names, `_accept(...)`
+for BLP1/BLP2 prefixes, `BLPFormatError` deriving from
+`NotImplementedError`, `BlpImageFile` format metadata, `unpack_565(...)`,
+`decode_dxt1(...)`, `decode_dxt3(...)`, and `decode_dxt5(...)` helper output
+rows, registry effects, and Pillow-saved P-mode BLP2 RGBA, BLP1 RGBA, and BLP2
+RGB file-like round-trips. The AHK surface exposes enum-like member objects,
+the public BLP error class, the BLP image-file factory metadata, accept/565/DXT
+helpers, and registered `Image.open(..., ["BLP"])` plus `Image.save(...,
+"BLP")` for the covered uncompressed palette BLP paths. DXT-compressed file
+decoding, JPEG-compressed BLP1, mipmap pyramids beyond the first image, and
+benchmark-backed native acceleration remain deferred. Fresh AHK evidence
+includes `.codex/pillow-blpimageplugin-red-report.txt` failing because
+`stdlib.pillow.BlpImagePlugin` was absent, focused green
+`.codex/pillow-blpimageplugin-green-focused-report.txt` passing after
+implementation, trusted serial module gate
+`.codex/pillow-blpimageplugin-module-report.txt` plus
+`.codex/pillow-blpimageplugin-module.json` passing `stdlib/tests/pillow.test.ahk`
+101/101 at `TimeoutSeconds 90`, and captured example gate
+`.codex/pillow-blpimageplugin-example-report.txt` passing
+`.codex/pillow_example_capture.test.ahk` 1/1 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The PsdImagePlugin follow-up adds Pillow's Photoshop PSD reader surface as
+`stdlib.pillow.PsdImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_psdimageplugin_probe.py` and
+`.codex/pillow_psdimageplugin_probe.output.json` records `MODES`, `i8`/`i16`/
+`i32`/signed helper behavior, `_accept(...)`, `.psd` extension and MIME
+registration, direct and `Image.open(..., ["PSD"])` L/RGB/RGBA/P/CMYK raw
+file-like opens, P-mode palette conversion, CMYK inverted raw tile metadata,
+ICC resource extraction, lazy layer metadata, `n_frames`, `is_animated`,
+`seek`/`tell`, and bad magic/version/channel/mode/layer-block/constructor
+error paths. The AHK surface exposes `PsdImageFile`, registered PSD opens,
+resource parsing, palette/raw pixel loading, main-image absolute tile offsets,
+and Pillow-compatible layer tile offsets relative to the copied layer-info
+stream. PSD save support, RLE/PackBits rendered loading, adjustment/mask
+blocks, PSB, and broader Photoshop resource coverage remain deferred until
+focused probes cover them. Fresh AHK evidence includes
+`.codex/pillow-psdimageplugin-red-report.txt` plus
+`.codex/pillow-psdimageplugin-red.json` failing because
+`stdlib.pillow.PsdImagePlugin` was absent, focused green
+`.codex/pillow-psdimageplugin-green-2-report.txt` plus
+`.codex/pillow-psdimageplugin-green-2.json` passing after implementation,
+trusted serial module gate `.codex/pillow-psdimageplugin-module-1-report.txt`
+plus `.codex/pillow-psdimageplugin-module-1.json` passing
+`stdlib/tests/pillow.test.ahk` 144/144 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-psdimageplugin-example-1-report.txt` plus
+`.codex/pillow-psdimageplugin-example-1.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The QoiImagePlugin follow-up adds Pillow's Quite OK Image plugin surface as
+`stdlib.pillow.QoiImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_qoiimageplugin_probe.py` and
+`.codex/pillow_qoiimageplugin_probe.output.json` records `_accept(...)`,
+`QoiImageFile` format metadata, `QoiDecoder._pulls_fd`,
+`QoiEncoder._pushes_fd`, `_write_run()` and `_delta(...)` helper behavior,
+registered open/save/decoder/encoder and `.qoi` extension behavior, no MIME
+registration, direct and `Image.open(..., ["QOI"])` RGB/RGBA file-like opens,
+exact QOI payload decoding for RGB/RGBA diff/luma/run/index/RGB/RGBA op paths,
+RGB/RGBA file-like saves, `colorspace="sRGB"` header handling, and bad magic,
+unsupported save mode, constructor arity, and `_save` arity errors. The AHK
+surface exposes `QoiImageFile`, `QoiDecoder`, `QoiEncoder`, registered
+`Image.open(..., ["QOI"])`, registered `Image.save(..., "QOI")`, memory-backed
+decoded pixels, and exact covered encoder output. Broader fuzzing, malformed
+stream truncation parity, large-image performance tuning, and native
+SIMD/vector acceleration remain deferred until focused probes cover them.
+Fresh AHK evidence includes `.codex/pillow-qoiimageplugin-red-report.txt` plus
+`.codex/pillow-qoiimageplugin-red.json` failing because
+`stdlib.pillow.QoiImagePlugin` was absent, focused green
+`.codex/pillow-qoiimageplugin-green-3-report.txt` plus
+`.codex/pillow-qoiimageplugin-green-3.json` passing after implementation,
+trusted serial module gate `.codex/pillow-qoiimageplugin-module-1-report.txt`
+plus `.codex/pillow-qoiimageplugin-module-1.json` passing
+`stdlib/tests/pillow.test.ahk` 145/145 at `TimeoutSeconds 90`, and captured
+example gate `.codex/pillow-qoiimageplugin-example-1-report.txt` plus
+`.codex/pillow-qoiimageplugin-example-1.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The SgiImagePlugin follow-up adds Pillow's SGI image plugin surface as
+`stdlib.pillow.SgiImagePlugin`. Fresh local Python 3.10.11 plus Pillow 11.3.0
+evidence from `.codex/pillow_sgiimageplugin_probe.py` and
+`.codex/pillow_sgiimageplugin_probe.output.json` records `MODES`,
+`SgiImageFile` format metadata, `SGI16Decoder._pulls_fd`, `i16`/`o8`,
+`_accept(...)`, `.bw`/`.rgb`/`.rgba`/`.sgi` extension registration, MIME
+registration, registered open/save/decoder behavior, direct and
+`Image.open(..., ["SGI"])` raw SGI file-like opens, RLE file-like opens,
+16-bit SGI tile metadata and high-byte pixel loading, RGB/RGBA/L file-like
+saves, `bpc=2` save output, and covered bad-magic/unsupported-mode/constructor
+and `_save` arity errors. The AHK surface exposes `SgiImageFile`,
+`SGI16Decoder`, registered `Image.open(..., ["SGI"])`, registered
+`Image.save(..., "SGI")`, memory-backed raw/RLE decoded pixels, and covered
+raw SGI writer output. Broader malformed RLE parity, full 16-bit precision
+preservation, uncommon SGI dimensions, and native SIMD/vector acceleration
+remain deferred until focused probes cover them. Fresh AHK evidence includes
+focused red `.codex/pillow-sgiimageplugin-red-report.txt` failing because
+`stdlib.pillow.SgiImagePlugin` was absent, focused green
+`.codex/pillow-sgiimageplugin-green-focused-report.txt` plus
+`.codex/pillow-sgiimageplugin-green-focused.json` passing 1/1 after
+implementation, trusted serial module gate
+`.codex/pillow-sgiimageplugin-module-filter-report.txt` passing the
+Pillow-filtered `stdlib/tests` gate 147/147 at `TimeoutSeconds 90`, validate gate
+`.codex/pillow-sgiimageplugin-validate-report.txt` passing the implementation,
+test, and example files, and captured example gate
+`.codex/pillow-sgiimageplugin-example-report.txt` plus
+`.codex/pillow-sgiimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+The SpiderImagePlugin follow-up adds Pillow's SPIDER electron-microscopy float
+image plugin surface as `stdlib.pillow.SpiderImagePlugin`. Fresh local Python
+3.10.11 plus Pillow 11.3.0 evidence from
+`.codex/pillow_spiderimageplugin_probe.py` and
+`.codex/pillow_spiderimageplugin_probe.output.json` records `iforms`,
+`isInt`, `isSpiderHeader`, `isSpiderImage`, `makeSpiderHeader`,
+`SpiderImageFile` format metadata, direct and
+`Image.open(..., ["SPIDER"])` little/big-endian F-mode file-like opens, stack
+`seek`/`tell`/`n_frames` behavior, `convert2byte`, file-like/path saves, dynamic
+`.spi` registration after path saves, and covered bad-header/not-2D/bad-stack/
+constructor/`_save` arity errors. The AHK surface exposes `SpiderImageFile`,
+registered `Image.open(..., ["SPIDER"])`, registered `Image.save(...,
+"SPIDER")`, memory-backed float pixels, stack frame switching, byte conversion,
+and covered writer output. Broader malformed stack corpora, montage stdout
+parity in `loadImageSeries`, `tkPhotoImage` integration, and native
+SIMD/vector acceleration remain deferred until focused probes cover them. Fresh
+AHK evidence includes focused red
+`.codex/pillow-spiderimageplugin-red-report.txt` failing because
+`stdlib.pillow.SpiderImagePlugin` was absent, focused green
+`.codex/pillow-spiderimageplugin-green-focused-report.txt` plus
+`.codex/pillow-spiderimageplugin-green-focused.json` passing 1/1 after
+implementation, trusted serial module gate
+`.codex/pillow-spiderimageplugin-module-filter-report.txt` passing the
+Pillow-filtered `stdlib/tests` gate 148/148 at `TimeoutSeconds 90`, validate
+gate `.codex/pillow-spiderimageplugin-validate-report.txt` passing the
+implementation, test, example, and capture files, and captured example gate
+`.codex/pillow-spiderimageplugin-example-report.txt` plus
+`.codex/pillow-spiderimageplugin-example.json` passing
+`.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
+with System.Text.RegularExpressions / MatchEvaluator pollution assertions.

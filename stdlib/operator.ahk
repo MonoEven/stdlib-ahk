@@ -782,6 +782,10 @@ AhkStdlibOperatorDelItem(container, key)
         container.Delete(key)
         return
     }
+    if IsObject(container) && HasMethod(container, "Delete") {
+        container.Delete(key)
+        return
+    }
     container.DeleteProp(key)
 }
 

@@ -59,26 +59,26 @@ class StdlibDecimalTest
             AhkTest.AssertEqual(7, stdlib.decimal.getcontext().prec)
 
             withLocal := stdlib.decimal.localcontext()
-            entered := withLocal.__enter__()
+            entered := withLocal.__enter()
             AhkTest.AssertEqual(7, entered.prec)
             entered.prec := 11
             AhkTest.AssertEqual(11, stdlib.decimal.getcontext().prec)
-            AhkTest.AssertFalse(withLocal.__exit__(stdlib.None, stdlib.None, stdlib.None))
+            AhkTest.AssertFalse(withLocal.__exit(stdlib.None, stdlib.None, stdlib.None))
             AhkTest.AssertEqual(7, stdlib.decimal.getcontext().prec)
 
             withExplicit := stdlib.decimal.localcontext(stdlib.decimal.Context({ prec: 13 }))
-            explicitEntered := withExplicit.__enter__()
+            explicitEntered := withExplicit.__enter()
             AhkTest.AssertEqual(13, explicitEntered.prec)
             explicitEntered.prec := 14
             AhkTest.AssertEqual(14, stdlib.decimal.getcontext().prec)
-            AhkTest.AssertFalse(withExplicit.__exit__(stdlib.None, stdlib.None, stdlib.None))
+            AhkTest.AssertFalse(withExplicit.__exit(stdlib.None, stdlib.None, stdlib.None))
             AhkTest.AssertEqual(7, stdlib.decimal.getcontext().prec)
         } finally {
             stdlib.decimal.setcontext(originalCopy)
         }
 
         AhkTest.RaisesMatch(TypeError, "argument must be a context", (*) => stdlib.decimal.setcontext(1))
-        AhkTest.RaisesMatch(TypeError, "optional argument must be a context", (*) => stdlib.decimal.localcontext(1).__enter__())
+        AhkTest.RaisesMatch(TypeError, "optional argument must be a context", (*) => stdlib.decimal.localcontext(1).__enter())
         AhkTest.RaisesMatch(TypeError, "an integer is required", (*) => stdlib.decimal.Context({ prec: "7" }))
         AhkTest.RaisesMatch(TypeError, "valid values for rounding are", (*) => stdlib.decimal.Context({ rounding: "bad" }))
     }

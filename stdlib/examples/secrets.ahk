@@ -8,11 +8,12 @@ token := stdlib.secrets.token_hex(8)
 sameText := stdlib.secrets.compare_digest("alpha", "alpha")
 sameBytes := stdlib.secrets.compare_digest(StdlibSecretsExampleBytes("abc"), StdlibSecretsExampleBytes("abc"))
 
-MsgBox "choice=" picked
+secrets_example_output := "choice=" picked
     . "`nrandbelow(10)=" belowTen
     . "`ntoken_hex(8)=" token
     . "`ncompare text=" (sameText ? "yes" : "no")
     . "`ncompare bytes=" (sameBytes ? "yes" : "no")
+FileAppend secrets_example_output "`n", "*", "UTF-8"
 
 StdlibSecretsExampleBytes(text)
 {

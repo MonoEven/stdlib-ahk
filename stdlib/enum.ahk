@@ -34,8 +34,8 @@ class AhkStdlibEnumType
 {
     __New(kind, name, memberRows)
     {
-        this.__kind__ := kind
-        this.__name__ := name
+        this.__kind := kind
+        this.__name := name
         this.AhkStdlibEnumMemberMap := Map()
         this.AhkStdlibEnumMembers := []
 
@@ -45,7 +45,7 @@ class AhkStdlibEnumType
             this.AhkStdlibEnumMembers.Push(member)
             this.DefineProp(row.Name, { Value: member })
         }
-        this.__members__ := AhkStdlibEnumMembersView(this)
+        this.__members := AhkStdlibEnumMembersView(this)
     }
 
     Call(value)
@@ -54,7 +54,7 @@ class AhkStdlibEnumType
             if AhkStdlibEnumValuesEqual(member.value, value)
                 return member
         }
-        throw ValueError(AhkStdlibEnumReprValue(value) " is not a valid " this.__name__, -1)
+        throw ValueError(AhkStdlibEnumReprValue(value) " is not a valid " this.__name, -1)
     }
 
     __Item[name]
@@ -73,7 +73,7 @@ class AhkStdlibEnumType
 
     ToString()
     {
-        return "<enum '" this.__name__ "'>"
+        return "<enum '" this.__name "'>"
     }
 
     __Repr()
@@ -86,7 +86,7 @@ class AhkStdlibEnumMember
 {
     __New(enumType, name, value, factory)
     {
-        this.__class__ := enumType
+        this.__class := enumType
         this.name := name
         this.value := value
         this._value_factory := factory
@@ -94,12 +94,12 @@ class AhkStdlibEnumMember
 
     ToString()
     {
-        return this.__class__.__name__ "." this.name
+        return this.__class.__name "." this.name
     }
 
     __Repr()
     {
-        return "<" this.__class__.__name__ "." this.name ": " AhkStdlibEnumReprValue(this.value) ">"
+        return "<" this.__class.__name "." this.name ": " AhkStdlibEnumReprValue(this.value) ">"
     }
 }
 

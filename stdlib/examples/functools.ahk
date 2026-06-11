@@ -1,5 +1,6 @@
 #Requires AutoHotkey v2.0
 
+#Include <stdlib\base>
 #Include <stdlib\functools>
 
 class FunctoolsExampleBoundValue
@@ -33,67 +34,69 @@ try {
 }
 functools_example_add_two := stdlib.functools.partial(functools_example_add, 2)
 functools_example_five := functools_example_add_two.Call(3)
-functools_example_partial_module := functools_example_add_two.__module__
-functools_example_partial_doc := functools_example_add_two.__doc__
-functools_example_partial_dict := functools_example_add_two.__dict__
-functools_example_partial_dict_same_identity := functools_example_add_two.__dict__ is functools_example_add_two.__dict__
-functools_example_add_two.__module__ := "custom_module"
-functools_example_add_two.__doc__ := "custom doc"
-functools_example_partial_assigned_dict_module := functools_example_add_two.__dict__["__module__"]
-functools_example_partial_assigned_dict_doc := functools_example_add_two.__dict__["__doc__"]
+functools_example_partial_module := functools_example_add_two.__module
+functools_example_partial_doc := functools_example_add_two.__doc
+functools_example_partial_dict := functools_example_add_two.__dict
+functools_example_partial_dict_same_identity := functools_example_add_two.__dict == functools_example_add_two.__dict
+functools_example_add_two.__module := "custom_module"
+functools_example_add_two.__doc := "custom doc"
+functools_example_partial_assigned_dict_module := functools_example_add_two.__dict["__module"]
+functools_example_partial_assigned_dict_doc := functools_example_add_two.__dict["__doc"]
 functools_example_replacement_dict := Map("x", 1)
-functools_example_add_two.__dict__ := functools_example_replacement_dict
-functools_example_partial_assigned_module := functools_example_add_two.__module__
-functools_example_partial_assigned_doc := functools_example_add_two.__doc__
-functools_example_partial_assigned_dict_same_identity := functools_example_add_two.__dict__ is functools_example_replacement_dict
+functools_example_add_two.__dict := functools_example_replacement_dict
+functools_example_partial_assigned_module := functools_example_add_two.__module
+functools_example_partial_assigned_doc := functools_example_add_two.__doc
+functools_example_partial_assigned_dict_same_identity := functools_example_add_two.__dict == functools_example_replacement_dict
 functools_example_partial_bad_dict_int_error := ""
 try {
-    functools_example_add_two.__dict__ := 5
+    functools_example_add_two.__dict := 5
 } catch TypeError as err {
     functools_example_partial_bad_dict_int_error := err.Message
 }
 functools_example_partial_bad_dict_list_error := ""
 try {
-    functools_example_add_two.__dict__ := []
+    functools_example_add_two.__dict := []
 } catch TypeError as err {
     functools_example_partial_bad_dict_list_error := err.Message
 }
 functools_example_partial_bad_dict_none_error := ""
 try {
-    functools_example_add_two.__dict__ := stdlib.None
+    functools_example_add_two.__dict := stdlib.None
 } catch TypeError as err {
     functools_example_partial_bad_dict_none_error := err.Message
 }
+functools_example_add_two.__module := "delete_module"
+functools_example_add_two.__doc := "delete doc"
 functools_example_partial_delete_module_error := ""
-functools_example_partial_deleted_module := stdlib.base.delattr(functools_example_add_two, "__module__")
+functools_example_partial_deleted_module := stdlib.base.delattr(functools_example_add_two, "__module")
 try {
-    stdlib.base.delattr(functools_example_add_two, "__module__")
+    stdlib.base.delattr(functools_example_add_two, "__module")
 } catch Error as err {
     if err is stdlib.AttributeError
         functools_example_partial_delete_module_error := err.Message
 }
 functools_example_partial_delete_doc_error := ""
-functools_example_partial_deleted_doc := stdlib.base.delattr(functools_example_add_two, "__doc__")
+functools_example_partial_deleted_doc := stdlib.base.delattr(functools_example_add_two, "__doc")
 try {
-    stdlib.base.delattr(functools_example_add_two, "__doc__")
+    stdlib.base.delattr(functools_example_add_two, "__doc")
 } catch Error as err {
     if err is stdlib.AttributeError
         functools_example_partial_delete_doc_error := err.Message
 }
-functools_example_partial_module_after_delete := functools_example_add_two.__module__
-functools_example_partial_doc_after_delete := functools_example_add_two.__doc__
+functools_example_partial_module_after_delete := functools_example_add_two.__module
+functools_example_partial_doc_after_delete := functools_example_add_two.__doc
 functools_example_partial_delete_dict_error := ""
 try {
-    stdlib.base.delattr(functools_example_add_two, "__dict__")
+    stdlib.base.delattr(functools_example_add_two, "__dict")
 } catch TypeError as err {
     functools_example_partial_delete_dict_error := err.Message
 }
 functools_example_add_two.custom := 42
 functools_example_partial_custom := functools_example_add_two.custom
-functools_example_partial_dict_has_custom := functools_example_add_two.__dict__.Has("custom")
-functools_example_partial_dict_custom := functools_example_add_two.__dict__["custom"]
+functools_example_partial_dict_has_custom := functools_example_add_two.__dict.Has("custom")
+functools_example_partial_dict_custom := functools_example_add_two.__dict["custom"]
 functools_example_partial_removed_custom := stdlib.base.delattr(functools_example_add_two, "custom")
-functools_example_partial_dict_has_custom_after_delete := functools_example_add_two.__dict__.Has("custom")
+functools_example_partial_dict_has_custom_after_delete := functools_example_add_two.__dict.Has("custom")
 functools_example_partial_custom_after_delete_error := ""
 try {
     functools_example_add_two.custom
@@ -127,9 +130,9 @@ try {
     functools_example_partial_object_non_callable_error := err.Message
 }
 functools_example_bound_args := functools_example_add_two.args
-functools_example_bound_args_same_identity := functools_example_add_two.args is functools_example_add_two.args
+functools_example_bound_args_same_identity := functools_example_add_two.args == functools_example_add_two.args
 functools_example_wrapped_add_two := stdlib.functools.partial(functools_example_add_two)
-functools_example_wrapped_args_same_identity := functools_example_wrapped_add_two.args is functools_example_add_two.args
+functools_example_wrapped_args_same_identity := functools_example_wrapped_add_two.args == functools_example_add_two.args
 functools_example_add_two_three := stdlib.functools.partial(functools_example_add_two, 3)
 functools_example_nested_func := functools_example_add_two_three.func
 functools_example_nested_args := functools_example_add_two_three.args
@@ -143,47 +146,47 @@ functools_example_literal_partial_repr := stdlib.functools.partial(functools_exa
 functools_example_bool_partial_repr := stdlib.functools.partial(functools_example_identity, stdlib.True, stdlib.False).__Repr()
 functools_example_object_partial_repr := stdlib.functools.partial(functools_example_identity, FunctoolsExampleBoundValue()).__Repr()
 functools_example_stateful_partial := stdlib.functools.partial(functools_example_add, 2)
-functools_example_partial_reduce := functools_example_stateful_partial.__reduce__()
+functools_example_partial_reduce := functools_example_stateful_partial.__reduce()
 functools_example_partial_reduce_state := functools_example_partial_reduce[3]
 functools_example_metadata_stateful_partial := stdlib.functools.partial(functools_example_add_three, 1)
-functools_example_metadata_stateful_partial.__module__ := 5
-functools_example_metadata_stateful_partial.__doc__ := 6
-functools_example_metadata_partial_reduce := functools_example_metadata_stateful_partial.__reduce__()
+functools_example_metadata_stateful_partial.__module := 5
+functools_example_metadata_stateful_partial.__doc := 6
+functools_example_metadata_partial_reduce := functools_example_metadata_stateful_partial.__reduce()
 functools_example_metadata_partial_reduce_state := functools_example_metadata_partial_reduce[3]
-functools_example_metadata_stateful_partial.__setstate__(stdlib.tuple([functools_example_add_three, stdlib.tuple([1]), Map("c", 5), Map("__module__", 7, "__doc__", 8, "x", 9)]))
-functools_example_metadata_partial_after_setstate_module := functools_example_metadata_stateful_partial.__module__
-functools_example_metadata_partial_after_setstate_doc := functools_example_metadata_stateful_partial.__doc__
+functools_example_metadata_stateful_partial.__setstate(stdlib.tuple([functools_example_add_three, stdlib.tuple([1]), Map("c", 5), Map("__module", 7, "__doc", 8, "x", 9)]))
+functools_example_metadata_partial_after_setstate_module := functools_example_metadata_stateful_partial.__module
+functools_example_metadata_partial_after_setstate_doc := functools_example_metadata_stateful_partial.__doc
 functools_example_metadata_partial_after_setstate_x := functools_example_metadata_stateful_partial.x
-functools_example_stateful_partial.__setstate__(stdlib.tuple([functools_example_add, stdlib.tuple([2]), Map("b", 5), stdlib.None]))
+functools_example_stateful_partial.__setstate(stdlib.tuple([functools_example_add, stdlib.tuple([2]), Map("b", 5), stdlib.None]))
 functools_example_partial_after_setstate_args := functools_example_stateful_partial.args
 functools_example_partial_after_setstate_keyword_b := functools_example_stateful_partial.keywords["b"]
 functools_example_partial_after_setstate_call := functools_example_stateful_partial.Call()
-functools_example_stateful_partial.__setstate__(stdlib.tuple([functools_example_add, stdlib.tuple([2]), Map("b", 5), []]))
-functools_example_partial_after_list_dict_state_type := Type(functools_example_stateful_partial.__dict__)
+functools_example_stateful_partial.__setstate(stdlib.tuple([functools_example_add, stdlib.tuple([2]), Map("b", 5), []]))
+functools_example_partial_after_list_dict_state_type := Type(functools_example_stateful_partial.__dict)
 functools_example_partial_after_list_dict_state_call := functools_example_stateful_partial.Call()
-functools_example_stateful_partial.__setstate__(stdlib.tuple([functools_example_add, stdlib.tuple([2]), Map("b", 5), stdlib.tuple()]))
-functools_example_partial_after_tuple_dict_state_type := Type(functools_example_stateful_partial.__dict__)
+functools_example_stateful_partial.__setstate(stdlib.tuple([functools_example_add, stdlib.tuple([2]), Map("b", 5), stdlib.tuple()]))
+functools_example_partial_after_tuple_dict_state_type := Type(functools_example_stateful_partial.__dict)
 functools_example_partial_after_tuple_dict_state_call := functools_example_stateful_partial.Call()
-functools_example_stateful_partial.__setstate__(stdlib.tuple([functools_example_add, stdlib.tuple([2]), stdlib.None, stdlib.None]))
+functools_example_stateful_partial.__setstate(stdlib.tuple([functools_example_add, stdlib.tuple([2]), stdlib.None, stdlib.None]))
 functools_example_partial_after_none_keywords_type := Type(functools_example_stateful_partial.keywords)
 functools_example_partial_after_none_keywords_count := functools_example_stateful_partial.keywords.Count
-functools_example_partial_after_none_dict_type := Type(functools_example_stateful_partial.__dict__)
-functools_example_partial_after_none_dict_count := functools_example_stateful_partial.__dict__.Count
+functools_example_partial_after_none_dict_type := Type(functools_example_stateful_partial.__dict)
+functools_example_partial_after_none_dict_count := functools_example_stateful_partial.__dict.Count
 functools_example_partial_after_none_keywords_call := functools_example_stateful_partial.Call(5)
-functools_example_stateful_partial.__setstate__(stdlib.tuple([functools_example_add, stdlib.tuple([2]), stdlib.None, 5]))
-functools_example_partial_after_scalar_dict_state_type := Type(functools_example_stateful_partial.__dict__)
-functools_example_partial_after_scalar_dict_state_value := functools_example_stateful_partial.__dict__
+functools_example_stateful_partial.__setstate(stdlib.tuple([functools_example_add, stdlib.tuple([2]), stdlib.None, 5]))
+functools_example_partial_after_scalar_dict_state_type := Type(functools_example_stateful_partial.__dict)
+functools_example_partial_after_scalar_dict_state_value := functools_example_stateful_partial.__dict
 functools_example_partial_after_scalar_dict_state_call := functools_example_stateful_partial.Call(5)
 functools_example_partial_module_after_scalar_dict_state_error := ""
 try {
-    functools_example_partial_stateful_module_after_scalar := functools_example_stateful_partial.__module__
+    functools_example_partial_stateful_module_after_scalar := functools_example_stateful_partial.__module
 } catch Error as err {
     if err is stdlib.SystemError
         functools_example_partial_module_after_scalar_dict_state_error := err.Message
 }
 functools_example_partial_doc_after_scalar_dict_state_error := ""
 try {
-    functools_example_partial_stateful_doc_after_scalar := functools_example_stateful_partial.__doc__
+    functools_example_partial_stateful_doc_after_scalar := functools_example_stateful_partial.__doc
 } catch Error as err {
     if err is stdlib.SystemError
         functools_example_partial_doc_after_scalar_dict_state_error := err.Message
@@ -211,20 +214,20 @@ try {
 }
 functools_example_partial_reduce_after_scalar_state_error := ""
 try {
-    functools_example_stateful_partial.__reduce__()
+    functools_example_stateful_partial.__reduce()
 } catch Error as err {
     if err is stdlib.SystemError
         functools_example_partial_reduce_after_scalar_state_error := err.Message
 }
 functools_example_partial_setstate_arity_error := ""
 try {
-    functools_example_stateful_partial.__setstate__()
+    functools_example_stateful_partial.__setstate()
 } catch TypeError as err {
     functools_example_partial_setstate_arity_error := err.Message
 }
 functools_example_partial_setstate_invalid_error := ""
 try {
-    functools_example_stateful_partial.__setstate__(42)
+    functools_example_stateful_partial.__setstate(42)
 } catch TypeError as err {
     functools_example_partial_setstate_invalid_error := err.Message
 }

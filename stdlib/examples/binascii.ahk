@@ -11,8 +11,9 @@ base64Line := stdlib.binascii.b2a_base64(payload)
 base64Compact := stdlib.binascii.b2a_base64(payload, { newline: false })
 base64Decoded := stdlib.binascii.a2b_base64(base64Line)
 
-MsgBox "hexlify=" StrGet(encoded, "UTF-8")
+binascii_example_output := "hexlify=" StrGet(encoded, "UTF-8")
     . "`nunhexlify=" StrGet(decoded, "UTF-8")
     . "`ncrc32=" checksum
     . "`nb2a_base64=" StrGet(base64Compact, "UTF-8")
     . "`na2b_base64=" StrGet(base64Decoded, "UTF-8")
+FileAppend binascii_example_output "`n", "*", "UTF-8"

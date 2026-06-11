@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
 
 #Include <stdlib\init>
 
@@ -23,7 +23,7 @@ class AhkStdlibCoreBase
         hadOwn := obj.HasOwnProp(name)
         hasPythonDictEntry := false
         if !hadOwn {
-            try dictValue := obj.__dict__
+            try dictValue := obj.__dict
             catch
                 dictValue := unset
             if IsSet(dictValue) && dictValue is Map && dictValue.Has(name)

@@ -12,8 +12,11 @@ class StdlibEnumTest
         Ordered := stdlib.enum.Enum("Ordered", [["LOW", 10], ["HIGH", 20]])
         AutoColor := stdlib.enum.Enum("AutoColor", [["RED", stdlib.enum.auto()], ["GREEN", stdlib.enum.auto()]])
 
-        AhkTest.AssertEqual("Color", Color.__name__)
-        AhkTest.AssertEqual("Color", Color.RED.__class__.__name__)
+        AhkTest.AssertEqual("Color", Color.__name)
+        AhkTest.AssertEqual("Color", Color.RED.__class.__name)
+        AhkTest.AssertFalse(HasProp(Color, "__name__"))
+        AhkTest.AssertFalse(HasProp(Color, "__members__"))
+        AhkTest.AssertFalse(HasProp(Color.RED, "__class__"))
         AhkTest.AssertEqual("RED", Color.RED.name)
         AhkTest.AssertEqual(1, Color.RED.value)
         AhkTest.AssertEqual("Color.RED", String(Color.RED))
@@ -45,7 +48,7 @@ class StdlibEnumTest
     static MemberNames(enumType)
     {
         names := []
-        for name, value in enumType.__members__
+        for name, value in enumType.__members
             names.Push(name)
         return names
     }

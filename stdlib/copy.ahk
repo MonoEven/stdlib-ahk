@@ -40,8 +40,8 @@ AhkStdlibCopyDispatchTable()
 
 AhkStdlibCopyShallow(value)
 {
-    if IsObject(value) && HasMethod(value, "__copy__")
-        return value.__copy__()
+    if IsObject(value) && HasMethod(value, "__copy")
+        return value.__copy()
 
     if value is AhkStdlibTuple
         return value
@@ -71,8 +71,8 @@ AhkStdlibCopyDeep(value, memo)
     if !IsObject(value)
         return value
 
-    if HasMethod(value, "__deepcopy__")
-        return value.__deepcopy__(memo)
+    if HasMethod(value, "__deepcopy")
+        return value.__deepcopy(memo)
 
     if AhkStdlibCopyIsImmutableObject(value)
         return value

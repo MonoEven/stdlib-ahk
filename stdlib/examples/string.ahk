@@ -5,6 +5,7 @@
 defaultTitle := stdlib.string.capwords("  hello   world  ")
 commaTitle := stdlib.string.capwords("a,,b,", ",")
 
-MsgBox "ascii_lowercase=" stdlib.string.ascii_lowercase
+string_example_output := "ascii_lowercase=" stdlib.string.ascii_lowercase
     . "`ncapwords default=" defaultTitle
     . "`ncapwords comma=" commaTitle
+FileAppend string_example_output "`n", "*", "UTF-8"

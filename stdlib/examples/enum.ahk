@@ -7,7 +7,7 @@ enum_example_listed := stdlib.enum.Enum("Listed", ["RED", "GREEN", "BLUE"], { st
 enum_example_ordered := stdlib.enum.Enum("Ordered", [["LOW", 10], ["HIGH", 20]])
 enum_example_auto := stdlib.enum.Enum("AutoColor", [["RED", stdlib.enum.auto()], ["GREEN", stdlib.enum.auto()]])
 
-enum_example_color_name := enum_example_color.__name__
+enum_example_color_name := enum_example_color.__name
 enum_example_red_name := enum_example_color.RED.name
 enum_example_red_value := enum_example_color.RED.value
 enum_example_red_string := String(enum_example_color.RED)
@@ -16,7 +16,7 @@ enum_example_green_by_name_same := enum_example_color["GREEN"] == enum_example_c
 enum_example_green_by_value_same := enum_example_color(2) == enum_example_color.GREEN
 
 enum_example_member_names := []
-for name, member in enum_example_color.__members__
+for name, member in enum_example_color.__members
     enum_example_member_names.Push(name)
 
 enum_example_member_values := []

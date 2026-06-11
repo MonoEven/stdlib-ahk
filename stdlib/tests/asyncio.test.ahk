@@ -2,6 +2,7 @@
 
 #Include <stdlib\ahktest>
 #Include <stdlib\asyncio>
+#Include <stdlib\socket>
 
 class StdlibAsyncioTest
 {
@@ -151,6 +152,294 @@ class StdlibAsyncioTest
         AhkTest.AssertEqual([2, "b"], priority.get_nowait())
     }
 
+    static TestExceptionClassesStoreObservedConstructorStateLikeLocal310()
+    {
+        partial := StdlibAsyncioTest.Bytes("abc")
+        incomplete := stdlib.asyncio.IncompleteReadError(partial, 5)
+
+        AhkTest.AssertTrue(incomplete is stdlib.EOFError)
+        AhkTest.AssertTrue(incomplete is stdlib.asyncio.IncompleteReadError)
+        AhkTest.AssertSame(partial, incomplete.partial)
+        AhkTest.AssertEqual(5, incomplete.expected)
+        AhkTest.AssertEqual("3 bytes read on a total of 5 expected bytes", incomplete.Message)
+
+        unknownExpected := stdlib.asyncio.IncompleteReadError(partial, stdlib.None)
+        AhkTest.AssertSame(partial, unknownExpected.partial)
+        AhkTest.AssertSame(stdlib.None, unknownExpected.expected)
+        AhkTest.AssertEqual("3 bytes read on a total of undefined expected bytes", unknownExpected.Message)
+
+        limit := stdlib.asyncio.LimitOverrunError("separator not found", 7)
+        AhkTest.AssertEqual("separator not found", limit.Message)
+        AhkTest.AssertEqual(7, limit.consumed)
+    }
+
+    static TestPublicSubmoduleAndStreamNamesMatchLocal310ImportSurface()
+    {
+        expectedModules := Map(
+            "base_events", "asyncio.base_events",
+            "base_futures", "asyncio.base_futures",
+            "base_subprocess", "asyncio.base_subprocess",
+            "base_tasks", "asyncio.base_tasks",
+            "constants", "asyncio.constants",
+            "coroutines", "asyncio.coroutines",
+            "events", "asyncio.events",
+            "exceptions", "asyncio.exceptions",
+            "format_helpers", "asyncio.format_helpers",
+            "futures", "asyncio.futures",
+            "locks", "asyncio.locks",
+            "log", "asyncio.log",
+            "mixins", "asyncio.mixins",
+            "proactor_events", "asyncio.proactor_events",
+            "protocols", "asyncio.protocols",
+            "queues", "asyncio.queues",
+            "runners", "asyncio.runners",
+            "selector_events", "asyncio.selector_events",
+            "sslproto", "asyncio.sslproto",
+            "staggered", "asyncio.staggered",
+            "streams", "asyncio.streams",
+            "subprocess", "asyncio.subprocess",
+            "sys", "sys",
+            "tasks", "asyncio.tasks",
+            "threads", "asyncio.threads",
+            "transports", "asyncio.transports",
+            "trsock", "asyncio.trsock",
+            "windows_events", "asyncio.windows_events",
+            "windows_utils", "asyncio.windows_utils",
+        )
+
+        for name, moduleName in expectedModules {
+            AhkTest.AssertTrue(HasProp(stdlib.asyncio, name), name)
+            module := stdlib.asyncio.%name%
+            AhkTest.AssertEqual(moduleName, module.__name, name)
+            AhkTest.AssertFalse(HasProp(module, "__name__"), name)
+        }
+
+        for className in ["IocpProactor", "StreamReader", "StreamReaderProtocol", "StreamWriter"] {
+            AhkTest.AssertTrue(HasProp(stdlib.asyncio, className), className)
+            AhkTest.AssertTrue(HasMethod(stdlib.asyncio.%className%, "Call"), className)
+        }
+    }
+
+    static TestIocpProactorLifecycleMatchesObservedLocal310()
+    {
+        proactor := stdlib.asyncio.IocpProactor(0)
+        one := stdlib.asyncio.IocpProactor(1)
+        AhkTest.AssertEqual("AhkStdlibAsyncioIocpProactor", Type(proactor))
+        AhkTest.AssertEqual("AhkStdlibAsyncioIocpProactor", Type(one))
+
+        for methodName in [
+            "accept",
+            "accept_pipe",
+            "close",
+            "connect",
+            "connect_pipe",
+            "recv",
+            "recv_into",
+            "recvfrom",
+            "select",
+            "send",
+            "sendfile",
+            "sendto",
+            "set_loop",
+            "wait_for_handle",
+        ] {
+            AhkTest.AssertTrue(HasMethod(proactor, methodName), methodName)
+        }
+
+        AhkTest.AssertEqual([], proactor.select(0))
+        AhkTest.AssertEqual([], proactor.select(0.001))
+        AhkTest.AssertSame(stdlib.None, proactor.set_loop(stdlib.None))
+        AhkTest.AssertSame(stdlib.None, proactor.close())
+        AhkTest.AssertSame(stdlib.None, proactor.close())
+        AhkTest.RaisesMatch(TypeError, "^GetQueuedCompletionStatus\(\) argument 1 must be int, not None$", (*) => proactor.select(0))
+    }
+
+    static TestProtocolBaseCallbacksMatchObservedLocal310()
+    {
+        base := stdlib.asyncio.BaseProtocol()
+        protocol := stdlib.asyncio.Protocol()
+        datagram := stdlib.asyncio.DatagramProtocol()
+        subprocess := stdlib.asyncio.SubprocessProtocol()
+        buffered := stdlib.asyncio.BufferedProtocol()
+
+        AhkTest.AssertEqual("AhkStdlibAsyncioBaseProtocol", Type(base))
+        AhkTest.AssertEqual("AhkStdlibAsyncioProtocol", Type(protocol))
+        AhkTest.AssertEqual("AhkStdlibAsyncioDatagramProtocol", Type(datagram))
+        AhkTest.AssertEqual("AhkStdlibAsyncioSubprocessProtocol", Type(subprocess))
+        AhkTest.AssertEqual("AhkStdlibAsyncioBufferedProtocol", Type(buffered))
+
+        AhkTest.AssertSame(stdlib.None, base.connection_made("transport"))
+        AhkTest.AssertSame(stdlib.None, base.connection_lost(RuntimeError("x", -1)))
+        AhkTest.AssertSame(stdlib.None, base.pause_writing())
+        AhkTest.AssertSame(stdlib.None, base.resume_writing())
+        AhkTest.AssertSame(stdlib.None, protocol.data_received(StdlibAsyncioTest.Bytes("abc")))
+        AhkTest.AssertSame(stdlib.None, protocol.eof_received())
+        AhkTest.AssertSame(stdlib.None, datagram.datagram_received(StdlibAsyncioTest.Bytes("abc"), ["127.0.0.1", 9]))
+        AhkTest.AssertSame(stdlib.None, datagram.error_received(RuntimeError("x", -1)))
+        AhkTest.AssertSame(stdlib.None, subprocess.pipe_data_received(1, StdlibAsyncioTest.Bytes("abc")))
+        AhkTest.AssertSame(stdlib.None, subprocess.pipe_connection_lost(1, RuntimeError("x", -1)))
+        AhkTest.AssertSame(stdlib.None, subprocess.process_exited())
+        AhkTest.AssertSame(stdlib.None, buffered.get_buffer(10))
+        AhkTest.AssertSame(stdlib.None, buffered.buffer_updated(3))
+        AhkTest.AssertSame(stdlib.None, buffered.eof_received())
+    }
+
+    static TestTransportBaseSurfaceMatchesObservedLocal310()
+    {
+        base := stdlib.asyncio.BaseTransport(Map("peername", "peer"))
+        read := stdlib.asyncio.ReadTransport()
+        write := stdlib.asyncio.WriteTransport()
+        transport := stdlib.asyncio.Transport()
+        datagram := stdlib.asyncio.DatagramTransport()
+        subprocess := stdlib.asyncio.SubprocessTransport()
+
+        AhkTest.AssertEqual("AhkStdlibAsyncioBaseTransport", Type(base))
+        AhkTest.AssertEqual("AhkStdlibAsyncioReadTransport", Type(read))
+        AhkTest.AssertEqual("AhkStdlibAsyncioWriteTransport", Type(write))
+        AhkTest.AssertEqual("AhkStdlibAsyncioTransport", Type(transport))
+        AhkTest.AssertEqual("AhkStdlibAsyncioDatagramTransport", Type(datagram))
+        AhkTest.AssertEqual("AhkStdlibAsyncioSubprocessTransport", Type(subprocess))
+
+        AhkTest.AssertEqual("peer", base.get_extra_info("peername"))
+        AhkTest.AssertSame(stdlib.None, base.get_extra_info("missing"))
+        AhkTest.AssertEqual("fallback", base.get_extra_info("missing", "fallback"))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => base.close())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => base.is_closing())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => base.get_protocol())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => base.set_protocol(stdlib.asyncio.Protocol()))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => read.is_reading())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => read.pause_reading())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => read.resume_reading())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => write.set_write_buffer_limits())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => write.get_write_buffer_size())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => write.get_write_buffer_limits())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => write.write(StdlibAsyncioTest.Bytes("abc")))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => write.writelines([StdlibAsyncioTest.Bytes("a")]))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => write.write_eof())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => write.can_write_eof())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => write.abort())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => transport.pause_reading())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => transport.write(StdlibAsyncioTest.Bytes("abc")))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => datagram.sendto(StdlibAsyncioTest.Bytes("abc"), ["127.0.0.1", 9]))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => datagram.abort())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => subprocess.get_pid())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => subprocess.get_pipe_transport(1))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => subprocess.get_returncode())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => subprocess.send_signal(1))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => subprocess.terminate())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => subprocess.kill())
+    }
+
+    static TestAbstractServerAndServerLifecycleMatchObservedLocal310()
+    {
+        abstract := stdlib.asyncio.AbstractServer()
+        AhkTest.AssertEqual("AhkStdlibAsyncioAbstractServer", Type(abstract))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => abstract.close())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => abstract.get_loop())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => abstract.is_serving())
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => stdlib.await(abstract.start_serving()))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => stdlib.await(abstract.serve_forever()))
+        AhkTest.Raises(stdlib.NotImplementedError, (*) => stdlib.await(abstract.wait_closed()))
+
+        eventLoop := stdlib.asyncio.new_event_loop()
+        server := stdlib.asyncio.Server(eventLoop, [], (*) => stdlib.None, stdlib.None, 100, 60.0)
+        AhkTest.AssertEqual("AhkStdlibAsyncioServer", Type(server))
+        AhkTest.AssertSame(eventLoop, server.get_loop())
+        AhkTest.AssertFalse(server.is_serving())
+        AhkTest.AssertEqual([], server.sockets)
+        AhkTest.AssertSame(stdlib.None, stdlib.await(server.start_serving(), { loop: eventLoop }))
+        AhkTest.AssertTrue(server.is_serving())
+        forever := server.serve_forever()
+        AhkTest.AssertTrue(stdlib.asyncio.isfuture(forever))
+        AhkTest.AssertFalse(forever.done())
+        AhkTest.AssertSame(stdlib.None, server.close())
+        AhkTest.AssertFalse(server.is_serving())
+        AhkTest.AssertSame(stdlib.None, stdlib.await(server.wait_closed(), { loop: eventLoop }))
+        AhkTest.AssertTrue(forever.cancelled())
+        AhkTest.Raises(stdlib.asyncio.CancelledError, (*) => stdlib.await(forever, { loop: eventLoop }))
+    }
+
+    static TestStreamReaderBufferedReadsMatchObservedLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            reader := stdlib.asyncio.StreamReader()
+            AhkTest.AssertEqual("AhkStdlibAsyncioStreamReader", Type(reader))
+            AhkTest.AssertFalse(reader.at_eof())
+            AhkTest.AssertEqual("", StdlibAsyncioTest.BufferText(stdlib.await(reader.read(0), { loop: eventLoop })))
+
+            AhkTest.AssertSame(stdlib.None, reader.feed_data(StdlibAsyncioTest.Bytes("abc`ndef")))
+            AhkTest.AssertFalse(reader.at_eof())
+            AhkTest.AssertEqual("ab", StdlibAsyncioTest.BufferText(stdlib.await(reader.read(2), { loop: eventLoop })))
+            AhkTest.AssertEqual("c`n", StdlibAsyncioTest.BufferText(stdlib.await(reader.readline(), { loop: eventLoop })))
+            AhkTest.AssertEqual("de", StdlibAsyncioTest.BufferText(stdlib.await(reader.readexactly(2), { loop: eventLoop })))
+
+            AhkTest.AssertSame(stdlib.None, reader.feed_eof())
+            AhkTest.AssertFalse(reader.at_eof())
+            AhkTest.AssertEqual("f", StdlibAsyncioTest.BufferText(stdlib.await(reader.read(), { loop: eventLoop })))
+            AhkTest.AssertTrue(reader.at_eof())
+            AhkTest.AssertEqual("", StdlibAsyncioTest.BufferText(stdlib.await(reader.read(), { loop: eventLoop })))
+
+            partial := stdlib.asyncio.StreamReader()
+            pending := partial.read(3)
+            AhkTest.AssertFalse(pending.done())
+            partial.feed_data(StdlibAsyncioTest.Bytes("xy"))
+            AhkTest.AssertEqual("xy", StdlibAsyncioTest.BufferText(stdlib.await(pending, { loop: eventLoop })))
+            partial.feed_data(StdlibAsyncioTest.Bytes("z!"))
+            partial.feed_eof()
+            AhkTest.AssertEqual("z!", StdlibAsyncioTest.BufferText(stdlib.await(partial.read(), { loop: eventLoop })))
+
+            exact := stdlib.asyncio.StreamReader()
+            exact.feed_data(StdlibAsyncioTest.Bytes("xy"))
+            exact.feed_eof()
+            try {
+                stdlib.await(exact.readexactly(3), { loop: eventLoop })
+                AhkTest.Fail("readexactly() should raise IncompleteReadError")
+            } catch Error as err {
+                AhkTest.AssertTrue(err is stdlib.asyncio.IncompleteReadError)
+                AhkTest.AssertEqual("2 bytes read on a total of 3 expected bytes", err.Message)
+                AhkTest.AssertEqual("xy", StdlibAsyncioTest.BufferText(err.partial))
+                AhkTest.AssertEqual(3, err.expected)
+            }
+        } finally {
+            stdlib.asyncio.set_event_loop(stdlib.asyncio.new_event_loop())
+        }
+    }
+
+    static TestStreamProtocolAndWriterWrapTransportLikeObservedLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            reader := stdlib.asyncio.StreamReader({ loop: eventLoop })
+            protocol := stdlib.asyncio.StreamReaderProtocol(reader, stdlib.None, eventLoop)
+            AhkTest.AssertEqual("AhkStdlibAsyncioStreamReaderProtocol", Type(protocol))
+
+            AhkTest.AssertSame(stdlib.None, protocol.data_received(StdlibAsyncioTest.Bytes("a|b|")))
+            AhkTest.AssertEqual("a|", StdlibAsyncioTest.BufferText(stdlib.await(reader.readuntil(StdlibAsyncioTest.Bytes("|")), { loop: eventLoop })))
+            AhkTest.AssertSame(stdlib.None, protocol.eof_received())
+            AhkTest.AssertEqual("b|", StdlibAsyncioTest.BufferText(stdlib.await(reader.read(), { loop: eventLoop })))
+
+            transport := StdlibAsyncioTestTransport()
+            writer := stdlib.asyncio.StreamWriter(transport, protocol, reader, eventLoop)
+            AhkTest.AssertEqual("AhkStdlibAsyncioStreamWriter", Type(writer))
+            AhkTest.AssertTrue(writer.can_write_eof())
+            AhkTest.AssertSame(stdlib.None, writer.write(StdlibAsyncioTest.Bytes("hi")))
+            AhkTest.AssertSame(stdlib.None, writer.writelines([StdlibAsyncioTest.Bytes("a"), StdlibAsyncioTest.Bytes("b")]))
+            AhkTest.AssertSame(stdlib.None, writer.write_eof())
+            AhkTest.AssertEqual(["hi", "a", "b", "<eof>"], transport.Writes)
+            AhkTest.AssertEqual("info:peername", writer.get_extra_info("peername"))
+            AhkTest.AssertEqual("fallback", writer.get_extra_info("missing", "fallback"))
+            AhkTest.AssertFalse(writer.is_closing())
+            AhkTest.AssertSame(stdlib.None, writer.close())
+            AhkTest.AssertTrue(writer.is_closing())
+            AhkTest.AssertSame(stdlib.None, stdlib.await(writer.drain(), { loop: eventLoop }))
+        } finally {
+            stdlib.asyncio.set_event_loop(stdlib.asyncio.new_event_loop())
+        }
+    }
+
     static TestChildWatcherSurfaceMatchesLocalWindows310()
     {
         AhkTest.Raises(stdlib.NotImplementedError, (*) => stdlib.asyncio.get_child_watcher())
@@ -221,6 +510,34 @@ class StdlibAsyncioTest
             AhkTest.RaisesMatch(TypeError, "^run_coroutine_threadsafe\(\) takes 2 positional arguments but 3 were given$", (*) => stdlib.asyncio.run_coroutine_threadsafe(StdlibAsyncioTaskBody([]), eventLoop, eventLoop))
             AhkTest.RaisesMatch(TypeError, "^A coroutine object is required$", (*) => stdlib.asyncio.run_coroutine_threadsafe(1, eventLoop))
             AhkTest.RaisesMatch(stdlib.AttributeError, "^'int' object has no attribute 'call_soon_threadsafe'$", (*) => stdlib.asyncio.run_coroutine_threadsafe(StdlibAsyncioTaskBody([]), 1))
+        } finally {
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
+    }
+
+    static TestGatherReturnExceptionsCollectsErrorsLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            ok := eventLoop.create_future()
+            failed := eventLoop.create_future()
+            ok.set_result("ok")
+            failed.set_exception(RuntimeError("boom", -1))
+
+            AhkTest.RaisesMatch(RuntimeError, "^boom$", (*) => stdlib.await(stdlib.asyncio.gather(ok, failed), { loop: eventLoop }))
+
+            capturedOk := eventLoop.create_future()
+            capturedFailed := eventLoop.create_future()
+            capturedOk.set_result("ok")
+            capturedFailed.set_exception(RuntimeError("boom", -1))
+            captured := stdlib.await(stdlib.asyncio.gather(capturedOk, capturedFailed, { return_exceptions: true }), { loop: eventLoop })
+
+            AhkTest.AssertEqual("ok", captured[1])
+            AhkTest.AssertTrue(captured[2] is RuntimeError)
+            AhkTest.AssertEqual("boom", captured[2].Message)
+            AhkTest.AssertEqual([], stdlib.await(stdlib.asyncio.gather({ return_exceptions: true }), { loop: eventLoop }))
         } finally {
             stdlib.asyncio._set_running_loop(stdlib.None)
             stdlib.asyncio.set_event_loop(stdlib.None)
@@ -423,10 +740,342 @@ class StdlibAsyncioTest
         AhkTest.RaisesMatch(TypeError, "^to_thread\(\) missing 1 required positional argument: 'func'$", (*) => stdlib.asyncio.to_thread())
         toThreadResult := stdlib.asyncio.to_thread(StdlibAsyncioToThreadWorker, "payload", "-suffix")
         AhkTest.AssertTrue(stdlib.asyncio.iscoroutine(toThreadResult))
-        AhkTest.RaisesMatch(stdlib.NotImplementedError, "^asyncio\.to_thread\(\) requires a Windows DLL worker backend for true thread offload$", (*) => stdlib.await(toThreadResult))
+        AhkTest.AssertEqual("payload-suffix", stdlib.await(toThreadResult))
+        AhkTest.RaisesMatch(RuntimeError, "^to-thread-boom$", (*) => stdlib.await(stdlib.asyncio.to_thread(StdlibAsyncioToThreadFailure)))
+        AhkTest.RaisesMatch(TypeError, "^'int' object is not callable$", (*) => stdlib.await(stdlib.asyncio.to_thread(1)))
 
         nestedResult := stdlib.asyncio.run(StdlibAsyncioNestedRunBody())
         AhkTest.AssertEqual(["RuntimeError", "asyncio.run() cannot be called from a running event loop"], nestedResult)
+    }
+
+    static TestOpenConnectionAndStartServerEchoLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            events := []
+            server := stdlib.await(stdlib.asyncio.start_server(StdlibAsyncioEchoServerHandler(events), "127.0.0.1", 0), { loop: eventLoop })
+            AhkTest.AssertTrue(server is AhkStdlibAsyncioServer)
+            AhkTest.AssertTrue(server.is_serving())
+            AhkTest.AssertEqual(1, server.sockets.Length)
+            sockname := server.sockets[1].getsockname()
+            AhkTest.AssertEqual("127.0.0.1", sockname[1])
+            AhkTest.AssertTrue(sockname[2] is Integer)
+
+            pair := stdlib.await(stdlib.asyncio.open_connection(sockname[1], sockname[2]), { loop: eventLoop })
+            reader := pair[1]
+            writer := pair[2]
+            AhkTest.AssertEqual("AhkStdlibAsyncioStreamReader", Type(reader))
+            AhkTest.AssertEqual("AhkStdlibAsyncioStreamWriter", Type(writer))
+
+            AhkTest.AssertSame(stdlib.None, writer.write(StdlibAsyncioTest.Bytes("hello")))
+            AhkTest.AssertSame(stdlib.None, stdlib.await(writer.drain(), { loop: eventLoop }))
+            AhkTest.AssertEqual("HELLO", StdlibAsyncioTest.BufferText(stdlib.await(reader.read(5), { loop: eventLoop })))
+            AhkTest.AssertEqual([["handler_reader", "AhkStdlibAsyncioStreamReader"], ["handler_writer", "AhkStdlibAsyncioStreamWriter"], ["server_read", "hello"]], events)
+            AhkTest.AssertSame(stdlib.None, writer.close())
+            AhkTest.AssertSame(stdlib.None, stdlib.await(writer.wait_closed(), { loop: eventLoop }))
+            AhkTest.AssertSame(stdlib.None, server.close())
+            AhkTest.AssertFalse(server.is_serving())
+            AhkTest.AssertSame(stdlib.None, stdlib.await(server.wait_closed(), { loop: eventLoop }))
+        } finally {
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
+    }
+
+    static TestNetworkStreamWriterExtraInfoLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            events := []
+            server := stdlib.await(stdlib.asyncio.start_server(StdlibAsyncioExtraInfoServerHandler(events), "127.0.0.1", 0), { loop: eventLoop })
+            sockname := server.sockets[1].getsockname()
+            pair := stdlib.await(stdlib.asyncio.open_connection(sockname[1], sockname[2]), { loop: eventLoop })
+            reader := pair[1]
+            writer := pair[2]
+
+            clientSockname := writer.get_extra_info("sockname")
+            clientPeername := writer.get_extra_info("peername")
+            AhkTest.AssertEqual("127.0.0.1", clientSockname[1])
+            AhkTest.AssertTrue(clientSockname[2] is Integer)
+            AhkTest.AssertEqual("127.0.0.1", clientPeername[1])
+            AhkTest.AssertEqual(sockname[2], clientPeername[2])
+            AhkTest.AssertSame(stdlib.None, writer.get_extra_info("missing"))
+            AhkTest.AssertEqual("fallback", writer.get_extra_info("missing", "fallback"))
+
+            writer.write(StdlibAsyncioTest.Bytes("hi"))
+            AhkTest.AssertSame(stdlib.None, stdlib.await(writer.drain(), { loop: eventLoop }))
+            AhkTest.AssertEqual("HI", StdlibAsyncioTest.BufferText(stdlib.await(reader.read(2), { loop: eventLoop })))
+            AhkTest.AssertEqual("127.0.0.1", events[1][2][1])
+            AhkTest.AssertTrue(events[1][2][2] is Integer)
+            AhkTest.AssertEqual("127.0.0.1", events[2][2][1])
+            AhkTest.AssertTrue(events[2][2][2] is Integer)
+            AhkTest.AssertEqual(["server_missing", "fallback"], events[3])
+            writer.close()
+            stdlib.await(writer.wait_closed(), { loop: eventLoop })
+            server.close()
+            stdlib.await(server.wait_closed(), { loop: eventLoop })
+        } finally {
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
+    }
+
+    static TestIocpProactorConnectSendRecvSocketOpsLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        sock := stdlib.None
+        server := stdlib.None
+        try {
+            events := []
+            proactor := stdlib.asyncio.IocpProactor(1)
+            proactor.set_loop(eventLoop)
+            server := stdlib.await(stdlib.asyncio.start_server(StdlibAsyncioProactorServerHandler(events), "127.0.0.1", 0), { loop: eventLoop })
+            sockname := server.sockets[1].getsockname()
+            sock := stdlib.socket.socket()
+
+            connected := stdlib.await(proactor.connect(sock, [sockname[1], sockname[2]]), { loop: eventLoop })
+            AhkTest.AssertSame(sock, connected)
+            AhkTest.AssertEqual(4, stdlib.await(proactor.send(sock, StdlibAsyncioTest.Bytes("ping")), { loop: eventLoop }))
+            received := stdlib.await(proactor.recv(sock, 4), { loop: eventLoop })
+            AhkTest.AssertEqual("PING", StdlibAsyncioTest.BufferText(received))
+            AhkTest.AssertEqual([["server_read", "ping"]], events)
+            proactor.close()
+        } finally {
+            if sock != stdlib.None
+                try sock.close()
+            if server != stdlib.None
+                try server.close()
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
+    }
+
+    static TestIocpProactorRecvIntoWritesBufferLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        sock := stdlib.None
+        server := stdlib.None
+        try {
+            events := []
+            proactor := stdlib.asyncio.IocpProactor(1)
+            proactor.set_loop(eventLoop)
+            server := stdlib.await(stdlib.asyncio.start_server(StdlibAsyncioRecvIntoServerHandler(events), "127.0.0.1", 0), { loop: eventLoop })
+            sockname := server.sockets[1].getsockname()
+            sock := stdlib.socket.socket()
+
+            stdlib.await(proactor.connect(sock, [sockname[1], sockname[2]]), { loop: eventLoop })
+            AhkTest.AssertEqual(2, stdlib.await(proactor.send(sock, StdlibAsyncioTest.Bytes("hi")), { loop: eventLoop }))
+            target := StdlibAsyncioTest.Bytes("....")
+            AhkTest.AssertEqual(2, stdlib.await(proactor.recv_into(sock, target), { loop: eventLoop }))
+            AhkTest.AssertEqual("OK..", StdlibAsyncioTest.BufferText(target))
+            AhkTest.AssertEqual([["server_read", "hi"]], events)
+            proactor.close()
+        } finally {
+            if sock != stdlib.None
+                try sock.close()
+            if server != stdlib.None
+                try server.close()
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
+    }
+
+    static TestSubprocessExecAndShellWaitReturnCodesLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            execCoro := stdlib.asyncio.create_subprocess_exec(A_ComSpec, "/C", "exit", "3")
+            AhkTest.AssertTrue(stdlib.asyncio.iscoroutine(execCoro))
+            execProc := stdlib.await(execCoro, { loop: eventLoop })
+            AhkTest.AssertEqual("AhkStdlibAsyncioProcess", Type(execProc))
+            AhkTest.AssertTrue(execProc.pid is Integer)
+            AhkTest.AssertSame(stdlib.None, execProc.returncode)
+            execWait := execProc.wait()
+            AhkTest.AssertTrue(stdlib.asyncio.iscoroutine(execWait))
+            AhkTest.AssertEqual(3, stdlib.await(execWait, { loop: eventLoop }))
+            AhkTest.AssertEqual(3, execProc.returncode)
+
+            shellCoro := stdlib.asyncio.create_subprocess_shell("exit 4")
+            AhkTest.AssertTrue(stdlib.asyncio.iscoroutine(shellCoro))
+            shellProc := stdlib.await(shellCoro, { loop: eventLoop })
+            AhkTest.AssertEqual("AhkStdlibAsyncioProcess", Type(shellProc))
+            AhkTest.AssertTrue(shellProc.pid is Integer)
+            AhkTest.AssertSame(stdlib.None, shellProc.returncode)
+            AhkTest.AssertEqual(4, stdlib.await(shellProc.wait(), { loop: eventLoop }))
+            AhkTest.AssertEqual(4, shellProc.returncode)
+
+            AhkTest.RaisesMatch(TypeError, "^create_subprocess_exec\(\) missing 1 required positional argument: 'program'$", (*) => stdlib.asyncio.create_subprocess_exec())
+            AhkTest.RaisesMatch(TypeError, "^create_subprocess_shell\(\) missing 1 required positional argument: 'cmd'$", (*) => stdlib.asyncio.create_subprocess_shell())
+        } finally {
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
+    }
+
+    static TestSubprocessCommunicateCapturesPipeOutputLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            AhkTest.AssertEqual(-1, stdlib.asyncio.subprocess.PIPE)
+            proc := stdlib.await(stdlib.asyncio.create_subprocess_exec(
+                A_ComSpec,
+                "/C",
+                "echo out&>&2 echo err&exit 5",
+                { stdout: stdlib.asyncio.subprocess.PIPE, stderr: stdlib.asyncio.subprocess.PIPE }
+            ), { loop: eventLoop })
+            AhkTest.AssertEqual("AhkStdlibAsyncioStreamReader", Type(proc.stdout))
+            AhkTest.AssertEqual("AhkStdlibAsyncioStreamReader", Type(proc.stderr))
+            AhkTest.AssertSame(stdlib.None, proc.returncode)
+
+            output := stdlib.await(proc.communicate(), { loop: eventLoop })
+            AhkTest.AssertEqual("out`r`n", StdlibAsyncioTest.BufferText(output[1]))
+            AhkTest.AssertEqual("err`r`n", StdlibAsyncioTest.BufferText(output[2]))
+            AhkTest.AssertEqual(5, proc.returncode)
+
+            noPipe := stdlib.await(stdlib.asyncio.create_subprocess_exec(A_ComSpec, "/C", "exit 6"), { loop: eventLoop })
+            noPipeOutput := stdlib.await(noPipe.communicate(), { loop: eventLoop })
+            AhkTest.AssertSame(stdlib.None, noPipeOutput[1])
+            AhkTest.AssertSame(stdlib.None, noPipeOutput[2])
+            AhkTest.AssertEqual(6, noPipe.returncode)
+        } finally {
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
+    }
+
+    static TestSubprocessCommunicateWritesStdinPipeLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            pythonCode := "import sys; data=sys.stdin.buffer.read(); sys.stdout.buffer.write(data.upper()); sys.stderr.buffer.write(b'err:' + data); sys.exit(7)"
+            proc := stdlib.await(stdlib.asyncio.create_subprocess_exec(
+                "py",
+                "-3.10",
+                "-c",
+                pythonCode,
+                { stdin: stdlib.asyncio.subprocess.PIPE, stdout: stdlib.asyncio.subprocess.PIPE, stderr: stdlib.asyncio.subprocess.PIPE }
+            ), { loop: eventLoop })
+            AhkTest.AssertEqual("AhkStdlibAsyncioStreamWriter", Type(proc.stdin))
+
+            output := stdlib.await(proc.communicate(StdlibAsyncioTest.Bytes("abc")), { loop: eventLoop })
+            AhkTest.AssertEqual("ABC", StdlibAsyncioTest.BufferText(output[1]))
+            AhkTest.AssertEqual("err:abc", StdlibAsyncioTest.BufferText(output[2]))
+            AhkTest.AssertEqual(7, proc.returncode)
+
+            noStdin := stdlib.await(stdlib.asyncio.create_subprocess_exec(A_ComSpec, "/C", "exit", "0"), { loop: eventLoop })
+            AhkTest.RaisesMatch(AttributeError, "^'NoneType' object has no attribute 'write'$", (*) => stdlib.await(noStdin.communicate(StdlibAsyncioTest.Bytes("abc")), { loop: eventLoop }))
+        } finally {
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
+    }
+
+    static TestSubprocessTerminateKillAndSendSignalLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            sleepCode := "import time; time.sleep(5)"
+            proc := stdlib.await(stdlib.asyncio.create_subprocess_exec("py", "-3.10", "-c", sleepCode), { loop: eventLoop })
+            AhkTest.AssertSame(stdlib.None, proc.terminate())
+            AhkTest.AssertEqual(1, stdlib.await(proc.wait(), { loop: eventLoop }))
+            AhkTest.AssertEqual(1, proc.returncode)
+
+            killProc := stdlib.await(stdlib.asyncio.create_subprocess_exec("py", "-3.10", "-c", sleepCode), { loop: eventLoop })
+            AhkTest.AssertSame(stdlib.None, killProc.kill())
+            AhkTest.AssertEqual(1, stdlib.await(killProc.wait(), { loop: eventLoop }))
+            AhkTest.AssertEqual(1, killProc.returncode)
+
+            signalProc := stdlib.await(stdlib.asyncio.create_subprocess_exec("py", "-3.10", "-c", sleepCode), { loop: eventLoop })
+            AhkTest.AssertSame(stdlib.None, signalProc.send_signal(15))
+            AhkTest.AssertEqual(1, stdlib.await(signalProc.wait(), { loop: eventLoop }))
+            AhkTest.AssertEqual(1, signalProc.returncode)
+        } finally {
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
+    }
+
+    static TestSubprocessStdoutAndDevnullConstantsLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            AhkTest.AssertEqual(-2, stdlib.asyncio.subprocess.STDOUT)
+            AhkTest.AssertEqual(-3, stdlib.asyncio.subprocess.DEVNULL)
+
+            outputCode := "import sys; sys.stdout.buffer.write(b'out'); sys.stderr.buffer.write(b'err'); sys.exit(8)"
+            devnullCode := "import sys; sys.stdout.buffer.write(b'out'); sys.stderr.buffer.write(b'err'); sys.exit(9)"
+            merged := stdlib.await(stdlib.asyncio.create_subprocess_exec(
+                "py",
+                "-3.10",
+                "-c",
+                outputCode,
+                { stdout: stdlib.asyncio.subprocess.PIPE, stderr: stdlib.asyncio.subprocess.STDOUT }
+            ), { loop: eventLoop })
+            AhkTest.AssertSame(stdlib.None, merged.stderr)
+            mergedOutput := stdlib.await(merged.communicate(), { loop: eventLoop })
+            AhkTest.AssertEqual("outerr", StdlibAsyncioTest.BufferText(mergedOutput[1]))
+            AhkTest.AssertSame(stdlib.None, mergedOutput[2])
+            AhkTest.AssertEqual(8, merged.returncode)
+
+            devnull := stdlib.await(stdlib.asyncio.create_subprocess_exec(
+                "py",
+                "-3.10",
+                "-c",
+                devnullCode,
+                { stdout: stdlib.asyncio.subprocess.DEVNULL, stderr: stdlib.asyncio.subprocess.DEVNULL }
+            ), { loop: eventLoop })
+            AhkTest.AssertSame(stdlib.None, devnull.stdout)
+            AhkTest.AssertSame(stdlib.None, devnull.stderr)
+            devnullOutput := stdlib.await(devnull.communicate(), { loop: eventLoop })
+            AhkTest.AssertSame(stdlib.None, devnullOutput[1])
+            AhkTest.AssertSame(stdlib.None, devnullOutput[2])
+            AhkTest.AssertEqual(9, devnull.returncode)
+
+            stdinDevnull := stdlib.await(stdlib.asyncio.create_subprocess_exec(
+                "py",
+                "-3.10",
+                "-c",
+                "import sys; data=sys.stdin.buffer.read(); sys.exit(len(data))",
+                { stdin: stdlib.asyncio.subprocess.DEVNULL }
+            ), { loop: eventLoop })
+            AhkTest.AssertSame(stdlib.None, stdinDevnull.stdin)
+            AhkTest.AssertEqual(0, stdlib.await(stdinDevnull.wait(), { loop: eventLoop }))
+        } finally {
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
+    }
+
+    static TestSubprocessExitedControlRaisesProcessLookupErrorLikeLocal310()
+    {
+        eventLoop := stdlib.asyncio.new_event_loop()
+        stdlib.asyncio.set_event_loop(eventLoop)
+        try {
+            for methodName in ["terminate", "kill", "send_signal"] {
+                proc := stdlib.await(stdlib.asyncio.create_subprocess_exec("py", "-3.10", "-c", "import sys; sys.exit(0)"), { loop: eventLoop })
+                AhkTest.AssertEqual(0, stdlib.await(proc.wait(), { loop: eventLoop }))
+                if methodName = "terminate"
+                    callback := (*) => proc.terminate()
+                else if methodName = "kill"
+                    callback := (*) => proc.kill()
+                else
+                    callback := (*) => proc.send_signal(15)
+                AhkTest.RaisesMatch(stdlib.ProcessLookupError, "^$", callback)
+                AhkTest.AssertEqual(0, proc.returncode)
+            }
+        } finally {
+            stdlib.asyncio._set_running_loop(stdlib.None)
+            stdlib.asyncio.set_event_loop(stdlib.None)
+        }
     }
 
     static TestSyncPrimitivesAndAsyncQueueWaitersLikeLocal310()
@@ -500,6 +1149,78 @@ class StdlibAsyncioTest
             ["as_completed_after_second", [false, false]],
             ["as_completed_results", ["second", "first"]],
         ], events)
+    }
+
+    static Bytes(text)
+    {
+        size := StrPut(text, "UTF-8") - 1
+        bytes := Buffer(size, 0)
+        if size > 0
+            StrPut(text, bytes, "UTF-8")
+        return bytes
+    }
+
+    static BufferText(bytes)
+    {
+        return bytes.Size > 0 ? StrGet(bytes, "UTF-8") : ""
+    }
+}
+
+class StdlibAsyncioTestTransport
+{
+    __New()
+    {
+        this.Writes := []
+        this.Closed := false
+        this.Aborted := false
+    }
+
+    write(data)
+    {
+        this.Writes.Push(StdlibAsyncioTest.BufferText(data))
+        return stdlib.None
+    }
+
+    writelines(lines)
+    {
+        for line in lines
+            this.write(line)
+        return stdlib.None
+    }
+
+    write_eof()
+    {
+        this.Writes.Push("<eof>")
+        return stdlib.None
+    }
+
+    can_write_eof()
+    {
+        return true
+    }
+
+    close()
+    {
+        this.Closed := true
+        return stdlib.None
+    }
+
+    is_closing()
+    {
+        return this.Closed
+    }
+
+    abort()
+    {
+        this.Aborted := true
+        return stdlib.None
+    }
+
+    get_extra_info(name, defaultValue := unset)
+    {
+        if name = "peername"
+            return "info:peername"
+        return IsSet(defaultValue) ? defaultValue : stdlib.None
     }
 }
 
@@ -1027,6 +1748,178 @@ class StdlibAsyncioPendingWaitBody
                 return stdlib.asyncio.sleep(0)
         }
         throw err
+    }
+}
+
+class StdlibAsyncioEchoServerHandler
+{
+    __New(events)
+    {
+        this.Events := events
+    }
+
+    Call(reader, writer)
+    {
+        return StdlibAsyncioEchoServerBody(this.Events, reader, writer)
+    }
+}
+
+class StdlibAsyncioEchoServerBody
+{
+    __New(events, reader, writer)
+    {
+        this.Events := events
+        this.Reader := reader
+        this.Writer := writer
+        this.StepIndex := 0
+    }
+
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        switch this.StepIndex {
+            case 0:
+                this.StepIndex += 1
+                this.Events.Push(["handler_reader", Type(this.Reader)])
+                this.Events.Push(["handler_writer", Type(this.Writer)])
+                return this.Reader.read(5)
+            case 1:
+                this.StepIndex += 1
+                text := StdlibAsyncioTest.BufferText(value)
+                this.Events.Push(["server_read", text])
+                this.Writer.write(StdlibAsyncioTest.Bytes(StrUpper(text)))
+                return this.Writer.drain()
+            case 2:
+                this.Writer.close()
+                return stdlib.None
+        }
+    }
+}
+
+class StdlibAsyncioExtraInfoServerHandler
+{
+    __New(events)
+    {
+        this.Events := events
+    }
+
+    Call(reader, writer)
+    {
+        return StdlibAsyncioExtraInfoServerBody(this.Events, reader, writer)
+    }
+}
+
+class StdlibAsyncioExtraInfoServerBody
+{
+    __New(events, reader, writer)
+    {
+        this.Events := events
+        this.Reader := reader
+        this.Writer := writer
+        this.StepIndex := 0
+    }
+
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        switch this.StepIndex {
+            case 0:
+                this.StepIndex += 1
+                this.Events.Push(["server_sockname", this.Writer.get_extra_info("sockname")])
+                this.Events.Push(["server_peername", this.Writer.get_extra_info("peername")])
+                this.Events.Push(["server_missing", this.Writer.get_extra_info("missing", "fallback")])
+                return this.Reader.read(2)
+            case 1:
+                this.StepIndex += 1
+                text := StdlibAsyncioTest.BufferText(value)
+                this.Writer.write(StdlibAsyncioTest.Bytes(StrUpper(text)))
+                return this.Writer.drain()
+            case 2:
+                this.Writer.close()
+                return stdlib.None
+        }
+    }
+}
+
+class StdlibAsyncioProactorServerHandler
+{
+    __New(events)
+    {
+        this.Events := events
+    }
+
+    Call(reader, writer)
+    {
+        return StdlibAsyncioProactorServerBody(this.Events, reader, writer)
+    }
+}
+
+class StdlibAsyncioProactorServerBody
+{
+    __New(events, reader, writer)
+    {
+        this.Events := events
+        this.Reader := reader
+        this.Writer := writer
+        this.StepIndex := 0
+    }
+
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        switch this.StepIndex {
+            case 0:
+                this.StepIndex += 1
+                return this.Reader.read(4)
+            case 1:
+                this.StepIndex += 1
+                text := StdlibAsyncioTest.BufferText(value)
+                this.Events.Push(["server_read", text])
+                this.Writer.write(StdlibAsyncioTest.Bytes(StrUpper(text)))
+                return this.Writer.drain()
+            case 2:
+                this.Writer.close()
+                return stdlib.None
+        }
+    }
+}
+
+class StdlibAsyncioRecvIntoServerHandler
+{
+    __New(events)
+    {
+        this.Events := events
+    }
+
+    Call(reader, writer)
+    {
+        return StdlibAsyncioRecvIntoServerBody(this.Events, reader, writer)
+    }
+}
+
+class StdlibAsyncioRecvIntoServerBody
+{
+    __New(events, reader, writer)
+    {
+        this.Events := events
+        this.Reader := reader
+        this.Writer := writer
+        this.StepIndex := 0
+    }
+
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        switch this.StepIndex {
+            case 0:
+                this.StepIndex += 1
+                return this.Reader.read(2)
+            case 1:
+                this.StepIndex += 1
+                text := StdlibAsyncioTest.BufferText(value)
+                this.Events.Push(["server_read", text])
+                this.Writer.write(StdlibAsyncioTest.Bytes("OK"))
+                return this.Writer.drain()
+            case 2:
+                this.Writer.close()
+                return stdlib.None
+        }
     }
 }
 

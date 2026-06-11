@@ -8,6 +8,16 @@ class AhkStdlibIo
     static SEEK_CUR := 1
     static SEEK_END := 2
 
+    static UnsupportedOperation
+    {
+        get => AhkStdlibIoUnsupportedOperation
+    }
+
+    static UnsupportedOperation(args*)
+    {
+        return AhkStdlibIoUnsupportedOperation(args*)
+    }
+
     static StringIO(initial_value := unset)
     {
         if !IsSet(initial_value) || AhkStdlibIsNone(initial_value)
@@ -16,6 +26,17 @@ class AhkStdlibIo
             throw TypeError("initial_value must be str or None, not " AhkStdlibIoPythonTypeName(initial_value), -1)
         return AhkStdlibIoStringIO(initial_value)
     }
+
+    static BytesIO(initial_bytes := unset)
+    {
+        if !IsSet(initial_bytes) || AhkStdlibIsNone(initial_bytes)
+            return AhkStdlibIoBytesIO([])
+        return AhkStdlibIoBytesIO(AhkStdlibIoBytesFromValue(initial_bytes))
+    }
+}
+
+class AhkStdlibIoUnsupportedOperation extends OSError
+{
 }
 
 class AhkStdlibIoStringIO
@@ -159,6 +180,259 @@ class AhkStdlibIoStringIO
     }
 }
 
+class AhkStdlibIoBytesIO
+{
+    __New(bytes := unset)
+    {
+        this.AhkStdlibBuffer := IsSet(bytes) ? AhkStdlibIoBytesFromValue(bytes) : []
+        this.AhkStdlibPosition := 0
+        this.closed := false
+    }
+
+    getvalue()
+    {
+        this.AhkStdlibEnsureOpen()
+        return this.AhkStdlibBuffer.Clone()
+    }
+
+    read(size := -1)
+    {
+        this.AhkStdlibEnsureOpen()
+        size := this.AhkStdlibNormalizeSize(size, "argument should be integer or None, not")
+
+        remaining := this.AhkStdlibBuffer.Length - this.AhkStdlibPosition
+        if size < 0
+            size := remaining
+        if size <= 0 || remaining <= 0
+            return []
+
+        count := Min(size, remaining)
+        out := []
+        loop count {
+            out.Push(this.AhkStdlibBuffer[this.AhkStdlibPosition + 1])
+            this.AhkStdlibPosition += 1
+        }
+        return out
+    }
+
+    read1(size := -1)
+    {
+        return this.read(size)
+    }
+
+    readinto(target)
+    {
+        this.AhkStdlibEnsureOpen()
+        if target is Buffer
+            return this.AhkStdlibReadIntoBuffer(target)
+        if target is Array
+            return this.AhkStdlibReadIntoArray(target)
+        throw TypeError("readinto() argument must be read-write bytes-like object, not " AhkStdlibIoPythonTypeName(target), -1)
+    }
+
+    readinto1(target)
+    {
+        return this.readinto(target)
+    }
+
+    readline(size := -1)
+    {
+        this.AhkStdlibEnsureOpen()
+        size := this.AhkStdlibNormalizeSize(size, "argument should be integer or None, not")
+        if size = 0 || this.AhkStdlibPosition >= this.AhkStdlibBuffer.Length
+            return []
+
+        out := []
+        while this.AhkStdlibPosition < this.AhkStdlibBuffer.Length {
+            if size > 0 && out.Length >= size
+                break
+            byte := this.AhkStdlibBuffer[this.AhkStdlibPosition + 1]
+            out.Push(byte)
+            this.AhkStdlibPosition += 1
+            if byte = 10
+                break
+        }
+        return out
+    }
+
+    readlines(hint := -1)
+    {
+        this.AhkStdlibEnsureOpen()
+        hint := this.AhkStdlibNormalizeSize(hint, "integer argument expected, got")
+        lines := []
+        total := 0
+        while this.AhkStdlibPosition < this.AhkStdlibBuffer.Length {
+            line := this.readline()
+            if line.Length = 0
+                break
+            lines.Push(line)
+            total += line.Length
+            if hint > 0 && total >= hint
+                break
+        }
+        return lines
+    }
+
+    write(bytes)
+    {
+        this.AhkStdlibEnsureOpen()
+        values := AhkStdlibIoBytesFromValue(bytes)
+        padCount := this.AhkStdlibPosition - this.AhkStdlibBuffer.Length
+        loop Max(padCount, 0)
+            this.AhkStdlibBuffer.Push(0)
+
+        for index, byte in values {
+            targetIndex := this.AhkStdlibPosition + index
+            if targetIndex <= this.AhkStdlibBuffer.Length
+                this.AhkStdlibBuffer[targetIndex] := byte
+            else
+                this.AhkStdlibBuffer.Push(byte)
+        }
+        this.AhkStdlibPosition += values.Length
+        return values.Length
+    }
+
+    writelines(lines)
+    {
+        this.AhkStdlibEnsureOpen()
+        if !(IsObject(lines) && HasMethod(lines, "__Enum"))
+            throw TypeError("'" AhkStdlibIoPythonTypeName(lines) "' object is not iterable", -1)
+        for line in lines
+            this.write(line)
+        return stdlib.None
+    }
+
+    readable()
+    {
+        this.AhkStdlibEnsureOpen()
+        return true
+    }
+
+    writable()
+    {
+        this.AhkStdlibEnsureOpen()
+        return true
+    }
+
+    seekable()
+    {
+        this.AhkStdlibEnsureOpen()
+        return true
+    }
+
+    isatty()
+    {
+        this.AhkStdlibEnsureOpen()
+        return false
+    }
+
+    flush()
+    {
+        this.AhkStdlibEnsureOpen()
+        return stdlib.None
+    }
+
+    fileno()
+    {
+        throw AhkStdlibIoUnsupportedOperation("fileno", -1)
+    }
+
+    detach()
+    {
+        throw AhkStdlibIoUnsupportedOperation("detach", -1)
+    }
+
+    tell()
+    {
+        this.AhkStdlibEnsureOpen()
+        return this.AhkStdlibPosition
+    }
+
+    seek(pos, whence := 0)
+    {
+        this.AhkStdlibEnsureOpen()
+        if !(pos is Integer)
+            throw TypeError("an integer is required", -1)
+        if !(whence is Integer)
+            throw TypeError("an integer is required", -1)
+
+        switch whence {
+            case 0:
+                target := pos
+            case 1:
+                target := this.AhkStdlibPosition + pos
+            case 2:
+                target := this.AhkStdlibBuffer.Length + pos
+            default:
+                throw ValueError("invalid whence (" whence ", should be 0, 1 or 2)", -1)
+        }
+
+        if target < 0
+            throw ValueError("negative seek value " target, -1)
+        this.AhkStdlibPosition := target
+        return this.AhkStdlibPosition
+    }
+
+    truncate(size := unset)
+    {
+        this.AhkStdlibEnsureOpen()
+        if IsSet(size) && !AhkStdlibIsNone(size) {
+            if !(size is Integer)
+                throw TypeError("integer argument expected, got " AhkStdlibIoPythonTypeName(size), -1)
+            target := size
+        } else {
+            target := this.AhkStdlibPosition
+        }
+
+        if target < 0
+            throw ValueError("negative size value " target, -1)
+        while this.AhkStdlibBuffer.Length > target
+            this.AhkStdlibBuffer.RemoveAt(this.AhkStdlibBuffer.Length)
+        return target
+    }
+
+    close()
+    {
+        this.closed := true
+        return stdlib.None
+    }
+
+    AhkStdlibEnsureOpen()
+    {
+        if this.closed
+            throw ValueError("I/O operation on closed file.", -1)
+    }
+
+    AhkStdlibNormalizeSize(size, messagePrefix)
+    {
+        if AhkStdlibIsNone(size)
+            return -1
+        if !(size is Integer)
+            throw TypeError(messagePrefix " '" AhkStdlibIoPythonTypeName(size) "'", -1)
+        return size
+    }
+
+    AhkStdlibReadIntoBuffer(target)
+    {
+        remaining := Max(this.AhkStdlibBuffer.Length - this.AhkStdlibPosition, 0)
+        count := Min(target.Size, remaining)
+        loop count
+            NumPut("UChar", this.AhkStdlibBuffer[this.AhkStdlibPosition + A_Index], target, A_Index - 1)
+        this.AhkStdlibPosition += count
+        return count
+    }
+
+    AhkStdlibReadIntoArray(target)
+    {
+        remaining := Max(this.AhkStdlibBuffer.Length - this.AhkStdlibPosition, 0)
+        count := Min(target.Length, remaining)
+        loop count
+            target[A_Index] := this.AhkStdlibBuffer[this.AhkStdlibPosition + A_Index]
+        this.AhkStdlibPosition += count
+        return count
+    }
+}
+
 stdlib.io := AhkStdlibIo
 
 AhkStdlibIoPythonTypeName(value)
@@ -182,4 +456,38 @@ AhkStdlibIoRepeatChar(char, count)
     loop count
         text .= char
     return text
+}
+
+AhkStdlibIoBytesFromValue(value)
+{
+    if value is String
+        throw TypeError("a bytes-like object is required, not 'str'", -1)
+    if value is Integer
+        throw TypeError("a bytes-like object is required, not 'int'", -1)
+    if value is Buffer
+        return AhkStdlibIoBytesFromBuffer(value)
+    if value is Array {
+        bytes := []
+        for item in value
+            bytes.Push(AhkStdlibIoRequireByte(item))
+        return bytes
+    }
+    throw TypeError("a bytes-like object is required, not '" AhkStdlibIoPythonTypeName(value) "'", -1)
+}
+
+AhkStdlibIoBytesFromBuffer(buffer)
+{
+    bytes := []
+    loop buffer.Size
+        bytes.Push(NumGet(buffer, A_Index - 1, "UChar"))
+    return bytes
+}
+
+AhkStdlibIoRequireByte(value)
+{
+    if !(value is Integer)
+        throw TypeError("'" AhkStdlibIoPythonTypeName(value) "' object cannot be interpreted as an integer", -1)
+    if value < 0 || value > 255
+        throw ValueError("byte must be in range(0, 256)", -1)
+    return value
 }

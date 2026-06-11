@@ -282,7 +282,7 @@ class AhkTestCapture
                 encoding := options.Encoding
         }
 
-        id := "ahktest-capture-" A_NowUTC "-" A_TickCount
+        id := this.MakeCaptureId("ahktest-capture")
         outFile := A_Temp "\" id ".out.txt"
         errFile := A_Temp "\" id ".err.txt"
         this.DeleteFile(outFile)
@@ -335,37 +335,38 @@ class AhkTestCapture
             }
         }
 
-        id := "ahktest-capture-args-" A_NowUTC "-" A_TickCount
+        id := this.MakeCaptureId("ahktest-capture-args")
         outFile := A_Temp "\" id ".out.txt"
         errFile := A_Temp "\" id ".err.txt"
-        exitFile := A_Temp "\" id ".exit.txt"
-        commandFile := A_Temp "\" id ".cmd"
         this.DeleteFile(outFile)
         this.DeleteFile(errFile)
-        this.DeleteFile(exitFile)
-        this.DeleteFile(commandFile)
 
         out := ""
         err := ""
         exitCode := 0
         timedOut := false
+        processInfo := unset
         try {
-            commandLine := this.BuildArgumentCommand(executable, args)
-            commandText := this.BuildRedirectCommandFile(commandLine, outFile, errFile, exitFile)
-            FileAppend commandText, commandFile, "CP0"
-            target := A_ComSpec " /d /c " this.QuoteCommandArgument(commandFile)
-            Run target, workingDir, "Hide", &pid
+            processInfo := this.CreateCapturedProcess(executable, args, workingDir, outFile, errFile)
             started := A_TickCount
-            while ProcessExist(pid) {
+            loop {
+                waitMs := 10
+                waitResult := DllCall("kernel32\WaitForSingleObject", "Ptr", processInfo.ProcessHandle, "UInt", waitMs, "UInt")
+                if waitResult = 0
+                    break
                 if timeoutSeconds > 0 && (A_TickCount - started) >= timeoutSeconds * 1000 {
                     timedOut := true
-                    this.TerminateProcessTree(pid)
+                    this.TerminateProcessTree(processInfo.ProcessId)
                     break
                 }
-                Sleep 10
             }
-            if !timedOut
-                ProcessWaitClose(pid, 0.5)
+            if !timedOut {
+                exitCodeBuffer := Buffer(4, 0)
+                if DllCall("kernel32\GetExitCodeProcess", "Ptr", processInfo.ProcessHandle, "Ptr", exitCodeBuffer, "Int")
+                    exitCode := NumGet(exitCodeBuffer, 0, "UInt")
+                else
+                    exitCode := 1
+            }
             if FileExist(outFile)
                 out := FileRead(outFile, encoding)
             if FileExist(errFile)
@@ -373,14 +374,12 @@ class AhkTestCapture
             if timedOut {
                 exitCode := -1
                 err .= "capture process timed out after " this.FormatTimeoutSeconds(timeoutSeconds) "s"
-            } else {
-                exitCode := this.ReadExitCodeFile(exitFile)
             }
         } finally {
+            if IsSet(processInfo) && HasProp(processInfo, "ProcessHandle")
+                DllCall("kernel32\CloseHandle", "Ptr", processInfo.ProcessHandle)
             this.DeleteFile(outFile)
             this.DeleteFile(errFile)
-            this.DeleteFile(exitFile)
-            this.DeleteFile(commandFile)
         }
 
         this.WriteOut(out)
@@ -416,34 +415,9 @@ class AhkTestCapture
         return A_ComSpec ' /c "(' command ') >"' outFile '" 2>"' errFile '""'
     }
 
-    BuildRedirectCommandFile(commandLine, outFile, errFile, exitFile)
+    MakeCaptureId(prefix)
     {
-        text := "@echo off`r`n"
-        text .= this.EscapeCmdBatchCommand(commandLine) " >" this.QuoteCmdRedirectPath(outFile) " 2>" this.QuoteCmdRedirectPath(errFile) "`r`n"
-        text .= "set ahktest_exit=%ERRORLEVEL%`r`n"
-        text .= "> " this.QuoteCmdRedirectPath(exitFile) " echo %ahktest_exit%`r`n"
-        text .= "exit /b %ahktest_exit%`r`n"
-        return text
-    }
-
-    EscapeCmdBatchCommand(commandLine)
-    {
-        return StrReplace(commandLine, "%", "%%")
-    }
-
-    QuoteCmdRedirectPath(path)
-    {
-        return '"' StrReplace(path, '"', '""') '"'
-    }
-
-    ReadExitCodeFile(path)
-    {
-        if !FileExist(path)
-            return 1
-        text := Trim(FileRead(path, "CP0"), "`r`n `t")
-        if RegExMatch(text, "^-?\d+$")
-            return Integer(text)
-        return 1
+        return prefix "-" A_NowUTC "-" A_TickCount "-" Random(100000, 999999)
     }
 
     BuildArgumentCommand(executable, args)
@@ -452,6 +426,65 @@ class AhkTestCapture
         for arg in args
             command .= " " this.QuoteCommandArgument(arg)
         return command
+    }
+
+    CreateCapturedProcess(executable, args, workingDir, outFile, errFile)
+    {
+        commandLine := this.BuildArgumentCommand(executable, args)
+        startupSize := A_PtrSize = 8 ? 104 : 68
+        processInfoSize := A_PtrSize = 8 ? 24 : 16
+        startupInfo := Buffer(startupSize, 0)
+        processInfo := Buffer(processInfoSize, 0)
+        NumPut("UInt", startupSize, startupInfo, 0)
+        stdoutFile := FileOpen(outFile, "w", "UTF-8-RAW")
+        stderrFile := FileOpen(errFile, "w", "UTF-8-RAW")
+        try {
+            this.MakeHandleInheritable(stdoutFile.Handle)
+            this.MakeHandleInheritable(stderrFile.Handle)
+            flagsOffset := A_PtrSize = 8 ? 60 : 44
+            stdinOffset := A_PtrSize = 8 ? 80 : 56
+            stdoutOffset := A_PtrSize = 8 ? 88 : 60
+            stderrOffset := A_PtrSize = 8 ? 96 : 64
+            stdinHandle := DllCall("kernel32\GetStdHandle", "Int", -10, "Ptr")
+            NumPut("UInt", 0x100, startupInfo, flagsOffset)
+            NumPut("Ptr", stdinHandle, startupInfo, stdinOffset)
+            NumPut("Ptr", stdoutFile.Handle, startupInfo, stdoutOffset)
+            NumPut("Ptr", stderrFile.Handle, startupInfo, stderrOffset)
+
+            actualWorkingDir := workingDir = "" ? A_WorkingDir : workingDir
+            ok := DllCall(
+                "kernel32\CreateProcessW",
+                "Ptr", 0,
+                "Str", commandLine,
+                "Ptr", 0,
+                "Ptr", 0,
+                "Int", true,
+                "UInt", 0x08000000,
+                "Ptr", 0,
+                "Str", actualWorkingDir,
+                "Ptr", startupInfo,
+                "Ptr", processInfo,
+                "Int"
+            )
+        } finally {
+            stdoutFile.Close()
+            stderrFile.Close()
+        }
+        if !ok
+            throw OSError("CreateProcessW failed: " A_LastError, -1)
+
+        threadHandle := NumGet(processInfo, A_PtrSize, "Ptr")
+        DllCall("kernel32\CloseHandle", "Ptr", threadHandle)
+        return {
+            ProcessHandle: NumGet(processInfo, 0, "Ptr"),
+            ProcessId: NumGet(processInfo, A_PtrSize * 2, "UInt"),
+        }
+    }
+
+    MakeHandleInheritable(handle)
+    {
+        if !DllCall("kernel32\SetHandleInformation", "Ptr", handle, "UInt", 1, "UInt", 1, "Int")
+            throw OSError("SetHandleInformation failed: " A_LastError, -1)
     }
 
     QuoteCommandArgument(value)

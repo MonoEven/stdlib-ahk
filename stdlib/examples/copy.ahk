@@ -57,7 +57,7 @@ class StdlibCopyExampleNode
 
 class StdlibCopyExampleCustomCopy
 {
-    __copy__()
+    __copy()
     {
         return ["custom-copy", Type(this)]
     }
@@ -65,7 +65,7 @@ class StdlibCopyExampleCustomCopy
 
 class StdlibCopyExampleCustomDeep
 {
-    __deepcopy__(memo)
+    __deepcopy(memo)
     {
         return ["custom-deepcopy", memo is Map, Type(this)]
     }

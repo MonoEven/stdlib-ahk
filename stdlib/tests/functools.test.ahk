@@ -76,18 +76,21 @@ class StdlibFunctoolsTest
     {
         partial := stdlib.functools.partial(stdlib_functools_test_add, 2)
 
-        AhkTest.AssertEqual("functools", partial.__module__)
-        AhkTest.AssertEqual("partial(func, *args, **keywords) - new function with partial application`n    of the given arguments and keywords.`n", partial.__doc__)
+        AhkTest.AssertEqual("functools", partial.__module)
+        AhkTest.AssertEqual("partial(func, *args, **keywords) - new function with partial application`n    of the given arguments and keywords.`n", partial.__doc)
+        AhkTest.AssertFalse(HasProp(partial, "__module__"))
+        AhkTest.AssertFalse(HasProp(partial, "__doc__"))
     }
 
     static TestPartialExposesStableEmptyDictLikePython310()
     {
         partial := stdlib.functools.partial(stdlib_functools_test_add, 2)
-        dict := partial.__dict__
+        dict := partial.__dict
 
         AhkTest.AssertTrue(dict is Map)
         AhkTest.AssertEqual(0, dict.Count)
-        AhkTest.AssertSame(dict, partial.__dict__)
+        AhkTest.AssertSame(dict, partial.__dict)
+        AhkTest.AssertFalse(HasProp(partial, "__dict__"))
     }
 
     static TestPartialDynamicAttributesUpdateDictLikePython310()
@@ -97,9 +100,9 @@ class StdlibFunctoolsTest
         partial.custom := 42
 
         AhkTest.AssertEqual(42, partial.custom)
-        AhkTest.AssertTrue(partial.__dict__.Has("custom"))
-        AhkTest.AssertEqual(42, partial.__dict__["custom"])
-        AhkTest.AssertSame(partial.__dict__, partial.__dict__)
+        AhkTest.AssertTrue(partial.__dict.Has("custom"))
+        AhkTest.AssertEqual(42, partial.__dict["custom"])
+        AhkTest.AssertSame(partial.__dict, partial.__dict)
     }
 
     static TestPartialDynamicAttributesDeleteFromDictLikePython310()
@@ -110,7 +113,7 @@ class StdlibFunctoolsTest
         removed := stdlib.base.delattr(partial, "custom")
 
         AhkTest.AssertEqual(42, removed)
-        AhkTest.AssertFalse(partial.__dict__.Has("custom"))
+        AhkTest.AssertFalse(partial.__dict.Has("custom"))
         AhkTest.RaisesMatch(stdlib.AttributeError, "^'functools\.partial' object has no attribute 'custom'$", (*) => partial.custom)
         AhkTest.RaisesMatch(stdlib.AttributeError, "^custom$", (*) => stdlib.base.delattr(partial, "custom"))
     }
@@ -120,52 +123,52 @@ class StdlibFunctoolsTest
         partial := stdlib.functools.partial(stdlib_functools_test_add, 2)
         replacementDict := Map("x", 1)
 
-        partial.__module__ := "custom_module"
-        partial.__doc__ := "custom doc"
-        AhkTest.AssertEqual("custom_module", partial.__module__)
-        AhkTest.AssertEqual("custom doc", partial.__doc__)
-        AhkTest.AssertEqual("custom_module", partial.__dict__["__module__"])
-        AhkTest.AssertEqual("custom doc", partial.__dict__["__doc__"])
+        partial.__module := "custom_module"
+        partial.__doc := "custom doc"
+        AhkTest.AssertEqual("custom_module", partial.__module)
+        AhkTest.AssertEqual("custom doc", partial.__doc)
+        AhkTest.AssertEqual("custom_module", partial.__dict["__module"])
+        AhkTest.AssertEqual("custom doc", partial.__dict["__doc"])
 
-        partial.__dict__ := replacementDict
+        partial.__dict := replacementDict
 
-        AhkTest.AssertEqual("functools", partial.__module__)
-        AhkTest.AssertEqual("partial(func, *args, **keywords) - new function with partial application`n    of the given arguments and keywords.`n", partial.__doc__)
-        AhkTest.AssertSame(replacementDict, partial.__dict__)
-        AhkTest.AssertEqual(1, partial.__dict__["x"])
+        AhkTest.AssertEqual("functools", partial.__module)
+        AhkTest.AssertEqual("partial(func, *args, **keywords) - new function with partial application`n    of the given arguments and keywords.`n", partial.__doc)
+        AhkTest.AssertSame(replacementDict, partial.__dict)
+        AhkTest.AssertEqual(1, partial.__dict["x"])
     }
 
     static TestPartialDictAssignmentRejectsNonDictLikePython310()
     {
         partial := stdlib.functools.partial(stdlib_functools_test_add, 2)
 
-        AhkTest.RaisesMatch(TypeError, "__dict__ must be set to a dictionary, not a 'int'", (*) => partial.__dict__ := 5)
-        AhkTest.RaisesMatch(TypeError, "__dict__ must be set to a dictionary, not a 'list'", (*) => partial.__dict__ := [])
-        AhkTest.RaisesMatch(TypeError, "__dict__ must be set to a dictionary, not a 'NoneType'", (*) => partial.__dict__ := stdlib.None)
+        AhkTest.RaisesMatch(TypeError, "__dict must be set to a dictionary, not a 'int'", (*) => partial.__dict := 5)
+        AhkTest.RaisesMatch(TypeError, "__dict must be set to a dictionary, not a 'list'", (*) => partial.__dict := [])
+        AhkTest.RaisesMatch(TypeError, "__dict must be set to a dictionary, not a 'NoneType'", (*) => partial.__dict := stdlib.None)
     }
 
     static TestPartialModuleDocAndDictDeletionMatchPython310()
     {
         partial := stdlib.functools.partial(stdlib_functools_test_add, 2)
 
-        partial.__module__ := "custom_module"
-        partial.__doc__ := "custom doc"
+        partial.__module := "custom_module"
+        partial.__doc := "custom doc"
 
-        AhkTest.AssertEqual("custom_module", stdlib.base.delattr(partial, "__module__"))
-        AhkTest.AssertEqual("functools", partial.__module__)
-        AhkTest.AssertEqual("custom doc", stdlib.base.delattr(partial, "__doc__"))
-        AhkTest.AssertEqual("partial(func, *args, **keywords) - new function with partial application`n    of the given arguments and keywords.`n", partial.__doc__)
-        AhkTest.RaisesMatch(stdlib.AttributeError, "^__module__$", (*) => stdlib.base.delattr(partial, "__module__"))
-        AhkTest.RaisesMatch(stdlib.AttributeError, "^__doc__$", (*) => stdlib.base.delattr(partial, "__doc__"))
-        AhkTest.RaisesMatch(TypeError, "cannot delete __dict__", (*) => stdlib.base.delattr(partial, "__dict__"))
+        AhkTest.AssertEqual("custom_module", stdlib.base.delattr(partial, "__module"))
+        AhkTest.AssertEqual("functools", partial.__module)
+        AhkTest.AssertEqual("custom doc", stdlib.base.delattr(partial, "__doc"))
+        AhkTest.AssertEqual("partial(func, *args, **keywords) - new function with partial application`n    of the given arguments and keywords.`n", partial.__doc)
+        AhkTest.RaisesMatch(stdlib.AttributeError, "^__module$", (*) => stdlib.base.delattr(partial, "__module"))
+        AhkTest.RaisesMatch(stdlib.AttributeError, "^__doc$", (*) => stdlib.base.delattr(partial, "__doc"))
+        AhkTest.RaisesMatch(TypeError, "cannot delete __dict", (*) => stdlib.base.delattr(partial, "__dict"))
     }
 
     static TestPartialDefaultModuleAndDocDeletionRaiseAttributeErrorLikeLocal310()
     {
         partial := stdlib.functools.partial(stdlib_functools_test_add, 2)
 
-        AhkTest.RaisesMatch(stdlib.AttributeError, "^__module__$", (*) => stdlib.base.delattr(partial, "__module__"))
-        AhkTest.RaisesMatch(stdlib.AttributeError, "^__doc__$", (*) => stdlib.base.delattr(partial, "__doc__"))
+        AhkTest.RaisesMatch(stdlib.AttributeError, "^__module$", (*) => stdlib.base.delattr(partial, "__module"))
+        AhkTest.RaisesMatch(stdlib.AttributeError, "^__doc$", (*) => stdlib.base.delattr(partial, "__doc"))
     }
 
     static TestPartialPreservesArgumentOrderAndRejectsNonCallable()
@@ -344,11 +347,11 @@ class StdlibFunctoolsTest
     static TestPartialExposesReduceAndSetstateSurfaceLikePython310()
     {
         partial := stdlib.functools.partial(stdlib_functools_test_add_three, 1)
-        reduced := partial.__reduce__()
+        reduced := partial.__reduce()
         state := reduced[3]
 
-        AhkTest.AssertTrue(HasMethod(partial, "__reduce__"))
-        AhkTest.AssertTrue(HasMethod(partial, "__setstate__"))
+        AhkTest.AssertTrue(HasMethod(partial, "__reduce"))
+        AhkTest.AssertTrue(HasMethod(partial, "__setstate"))
         AhkTest.AssertTrue(reduced is AhkStdlibTuple)
         AhkTest.AssertEqual(3, reduced.Length)
         AhkTest.AssertSame(AhkStdlibFunctoolsPartial, reduced[1])
@@ -361,45 +364,45 @@ class StdlibFunctoolsTest
         AhkTest.AssertEqual(0, state[3].Count)
         AhkTest.AssertSame(stdlib.None, state[4])
 
-        partial.__setstate__(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), Map("c", 5), stdlib.None]))
+        partial.__setstate(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), Map("c", 5), stdlib.None]))
         AhkTest.AssertSame(stdlib_functools_test_add_three, partial.func)
         AhkTest.AssertEqual([1], partial.args)
         AhkTest.AssertEqual(5, partial.keywords["c"])
-        AhkTest.AssertTrue(partial.__dict__ is Map)
-        AhkTest.AssertEqual(0, partial.__dict__.Count)
+        AhkTest.AssertTrue(partial.__dict is Map)
+        AhkTest.AssertEqual(0, partial.__dict.Count)
         AhkTest.AssertEqual(8, partial.Call(2))
 
-        partial.__setstate__(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), Map("c", 5), []]))
-        AhkTest.AssertEqual(0, partial.__dict__.Length)
+        partial.__setstate(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), Map("c", 5), []]))
+        AhkTest.AssertEqual(0, partial.__dict.Length)
         AhkTest.AssertEqual(5, partial.keywords["c"])
         AhkTest.AssertEqual(8, partial.Call(2))
 
-        partial.__setstate__(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), Map("c", 5), stdlib.tuple()]))
-        AhkTest.AssertEqual(0, partial.__dict__.Length)
+        partial.__setstate(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), Map("c", 5), stdlib.tuple()]))
+        AhkTest.AssertEqual(0, partial.__dict.Length)
         AhkTest.AssertEqual(5, partial.keywords["c"])
         AhkTest.AssertEqual(8, partial.Call(2))
 
-        partial.__setstate__(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), stdlib.None, stdlib.None]))
+        partial.__setstate(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), stdlib.None, stdlib.None]))
         AhkTest.AssertTrue(partial.keywords is Map)
         AhkTest.AssertEqual(0, partial.keywords.Count)
-        AhkTest.AssertTrue(partial.__dict__ is Map)
-        AhkTest.AssertEqual(0, partial.__dict__.Count)
+        AhkTest.AssertTrue(partial.__dict is Map)
+        AhkTest.AssertEqual(0, partial.__dict.Count)
         AhkTest.AssertEqual(8, partial.Call(2, 5))
 
-        partial.__setstate__(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), stdlib.None, 5]))
+        partial.__setstate(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), stdlib.None, 5]))
         AhkTest.AssertTrue(partial.keywords is Map)
         AhkTest.AssertEqual(0, partial.keywords.Count)
-        AhkTest.AssertEqual(5, partial.__dict__)
+        AhkTest.AssertEqual(5, partial.__dict)
         AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => partial.custom := 42)
         AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => partial.custom)
         AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => partial.DeleteProp("custom"))
         AhkTest.AssertEqual(8, partial.Call(2, 5))
-        AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => partial.__reduce__())
+        AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => partial.__reduce())
 
-        AhkTest.RaisesMatch(TypeError, "partial\.__setstate__\(\) takes exactly one argument \(0 given\)", (*) => partial.__setstate__())
-        AhkTest.RaisesMatch(TypeError, "invalid partial state", (*) => partial.__setstate__(42))
-        AhkTest.RaisesMatch(TypeError, "invalid partial state", (*) => partial.__setstate__(stdlib.tuple([1, 2, 3])))
-        AhkTest.RaisesMatch(TypeError, "invalid partial state", (*) => partial.__setstate__(stdlib.tuple([stdlib_functools_test_add_three, [1], Map(), stdlib.None])))
+        AhkTest.RaisesMatch(TypeError, "partial\.__setstate\(\) takes exactly one argument \(0 given\)", (*) => partial.__setstate())
+        AhkTest.RaisesMatch(TypeError, "invalid partial state", (*) => partial.__setstate(42))
+        AhkTest.RaisesMatch(TypeError, "invalid partial state", (*) => partial.__setstate(stdlib.tuple([1, 2, 3])))
+        AhkTest.RaisesMatch(TypeError, "invalid partial state", (*) => partial.__setstate(stdlib.tuple([stdlib_functools_test_add_three, [1], Map(), stdlib.None])))
     }
 
     static TestPartialMetadataRoundtripsThroughDictStateLikePython310()
@@ -408,33 +411,33 @@ class StdlibFunctoolsTest
         reduced := ""
         state := ""
 
-        partial.__module__ := 5
-        partial.__doc__ := 6
+        partial.__module := 5
+        partial.__doc := 6
 
-        AhkTest.AssertEqual(5, partial.__module__)
-        AhkTest.AssertEqual(6, partial.__doc__)
-        AhkTest.AssertTrue(partial.__dict__ is Map)
-        AhkTest.AssertEqual(5, partial.__dict__["__module__"])
-        AhkTest.AssertEqual(6, partial.__dict__["__doc__"])
+        AhkTest.AssertEqual(5, partial.__module)
+        AhkTest.AssertEqual(6, partial.__doc)
+        AhkTest.AssertTrue(partial.__dict is Map)
+        AhkTest.AssertEqual(5, partial.__dict["__module"])
+        AhkTest.AssertEqual(6, partial.__dict["__doc"])
 
-        reduced := partial.__reduce__()
+        reduced := partial.__reduce()
         state := reduced[3]
         AhkTest.AssertTrue(state[4] is Map)
-        AhkTest.AssertEqual(5, state[4]["__module__"])
-        AhkTest.AssertEqual(6, state[4]["__doc__"])
+        AhkTest.AssertEqual(5, state[4]["__module"])
+        AhkTest.AssertEqual(6, state[4]["__doc"])
 
-        partial.__setstate__(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), Map("c", 5), Map("__module__", 7, "__doc__", 8, "x", 9)]))
-        AhkTest.AssertEqual(7, partial.__module__)
-        AhkTest.AssertEqual(8, partial.__doc__)
+        partial.__setstate(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), Map("c", 5), Map("__module", 7, "__doc", 8, "x", 9)]))
+        AhkTest.AssertEqual(7, partial.__module)
+        AhkTest.AssertEqual(8, partial.__doc)
         AhkTest.AssertEqual(9, partial.x)
-        AhkTest.AssertEqual(7, partial.__dict__["__module__"])
-        AhkTest.AssertEqual(8, partial.__dict__["__doc__"])
-        AhkTest.AssertEqual(9, partial.__dict__["x"])
+        AhkTest.AssertEqual(7, partial.__dict["__module"])
+        AhkTest.AssertEqual(8, partial.__dict["__doc"])
+        AhkTest.AssertEqual(9, partial.__dict["x"])
 
-        partial.__setstate__(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), stdlib.None, 5]))
-        AhkTest.AssertEqual(5, partial.__dict__)
-        AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => partial.__module__)
-        AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => partial.__doc__)
+        partial.__setstate(stdlib.tuple([stdlib_functools_test_add_three, stdlib.tuple([1]), stdlib.None, 5]))
+        AhkTest.AssertEqual(5, partial.__dict)
+        AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => partial.__module)
+        AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => partial.__doc)
     }
 
 }

@@ -67,6 +67,16 @@ class stdlib
         return SystemError(args*)
     }
 
+    static SyntaxError
+    {
+        get => SyntaxError
+    }
+
+    static SyntaxError(args*)
+    {
+        return SyntaxError(args*)
+    }
+
     static ModuleNotFoundError
     {
         get => ModuleNotFoundError
@@ -77,11 +87,46 @@ class stdlib
         return ModuleNotFoundError(args*)
     }
 
+    static OverflowError
+    {
+        get => OverflowError
+    }
+
+    static OverflowError(args*)
+    {
+        return OverflowError(args*)
+    }
+
+    static EOFError
+    {
+        get => EOFError
+    }
+
+    static EOFError(args*)
+    {
+        return EOFError(args*)
+    }
+
+    static ProcessLookupError
+    {
+        get => ProcessLookupError
+    }
+
+    static ProcessLookupError(args*)
+    {
+        return ProcessLookupError(args*)
+    }
+
     static tuple(iterable := unset)
     {
         if !IsSet(iterable)
             return AhkStdlibTuple()
         return AhkStdlibTupleFrom(iterable)
+    }
+
+    static slice(args*)
+    {
+        return AhkStdlibSlice(args*)
     }
 
     static await(value, options?)
@@ -119,7 +164,23 @@ class SystemError extends Error
 {
 }
 
+class SyntaxError extends Error
+{
+}
+
 class ModuleNotFoundError extends Error
+{
+}
+
+class OverflowError extends Error
+{
+}
+
+class EOFError extends Error
+{
+}
+
+class ProcessLookupError extends OSError
 {
 }
 
@@ -176,6 +237,86 @@ AhkStdlibTruthValue(value)
     if value is Map
         return value.Count != 0
     return value ? true : false
+}
+
+class AhkStdlibSlice
+{
+    __New(args*)
+    {
+        if args.Length = 0
+            throw TypeError("slice expected at least 1 argument, got 0", -1)
+        if args.Length > 3
+            throw TypeError("slice expected at most 3 arguments, got " args.Length, -1)
+
+        if args.Length = 1 {
+            this.start := stdlib.None
+            this.stop := args[1]
+            this.step := stdlib.None
+            return
+        }
+
+        this.start := args[1]
+        this.stop := args[2]
+        this.step := args.Length = 3 ? args[3] : stdlib.None
+    }
+
+    indices(args*)
+    {
+        if args.Length != 1
+            throw TypeError("slice.indices() takes exactly one argument (" args.Length " given)", -1)
+        length := AhkStdlibSliceIndex(args[1])
+        if length < 0
+            throw ValueError("length should not be negative", -1)
+
+        step := AhkStdlibIsNone(this.step) ? 1 : AhkStdlibSliceIndex(this.step)
+        if step = 0
+            throw ValueError("slice step cannot be zero", -1)
+
+        if step > 0 {
+            start := AhkStdlibIsNone(this.start) ? 0 : AhkStdlibSliceIndex(this.start)
+            if start < 0
+                start += length
+            if start < 0
+                start := 0
+            else if start > length
+                start := length
+
+            stop := AhkStdlibIsNone(this.stop) ? length : AhkStdlibSliceIndex(this.stop)
+            if stop < 0
+                stop += length
+            if stop < 0
+                stop := 0
+            else if stop > length
+                stop := length
+            return stdlib.tuple([start, stop, step])
+        }
+
+        start := AhkStdlibIsNone(this.start) ? length - 1 : AhkStdlibSliceIndex(this.start)
+        if start < 0
+            start += length
+        if start < 0
+            start := -1
+        else if start >= length
+            start := length - 1
+
+        if AhkStdlibIsNone(this.stop)
+            stop := -1
+        else {
+            stop := AhkStdlibSliceIndex(this.stop)
+            if stop < 0
+                stop += length
+            if stop < 0
+                stop := -1
+            else if stop >= length
+                stop := length - 1
+        }
+        return stdlib.tuple([start, stop, step])
+    }
+
+    __Repr()
+    {
+        return "slice(" AhkStdlibSliceValueRepr(this.start) ", " AhkStdlibSliceValueRepr(this.stop) ", " AhkStdlibSliceValueRepr(this.step) ")"
+    }
 }
 
 class AhkStdlibTuple extends Array
@@ -253,6 +394,26 @@ AhkStdlibTupleFrom(iterable)
 AhkStdlibTupleMutation()
 {
     throw TypeError("'tuple' object does not support item assignment", -1)
+}
+
+AhkStdlibSliceIndex(value)
+{
+    if AhkStdlibIsBool(value)
+        return value.Value ? 1 : 0
+    if value is Integer
+        return value
+    throw TypeError("'" AhkStdlibPythonTypeName(value) "' object cannot be interpreted as an integer", -1)
+}
+
+AhkStdlibSliceValueRepr(value)
+{
+    if AhkStdlibIsNone(value)
+        return "None"
+    if AhkStdlibIsBool(value)
+        return value.Value ? "True" : "False"
+    if value is String
+        return "'" StrReplace(StrReplace(value, "\", "\\"), "'", "\'") "'"
+    return String(value)
 }
 
 AhkStdlibAwait(value, options := unset)

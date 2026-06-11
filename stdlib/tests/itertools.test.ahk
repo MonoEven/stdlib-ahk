@@ -4154,7 +4154,7 @@ class StdlibItertoolsTest
     {
         copies := stdlib.itertools.tee("abc")
         clone := copies[1]
-        teeType := clone.__class__
+        teeType := clone.__class
         fromIterable := teeType("def")
         originals := stdlib.itertools.tee("abc")
         fromClone := teeType(originals[1])
@@ -4168,7 +4168,7 @@ class StdlibItertoolsTest
     static TestTeeCloneTypeRejectsWrongArityLikePython310()
     {
         clone := stdlib.itertools.tee("abc")[1]
-        teeType := clone.__class__
+        teeType := clone.__class
 
         AhkTest.RaisesMatch(TypeError, "_tee expected 1 argument, got 0", (*) => teeType())
         AhkTest.RaisesMatch(TypeError, "'int' object is not iterable", (*) => teeType(10))
@@ -4177,7 +4177,7 @@ class StdlibItertoolsTest
     static TestTeeCloneTypeRejectsKeywordStyleOptionsLikePython310()
     {
         clone := stdlib.itertools.tee("abc")[1]
-        teeType := clone.__class__
+        teeType := clone.__class
 
         AhkTest.RaisesMatch(
             TypeError,
@@ -4189,7 +4189,7 @@ class StdlibItertoolsTest
     static TestTeeCloneTypeRejectsPositionalAndKeywordStyleOptionsLikePython310()
     {
         clone := stdlib.itertools.tee("abc")[1]
-        teeType := clone.__class__
+        teeType := clone.__class
 
         AhkTest.RaisesMatch(
             TypeError,

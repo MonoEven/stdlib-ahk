@@ -56,12 +56,12 @@ class AhkStdlibContextlibNullcontext
         this.AhkStdlibEnterResult := enterResult
     }
 
-    __enter__()
+    __enter()
     {
         return this.AhkStdlibEnterResult
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         return false
     }
@@ -79,12 +79,12 @@ class AhkStdlibContextlibSuppress
         this.AhkStdlibExceptions := exceptions
     }
 
-    __enter__()
+    __enter()
     {
         return this
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         if AhkStdlibIsNone(excType)
             return false
@@ -110,12 +110,12 @@ class AhkStdlibContextlibClosing
         this.AhkStdlibThing := thing
     }
 
-    __enter__()
+    __enter()
     {
         return this.AhkStdlibThing
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         if !HasMethod(this.AhkStdlibThing, "close")
             throw AttributeError("'" AhkStdlibPythonTypeName(this.AhkStdlibThing) "' object has no attribute 'close'", -1)
@@ -143,12 +143,12 @@ class AhkStdlibContextlibContextDecorator
         return AhkStdlibContextlibDecoratedCallable(this.AhkStdlibContext, func)
     }
 
-    __enter__()
+    __enter()
     {
         return this
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         return false
     }
@@ -170,15 +170,15 @@ class AhkStdlibContextlibDecoratedCallable
     Call(args*)
     {
         context := this.AhkStdlibContext
-        context.__enter__()
+        context.__enter()
         try {
             result := this.AhkStdlibFunc.Call(args*)
         } catch as err {
-            if context.__exit__(AhkStdlibContextlibExceptionType(err), err, stdlib.None)
+            if context.__exit(AhkStdlibContextlibExceptionType(err), err, stdlib.None)
                 return stdlib.None
             throw err
         }
-        context.__exit__(stdlib.None, stdlib.None, stdlib.None)
+        context.__exit(stdlib.None, stdlib.None, stdlib.None)
         return result
     }
 }
@@ -190,17 +190,17 @@ class AhkStdlibContextlibExitStack
         this.AhkStdlibExitCallbacks := []
     }
 
-    __enter__()
+    __enter()
     {
         return this
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         suppressed := false
         while this.AhkStdlibExitCallbacks.Length {
             callback := this.AhkStdlibExitCallbacks.Pop()
-            if callback.__exit__(excType, exc, tb) {
+            if callback.__exit(excType, exc, tb) {
                 suppressed := true
                 excType := stdlib.None
                 exc := stdlib.None
@@ -212,14 +212,14 @@ class AhkStdlibContextlibExitStack
 
     enter_context(cm)
     {
-        result := cm.__enter__()
+        result := cm.__enter()
         this.push(cm)
         return result
     }
 
     push(exit)
     {
-        if !HasMethod(exit, "__exit__")
+        if !HasMethod(exit, "__exit")
             throw TypeError("'" AhkStdlibPythonTypeName(exit) "' object does not support the context manager protocol", -1)
         this.AhkStdlibExitCallbacks.Push(AhkStdlibContextlibExitCallback(exit))
         return exit
@@ -235,7 +235,7 @@ class AhkStdlibContextlibExitStack
 
     close()
     {
-        return this.__exit__(stdlib.None, stdlib.None, stdlib.None)
+        return this.__exit(stdlib.None, stdlib.None, stdlib.None)
     }
 
     __Repr()
@@ -251,9 +251,9 @@ class AhkStdlibContextlibExitCallback
         this.AhkStdlibContext := context
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
-        return this.AhkStdlibContext.__exit__(excType, exc, tb)
+        return this.AhkStdlibContext.__exit(excType, exc, tb)
     }
 }
 
@@ -265,7 +265,7 @@ class AhkStdlibContextlibPlainCallback
         this.AhkStdlibArgs := args
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         this.AhkStdlibFunc.Call(this.AhkStdlibArgs*)
         return false
@@ -280,12 +280,12 @@ class AhkStdlibContextlibRedirectStream
         this.AhkStdlibStreamName := streamName
     }
 
-    __enter__()
+    __enter()
     {
         return this.AhkStdlibNewTarget
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         return false
     }

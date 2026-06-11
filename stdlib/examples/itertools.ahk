@@ -1549,7 +1549,7 @@ tee_first_rest := []
 for value in tee_copies[1]
     tee_first_rest.Push(value)
 tee_repr := tee_copies[1].__Repr()
-tee_type := tee_copies[1].__class__
+tee_type := tee_copies[1].__class
 tee_from_iterable := []
 for value in tee_type("def")
     tee_from_iterable.Push(value)

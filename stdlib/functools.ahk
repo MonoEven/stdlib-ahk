@@ -81,52 +81,52 @@ class AhkStdlibFunctoolsPartial
         set => AhkStdlibFunctoolsReadonlyAttribute()
     }
 
-    __module__ {
+    __module {
         get {
-            dictState := this.__dict__
+            dictState := this.__dict
             if !(dictState is Map)
                 throw stdlib.SystemError("bad argument to internal function", -1)
-            if dictState.Has("__module__")
-                return dictState["__module__"]
+            if dictState.Has("__module")
+                return dictState["__module"]
             return this.AhkStdlibModule
         }
         set {
-            dictState := this.__dict__
+            dictState := this.__dict
             if !(dictState is Map)
                 throw stdlib.SystemError("bad argument to internal function", -1)
-            dictState["__module__"] := value
+            dictState["__module"] := value
         }
     }
 
-    __doc__ {
+    __doc {
         get {
-            dictState := this.__dict__
+            dictState := this.__dict
             if !(dictState is Map)
                 throw stdlib.SystemError("bad argument to internal function", -1)
-            if dictState.Has("__doc__")
-                return dictState["__doc__"]
+            if dictState.Has("__doc")
+                return dictState["__doc"]
             return this.AhkStdlibDoc
         }
         set {
-            dictState := this.__dict__
+            dictState := this.__dict
             if !(dictState is Map)
                 throw stdlib.SystemError("bad argument to internal function", -1)
-            dictState["__doc__"] := value
+            dictState["__doc"] := value
         }
     }
 
-    __dict__ {
+    __dict {
         get => this.AhkStdlibDict
         set {
             if !(value is Map)
-                throw TypeError("__dict__ must be set to a dictionary, not a '" AhkStdlibFunctoolsPythonTypeName(value) "'", -1)
+                throw TypeError("__dict must be set to a dictionary, not a '" AhkStdlibFunctoolsPythonTypeName(value) "'", -1)
             this.DefineProp("AhkStdlibDict", { Value: value })
         }
     }
 
     __Set(name, params, value)
     {
-        dictState := this.__dict__
+        dictState := this.__dict
         if !(dictState is Map)
             throw stdlib.SystemError("bad argument to internal function", -1)
         dictState[name] := value
@@ -135,7 +135,7 @@ class AhkStdlibFunctoolsPartial
 
     __Get(name, params)
     {
-        dictState := this.__dict__
+        dictState := this.__dict
         if !(dictState is Map)
             throw stdlib.SystemError("bad argument to internal function", -1)
         if dictState.Has(name)
@@ -166,9 +166,9 @@ class AhkStdlibFunctoolsPartial
         return "functools.partial(" AhkStdlibFunctoolsJoin(parts, ", ") ")"
     }
 
-    __reduce__()
+    __reduce()
     {
-        dictState := this.__dict__
+        dictState := this.__dict
         if dictState is Map
             dictState := dictState.Count = 0 ? stdlib.None : dictState
         else
@@ -177,10 +177,10 @@ class AhkStdlibFunctoolsPartial
         return AhkStdlibTuple([AhkStdlibFunctoolsPartial, AhkStdlibTuple([this.func]), state])
     }
 
-    __setstate__(args*)
+    __setstate(args*)
     {
         if args.Length = 0
-            throw TypeError("partial.__setstate__() takes exactly one argument (0 given)", -1)
+            throw TypeError("partial.__setstate() takes exactly one argument (0 given)", -1)
         if args.Length != 1
             throw TypeError("invalid partial state", -1)
         state := args[1]
@@ -197,10 +197,10 @@ class AhkStdlibFunctoolsPartial
     {
         if name = "func" || name = "args" || name = "keywords"
             AhkStdlibFunctoolsReadonlyAttribute()
-        dictState := this.__dict__
+        dictState := this.__dict
         if !(dictState is Map)
             throw stdlib.SystemError("bad argument to internal function", -1)
-        if name = "__module__" || name = "__doc__" {
+        if name = "__module" || name = "__doc" {
             if dictState.Has(name) {
                 removed := dictState[name]
                 dictState.Delete(name)
@@ -208,8 +208,8 @@ class AhkStdlibFunctoolsPartial
             }
             throw stdlib.AttributeError(name, -1)
         }
-        if name = "__dict__"
-            throw TypeError("cannot delete __dict__", -1)
+        if name = "__dict"
+            throw TypeError("cannot delete __dict", -1)
         if dictState.Has(name) {
             removed := dictState[name]
             dictState.Delete(name)

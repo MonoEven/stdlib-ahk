@@ -860,12 +860,12 @@ try {
         AhkTest.AssertSame(worker, hookArgs.thread)
 
         weakSet := stdlib.thread.WeakSet()
-        AhkTest.AssertEqual(0, weakSet.__len__())
+        AhkTest.AssertEqual(0, weakSet.__len())
         weakSet.add(worker)
-        AhkTest.AssertEqual(1, weakSet.__len__())
+        AhkTest.AssertEqual(1, weakSet.__len())
         AhkTest.AssertTrue(weakSet.contains(worker))
         weakSet.discard(worker)
-        AhkTest.AssertEqual(0, weakSet.__len__())
+        AhkTest.AssertEqual(0, weakSet.__len())
     }
 
     static TestThreadWorkerSuppressesTrayAndCapturesLoadErrors()

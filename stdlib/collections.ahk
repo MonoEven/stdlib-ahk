@@ -783,7 +783,7 @@ class AhkStdlibCollectionsNamedTupleType
 {
     __New(typename, fieldNames, options := unset)
     {
-        this.__name__ := typename
+        this.__name := typename
         this._fields := AhkStdlibCollectionsNamedTupleFields(fieldNames)
         this.AhkStdlibFieldIndex := Map()
         for index, field in this._fields
@@ -793,7 +793,7 @@ class AhkStdlibCollectionsNamedTupleType
     Call(values*)
     {
         if values.Length != this._fields.Length
-            throw TypeError(this.__name__ ".__new__() expected " this._fields.Length " argument(s), got " values.Length, -1)
+            throw TypeError(this.__name ".__new__() expected " this._fields.Length " argument(s), got " values.Length, -1)
         return AhkStdlibCollectionsNamedTupleValue(this, values)
     }
 
@@ -816,7 +816,7 @@ class AhkStdlibCollectionsNamedTupleValue extends AhkStdlibTuple
     {
         if this.AhkStdlibNamedTupleType.AhkStdlibFieldIndex.Has(name)
             return this[this.AhkStdlibNamedTupleType.AhkStdlibFieldIndex[name]]
-        throw AttributeError("'" this.AhkStdlibNamedTupleType.__name__ "' object has no attribute '" name "'", -1)
+        throw AttributeError("'" this.AhkStdlibNamedTupleType.__name "' object has no attribute '" name "'", -1)
     }
 
     _asdict()

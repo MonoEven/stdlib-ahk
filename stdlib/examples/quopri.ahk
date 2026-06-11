@@ -7,5 +7,6 @@ StrPut("a b", payload, "UTF-8")
 encoded := stdlib.quopri.encodestring(payload, stdlib.False, stdlib.True)
 decoded := stdlib.quopri.decodestring("a_b=3D", stdlib.True)
 
-MsgBox "encodestring=" StrGet(encoded, "UTF-8")
+quopri_example_output := "encodestring=" StrGet(encoded, "UTF-8")
     . "`ndecodestring=" StrGet(decoded, "UTF-8")
+FileAppend quopri_example_output "`n", "*", "UTF-8"

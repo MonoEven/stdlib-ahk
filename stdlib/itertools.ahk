@@ -1883,7 +1883,7 @@ class AhkStdlibItertoolsTeeState
 
 class AhkStdlibItertoolsTeeIterator
 {
-    __class__
+    __class
     {
         get => AhkStdlibItertoolsTeeIterator
     }

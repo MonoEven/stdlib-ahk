@@ -71,7 +71,7 @@ class AhkStdlibCsv
     static QUOTE_ALL := 1
     static QUOTE_NONNUMERIC := 2
     static QUOTE_NONE := 3
-    static __version__ := "1.0"
+    static __version := "1.0"
     static Error := AhkStdlibCsvError
     static Dialect := AhkStdlibCsvDialect
     static excel := AhkStdlibCsvExcel

@@ -24,13 +24,13 @@ class StdlibContextlibTestStackContext
         this.events := events
     }
 
-    __enter__()
+    __enter()
     {
         this.events.Push("enter")
         return "entered"
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         this.events.Push(["exit", AhkStdlibIsNone(excType) ? stdlib.None : excType])
         return false
@@ -44,13 +44,13 @@ class StdlibContextlibTestDecoratorCore
         this.events := events
     }
 
-    __enter__()
+    __enter()
     {
         this.events.Push("decorator-enter")
         return this
     }
 
-    __exit__(excType, exc, tb)
+    __exit(excType, exc, tb)
     {
         this.events.Push(["decorator-exit", AhkStdlibIsNone(excType) ? stdlib.None : excType])
         return false
@@ -65,28 +65,28 @@ class StdlibContextlibTest
         closer := StdlibContextlibTestCloser()
         closingCtx := stdlib.contextlib.closing(closer)
 
-        AhkTest.AssertEqual("seed", nullctx.__enter__())
+        AhkTest.AssertEqual("seed", nullctx.__enter())
         AhkTest.AssertEqual("<contextlib.nullcontext object at 0x" . AhkStdlibContextlibHexAddress(nullctx) . ">", nullctx.__Repr())
 
         AhkTest.AssertFalse(closer.closed)
-        AhkTest.AssertSame(closer, closingCtx.__enter__())
+        AhkTest.AssertSame(closer, closingCtx.__enter())
         AhkTest.AssertEqual("<contextlib.closing object at 0x" . AhkStdlibContextlibHexAddress(closingCtx) . ">", closingCtx.__Repr())
-        AhkTest.AssertTrue(!closingCtx.__exit__(stdlib.None, stdlib.None, stdlib.None))
+        AhkTest.AssertTrue(!closingCtx.__exit(stdlib.None, stdlib.None, stdlib.None))
         AhkTest.AssertTrue(closer.closed)
 
         suppressCtx := stdlib.contextlib.suppress(ValueError, KeyError)
         AhkTest.AssertEqual("<contextlib.suppress object at 0x" . AhkStdlibContextlibHexAddress(suppressCtx) . ">", suppressCtx.__Repr())
-        AhkTest.AssertTrue(suppressCtx.__exit__(ValueError, ValueError("x", -1), stdlib.None))
-        AhkTest.AssertFalse(suppressCtx.__exit__(TypeError, TypeError("y", -1), stdlib.None))
+        AhkTest.AssertTrue(suppressCtx.__exit(ValueError, ValueError("x", -1), stdlib.None))
+        AhkTest.AssertFalse(suppressCtx.__exit(TypeError, TypeError("y", -1), stdlib.None))
 
         emptySuppress := stdlib.contextlib.suppress()
-        AhkTest.AssertFalse(emptySuppress.__exit__(ValueError, ValueError("x", -1), stdlib.None))
+        AhkTest.AssertFalse(emptySuppress.__exit(ValueError, ValueError("x", -1), stdlib.None))
     }
 
     static TestObservedContextlibErrorsMatchLocal310()
     {
         AhkTest.RaisesMatch(TypeError, "^nullcontext\.__init__\(\) takes from 1 to 2 positional arguments but 3 were given$", (*) => stdlib.contextlib.nullcontext(1, 2))
-        AhkTest.RaisesMatch(TypeError, "^issubclass\(\) arg 2 must be a class, a tuple of classes, or a union$", (*) => stdlib.contextlib.suppress(1).__exit__(ValueError, ValueError("z", -1), stdlib.None))
+        AhkTest.RaisesMatch(TypeError, "^issubclass\(\) arg 2 must be a class, a tuple of classes, or a union$", (*) => stdlib.contextlib.suppress(1).__exit(ValueError, ValueError("z", -1), stdlib.None))
         AhkTest.RaisesMatch(TypeError, "^closing\(\) missing 1 required positional argument: 'thing'$", (*) => stdlib.contextlib.closing())
         AhkTest.RaisesMatch(TypeError, "^nullcontext\.__init__\(\) takes from 1 to 2 positional arguments but 4 were given$", (*) => stdlib.contextlib.nullcontext(1, 2, 3))
     }
@@ -99,20 +99,20 @@ class StdlibContextlibTest
 
         stdoutRedirect := stdlib.contextlib.redirect_stdout(stdoutTarget)
         stderrRedirect := stdlib.contextlib.redirect_stderr(stderrTarget)
-        AhkTest.AssertSame(stdoutTarget, stdoutRedirect.__enter__())
+        AhkTest.AssertSame(stdoutTarget, stdoutRedirect.__enter())
         stdoutTarget.write("out-line`n")
-        AhkTest.AssertFalse(stdoutRedirect.__exit__(stdlib.None, stdlib.None, stdlib.None))
-        AhkTest.AssertSame(stderrTarget, stderrRedirect.__enter__())
+        AhkTest.AssertFalse(stdoutRedirect.__exit(stdlib.None, stdlib.None, stdlib.None))
+        AhkTest.AssertSame(stderrTarget, stderrRedirect.__enter())
         stderrTarget.write("err-line`n")
-        AhkTest.AssertFalse(stderrRedirect.__exit__(stdlib.None, stdlib.None, stdlib.None))
+        AhkTest.AssertFalse(stderrRedirect.__exit(stdlib.None, stdlib.None, stdlib.None))
 
         stack := stdlib.contextlib.ExitStack()
-        AhkTest.AssertSame(stack, stack.__enter__())
+        AhkTest.AssertSame(stack, stack.__enter())
         stack.callback(StdlibContextlibTestCallback, events, "one")
         stack.callback(StdlibContextlibTestCallback, events, "two")
         entered := stack.enter_context(StdlibContextlibTestStackContext(events))
         events.Push(["stack-body", entered])
-        AhkTest.AssertFalse(stack.__exit__(stdlib.None, stdlib.None, stdlib.None))
+        AhkTest.AssertFalse(stack.__exit(stdlib.None, stdlib.None, stdlib.None))
 
         decorator := stdlib.contextlib.ContextDecorator(StdlibContextlibTestDecoratorCore(events))
         decorated := decorator.Call((value) => StdlibContextlibTestDecoratedCall(events, value))

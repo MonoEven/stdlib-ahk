@@ -19,9 +19,9 @@ decimal_example_rounding := stdlib.decimal.ROUND_HALF_EVEN
 decimal_example_default_context := stdlib.decimal.getcontext()
 decimal_example_custom_context := stdlib.decimal.Context({ prec: 7, rounding: stdlib.decimal.ROUND_DOWN })
 decimal_example_context_manager := stdlib.decimal.localcontext(decimal_example_custom_context)
-decimal_example_entered_context := decimal_example_context_manager.__enter__()
+decimal_example_entered_context := decimal_example_context_manager.__enter()
 decimal_example_entered_context.prec := 11
 decimal_example_context_prec_inside := stdlib.decimal.getcontext().prec
-decimal_example_context_manager.__exit__(stdlib.None, stdlib.None, stdlib.None)
+decimal_example_context_manager.__exit(stdlib.None, stdlib.None, stdlib.None)
 decimal_example_context_prec_after := stdlib.decimal.getcontext().prec
 decimal_example_signal := stdlib.decimal.DivisionByZero()

@@ -72,7 +72,7 @@ class StdlibCopyCycleNode
 
 class StdlibCopyCustomCopy
 {
-    __copy__()
+    __copy()
     {
         return ["custom-copy", Type(this)]
     }
@@ -80,7 +80,7 @@ class StdlibCopyCustomCopy
 
 class StdlibCopyCustomDeepCopy
 {
-    __deepcopy__(memo)
+    __deepcopy(memo)
     {
         return ["custom-deepcopy", memo is Map, Type(this)]
     }

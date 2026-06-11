@@ -68,8 +68,8 @@ class AhkStdlibTypesModule
 {
     __New(name, doc := "")
     {
-        this.__name__ := name
-        this.__doc__ := doc
+        this.__name := name
+        this.__doc := doc
     }
 }
 

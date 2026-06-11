@@ -18,9 +18,15 @@ class AhkStdlibArrayType
 
         values := []
         if IsSet(initializer) {
-            if initializer is String
+            if initializer is String {
+                if typecode != "u"
+                    throw TypeError("cannot use a str to initialize an array with typecode '" typecode "'", -1)
                 AhkStdlibArrayIterateInitializerChars(initializer, &values)
-            else if IsObject(initializer) && HasMethod(initializer, "__Enum")
+            } else if AhkStdlibArrayIsBytesLike(initializer) {
+                result := AhkStdlibArrayValue(typecode)
+                result.frombytes(initializer)
+                return result
+            } else if IsObject(initializer) && HasMethod(initializer, "__Enum")
                 AhkStdlibArrayCollectIterable(initializer, &values)
             else
                 throw TypeError("'" AhkStdlibPythonTypeName(initializer) "' object is not iterable", -1)
@@ -35,8 +41,8 @@ class AhkStdlibArrayValue
     __New(typecode, values := unset)
     {
         info := AhkStdlibArrayTypeInfo(typecode)
-        this.typecode := typecode
-        this.itemsize := info.Size
+        this.AhkStdlibTypecode := typecode
+        this.AhkStdlibItemsize := info.Size
         this.AhkStdlibStorageType := info.StorageType
         this.AhkStdlibElementKind := info.Kind
         this.AhkStdlibLength := 0
@@ -48,13 +54,35 @@ class AhkStdlibArrayValue
         }
     }
 
+    typecode
+    {
+        get => this.AhkStdlibTypecode
+        set
+        {
+            throw stdlib.AttributeError("attribute 'typecode' of 'array.array' objects is not writable", -1)
+        }
+    }
+
+    itemsize
+    {
+        get => this.AhkStdlibItemsize
+        set
+        {
+            throw stdlib.AttributeError("attribute 'itemsize' of 'array.array' objects is not writable", -1)
+        }
+    }
+
     __Item[index]
     {
         get {
+            if index is AhkStdlibSlice
+                return AhkStdlibArrayGetSlice(this, index)
             offset := this.AhkStdlibResolveIndex(index)
             return AhkStdlibArrayReadElement(this, offset)
         }
         set {
+            if index is AhkStdlibSlice
+                return AhkStdlibArraySetSlice(this, index, value)
             offset := this.AhkStdlibResolveIndex(index)
             AhkStdlibArrayValidateValue(this.typecode, this.AhkStdlibElementKind, value)
             AhkStdlibArrayWriteElement(this, value, this.AhkStdlibBuffer, offset)
@@ -100,6 +128,16 @@ class AhkStdlibArrayValue
         return result
     }
 
+    __iadd(other)
+    {
+        if !(other is AhkStdlibArrayValue)
+            throw TypeError("can only extend array with array (not `"" AhkStdlibPythonTypeName(other) "`")", -1)
+        if this.typecode != other.typecode
+            throw TypeError("can only extend with array of same kind", -1)
+        this.extend(other)
+        return this
+    }
+
     __Mul(count)
     {
         if AhkStdlibIsBool(count)
@@ -118,6 +156,22 @@ class AhkStdlibArrayValue
         return result
     }
 
+    __imul(count)
+    {
+        count := AhkStdlibArrayNormalizeScalar(count)
+        if !(count is Integer)
+            throw TypeError("'" AhkStdlibPythonTypeName(count) "' object cannot be interpreted as an integer", -1)
+
+        result := this.__Mul(count)
+        AhkStdlibArrayAdopt(this, result)
+        return this
+    }
+
+    __rmul(count)
+    {
+        return this.__Mul(count)
+    }
+
     __Contains(value)
     {
         return this.count(value) > 0
@@ -128,6 +182,21 @@ class AhkStdlibArrayValue
         return this.AhkStdlibLength
     }
 
+    __copy()
+    {
+        return AhkStdlibArrayCloneValue(this)
+    }
+
+    __deepcopy(memo)
+    {
+        ptr := ObjPtr(this)
+        if memo.Has(ptr)
+            return memo[ptr]
+        result := AhkStdlibArrayCloneValue(this)
+        memo[ptr] := result
+        return result
+    }
+
     append(value)
     {
         AhkStdlibArrayValidateValue(this.typecode, this.AhkStdlibElementKind, value)
@@ -135,13 +204,19 @@ class AhkStdlibArrayValue
         this.AhkStdlibLength += 1
         this.AhkStdlibBuffer.Size := this.AhkStdlibLength * this.itemsize
         AhkStdlibArrayWriteElement(this, value, this.AhkStdlibBuffer, oldLength * this.itemsize)
-        return ""
+        return stdlib.None
     }
 
     extend(iterable)
     {
         values := []
-        if iterable is String
+        if iterable is AhkStdlibArrayValue {
+            if iterable.typecode != this.typecode
+                throw TypeError("can only extend with array of same kind", -1)
+            AhkStdlibArrayCollectIterable(iterable, &values)
+        } else if AhkStdlibArrayIsBytesLike(iterable) {
+            AhkStdlibArrayCollectBytes(iterable, &values)
+        } else if iterable is String
             AhkStdlibArrayIterateInitializerChars(iterable, &values)
         else if IsObject(iterable) && HasMethod(iterable, "__Enum")
             AhkStdlibArrayCollectIterable(iterable, &values)
@@ -150,16 +225,19 @@ class AhkStdlibArrayValue
 
         for value in values
             this.append(value)
-        return ""
+        return stdlib.None
     }
 
     fromlist(iterable)
     {
+        if Type(iterable) != "Array"
+            throw TypeError("arg must be list", -1)
         return AhkStdlibArrayReturnNone(this.extend(iterable))
     }
 
     insert(index, value)
     {
+        index := AhkStdlibArrayNormalizeScalar(index)
         if !(index is Integer)
             throw TypeError("'" AhkStdlibPythonTypeName(index) "' object cannot be interpreted as an integer", -1)
         AhkStdlibArrayValidateValue(this.typecode, this.AhkStdlibElementKind, value)
@@ -203,7 +281,7 @@ class AhkStdlibArrayValue
     {
         if bytes is String
             throw TypeError("a bytes-like object is required, not 'str'", -1)
-        if !IsObject(bytes) || !HasProp(bytes, "Ptr") || !HasProp(bytes, "Size")
+        if !AhkStdlibArrayIsBytesLike(bytes)
             throw TypeError("a bytes-like object is required, not '" AhkStdlibPythonTypeName(bytes) "'", -1)
         if Mod(bytes.Size, this.itemsize) != 0
             throw ValueError("bytes length not a multiple of item size", -1)
@@ -291,8 +369,11 @@ class AhkStdlibArrayValue
             if closeAfter
                 handle.Close()
         }
-        if bytesRead != bytesToRead
-            throw Error("read() didn't return enough bytes", -1)
+        if bytesRead != bytesToRead {
+            bytes.Size := bytesRead
+            this.frombytes(bytes)
+            throw EOFError("read() didn't return enough bytes", -1)
+        }
         return this.frombytes(bytes)
     }
 
@@ -303,7 +384,7 @@ class AhkStdlibArrayValue
         needle := args[1]
         total := 0
         loop this.AhkStdlibLength {
-            if AhkStdlibArrayValuesEqual(this[A_Index - 1], needle)
+            if AhkStdlibArrayElementEquals(this, this[A_Index - 1], needle)
                 total += 1
         }
         return total
@@ -312,14 +393,17 @@ class AhkStdlibArrayValue
     index(args*)
     {
         if args.Length = 0
-            throw TypeError("array.index() takes exactly one argument (0 given)", -1)
-        if args.Length > 1
-            throw TypeError("array.index() takes exactly one argument (" args.Length " given)", -1)
+            throw TypeError("index expected at least 1 argument, got 0", -1)
+        if args.Length > 3
+            throw TypeError("index expected at most 3 arguments, got " args.Length, -1)
         needle := args[1]
-        loop this.AhkStdlibLength {
-            index := A_Index - 1
-            if AhkStdlibArrayValuesEqual(this[index], needle)
+        start := args.Length >= 2 ? AhkStdlibArrayIndexBound(args[2], this.AhkStdlibLength) : 0
+        stop := args.Length >= 3 ? AhkStdlibArrayIndexBound(args[3], this.AhkStdlibLength) : this.AhkStdlibLength
+        index := start
+        while index < stop {
+            if AhkStdlibArrayElementEquals(this, this[index], needle)
                 return index
+            index += 1
         }
         throw ValueError("array.index(x): x not in array", -1)
     }
@@ -333,7 +417,7 @@ class AhkStdlibArrayValue
         needle := args[1]
         loop this.AhkStdlibLength {
             index := A_Index - 1
-            if AhkStdlibArrayValuesEqual(this[index], needle) {
+            if AhkStdlibArrayElementEquals(this, this[index], needle) {
                 this.AhkStdlibDeleteIndex(index)
                 return stdlib.None
             }
@@ -348,6 +432,7 @@ class AhkStdlibArrayValue
         if this.AhkStdlibLength = 0
             throw IndexError("pop from empty array", -1)
         index := args.Length = 0 ? this.AhkStdlibLength - 1 : args[1]
+        index := AhkStdlibArrayNormalizeScalar(index)
         if !(index is Integer)
             throw TypeError("'" AhkStdlibPythonTypeName(index) "' object cannot be interpreted as an integer", -1)
         if index < 0
@@ -372,6 +457,15 @@ class AhkStdlibArrayValue
             left += 1
             right -= 1
         }
+        return stdlib.None
+    }
+
+    Delete(index)
+    {
+        if index is AhkStdlibSlice
+            return AhkStdlibArrayDeleteSlice(this, index)
+        offset := this.AhkStdlibResolveIndex(index)
+        this.AhkStdlibDeleteIndex(offset // this.itemsize)
         return stdlib.None
     }
 
@@ -421,11 +515,14 @@ class AhkStdlibArrayValue
     {
         if this.AhkStdlibLength = 0
             return "array('" this.typecode "')"
+        if this.typecode = "u"
+            return "array('u', " AhkStdlibArrayStringRepr(this.tounicode()) ")"
         return "array('" this.typecode "', " AhkStdlibArrayValueRepr(this.tolist()) ")"
     }
 
     AhkStdlibResolveIndex(index)
     {
+        index := AhkStdlibArrayNormalizeScalar(index)
         if !(index is Integer)
             throw TypeError("array indices must be integers", -1)
         if index < 0 || index >= this.AhkStdlibLength
@@ -466,6 +563,17 @@ AhkStdlibArrayCollectIterable(iterable, &values)
         values.Push(value)
 }
 
+AhkStdlibArrayCollectBytes(bytes, &values)
+{
+    loop bytes.Size
+        values.Push(NumGet(bytes, A_Index - 1, "UChar"))
+}
+
+AhkStdlibArrayIsBytesLike(value)
+{
+    return IsObject(value) && HasProp(value, "Ptr") && HasProp(value, "Size")
+}
+
 AhkStdlibArrayReturnNone(value)
 {
     return stdlib.None
@@ -486,8 +594,149 @@ AhkStdlibArrayReadElement(arrayValue, offset)
 
 AhkStdlibArrayWriteElement(arrayValue, value, buffer, offset)
 {
-    storageValue := arrayValue.typecode = "u" ? Ord(value) : value
+    storageValue := arrayValue.typecode = "u" ? Ord(value) : AhkStdlibArrayNormalizeScalar(value)
     NumPut(arrayValue.AhkStdlibStorageType, storageValue, buffer, offset)
+}
+
+AhkStdlibArrayCloneValue(arrayValue)
+{
+    result := AhkStdlibArrayValue(arrayValue.typecode)
+    result.AhkStdlibLength := arrayValue.AhkStdlibLength
+    result.AhkStdlibBuffer := arrayValue.tobytes()
+    return result
+}
+
+AhkStdlibArrayGetSlice(arrayValue, sliceObject)
+{
+    result := AhkStdlibArrayValue(arrayValue.typecode)
+    for index in AhkStdlibArraySlicePositions(arrayValue, sliceObject)
+        result.append(arrayValue[index])
+    return result
+}
+
+AhkStdlibArraySetSlice(arrayValue, sliceObject, replacement)
+{
+    AhkStdlibArrayValidateSliceReplacement(arrayValue, replacement)
+    replacement := AhkStdlibArrayCloneValue(replacement)
+    indices := sliceObject.indices(arrayValue.AhkStdlibLength)
+    start := indices[1]
+    stop := indices[2]
+    step := indices[3]
+
+    if step = 1 {
+        AhkStdlibArrayReplaceContiguousSlice(arrayValue, start, stop, replacement)
+        return stdlib.None
+    }
+
+    positions := AhkStdlibArraySlicePositionsFromIndices(start, stop, step)
+    if positions.Length != replacement.AhkStdlibLength
+        throw ValueError("attempt to assign array of size " replacement.AhkStdlibLength " to extended slice of size " positions.Length, -1)
+    for positionIndex, position in positions
+        arrayValue[position] := replacement[positionIndex - 1]
+    return stdlib.None
+}
+
+AhkStdlibArrayDeleteSlice(arrayValue, sliceObject)
+{
+    indices := sliceObject.indices(arrayValue.AhkStdlibLength)
+    start := indices[1]
+    stop := indices[2]
+    step := indices[3]
+
+    if step = 1 {
+        replacement := AhkStdlibArrayValue(arrayValue.typecode)
+        AhkStdlibArrayReplaceContiguousSlice(arrayValue, start, stop, replacement)
+        return stdlib.None
+    }
+
+    positions := Map()
+    for position in AhkStdlibArraySlicePositionsFromIndices(start, stop, step)
+        positions[position] := true
+
+    result := AhkStdlibArrayValue(arrayValue.typecode)
+    loop arrayValue.AhkStdlibLength {
+        index := A_Index - 1
+        if !positions.Has(index)
+            result.append(arrayValue[index])
+    }
+    AhkStdlibArrayAdopt(arrayValue, result)
+    return stdlib.None
+}
+
+AhkStdlibArraySlicePositions(arrayValue, sliceObject)
+{
+    indices := sliceObject.indices(arrayValue.AhkStdlibLength)
+    return AhkStdlibArraySlicePositionsFromIndices(indices[1], indices[2], indices[3])
+}
+
+AhkStdlibArraySlicePositionsFromIndices(start, stop, step)
+{
+    positions := []
+    index := start
+    if step > 0 {
+        while index < stop {
+            positions.Push(index)
+            index += step
+        }
+        return positions
+    }
+
+    while index > stop {
+        positions.Push(index)
+        index += step
+    }
+    return positions
+}
+
+AhkStdlibArrayValidateSliceReplacement(arrayValue, replacement)
+{
+    if !(replacement is AhkStdlibArrayValue)
+        throw TypeError("can only assign array (not `"" AhkStdlibPythonTypeName(replacement) "`") to array slice", -1)
+    if replacement.typecode != arrayValue.typecode
+        throw TypeError("bad argument type for built-in operation", -1)
+}
+
+AhkStdlibArrayIndexBound(value, length)
+{
+    if AhkStdlibIsBool(value)
+        value := value.Value ? 1 : 0
+    else if !(value is Integer)
+        throw TypeError("slice indices must be integers or have an __index__ method", -1)
+
+    if value < 0
+        value += length
+    if value < 0
+        return 0
+    if value > length
+        return length
+    return value
+}
+
+AhkStdlibArrayReplaceContiguousSlice(arrayValue, start, stop, replacement)
+{
+    if stop < start
+        stop := start
+
+    result := AhkStdlibArrayValue(arrayValue.typecode)
+    index := 0
+    while index < start {
+        result.append(arrayValue[index])
+        index += 1
+    }
+    for value in replacement
+        result.append(value)
+    index := stop
+    while index < arrayValue.AhkStdlibLength {
+        result.append(arrayValue[index])
+        index += 1
+    }
+    AhkStdlibArrayAdopt(arrayValue, result)
+}
+
+AhkStdlibArrayAdopt(target, source)
+{
+    target.AhkStdlibLength := source.AhkStdlibLength
+    target.AhkStdlibBuffer := source.AhkStdlibBuffer
 }
 
 AhkStdlibArrayOpenBinaryFile(file, mode, &closeAfter)
@@ -553,15 +802,66 @@ AhkStdlibArrayValidateValue(typecode, kind, value)
         return
     }
 
+    value := AhkStdlibArrayNormalizeScalar(value)
+
     if kind = "float" {
         if (value is Integer) || (value is Float)
             return
-        throw TypeError("'" AhkStdlibPythonTypeName(value) "' object cannot be interpreted as a float", -1)
+        throw TypeError("must be real number, not " AhkStdlibPythonTypeName(value), -1)
     }
 
-    if (value is Integer) || AhkStdlibIsBool(value)
+    if value is Integer {
+        AhkStdlibArrayValidateIntegerRange(typecode, value)
         return
+    }
     throw TypeError("'" AhkStdlibPythonTypeName(value) "' object cannot be interpreted as an integer", -1)
+}
+
+AhkStdlibArrayNormalizeScalar(value)
+{
+    if AhkStdlibIsBool(value)
+        return value.Value ? 1 : 0
+    return value
+}
+
+AhkStdlibArrayValidateIntegerRange(typecode, value)
+{
+    switch typecode {
+        case "b":
+            if value < -128
+                throw OverflowError("signed char is less than minimum", -1)
+            if value > 127
+                throw OverflowError("signed char is greater than maximum", -1)
+        case "B":
+            if value < 0
+                throw OverflowError("unsigned byte integer is less than minimum", -1)
+            if value > 255
+                throw OverflowError("unsigned byte integer is greater than maximum", -1)
+        case "h":
+            if value < -32768
+                throw OverflowError("signed short integer is less than minimum", -1)
+            if value > 32767
+                throw OverflowError("signed short integer is greater than maximum", -1)
+        case "H":
+            if value < 0
+                throw OverflowError("unsigned short is less than minimum", -1)
+            if value > 65535
+                throw OverflowError("unsigned short is greater than maximum", -1)
+        case "i", "l":
+            if value < -2147483648 || value > 2147483647
+                throw OverflowError("Python int too large to convert to C long", -1)
+        case "I", "L":
+            if value < 0
+                throw OverflowError("can't convert negative value to unsigned int", -1)
+            if value > 4294967295
+                throw OverflowError("Python int too large to convert to C unsigned long", -1)
+        case "q":
+            ; AHK integers are already bounded to signed 64-bit values.
+            return
+        case "Q":
+            if value < 0
+                throw OverflowError("can't convert negative int to unsigned", -1)
+    }
 }
 
 AhkStdlibArrayValueRepr(values)
@@ -579,6 +879,13 @@ AhkStdlibArrayValuesEqual(left, right)
     return left == right
 }
 
+AhkStdlibArrayElementEquals(arrayValue, left, right)
+{
+    if arrayValue.AhkStdlibElementKind != "str"
+        right := AhkStdlibArrayNormalizeScalar(right)
+    return AhkStdlibArrayValuesEqual(left, right)
+}
+
 AhkStdlibArrayScalarRepr(value)
 {
     if AhkStdlibIsBool(value)
@@ -592,6 +899,35 @@ AhkStdlibArrayScalarRepr(value)
         return text
     }
     return String(value)
+}
+
+AhkStdlibArrayStringRepr(value)
+{
+    quote := InStr(value, "'") && !InStr(value, '"') ? '"' : "'"
+    text := quote
+    loop parse value {
+        char := A_LoopField
+        code := Ord(char)
+        if char = "\"
+            text .= "\\"
+        else if char = quote
+            text .= "\" char
+        else if char = "`n"
+            text .= "\n"
+        else if char = "`r"
+            text .= "\r"
+        else if char = "`t"
+            text .= "\t"
+        else if code = 8
+            text .= "\b"
+        else if code = 12
+            text .= "\f"
+        else if code < 32 || code = 127
+            text .= Format("\x{:02x}", code)
+        else
+            text .= char
+    }
+    return text quote
 }
 
 AhkStdlibArrayJoin(values, delimiter)
