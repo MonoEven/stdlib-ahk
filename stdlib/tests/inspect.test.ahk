@@ -59,4 +59,54 @@ class StdlibInspectTest
     }
 }
 
+    static TestSignatureReflectsFuncArity()
+    {
+        sig := stdlib.inspect.signature(stdlib_inspect_probe_free)
+        ; a (required), b (defaulted), *args
+        AhkTest.AssertEqual("(arg1, arg2=None, *args)", sig.ToString())
+
+        params := sig.parameters_list()
+        AhkTest.AssertEqual(3, params.Length)
+        AhkTest.AssertEqual("arg1", params[1].name)
+        AhkTest.AssertEqual(stdlib.inspect.Parameter.POSITIONAL_OR_KEYWORD, params[1].kind)
+        AhkTest.AssertTrue(params[1].default == stdlib.inspect.Parameter.empty)
+        AhkTest.AssertEqual("arg2", params[2].name)
+        AhkTest.AssertFalse(params[2].default == stdlib.inspect.Parameter.empty)
+        AhkTest.AssertEqual("args", params[3].name)
+        AhkTest.AssertEqual(stdlib.inspect.Parameter.VAR_POSITIONAL, params[3].kind)
+    }
+
+    static TestGetmroWalksBaseChain()
+    {
+        mro := stdlib.inspect.getmro(StdlibInspectProbeDemo)
+        AhkTest.AssertTrue(mro.Length >= 1)
+        AhkTest.AssertEqual(StdlibInspectProbeDemo, mro[1])
+    }
+
+    static TestPredicatesForMethodsAndRoutines()
+    {
+        instance := StdlibInspectProbeDemo()
+        bound := instance.Method
+        AhkTest.AssertTrue(stdlib.inspect.ismethod(bound))
+        AhkTest.AssertFalse(stdlib.inspect.ismethod(stdlib_inspect_probe_free))
+        AhkTest.AssertTrue(stdlib.inspect.isroutine(stdlib_inspect_probe_free))
+        AhkTest.AssertTrue(stdlib.inspect.isbuiltin(StrLen))
+        AhkTest.AssertFalse(stdlib.inspect.isbuiltin(stdlib_inspect_probe_free))
+        AhkTest.AssertTrue(stdlib.inspect.callable(stdlib_inspect_probe_free))
+    }
+
+    static TestGetmembersReturnsSortedPairs()
+    {
+        ns := { beta: 2, alpha: 1, gamma: 3 }
+        members := stdlib.inspect.getmembers(ns)
+        names := []
+        for pair in members
+            names.Push(pair[1])
+        ; Sorted ascending by name.
+        AhkTest.AssertEqual("alpha", names[1])
+        AhkTest.AssertEqual("beta", names[2])
+        AhkTest.AssertEqual("gamma", names[3])
+    }
+}
+
 AhkTest.Collect(StdlibInspectTest)
