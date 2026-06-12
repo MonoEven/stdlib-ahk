@@ -199,17 +199,9 @@ class AhkStdlibCollectionsCounter extends Map
                 pairs.Push([key, this[key]])
         }
 
-        loop pairs.Length {
-            left := A_Index
-            loop pairs.Length - left {
-                right := left + A_Index
-                if AhkStdlibCollectionsCounterMostCommonComesFirst(pairs[right][2], pairs[left][2]) {
-                    temp := pairs[left]
-                    pairs[left] := pairs[right]
-                    pairs[right] := temp
-                }
-            }
-        }
+        ; Stable descending sort by count (Python's most_common preserves
+        ; first-seen order for equal counts via heapq/sorted stability).
+        pairs := AhkStdlibCollectionsCounterSortByCount(pairs)
 
         if IsSet(limit) {
             if limit == stdlib.None
@@ -1269,6 +1261,54 @@ AhkStdlibCollectionsCounterMostCommonComesFirst(leftCount, rightCount)
 {
     comparison := AhkStdlibCollectionsCounterMostCommonCompare(leftCount, rightCount)
     return comparison > 0
+}
+
+; Stable descending-by-count sort. Python's Counter.most_common preserves the
+; insertion order of equal-count elements, so a stable merge sort is required
+; (the previous bubble sort was stable but O(n^2)).
+AhkStdlibCollectionsCounterSortByCount(pairs)
+{
+    n := pairs.Length
+    if n < 2
+        return pairs
+    buffer := []
+    buffer.Length := n
+    width := 1
+    while width < n {
+        i := 1
+        while i <= n {
+            left := i
+            mid := Min(i + width, n + 1)
+            right := Min(i + 2 * width, n + 1)
+            AhkStdlibCollectionsCounterMerge(pairs, buffer, left, mid, right)
+            i += 2 * width
+        }
+        width *= 2
+    }
+    return pairs
+}
+
+AhkStdlibCollectionsCounterMerge(pairs, buffer, left, mid, right)
+{
+    i := left
+    j := mid
+    k := left
+    while i < mid && j < right {
+        ; Stable: take from the left run unless the right run strictly precedes.
+        if AhkStdlibCollectionsCounterMostCommonComesFirst(pairs[j][2], pairs[i][2])
+            buffer[k++] := pairs[j++]
+        else
+            buffer[k++] := pairs[i++]
+    }
+    while i < mid
+        buffer[k++] := pairs[i++]
+    while j < right
+        buffer[k++] := pairs[j++]
+    p := left
+    while p < right {
+        pairs[p] := buffer[p]
+        p++
+    }
 }
 
 AhkStdlibCollectionsCounterValueRepr(value)
