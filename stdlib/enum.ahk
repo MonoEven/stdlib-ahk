@@ -15,6 +15,42 @@ class AhkStdlibEnumModule
             throw TypeError("auto() takes no arguments", -1)
         return AhkStdlibEnumAutoValue()
     }
+
+    static IntEnum(args*)
+    {
+        return AhkStdlibEnumBuildType("IntEnum", args*)
+    }
+
+    static Flag(args*)
+    {
+        return AhkStdlibEnumBuildType("Flag", args*)
+    }
+
+    static IntFlag(args*)
+    {
+        return AhkStdlibEnumBuildType("IntFlag", args*)
+    }
+
+    static unique(enumType)
+    {
+        ; Decorator: raise if any two members share a value (aliases present).
+        seen := Map()
+        duplicates := []
+        for member in enumType.AhkStdlibEnumMembers {
+            key := AhkStdlibEnumReprValue(member.value)
+            if seen.Has(key)
+                duplicates.Push(member.name " -> " seen[key])
+            else
+                seen[key] := member.name
+        }
+        if duplicates.Length > 0 {
+            joined := ""
+            for d in duplicates
+                joined := joined = "" ? d : joined ", " d
+            throw ValueError("duplicate values found in <enum '" enumType.__name "'>: " joined, -1)
+        }
+        return enumType
+    }
 }
 
 class AhkStdlibEnumAutoValue

@@ -45,6 +45,40 @@ class StdlibEnumTest
         AhkTest.RaisesMatch(ValueError, "^'Color' is not a valid Enum$", (*) => stdlib.enum.Enum("Color"))
     }
 
+    static TestIntEnumBuildsWithIntegerValues()
+    {
+        Priority := stdlib.enum.IntEnum("Priority", [["LOW", 1], ["HIGH", 10]])
+        AhkTest.AssertEqual("IntEnum", Priority.__kind)
+        AhkTest.AssertEqual(1, Priority.LOW.value)
+        AhkTest.AssertEqual(10, Priority.HIGH.value)
+        AhkTest.AssertSame(Priority.HIGH, Priority(10))
+        ; IntEnum repr still names the member like Python.
+        AhkTest.AssertEqual("Priority.LOW", String(Priority.LOW))
+    }
+
+    static TestFlagAndIntFlagBuild()
+    {
+        Perm := stdlib.enum.Flag("Perm", [["R", 1], ["W", 2], ["X", 4]])
+        AhkTest.AssertEqual("Flag", Perm.__kind)
+        AhkTest.AssertEqual(1, Perm.R.value)
+        AhkTest.AssertEqual(4, Perm.X.value)
+
+        Mode := stdlib.enum.IntFlag("Mode", [["A", 1], ["B", 2]])
+        AhkTest.AssertEqual("IntFlag", Mode.__kind)
+        AhkTest.AssertEqual(2, Mode.B.value)
+    }
+
+    static TestUniqueDecoratorRaisesOnAliases()
+    {
+        ; No duplicates: returns the same enum unchanged.
+        Clean := stdlib.enum.Enum("Clean", [["A", 1], ["B", 2]])
+        AhkTest.AssertSame(Clean, stdlib.enum.unique(Clean))
+
+        ; Duplicate values are aliases and must raise under @unique.
+        Dup := stdlib.enum.Enum("Dup", [["A", 1], ["B", 1]])
+        AhkTest.RaisesMatch(ValueError, "duplicate values found", (*) => stdlib.enum.unique(Dup))
+    }
+
     static MemberNames(enumType)
     {
         names := []
