@@ -57,7 +57,6 @@ class StdlibInspectTest
         AhkTest.AssertFalse(stdlib.inspect.isfunction(1))
         AhkTest.AssertFalse(stdlib.inspect.isclass(1))
     }
-}
 
     static TestSignatureReflectsFuncArity()
     {
@@ -86,7 +85,9 @@ class StdlibInspectTest
     static TestPredicatesForMethodsAndRoutines()
     {
         instance := StdlibInspectProbeDemo()
-        bound := instance.Method
+        ; A genuine bound method (BoundFunc) comes from ObjBindMethod; plain
+        ; `instance.Method` returns an unbound Func in AHK v2.
+        bound := ObjBindMethod(instance, "Method")
         AhkTest.AssertTrue(stdlib.inspect.ismethod(bound))
         AhkTest.AssertFalse(stdlib.inspect.ismethod(stdlib_inspect_probe_free))
         AhkTest.AssertTrue(stdlib.inspect.isroutine(stdlib_inspect_probe_free))

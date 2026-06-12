@@ -247,25 +247,27 @@ AhkStdlibInspectIsEmpty(value)
 
 AhkStdlibInspectBuildParameters(callable)
 {
-    func := callable
+    ; Note: AHK identifiers are case-insensitive, so a local named `func` would
+    ; shadow the built-in `Func` class and break `is Func` checks. Use `routine`.
+    routine := callable
     ; Bound methods drop the implicit `this`/first parameter.
     boundOffset := 0
     if callable is BoundFunc {
         boundOffset := 1
     }
 
-    if !(func is Func) && !(func is BoundFunc) {
+    if !(routine is Func) && !(routine is BoundFunc) {
         ; Callable object with a Call method.
         if HasMethod(callable, "Call") {
-            func := callable.Call
+            routine := callable.Call
             ; Calling through .Call adds an implicit `this`.
             boundOffset := 1
         }
     }
 
-    minParams := AhkStdlibInspectFuncProp(func, "MinParams", 0)
-    maxParams := AhkStdlibInspectFuncProp(func, "MaxParams", minParams)
-    isVariadic := AhkStdlibInspectFuncProp(func, "IsVariadic", false)
+    minParams := AhkStdlibInspectFuncProp(routine, "MinParams", 0)
+    maxParams := AhkStdlibInspectFuncProp(routine, "MaxParams", minParams)
+    isVariadic := AhkStdlibInspectFuncProp(routine, "IsVariadic", false)
 
     params := []
     index := 1
