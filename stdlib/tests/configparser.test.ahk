@@ -161,6 +161,65 @@ class StdlibConfigParserTest
         AhkTest.AssertFalse(parser.remove_option("DEFAULT", "host"))
         AhkTest.AssertEqual([["port", "8080"], ["user", "Ada"]], parser["Server"].items())
     }
+
+    static TestConfigParserReadAndWriteRoundTripThroughFile()
+    {
+        root := A_Temp "\stdlib-configparser-" A_TickCount "-" Random(100000, 999999)
+        DirCreate root
+        path := root "\config.ini"
+        try {
+            parser := stdlib.configparser.ConfigParser()
+            parser.read_string("[Server]`nhost = localhost`nport = 8080`n")
+
+            sink := FileOpen(path, "w", "UTF-8")
+            parser.write(sink)
+            sink.Close()
+
+            roundtrip := stdlib.configparser.ConfigParser()
+            roundtrip.read(path)
+            AhkTest.AssertEqual("localhost", roundtrip.get("Server", "host"))
+            AhkTest.AssertEqual(8080, roundtrip.getint("Server", "port"))
+        } finally {
+            if DirExist(root)
+                DirDelete root, true
+        }
+    }
+
+    static TestConfigParserReadMissingFileIsSkipped()
+    {
+        parser := stdlib.configparser.ConfigParser()
+        result := parser.read("Z:\definitely\missing\file.ini")
+        AhkTest.AssertEqual([], result)
+    }
+
+    static TestConfigParserReadDictPopulatesSections()
+    {
+        parser := stdlib.configparser.ConfigParser()
+        data := Map("Server", Map("host", "localhost", "port", "9000"))
+        parser.read_dict(data)
+        AhkTest.AssertEqual("localhost", parser.get("Server", "host"))
+        AhkTest.AssertEqual("9000", parser.get("Server", "port"))
+    }
+
+    static TestConfigParserGetFallbackReturnsDefault()
+    {
+        parser := stdlib.configparser.ConfigParser()
+        parser.read_string("[Server]`nhost = localhost`n")
+        AhkTest.AssertEqual("none", parser.get("Server", "missing", { fallback: "none" }))
+        AhkTest.AssertEqual(42, parser.getint("Server", "missing", { fallback: 42 }))
+        AhkTest.AssertEqual("fb", parser.get("Nope", "x", { fallback: "fb" }))
+    }
+
+    static TestConfigParserWriteStringRendersSections()
+    {
+        parser := stdlib.configparser.ConfigParser()
+        parser.read_string("[DEFAULT]`nbase = 1`n[A]`nx = 2`n")
+        text := parser.write_string()
+        AhkTest.AssertContains("[DEFAULT]", text)
+        AhkTest.AssertContains("base = 1", text)
+        AhkTest.AssertContains("[A]", text)
+        AhkTest.AssertContains("x = 2", text)
+    }
 }
 
 AhkTest.Collect(StdlibConfigParserTest)

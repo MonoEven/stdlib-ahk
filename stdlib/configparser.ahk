@@ -113,25 +113,38 @@ class AhkStdlibConfigParser
         this.AhkStdlibSectionOrder.Push(section)
     }
 
-    get(section, option)
+    get(section, option, options := unset)
     {
+        hasFallback := IsSet(options) && IsObject(options) && HasProp(options, "fallback")
         option := AhkStdlibConfigParserNormalizeOption(option)
         if AhkStdlibConfigParserIsDefaultSectionName(section) {
-            if !this.AhkStdlibDefaults.Has(option)
+            if !this.AhkStdlibDefaults.Has(option) {
+                if hasFallback
+                    return options.fallback
                 throw AhkStdlibConfigParserNoOptionError("No option '" option "' in section: '" section "'", -1)
+            }
             return this.AhkStdlibDefaults[option]
         }
 
-        values := this.AhkStdlibRequireSection(section)
+        if !this.AhkStdlibSections.Has(section) {
+            if hasFallback
+                return options.fallback
+            throw AhkStdlibConfigParserNoSectionError("No section: '" section "'", -1)
+        }
+        values := this.AhkStdlibSections[section]
         if values.Has(option)
             return values[option]
         if this.AhkStdlibDefaults.Has(option)
             return this.AhkStdlibDefaults[option]
+        if hasFallback
+            return options.fallback
         throw AhkStdlibConfigParserNoOptionError("No option '" option "' in section: '" section "'", -1)
     }
 
-    getint(section, option)
+    getint(section, option, options := unset)
     {
+        if IsSet(options) && IsObject(options) && HasProp(options, "fallback") && !this.has_option(section, option)
+            return options.fallback
         value := this.get(section, option)
         try {
             return Integer(value)
@@ -140,8 +153,10 @@ class AhkStdlibConfigParser
         }
     }
 
-    getfloat(section, option)
+    getfloat(section, option, options := unset)
     {
+        if IsSet(options) && IsObject(options) && HasProp(options, "fallback") && !this.has_option(section, option)
+            return options.fallback
         value := this.get(section, option)
         try {
             return Float(value)
@@ -150,8 +165,10 @@ class AhkStdlibConfigParser
         }
     }
 
-    getboolean(section, option)
+    getboolean(section, option, options := unset)
     {
+        if IsSet(options) && IsObject(options) && HasProp(options, "fallback") && !this.has_option(section, option)
+            return options.fallback
         value := StrLower(this.get(section, option))
         switch value {
             case "1", "yes", "true", "on":
@@ -236,6 +253,91 @@ class AhkStdlibConfigParser
         this.AhkStdlibSections.Delete(section)
         AhkStdlibConfigParserDeleteFromArray(this.AhkStdlibSectionOrder, section)
         return true
+    }
+
+    read(filenames, encoding := "UTF-8")
+    {
+        ; Accept a single path or a list; silently skip files that don't exist
+        ; (Python returns the list of successfully-read filenames).
+        paths := filenames is Array ? filenames : [filenames]
+        readOk := []
+        for path in paths {
+            pathStr := AhkStdlibConfigParserPathString(path)
+            if !FileExist(pathStr) || DirExist(pathStr)
+                continue
+            this.read_string(FileRead(pathStr, encoding))
+            readOk.Push(pathStr)
+        }
+        return readOk
+    }
+
+    read_file(fileObject, source := unset)
+    {
+        ; Accept an AHK FileObject, a StringIO-like object, or raw text.
+        text := AhkStdlibConfigParserReadAll(fileObject)
+        this.read_string(text)
+        return stdlib.None
+    }
+
+    read_dict(dictionary, source := "<dict>")
+    {
+        ; dictionary: Map of section -> (Map|Object) of option -> value.
+        ; DictPairs returns an Array of [key, value] pairs; iterate single-var.
+        for sectionPair in AhkStdlibConfigParserDictPairs(dictionary) {
+            section := sectionPair[1]
+            options := sectionPair[2]
+            if !AhkStdlibConfigParserIsDefaultSectionName(section) && !this.has_section(section)
+                this.add_section(section)
+            for optionPair in AhkStdlibConfigParserDictPairs(options)
+                this.AhkStdlibSetOption(section, optionPair[1], AhkStdlibConfigParserDictValueToString(optionPair[2]))
+        }
+        return stdlib.None
+    }
+
+    write(fileObject, space_around_delimiters := true)
+    {
+        delimiter := space_around_delimiters ? " = " : "="
+        text := this.AhkStdlibRender(delimiter)
+        if IsObject(fileObject) && HasMethod(fileObject, "Write")
+            fileObject.Write(text)
+        else if IsObject(fileObject) && HasMethod(fileObject, "write")
+            fileObject.write(text)
+        else
+            throw TypeError("write() requires a writable file object", -1)
+        return stdlib.None
+    }
+
+    write_string(space_around_delimiters := true)
+    {
+        delimiter := space_around_delimiters ? " = " : "="
+        return this.AhkStdlibRender(delimiter)
+    }
+
+    defaults()
+    {
+        result := Map()
+        for option in this.AhkStdlibDefaults.Order
+            result[option] := this.AhkStdlibDefaults.Values[option]
+        return result
+    }
+
+    AhkStdlibRender(delimiter)
+    {
+        out := ""
+        if this.AhkStdlibDefaults.Order.Length > 0 {
+            out .= "[DEFAULT]`n"
+            for option in this.AhkStdlibDefaults.Order
+                out .= option delimiter this.AhkStdlibDefaults.Values[option] "`n"
+            out .= "`n"
+        }
+        for section in this.AhkStdlibSectionOrder {
+            out .= "[" section "]`n"
+            values := this.AhkStdlibSections[section]
+            for option in values.Order
+                out .= option delimiter values.Values[option] "`n"
+            out .= "`n"
+        }
+        return out
     }
 
     AhkStdlibSetOption(section, option, value)
@@ -387,4 +489,57 @@ AhkStdlibConfigParserDeleteFromArray(items, value)
         }
         index += 1
     }
+}
+
+AhkStdlibConfigParserPathString(path)
+{
+    if IsObject(path) {
+        if HasProp(path, "Path")
+            return path.Path
+        return String(path)
+    }
+    return path ""
+}
+
+AhkStdlibConfigParserReadAll(fileObject)
+{
+    if fileObject is String
+        return fileObject
+    if IsObject(fileObject) {
+        ; StringIO-like (getvalue) or AHK FileObject (Read).
+        if HasMethod(fileObject, "getvalue")
+            return fileObject.getvalue()
+        if HasMethod(fileObject, "Read")
+            return fileObject.Read()
+        if HasMethod(fileObject, "read")
+            return fileObject.read()
+    }
+    throw TypeError("read_file() requires a readable file object or string", -1)
+}
+
+AhkStdlibConfigParserDictPairs(value)
+{
+    pairs := []
+    if value is Map {
+        for k, v in value
+            pairs.Push([k, v])
+        return pairs
+    }
+    if IsObject(value) {
+        for k, v in value.OwnProps()
+            pairs.Push([k, v])
+        return pairs
+    }
+    throw TypeError("read_dict() expects a mapping of sections", -1)
+}
+
+AhkStdlibConfigParserDictValueToString(value)
+{
+    if value is String
+        return value
+    if AhkStdlibIsBool(value)
+        return value.Value ? "True" : "False"
+    if AhkStdlibIsNone(value)
+        return ""
+    return String(value)
 }
