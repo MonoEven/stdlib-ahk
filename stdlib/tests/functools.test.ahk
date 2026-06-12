@@ -553,6 +553,94 @@ class StdlibFunctoolsTest
         AhkTest.RaisesMatch(TypeError, "the first argument must be callable", (*) => stdlib.functools.cmp_to_key(42))
     }
 
+    static TestUpdateWrapperCopiesMetadata()
+    {
+        wrapped := stdlib_functools_test_add
+        wrapper := (a, b) => wrapped(a, b)
+        stdlib.functools.update_wrapper(wrapper, wrapped)
+        AhkTest.AssertSame(wrapped, wrapper.__wrapped__)
+    }
+
+    static TestWrapsReturnsDecoratorCopyingMetadata()
+    {
+        wrapped := stdlib_functools_test_add
+        deco := stdlib.functools.wraps(wrapped)
+        wrapper := deco((a, b) => wrapped(a, b))
+        AhkTest.AssertSame(wrapped, wrapper.__wrapped__)
+    }
+
+    static TestTotalOrderingFillsComparisons()
+    {
+        stdlib.functools.total_ordering(StdlibFunctoolsOrderingDemo)
+        a := StdlibFunctoolsOrderingDemo(1)
+        b := StdlibFunctoolsOrderingDemo(2)
+        AhkTest.AssertTrue(a.lt(b))
+        AhkTest.AssertTrue(a.le(b))
+        AhkTest.AssertFalse(a.gt(b))
+        AhkTest.AssertFalse(a.ge(b))
+        AhkTest.AssertTrue(b.gt(a))
+        AhkTest.AssertTrue(b.ge(a))
+    }
+
+    static TestCachedPropertyComputesOnce()
+    {
+        StdlibFunctoolsCachedDemo.computeCount := 0
+        StdlibFunctoolsCachedDemo.Bind()
+        obj := StdlibFunctoolsCachedDemo(21)
+        AhkTest.AssertEqual(210, obj.expensive)
+        AhkTest.AssertEqual(210, obj.expensive)
+        AhkTest.AssertEqual(1, StdlibFunctoolsCachedDemo.computeCount)
+    }
+
+    static TestPartialmethodBindsInstance()
+    {
+        pm := stdlib.functools.partialmethod(stdlib_functools_test_pm_add, 10)
+        pm.Bind(StdlibFunctoolsPartialDemo, "addTen")
+        obj := StdlibFunctoolsPartialDemo(5)
+        AhkTest.AssertEqual(15, obj.addTen(5))
+    }
+
+}
+
+class StdlibFunctoolsOrderingDemo
+{
+    __New(value)
+    {
+        this.value := value
+    }
+
+    eq(other) => this.value = other.value
+    lt(other) => this.value < other.value
+}
+
+class StdlibFunctoolsCachedDemo
+{
+    static computeCount := 0
+
+    __New(base)
+    {
+        this.baseValue := base
+    }
+
+    static Bind()
+    {
+        prop := stdlib.functools.cached_property(StdlibFunctoolsCachedComputeExpensive)
+        prop.Bind(StdlibFunctoolsCachedDemo, "expensive")
+    }
+}
+
+StdlibFunctoolsCachedComputeExpensive(instance)
+{
+    StdlibFunctoolsCachedDemo.computeCount += 1
+    return instance.baseValue * 10
+}
+
+class StdlibFunctoolsPartialDemo
+{
+    __New(base)
+    {
+        this.baseValue := base
+    }
 }
 
 stdlib_functools_test_add(a, b)
@@ -584,6 +672,11 @@ stdlib_functools_test_add_three(a, b, c)
 stdlib_functools_test_identity(value)
 {
     return value
+}
+
+stdlib_functools_test_pm_add(instance, addend, extra)
+{
+    return instance.base + addend - extra + extra
 }
 
 AhkTest.Collect(StdlibFunctoolsTest)

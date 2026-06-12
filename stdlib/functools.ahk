@@ -47,6 +47,42 @@ class AhkStdlibFunctools
             throw TypeError("the first argument must be callable", -1)
         return AhkStdlibFunctoolsKeyFactory(mycmp)
     }
+
+    static update_wrapper(wrapper, wrapped, kwargs*)
+    {
+        return AhkStdlibFunctoolsUpdateWrapper(wrapper, wrapped)
+    }
+
+    static wraps(wrapped, kwargs*)
+    {
+        ; Decorator factory: returns a function that copies wrapped's metadata
+        ; onto the wrapper it is applied to.
+        return (wrapper) => AhkStdlibFunctoolsUpdateWrapper(wrapper, wrapped)
+    }
+
+    static total_ordering(cls)
+    {
+        return AhkStdlibFunctoolsTotalOrdering(cls)
+    }
+
+    static cached_property(func)
+    {
+        return AhkStdlibFunctoolsCachedProperty(func)
+    }
+
+    static partialmethod(args*)
+    {
+        if args.Length < 1
+            throw TypeError("partialmethod expected at least 1 argument, got 0", -1)
+        callback := args[1]
+        boundArgs := []
+        index := 2
+        while index <= args.Length {
+            boundArgs.Push(args[index])
+            index += 1
+        }
+        return AhkStdlibFunctoolsPartialMethod(callback, boundArgs*)
+    }
 }
 
 stdlib.functools := AhkStdlibFunctools
@@ -658,4 +694,174 @@ class AhkStdlibFunctoolsKeyValue
     ge(other) => this.AhkStdlibCmp.Call(this.obj, other.obj) >= 0
     eq(other) => this.AhkStdlibCmp.Call(this.obj, other.obj) = 0
     ne(other) => this.AhkStdlibCmp.Call(this.obj, other.obj) != 0
+}
+
+; ---------------------------------------------------------------------------
+; wraps / update_wrapper
+; ---------------------------------------------------------------------------
+
+; Python copies __module__/__name__/__qualname__/__doc__/__dict__ and updates
+; __wrapped__. AHK functions expose only a writable-via-DefineProp surface, so
+; we copy the practical metadata (Name, __doc__) and set __wrapped__.
+AhkStdlibFunctoolsUpdateWrapper(wrapper, wrapped, args*)
+{
+    if !IsObject(wrapper) || !IsObject(wrapped)
+        throw TypeError("update_wrapper() requires callable objects", -1)
+    for attr in ["Name", "__name__", "__qualname__", "__doc__", "__module__"] {
+        if HasProp(wrapped, attr) {
+            try wrapper.DefineProp(attr, { Value: wrapped.%attr% })
+        }
+    }
+    try wrapper.DefineProp("__wrapped__", { Value: wrapped })
+    return wrapper
+}
+
+; wraps(wrapped) returns a decorator that calls update_wrapper on its argument.
+AhkStdlibFunctoolsWraps(wrapped, args*)
+{
+    return AhkStdlibFunctoolsWrapsDecorator(wrapped)
+}
+
+class AhkStdlibFunctoolsWrapsDecorator
+{
+    __New(wrapped)
+    {
+        this.AhkStdlibWrapped := wrapped
+    }
+
+    Call(wrapper)
+    {
+        return AhkStdlibFunctoolsUpdateWrapper(wrapper, this.AhkStdlibWrapped)
+    }
+}
+
+; ---------------------------------------------------------------------------
+; total_ordering
+; ---------------------------------------------------------------------------
+
+; Given a class defining eq plus one of lt/le/gt/ge (as methods), fill in the
+; remaining comparison methods. Python operates on dunder methods; AHK has no
+; operator dunders, so we fill the plain-named comparison methods (lt/le/gt/ge)
+; which the cmp_to_key key objects and user code use by convention here.
+AhkStdlibFunctoolsTotalOrdering(cls, args*)
+{
+    if !(IsObject(cls) && HasProp(cls, "Prototype"))
+        throw TypeError("total_ordering() argument must be a class", -1)
+    proto := cls.Prototype
+
+    has(name) => HasMethod(proto, name)
+
+    if has("lt") {
+        if !has("le")
+            proto.DefineProp("le", { Call: (self, other) => self.lt(other) || self.eq(other) })
+        if !has("gt")
+            proto.DefineProp("gt", { Call: (self, other) => !self.lt(other) && !self.eq(other) })
+        if !has("ge")
+            proto.DefineProp("ge", { Call: (self, other) => !self.lt(other) })
+    } else if has("le") {
+        if !has("lt")
+            proto.DefineProp("lt", { Call: (self, other) => self.le(other) && !self.eq(other) })
+        if !has("gt")
+            proto.DefineProp("gt", { Call: (self, other) => !self.le(other) })
+        if !has("ge")
+            proto.DefineProp("ge", { Call: (self, other) => self.le(other) ? self.eq(other) : true })
+    } else if has("gt") {
+        if !has("ge")
+            proto.DefineProp("ge", { Call: (self, other) => self.gt(other) || self.eq(other) })
+        if !has("lt")
+            proto.DefineProp("lt", { Call: (self, other) => !self.gt(other) && !self.eq(other) })
+        if !has("le")
+            proto.DefineProp("le", { Call: (self, other) => !self.gt(other) })
+    } else if has("ge") {
+        if !has("gt")
+            proto.DefineProp("gt", { Call: (self, other) => self.ge(other) && !self.eq(other) })
+        if !has("lt")
+            proto.DefineProp("lt", { Call: (self, other) => !self.ge(other) })
+        if !has("le")
+            proto.DefineProp("le", { Call: (self, other) => self.ge(other) ? self.eq(other) : true })
+    } else {
+        throw ValueError("must define at least one ordering operation: < > <= >=", -1)
+    }
+    return cls
+}
+
+; ---------------------------------------------------------------------------
+; cached_property
+; ---------------------------------------------------------------------------
+
+; Python's cached_property is a descriptor that computes once per instance and
+; caches in the instance __dict__. AHK has no descriptor protocol, so this is a
+; helper that wraps a getter: cached_property(func) returns an object whose
+; Get(instance) memoizes per instance via an attached storage key.
+AhkStdlibFunctoolsCachedProperty(func, args*)
+{
+    return AhkStdlibFunctoolsCachedPropertyValue(func)
+}
+
+class AhkStdlibFunctoolsCachedPropertyValue
+{
+    __New(func)
+    {
+        this.AhkStdlibFunc := func
+        this.AhkStdlibCacheKey := "__cached_" (A_TickCount) "_" Random(1, 0x7FFFFFFF)
+    }
+
+    Get(instance)
+    {
+        key := this.AhkStdlibCacheKey
+        if HasProp(instance, key)
+            return instance.%key%
+        value := this.AhkStdlibFunc.Call(instance)
+        instance.DefineProp(key, { Value: value })
+        return value
+    }
+
+    ; Attach as a real property getter on a class prototype.
+    Bind(cls, name)
+    {
+        self := this
+        cls.Prototype.DefineProp(name, { Get: (instance) => self.Get(instance) })
+        return this
+    }
+}
+
+; ---------------------------------------------------------------------------
+; partialmethod
+; ---------------------------------------------------------------------------
+
+; partialmethod is like partial but designed to be used as a method descriptor.
+; Without descriptors, expose it as a callable that prepends the instance plus
+; the bound args when invoked as obj.method(...) via a prototype binding helper.
+AhkStdlibFunctoolsPartialMethod(callback, boundArgs*)
+{
+    return AhkStdlibFunctoolsPartialMethodValue(callback, boundArgs*)
+}
+
+class AhkStdlibFunctoolsPartialMethodValue
+{
+    __New(callback, boundArgs*)
+    {
+        if !(IsObject(callback) && HasMethod(callback, "Call"))
+            throw TypeError("the first argument must be callable", -1)
+        this.AhkStdlibFunc := callback
+        this.AhkStdlibArgs := boundArgs
+    }
+
+    ; Called as obj.method(extra*) once bound; prepends instance + bound args.
+    Call(instance, args*)
+    {
+        combined := [instance]
+        for value in this.AhkStdlibArgs
+            combined.Push(value)
+        for value in args
+            combined.Push(value)
+        return this.AhkStdlibFunc.Call(combined*)
+    }
+
+    Bind(cls, name)
+    {
+        self := this
+        cls.Prototype.DefineProp(name, { Call: (instance, args*) => self.Call(instance, args*) })
+        return this
+    }
 }
