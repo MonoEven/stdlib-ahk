@@ -43,15 +43,36 @@ class AhkStdlibIoStringIO
 {
     __New(text := "")
     {
-        this.AhkStdlibBuffer := text
+        ; Content is stored as a list of chunks whose concatenation is the full
+        ; value. Sequential writes (the common case) push a chunk in O(1); the
+        ; string is only materialized lazily on read/seek/getvalue. This avoids
+        ; the O(n^2) full-buffer copy the previous "before . text . after" did
+        ; on every write.
+        this.AhkStdlibChunks := text = "" ? [] : [text]
+        this.AhkStdlibLength := StrLen(text)
         this.AhkStdlibPosition := 0
         this.closed := false
+    }
+
+    AhkStdlibMaterialize()
+    {
+        chunks := this.AhkStdlibChunks
+        if chunks.Length = 0
+            return ""
+        if chunks.Length = 1
+            return chunks[1]
+        result := ""
+        VarSetStrCapacity(&result, this.AhkStdlibLength)
+        for chunk in chunks
+            result .= chunk
+        this.AhkStdlibChunks := [result]
+        return result
     }
 
     getvalue()
     {
         this.AhkStdlibEnsureOpen()
-        return this.AhkStdlibBuffer
+        return this.AhkStdlibMaterialize()
     }
 
     read(size := -1)
@@ -60,14 +81,15 @@ class AhkStdlibIoStringIO
         if !(size is Integer)
             throw TypeError("integer argument expected, got " AhkStdlibIoPythonTypeName(size), -1)
 
-        length := StrLen(this.AhkStdlibBuffer)
+        buffer := this.AhkStdlibMaterialize()
+        length := this.AhkStdlibLength
         if size < 0
             size := length - this.AhkStdlibPosition
         if size <= 0
             return ""
 
         start := this.AhkStdlibPosition + 1
-        text := SubStr(this.AhkStdlibBuffer, start, size)
+        text := SubStr(buffer, start, size)
         this.AhkStdlibPosition += StrLen(text)
         return text
     }
@@ -80,7 +102,8 @@ class AhkStdlibIoStringIO
         if size = 0
             return ""
 
-        remaining := SubStr(this.AhkStdlibBuffer, this.AhkStdlibPosition + 1)
+        buffer := this.AhkStdlibMaterialize()
+        remaining := SubStr(buffer, this.AhkStdlibPosition + 1)
         if remaining = ""
             return ""
 
@@ -104,15 +127,34 @@ class AhkStdlibIoStringIO
         if !(text is String)
             throw TypeError("string argument expected, got '" Type(text) "'", -1)
 
-        padCount := this.AhkStdlibPosition - StrLen(this.AhkStdlibBuffer)
-        if padCount > 0
-            this.AhkStdlibBuffer .= AhkStdlibIoRepeatChar(Chr(0), padCount)
+        pos := this.AhkStdlibPosition
+        length := this.AhkStdlibLength
 
-        before := SubStr(this.AhkStdlibBuffer, 1, this.AhkStdlibPosition)
-        afterStart := this.AhkStdlibPosition + StrLen(text) + 1
-        after := SubStr(this.AhkStdlibBuffer, afterStart)
-        this.AhkStdlibBuffer := before text after
-        this.AhkStdlibPosition += StrLen(text)
+        ; Fast path: appending at end-of-stream is an O(1) chunk push.
+        if pos = length {
+            if text != "" {
+                this.AhkStdlibChunks.Push(text)
+                this.AhkStdlibLength += StrLen(text)
+            }
+            this.AhkStdlibPosition += StrLen(text)
+            return StrLen(text)
+        }
+
+        ; Slow path: overwrite/seek-back requires materializing and splicing.
+        buffer := this.AhkStdlibMaterialize()
+        padCount := pos - length
+        if padCount > 0 {
+            buffer .= AhkStdlibIoRepeatChar(Chr(0), padCount)
+            length := pos
+        }
+
+        before := SubStr(buffer, 1, pos)
+        afterStart := pos + StrLen(text) + 1
+        after := SubStr(buffer, afterStart)
+        newBuffer := before text after
+        this.AhkStdlibChunks := [newBuffer]
+        this.AhkStdlibLength := StrLen(newBuffer)
+        this.AhkStdlibPosition := pos + StrLen(text)
         return StrLen(text)
     }
 
@@ -141,7 +183,7 @@ class AhkStdlibIoStringIO
             case 2:
                 if pos != 0
                     throw OSError("Can't do nonzero cur-relative seeks", -1)
-                this.AhkStdlibPosition := StrLen(this.AhkStdlibBuffer)
+                this.AhkStdlibPosition := this.AhkStdlibLength
             default:
                 throw ValueError("Invalid whence (" whence ", should be 0, 1 or 2)", -1)
         }
@@ -162,9 +204,12 @@ class AhkStdlibIoStringIO
         if target < 0
             throw ValueError("Negative size value " target, -1)
 
-        current := StrLen(this.AhkStdlibBuffer)
-        if target < current
-            this.AhkStdlibBuffer := SubStr(this.AhkStdlibBuffer, 1, target)
+        if target < this.AhkStdlibLength {
+            buffer := this.AhkStdlibMaterialize()
+            truncated := SubStr(buffer, 1, target)
+            this.AhkStdlibChunks := [truncated]
+            this.AhkStdlibLength := StrLen(truncated)
+        }
         return target
     }
 
