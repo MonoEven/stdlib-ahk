@@ -41,6 +41,65 @@ class StdlibUuidTest
         AhkTest.RaisesMatch(AttributeError, "^'int' object has no attribute 'replace'$", (*) => stdlib.uuid.UUID({ hex: 1 }))
         AhkTest.RaisesMatch(TypeError, "^uuid4\(\) takes 0 positional arguments but 1 was given$", (*) => stdlib.uuid.uuid4(1))
     }
+
+    static TestUuidIntegerInteropAttributesMatchLocal310()
+    {
+        fixed := stdlib.uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+        AhkTest.AssertEqual("24197857161011715162171839636988778104", String(fixed.int))
+        AhkTest.AssertEqual("12345678123456781234567812345678", AhkStdlibUuidBufferToHexForTest(fixed.bytes))
+        AhkTest.AssertEqual("78563412341278561234567812345678", AhkStdlibUuidBufferToHexForTest(fixed.bytes_le))
+        AhkTest.AssertEqual(16, fixed.bytes.Size)
+
+        fields := fixed.fields
+        AhkTest.AssertEqual(6, fields.Length)
+        AhkTest.AssertEqual(305419896, fields[1])
+        AhkTest.AssertEqual(4660, fields[2])
+        AhkTest.AssertEqual(22136, fields[3])
+        AhkTest.AssertEqual(18, fields[4])
+        AhkTest.AssertEqual(52, fields[5])
+        AhkTest.AssertEqual(95073701484152, fields[6])
+
+        AhkTest.AssertEqual(305419896, fixed.time_low)
+        AhkTest.AssertEqual(4660, fixed.time_mid)
+        AhkTest.AssertEqual(22136, fixed.time_hi_version)
+        AhkTest.AssertEqual(18, fixed.clock_seq_hi_variant)
+        AhkTest.AssertEqual(52, fixed.clock_seq_low)
+        AhkTest.AssertEqual(95073701484152, fixed.node)
+    }
+
+    static TestUuidNamespaceConstantsMatchLocal310()
+    {
+        AhkTest.AssertEqual("6ba7b810-9dad-11d1-80b4-00c04fd430c8", String(stdlib.uuid.NAMESPACE_DNS))
+        AhkTest.AssertEqual("6ba7b811-9dad-11d1-80b4-00c04fd430c8", String(stdlib.uuid.NAMESPACE_URL))
+        AhkTest.AssertEqual("6ba7b812-9dad-11d1-80b4-00c04fd430c8", String(stdlib.uuid.NAMESPACE_OID))
+        AhkTest.AssertEqual("6ba7b814-9dad-11d1-80b4-00c04fd430c8", String(stdlib.uuid.NAMESPACE_X500))
+    }
+
+    static TestUuid3AndUuid5MatchLocal310()
+    {
+        three := stdlib.uuid.uuid3(stdlib.uuid.NAMESPACE_DNS, "python.org")
+        five := stdlib.uuid.uuid5(stdlib.uuid.NAMESPACE_DNS, "python.org")
+
+        AhkTest.AssertEqual("6fa459ea-ee8a-3ca4-894e-db77e160355e", String(three))
+        AhkTest.AssertEqual(3, three.version)
+        AhkTest.AssertEqual("886313e1-3b8a-5372-9b90-0c9aee199e5d", String(five))
+        AhkTest.AssertEqual(5, five.version)
+    }
+
+    static TestUuid3And5RejectBadArityLikeLocal310()
+    {
+        AhkTest.RaisesMatch(TypeError, "^uuid3\(\) takes 2 positional arguments but 3 were given$", (*) => stdlib.uuid.uuid3(stdlib.uuid.NAMESPACE_DNS, "a", "b"))
+        AhkTest.RaisesMatch(TypeError, "^uuid5\(\) takes 2 positional arguments but 3 were given$", (*) => stdlib.uuid.uuid5(stdlib.uuid.NAMESPACE_DNS, "a", "b"))
+    }
+}
+
+AhkStdlibUuidBufferToHexForTest(buffer)
+{
+    text := ""
+    loop buffer.Size
+        text .= Format("{:02x}", NumGet(buffer, A_Index - 1, "UChar"))
+    return text
 }
 
 AhkTest.Collect(StdlibUuidTest)

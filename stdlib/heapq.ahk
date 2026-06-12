@@ -60,6 +60,21 @@ class AhkStdlibCollectionsHeapq
         }
         return item
     }
+
+    static nlargest(n, iterable, key := unset)
+    {
+        return AhkStdlibHeapqNlargest(n, iterable, key?)
+    }
+
+    static nsmallest(n, iterable, key := unset)
+    {
+        return AhkStdlibHeapqNsmallest(n, iterable, key?)
+    }
+
+    static merge(iterables*)
+    {
+        return AhkStdlibHeapqMerge(iterables)
+    }
 }
 
 stdlib.heapq := AhkStdlibCollectionsHeapq
@@ -105,4 +120,133 @@ AhkStdlibHeapqSiftUp(heap, index)
 
     heap[index] := newItem
     AhkStdlibHeapqSiftDown(heap, startIndex, index)
+}
+
+AhkStdlibHeapqToArray(iterable)
+{
+    if iterable is Array
+        return iterable.Clone()
+    if iterable is String {
+        values := []
+        loop Parse iterable
+            values.Push(A_LoopField)
+        return values
+    }
+    if IsObject(iterable) && HasMethod(iterable, "__Enum") {
+        values := []
+        for value in iterable
+            values.Push(value)
+        return values
+    }
+    throw TypeError("'" Type(iterable) "' object is not iterable", -1)
+}
+
+AhkStdlibHeapqKeyOf(value, key := unset)
+{
+    if IsSet(key)
+        return key.Call(value)
+    return value
+}
+
+AhkStdlibHeapqSortByKey(values, key := unset, descending := false)
+{
+    AhkStdlibHeapqMergeSort(values, 1, values.Length, key?, descending)
+}
+
+AhkStdlibHeapqMergeSort(arr, lo, hi, key := unset, descending := false)
+{
+    if hi - lo < 1
+        return
+    mid := (lo + hi) // 2
+    AhkStdlibHeapqMergeSort(arr, lo, mid, key?, descending)
+    AhkStdlibHeapqMergeSort(arr, mid + 1, hi, key?, descending)
+
+    merged := []
+    i := lo
+    j := mid + 1
+    while i <= mid && j <= hi {
+        leftKey := AhkStdlibHeapqKeyOf(arr[i], key?)
+        rightKey := AhkStdlibHeapqKeyOf(arr[j], key?)
+        takeLeft := descending ? !(leftKey < rightKey) : !(rightKey < leftKey)
+        if takeLeft {
+            merged.Push(arr[i])
+            i += 1
+        } else {
+            merged.Push(arr[j])
+            j += 1
+        }
+    }
+    while i <= mid {
+        merged.Push(arr[i])
+        i += 1
+    }
+    while j <= hi {
+        merged.Push(arr[j])
+        j += 1
+    }
+    for offset, value in merged
+        arr[lo + offset - 1] := value
+}
+
+AhkStdlibHeapqNlargest(n, iterable, key := unset)
+{
+    values := AhkStdlibHeapqToArray(iterable)
+    if n <= 0
+        return []
+    AhkStdlibHeapqSortByKey(values, key?, true)
+    result := []
+    loop Min(n, values.Length)
+        result.Push(values[A_Index])
+    return result
+}
+
+AhkStdlibHeapqNsmallest(n, iterable, key := unset)
+{
+    values := AhkStdlibHeapqToArray(iterable)
+    if n <= 0
+        return []
+    AhkStdlibHeapqSortByKey(values, key?, false)
+    result := []
+    loop Min(n, values.Length)
+        result.Push(values[A_Index])
+    return result
+}
+
+AhkStdlibHeapqMerge(iterables)
+{
+    key := unset
+    reverse := false
+    if iterables.Length > 0 {
+        last := iterables[iterables.Length]
+        if AhkStdlibHeapqIsOptionsObject(last) {
+            if HasProp(last, "key") && !AhkStdlibIsNone(last.key)
+                key := last.key
+            if HasProp(last, "reverse")
+                reverse := AhkStdlibTruthValue(last.reverse)
+            iterables := AhkStdlibHeapqWithoutLast(iterables)
+        }
+    }
+
+    merged := []
+    for iterable in iterables {
+        for value in AhkStdlibHeapqToArray(iterable)
+            merged.Push(value)
+    }
+    AhkStdlibHeapqSortByKey(merged, key?, reverse)
+    return merged
+}
+
+AhkStdlibHeapqIsOptionsObject(value)
+{
+    if !IsObject(value) || Type(value) != "Object"
+        return false
+    return HasProp(value, "key") || HasProp(value, "reverse")
+}
+
+AhkStdlibHeapqWithoutLast(items)
+{
+    result := []
+    loop items.Length - 1
+        result.Push(items[A_Index])
+    return result
 }

@@ -23,18 +23,18 @@ class AhkStdlibTextJson
         return AhkStdlibJsonLoads(text)
     }
 
-    static dump(value, path, encoding := "UTF-8")
+    static dump(value, path, encoding := "UTF-8", options := unset)
     {
-        text := AhkStdlibJsonDumps(value)
+        text := AhkStdlibJsonDumps(value, options?)
         if FileExist(path)
             FileDelete path
         FileAppend text, path, encoding
         return text
     }
 
-    static dumps(value)
+    static dumps(value, options := unset)
     {
-        return AhkStdlibJsonDumps(value)
+        return AhkStdlibJsonDumps(value, options?)
     }
 }
 
@@ -51,9 +51,59 @@ AhkStdlibJsonLoads(text)
     return AhkStdlibJsonParser(text).Parse()
 }
 
-AhkStdlibJsonDumps(value)
+AhkStdlibJsonDumps(value, options := unset)
 {
-    return AhkStdlibJsonStringify(value)
+    config := AhkStdlibJsonOptions(options?)
+    return AhkStdlibJsonStringify(value, config, 0)
+}
+
+AhkStdlibJsonOptions(options := unset)
+{
+    config := {
+        indent: stdlib.None,
+        sort_keys: false,
+        itemSep: ", ",
+        keySep: ": ",
+        default: stdlib.None,
+        hasSeparators: false
+    }
+    if !IsSet(options)
+        return config
+    if !IsObject(options)
+        throw TypeError("dumps options must be an object", -1)
+
+    if HasProp(options, "indent") && !AhkStdlibIsNone(options.indent)
+        config.indent := options.indent
+    if HasProp(options, "sort_keys")
+        config.sort_keys := AhkStdlibTruthValue(options.sort_keys)
+    if HasProp(options, "default")
+        config.default := options.default
+    if HasProp(options, "separators") && !AhkStdlibIsNone(options.separators) {
+        seps := options.separators
+        config.itemSep := seps[1]
+        config.keySep := seps[2]
+        config.hasSeparators := true
+    }
+    if !config.hasSeparators && !AhkStdlibIsNone(config.indent)
+        config.itemSep := ","
+    return config
+}
+
+AhkStdlibJsonIndentUnit(indent)
+{
+    if indent is Integer
+        return AhkStdlibJsonRepeat(" ", indent)
+    if indent is String
+        return indent
+    return ""
+}
+
+AhkStdlibJsonRepeat(text, count)
+{
+    result := ""
+    loop count
+        result .= text
+    return result
 }
 
 AhkStdlibJsonIsNull(value)
@@ -66,7 +116,7 @@ AhkStdlibJsonIsBool(value)
     return AhkStdlibIsBool(value)
 }
 
-AhkStdlibJsonStringify(value)
+AhkStdlibJsonStringify(value, config, depth)
 {
     if AhkStdlibJsonIsNull(value)
         return "null"
@@ -82,38 +132,81 @@ AhkStdlibJsonStringify(value)
         case "Float":
             return value ""
         case "Array":
-            return AhkStdlibJsonArrayToString(value)
+            return AhkStdlibJsonArrayToString(value, config, depth)
         case "Map":
-            return AhkStdlibJsonMapToString(value)
+            return AhkStdlibJsonMapToString(value, config, depth)
         case "Object":
-            return AhkStdlibJsonObjectToString(value)
+            return AhkStdlibJsonObjectToString(value, config, depth)
         default:
+            if !AhkStdlibIsNone(config.default) {
+                converted := config.default.Call(value)
+                return AhkStdlibJsonStringify(converted, config, depth)
+            }
             throw TypeError("cannot JSON serialize value of type " valueType, -1)
     }
 }
 
-AhkStdlibJsonArrayToString(values)
+AhkStdlibJsonArrayToString(values, config, depth)
 {
     parts := []
     for value in values
-        parts.Push(AhkStdlibJsonStringify(value))
-    return "[" AhkStdlibJsonJoin(parts, ", ") "]"
+        parts.Push(AhkStdlibJsonStringify(value, config, depth + 1))
+    return AhkStdlibJsonWrap(parts, "[", "]", config, depth)
 }
 
-AhkStdlibJsonMapToString(values)
+AhkStdlibJsonMapToString(values, config, depth)
 {
-    parts := []
+    pairs := []
     for key, value in values
-        parts.Push(AhkStdlibJsonQuote(key "") ": " AhkStdlibJsonStringify(value))
-    return "{" AhkStdlibJsonJoin(parts, ", ") "}"
+        pairs.Push([key "", value])
+    if config.sort_keys
+        AhkStdlibJsonSortPairs(pairs)
+    parts := []
+    for pair in pairs
+        parts.Push(AhkStdlibJsonQuote(pair[1]) config.keySep AhkStdlibJsonStringify(pair[2], config, depth + 1))
+    return AhkStdlibJsonWrap(parts, "{", "}", config, depth)
 }
 
-AhkStdlibJsonObjectToString(value)
+AhkStdlibJsonWrap(parts, openChar, closeChar, config, depth)
 {
-    parts := []
+    if parts.Length = 0
+        return openChar closeChar
+    if AhkStdlibIsNone(config.indent)
+        return openChar AhkStdlibJsonJoin(parts, config.itemSep) closeChar
+
+    unit := AhkStdlibJsonIndentUnit(config.indent)
+    inner := AhkStdlibJsonRepeat(unit, depth + 1)
+    outer := AhkStdlibJsonRepeat(unit, depth)
+    separator := RTrim(config.itemSep, " ") "`n" inner
+    return openChar "`n" inner AhkStdlibJsonJoin(parts, separator) "`n" outer closeChar
+}
+
+AhkStdlibJsonSortPairs(pairs)
+{
+    loop pairs.Length - 1 {
+        outer := A_Index
+        loop pairs.Length - outer {
+            i := A_Index
+            if StrCompare(pairs[i][1], pairs[i + 1][1]) > 0 {
+                temp := pairs[i]
+                pairs[i] := pairs[i + 1]
+                pairs[i + 1] := temp
+            }
+        }
+    }
+}
+
+AhkStdlibJsonObjectToString(value, config, depth)
+{
+    pairs := []
     for key, item in value.OwnProps()
-        parts.Push(AhkStdlibJsonQuote(key) ": " AhkStdlibJsonStringify(item))
-    return "{" AhkStdlibJsonJoin(parts, ", ") "}"
+        pairs.Push([key "", item])
+    if config.sort_keys
+        AhkStdlibJsonSortPairs(pairs)
+    parts := []
+    for pair in pairs
+        parts.Push(AhkStdlibJsonQuote(pair[1]) config.keySep AhkStdlibJsonStringify(pair[2], config, depth + 1))
+    return AhkStdlibJsonWrap(parts, "{", "}", config, depth)
 }
 
 AhkStdlibJsonQuote(text)

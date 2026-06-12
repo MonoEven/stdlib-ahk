@@ -20,6 +20,21 @@ class AhkStdlibGlob
         return AhkStdlibGlobCollect(pathname, recursive)
     }
 
+    static iglob(args*)
+    {
+        if args.Length = 0
+            throw TypeError("iglob() missing 1 required positional argument: 'pathname'", -1)
+        if args.Length > 2
+            throw TypeError("iglob() takes 1 positional argument but " args.Length " were given", -1)
+
+        pathname := AhkStdlibGlobRequireStringLike(args[1], "pathname")
+        recursive := false
+        if args.Length = 2
+            recursive := AhkStdlibGlobParseOptions(args[2])
+
+        return AhkStdlibGlobCollect(pathname, recursive).__Enum(1)
+    }
+
     static has_magic(args*)
     {
         if args.Length = 0

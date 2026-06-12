@@ -6,6 +6,8 @@
 
 class StdlibFunctoolsTest
 {
+    static callCount := 0
+
     class DemoCallableSource
     {
     }
@@ -440,11 +442,133 @@ class StdlibFunctoolsTest
         AhkTest.RaisesMatch(stdlib.SystemError, "bad argument to internal function", (*) => partial.__doc)
     }
 
+    static TestCacheMemoizesUnboundedLikePython310()
+    {
+        StdlibFunctoolsTest.callCount := 0
+        cached := stdlib.functools.cache(stdlib_functools_test_counting_square)
+
+        AhkTest.AssertEqual(9, cached.Call(3))
+        AhkTest.AssertEqual(9, cached.Call(3))
+        AhkTest.AssertEqual(16, cached.Call(4))
+
+        info := cached.cache_info()
+        AhkTest.AssertEqual(1, info.hits)
+        AhkTest.AssertEqual(2, info.misses)
+        AhkTest.AssertSame(stdlib.None, info.maxsize)
+        AhkTest.AssertEqual(2, info.currsize)
+        AhkTest.AssertEqual(2, StdlibFunctoolsTest.callCount)
+    }
+
+    static TestLruCacheEvictsLeastRecentlyUsedLikePython310()
+    {
+        StdlibFunctoolsTest.callCount := 0
+        cached := stdlib.functools.lru_cache(2).Call(stdlib_functools_test_counting_square)
+
+        AhkTest.AssertEqual(1, cached.Call(1))
+        AhkTest.AssertEqual(4, cached.Call(2))
+        AhkTest.AssertEqual(1, cached.Call(1))
+        AhkTest.AssertEqual(9, cached.Call(3))
+
+        info := cached.cache_info()
+        AhkTest.AssertEqual(1, info.hits)
+        AhkTest.AssertEqual(3, info.misses)
+        AhkTest.AssertEqual(2, info.maxsize)
+        AhkTest.AssertEqual(2, info.currsize)
+
+        AhkTest.AssertEqual(4, cached.Call(2))
+        AhkTest.AssertEqual(4, cached.cache_info().misses)
+    }
+
+    static TestLruCacheBareDecoratorUsesDefaultMaxsize()
+    {
+        cached := stdlib.functools.lru_cache(stdlib_functools_test_counting_square)
+        AhkTest.AssertEqual(25, cached.Call(5))
+        AhkTest.AssertEqual(25, cached.Call(5))
+
+        info := cached.cache_info()
+        AhkTest.AssertEqual(1, info.hits)
+        AhkTest.AssertEqual(1, info.misses)
+        AhkTest.AssertEqual(128, info.maxsize)
+    }
+
+    static TestLruCacheClearAndParametersMatchPython310()
+    {
+        cached := stdlib.functools.lru_cache(8, true).Call(stdlib_functools_test_counting_square)
+        cached.Call(2)
+        cached.Call(2)
+
+        params := cached.cache_parameters()
+        AhkTest.AssertEqual(8, params["maxsize"])
+        AhkTest.AssertSame(stdlib.True, params["typed"])
+
+        cached.cache_clear()
+        info := cached.cache_info()
+        AhkTest.AssertEqual(0, info.hits)
+        AhkTest.AssertEqual(0, info.misses)
+        AhkTest.AssertEqual(0, info.currsize)
+    }
+
+    static TestLruCacheTypedSeparatesIntAndFloatKeys()
+    {
+        ; Two args force the general key path (the single-arg fast path only
+        ; applies to ints, so f(3) and f(3.0) would never collide there).
+        untyped := stdlib.functools.lru_cache(stdlib.None, false).Call(stdlib_functools_test_add)
+        untyped.Call(3, 0)
+        untyped.Call(3.0, 0)
+        AhkTest.AssertEqual(1, untyped.cache_info().misses)
+        AhkTest.AssertEqual(1, untyped.cache_info().hits)
+
+        typed := stdlib.functools.lru_cache(stdlib.None, true).Call(stdlib_functools_test_add)
+        typed.Call(3, 0)
+        typed.Call(3.0, 0)
+        AhkTest.AssertEqual(2, typed.cache_info().misses)
+        AhkTest.AssertEqual(0, typed.cache_info().hits)
+    }
+
+    static TestCacheInfoReprMatchesPython310()
+    {
+        cached := stdlib.functools.lru_cache(2).Call(stdlib_functools_test_counting_square)
+        cached.Call(1)
+        cached.Call(1)
+
+        AhkTest.AssertEqual("CacheInfo(hits=1, misses=1, maxsize=2, currsize=1)", cached.cache_info().__Repr())
+        unbounded := stdlib.functools.cache(stdlib_functools_test_counting_square)
+        unbounded.Call(1)
+        AhkTest.AssertEqual("CacheInfo(hits=0, misses=1, maxsize=None, currsize=1)", unbounded.cache_info().__Repr())
+    }
+
+    static TestCmpToKeyProducesOrderingWrappers()
+    {
+        low := stdlib.functools.cmp_to_key(stdlib_functools_test_reverse_cmp).Call(1)
+        high := stdlib.functools.cmp_to_key(stdlib_functools_test_reverse_cmp).Call(2)
+
+        AhkTest.AssertTrue(low.gt(high))
+        AhkTest.AssertFalse(low.lt(high))
+        AhkTest.AssertTrue(low.ne(high))
+        AhkTest.AssertEqual(1, low.obj)
+    }
+
+    static TestCmpToKeyRejectsNonCallable()
+    {
+        AhkTest.RaisesMatch(TypeError, "the first argument must be callable", (*) => stdlib.functools.cmp_to_key(42))
+    }
+
 }
 
 stdlib_functools_test_add(a, b)
 {
     return a + b
+}
+
+stdlib_functools_test_counting_square(value)
+{
+    StdlibFunctoolsTest.callCount += 1
+    return value * value
+}
+
+stdlib_functools_test_reverse_cmp(a, b)
+{
+    return b - a
 }
 
 stdlib_functools_test_join(a, b)

@@ -28,6 +28,46 @@ class StdlibTextwrapTest
         AhkTest.RaisesMatch(TypeError, "^unsupported operand type\(s\) for \+: 'int' and 'str'$", (*) => stdlib.textwrap.indent("a", 1))
         AhkTest.RaisesMatch(TypeError, "^'int' object is not callable$", (*) => stdlib.textwrap.indent("a", "> ", 1))
     }
+
+    static TestWrapBreaksTextIntoWidthLimitedLines()
+    {
+        AhkTest.AssertEqual(["The quick brown", "fox jumped over", "the lazy dog"],
+            stdlib.textwrap.wrap("The quick brown fox jumped over the lazy dog", { width: 15 }))
+        AhkTest.AssertEqual(["The quick", "brown fox"],
+            stdlib.textwrap.wrap("The quick brown fox", { width: 10 }))
+    }
+
+    static TestWrapCollapsesWhitespaceLikePython()
+    {
+        AhkTest.AssertEqual(["a b c"], stdlib.textwrap.wrap("a  b   c", { width: 70 }))
+    }
+
+    static TestWrapBreaksLongWordsWhenEnabled()
+    {
+        AhkTest.AssertEqual(["supercalif", "ragilistic", "word"],
+            stdlib.textwrap.wrap("supercalifragilistic word", { width: 10 }))
+    }
+
+    static TestFillJoinsWrappedLinesWithNewlines()
+    {
+        AhkTest.AssertEqual("The quick`nbrown fox", stdlib.textwrap.fill("The quick brown fox", { width: 10 }))
+    }
+
+    static TestShortenTruncatesWithPlaceholder()
+    {
+        AhkTest.AssertEqual("Hello [...]", stdlib.textwrap.shorten("Hello world fo bar", { width: 11 }))
+        AhkTest.AssertEqual("[...]", stdlib.textwrap.shorten("Hello world", { width: 10 }))
+        AhkTest.AssertEqual("Hello world", stdlib.textwrap.shorten("Hello world", { width: 70 }))
+        AhkTest.AssertEqual("Hello world", stdlib.textwrap.shorten("Hello   world", { width: 70 }))
+    }
+
+    static TestWrapMaxLinesAppendsPlaceholder()
+    {
+        AhkTest.AssertEqual(["The quick [...]"],
+            stdlib.textwrap.wrap("The quick brown fox jumped over the lazy dog", { width: 15, max_lines: 1 }))
+        AhkTest.AssertEqual(["The quick brown", "fox jumped over"],
+            stdlib.textwrap.wrap("The quick brown fox jumped over", { width: 15, max_lines: 2 }))
+    }
 }
 
 AhkTest.Collect(StdlibTextwrapTest)

@@ -31,6 +31,16 @@ class StdlibGlobTest
             AhkTest.AssertEqual("[[][*]][?].txt", stdlib.glob.escape("[*]?.txt"))
             AhkTest.AssertTrue(stdlib.glob.has_magic("*.txt"))
             AhkTest.AssertFalse(stdlib.glob.has_magic("plain.txt"))
+
+            collected := []
+            for path in stdlib.glob.iglob("*.txt")
+                collected.Push(path)
+            AhkTest.AssertEqual(["alpha.txt"], collected)
+
+            recursed := []
+            for path in stdlib.glob.iglob("**/*.txt", { recursive: true })
+                recursed.Push(path)
+            AhkTest.AssertEqual(["alpha.txt", "sub\gamma.txt", "sub\nested\omega.txt"], recursed)
         } finally {
             SetWorkingDir previousWorkingDir
             if DirExist(root)
@@ -44,6 +54,7 @@ class StdlibGlobTest
         AhkTest.RaisesMatch(TypeError, "^glob\(\) takes 1 positional argument but 3 were given$", (*) => stdlib.glob.glob("*.txt", stdlib.True, stdlib.False))
         AhkTest.RaisesMatch(TypeError, "^escape\(\) missing 1 required positional argument: 'pathname'$", (*) => stdlib.glob.escape())
         AhkTest.RaisesMatch(TypeError, "^has_magic\(\) missing 1 required positional argument: 's'$", (*) => stdlib.glob.has_magic())
+        AhkTest.RaisesMatch(TypeError, "^iglob\(\) missing 1 required positional argument: 'pathname'$", (*) => stdlib.glob.iglob())
     }
 }
 

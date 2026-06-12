@@ -124,6 +124,100 @@ class AhkStdlibMathStatistics
             return Sqrt(this.variance(data, xbar))
         return Sqrt(this.variance(data))
     }
+
+    static geometric_mean(data)
+    {
+        values := AhkStdlibStatisticsList(data)
+        if values.Length = 0
+            throw AhkStdlibStatisticsError("geometric_mean requires a non-empty dataset", -1)
+        total := 0.0
+        for value in values {
+            if value <= 0
+                throw AhkStdlibStatisticsError("geometric_mean requires positive numbers", -1)
+            total += DllCall("ucrtbase\log", "Double", value + 0.0, "Cdecl Double")
+        }
+        return DllCall("ucrtbase\exp", "Double", total / values.Length, "Cdecl Double")
+    }
+
+    static harmonic_mean(data, weights := unset)
+    {
+        values := AhkStdlibStatisticsList(data)
+        if values.Length = 0
+            throw AhkStdlibStatisticsError("harmonic_mean requires at least one data point", -1)
+
+        if IsSet(weights) {
+            weightValues := AhkStdlibStatisticsList(weights)
+            if weightValues.Length != values.Length
+                throw AhkStdlibStatisticsError("Number of weights does not match data size", -1)
+        } else {
+            weightValues := []
+            loop values.Length
+                weightValues.Push(1)
+        }
+
+        sumWeights := 0
+        sumRatios := 0.0
+        for index, value in values {
+            weight := weightValues[index]
+            if value < 0
+                throw AhkStdlibStatisticsError("harmonic mean does not support negative values", -1)
+            if value = 0
+                return 0
+            sumWeights += weight
+            sumRatios += weight / value
+        }
+        if sumRatios = 0
+            throw AhkStdlibStatisticsError("Weights sum to zero", -1)
+        return sumWeights / sumRatios
+    }
+
+    static quantiles(data, options := unset)
+    {
+        values := AhkStdlibStatisticsSorted(data)
+        if values.Length < 2
+            throw AhkStdlibStatisticsError("must have at least two data points", -1)
+
+        n := 4
+        method := "exclusive"
+        if IsSet(options) {
+            if HasProp(options, "n")
+                n := options.n
+            if HasProp(options, "method")
+                method := options.method
+        }
+        if !(n is Integer) || n < 1
+            throw AhkStdlibStatisticsError("n must be at least 1", -1)
+
+        ld := values.Length
+        result := []
+        if method = "inclusive" {
+            m := ld - 1
+            loop n - 1 {
+                i := A_Index
+                j := (i * m) // n
+                delta := (i * m) - (j * n)
+                interpolated := (values[j + 1] * (n - delta) + values[j + 2] * delta) / n
+                result.Push(interpolated)
+            }
+            return result
+        }
+        if method = "exclusive" {
+            m := ld + 1
+            loop n - 1 {
+                i := A_Index
+                j := (i * m) // n
+                if j < 1
+                    j := 1
+                else if j > ld - 1
+                    j := ld - 1
+                delta := (i * m) - (j * n)
+                interpolated := (values[j] * (n - delta) + values[j + 1] * delta) / n
+                result.Push(interpolated)
+            }
+            return result
+        }
+        throw ValueError("Unknown method: '" method "'", -1)
+    }
 }
 
 stdlib.statistics := AhkStdlibMathStatistics
@@ -155,16 +249,35 @@ AhkStdlibStatisticsSorted(data)
     if values.Length = 0
         throw AhkStdlibStatisticsError("no median for empty data", -1)
 
-    loop values.Length {
-        left := A_Index
-        loop values.Length - left {
-            right := left + A_Index
-            if values[left] > values[right] {
-                temp := values[left]
-                values[left] := values[right]
-                values[right] := temp
+    AhkStdlibStatisticsQuickSort(values, 1, values.Length)
+    return values
+}
+
+AhkStdlibStatisticsQuickSort(arr, lo, hi)
+{
+    while lo < hi {
+        pivot := arr[(lo + hi) // 2]
+        i := lo
+        j := hi
+        while i <= j {
+            while arr[i] < pivot
+                i += 1
+            while arr[j] > pivot
+                j -= 1
+            if i <= j {
+                temp := arr[i]
+                arr[i] := arr[j]
+                arr[j] := temp
+                i += 1
+                j -= 1
             }
         }
+        if (j - lo) < (hi - i) {
+            AhkStdlibStatisticsQuickSort(arr, lo, j)
+            lo := i
+        } else {
+            AhkStdlibStatisticsQuickSort(arr, i, hi)
+            hi := j
+        }
     }
-    return values
 }

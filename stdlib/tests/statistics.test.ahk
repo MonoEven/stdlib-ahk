@@ -89,6 +89,35 @@ class StdlibMathStatisticsTest
         AhkTest.RaisesMatch(errorType, "variance requires at least two data points", (*) => stdlib.statistics.variance([1]))
         AhkTest.RaisesMatch(errorType, "variance requires at least two data points", (*) => stdlib.statistics.stdev([1]))
     }
+
+    static TestGeometricMeanFollowsPythonStatistics()
+    {
+        AhkTest.AssertApprox(4.0, stdlib.statistics.geometric_mean([2, 8]))
+        AhkTest.AssertApprox(36.0, stdlib.statistics.geometric_mean([54, 24]))
+        AhkTest.RaisesMatch(stdlib.statistics.StatisticsError, "geometric_mean requires positive numbers", (*) => stdlib.statistics.geometric_mean([1, 0, 4]))
+    }
+
+    static TestHarmonicMeanFollowsPythonStatistics()
+    {
+        AhkTest.AssertApprox(3.0, stdlib.statistics.harmonic_mean([2, 3, 6]))
+        AhkTest.AssertApprox(65.88235294117646, stdlib.statistics.harmonic_mean([40, 60, 80], [5, 30, 35]))
+        AhkTest.AssertEqual(0, stdlib.statistics.harmonic_mean([2, 0, 4]))
+    }
+
+    static TestQuantilesFollowsPythonStatistics()
+    {
+        AhkTest.AssertEqual([2.75, 5.5, 8.25], stdlib.statistics.quantiles([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
+        AhkTest.AssertEqual([2.0, 3.0, 4.0], stdlib.statistics.quantiles([1, 2, 3, 4, 5], { method: "inclusive" }))
+    }
+
+    static TestQuickSortMatchesPythonOrderingForLargeInput()
+    {
+        values := []
+        loop 500
+            values.Push(Mod(A_Index * 137, 500))
+        AhkTest.AssertEqual(0, stdlib.statistics.median([0]))
+        AhkTest.AssertApprox(249.5, stdlib.statistics.median(values))
+    }
 }
 
 class StdlibMathStatisticsEnumerable

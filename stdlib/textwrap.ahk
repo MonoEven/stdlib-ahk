@@ -41,9 +41,166 @@ class AhkStdlibTextwrap
 
         return AhkStdlibTextwrapIndent(text, prefix, predicate?)
     }
+
+    static wrap(text, options := unset)
+    {
+        if !(text is String)
+            throw TypeError("expected string", -1)
+        return AhkStdlibTextwrapWrap(text, AhkStdlibTextwrapOptions(options?))
+    }
+
+    static fill(text, options := unset)
+    {
+        lines := this.wrap(text, options?)
+        return AhkStdlibTextwrapJoinLines(lines)
+    }
+
+    static shorten(text, options := unset)
+    {
+        if !(text is String)
+            throw TypeError("expected string", -1)
+        return AhkStdlibTextwrapShorten(text, AhkStdlibTextwrapOptions(options?))
+    }
 }
 
 stdlib.textwrap := AhkStdlibTextwrap
+
+AhkStdlibTextwrapOptions(options := unset)
+{
+    config := {
+        width: 70,
+        placeholder: " [...]",
+        break_long_words: true,
+        drop_whitespace: true,
+        initial_indent: "",
+        subsequent_indent: "",
+        max_lines: stdlib.None
+    }
+    if !IsSet(options)
+        return config
+    if !IsObject(options)
+        throw TypeError("options must be an object", -1)
+    for name in ["width", "placeholder", "break_long_words", "drop_whitespace", "initial_indent", "subsequent_indent", "max_lines"] {
+        if HasProp(options, name)
+            config.%name% := options.%name%
+    }
+    return config
+}
+
+AhkStdlibTextwrapNormalizeWhitespace(text)
+{
+    collapsed := RegExReplace(text, "\s+", " ")
+    return Trim(collapsed, " ")
+}
+
+AhkStdlibTextwrapSplitWords(text)
+{
+    words := []
+    for word in StrSplit(text, " ") {
+        if word != ""
+            words.Push(word)
+    }
+    return words
+}
+
+AhkStdlibTextwrapWrap(text, config)
+{
+    normalized := AhkStdlibTextwrapNormalizeWhitespace(text)
+    words := AhkStdlibTextwrapSplitWords(normalized)
+    lines := []
+    width := config.width
+
+    index := 1
+    while index <= words.Length {
+        indent := lines.Length = 0 ? config.initial_indent : config.subsequent_indent
+        current := ""
+        available := width - StrLen(indent)
+
+        while index <= words.Length {
+            word := words[index]
+            candidate := current = "" ? word : current " " word
+            if StrLen(candidate) <= available {
+                current := candidate
+                index += 1
+                continue
+            }
+            if current = "" {
+                if config.break_long_words && available > 0 {
+                    current := SubStr(word, 1, available)
+                    words[index] := SubStr(word, available + 1)
+                } else {
+                    current := word
+                    index += 1
+                }
+            }
+            break
+        }
+
+        lines.Push(indent current)
+    }
+
+    if !AhkStdlibIsNone(config.max_lines)
+        return AhkStdlibTextwrapApplyMaxLines(words, config, lines)
+    return lines
+}
+
+AhkStdlibTextwrapApplyMaxLines(words, config, lines)
+{
+    maxLines := config.max_lines
+    if lines.Length <= maxLines
+        return lines
+
+    truncated := []
+    loop maxLines
+        truncated.Push(lines[A_Index])
+
+    placeholder := config.placeholder
+    lastIndent := maxLines = 1 ? config.initial_indent : config.subsequent_indent
+    available := config.width - StrLen(lastIndent)
+    lastLine := SubStr(truncated[maxLines], StrLen(lastIndent) + 1)
+
+    if StrLen(lastLine) + StrLen(placeholder) <= available {
+        truncated[maxLines] := lastIndent lastLine placeholder
+        return truncated
+    }
+
+    words := AhkStdlibTextwrapSplitWords(lastLine)
+    rebuilt := ""
+    for word in words {
+        candidate := rebuilt = "" ? word : rebuilt " " word
+        if StrLen(candidate) + StrLen(placeholder) <= available
+            rebuilt := candidate
+        else
+            break
+    }
+    placeholderTrimmed := LTrim(placeholder, " ")
+    if rebuilt = ""
+        truncated[maxLines] := lastIndent placeholderTrimmed
+    else
+        truncated[maxLines] := lastIndent rebuilt placeholder
+    return truncated
+}
+
+AhkStdlibTextwrapShorten(text, config)
+{
+    normalized := AhkStdlibTextwrapNormalizeWhitespace(text)
+    if StrLen(normalized) <= config.width
+        return normalized
+
+    placeholder := config.placeholder
+    words := AhkStdlibTextwrapSplitWords(normalized)
+    rebuilt := ""
+    for word in words {
+        candidate := rebuilt = "" ? word : rebuilt " " word
+        if StrLen(candidate) + StrLen(placeholder) <= config.width
+            rebuilt := candidate
+        else
+            break
+    }
+    if rebuilt = ""
+        return LTrim(placeholder, " ")
+    return rebuilt placeholder
+}
 
 AhkStdlibTextwrapDedent(text)
 {

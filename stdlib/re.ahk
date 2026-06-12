@@ -44,6 +44,31 @@ class AhkStdlibRe
     {
         return this.compile(pattern, flags).sub(repl, string, count)
     }
+
+    static subn(pattern, repl, string, count := 0, flags := 0)
+    {
+        return this.compile(pattern, flags).subn(repl, string, count)
+    }
+
+    static split(pattern, string, maxsplit := 0, flags := 0)
+    {
+        return this.compile(pattern, flags).split(string, maxsplit)
+    }
+
+    static finditer(pattern, string, flags := 0)
+    {
+        return this.compile(pattern, flags).finditer(string)
+    }
+
+    static escape(pattern)
+    {
+        return AhkStdlibReEscape(pattern)
+    }
+
+    static purge()
+    {
+        return ""
+    }
 }
 
 class AhkStdlibRePattern
@@ -116,6 +141,79 @@ class AhkStdlibRePattern
         limit := count = 0 ? -1 : count
         return RegExReplace(string, this.Needle, AhkStdlibReTranslateReplacement(repl), , limit)
     }
+
+    subn(repl, string, count := 0)
+    {
+        limit := count = 0 ? -1 : count
+        replacementCount := 0
+        result := RegExReplace(string, this.Needle, AhkStdlibReTranslateReplacement(repl), &replacementCount, limit)
+        return AhkStdlibTuple([result, replacementCount])
+    }
+
+    split(string, maxsplit := 0)
+    {
+        result := []
+        startPos := 1
+        textLength := StrLen(string)
+        previousEnd := 1
+        splits := 0
+
+        loop {
+            if maxsplit > 0 && splits >= maxsplit
+                break
+            found := RegExMatch(string, this.Needle, &raw, startPos)
+            if !found
+                break
+
+            matchStart := raw.Pos[0]
+            matchLen := raw.Len[0]
+            if matchLen = 0 {
+                startPos := found + 1
+                if startPos > textLength + 1
+                    break
+                continue
+            }
+
+            result.Push(SubStr(string, previousEnd, matchStart - previousEnd))
+            Loop raw.Count
+                result.Push(raw[A_Index])
+
+            previousEnd := matchStart + matchLen
+            startPos := previousEnd
+            splits += 1
+            if startPos > textLength + 1
+                break
+        }
+
+        result.Push(SubStr(string, previousEnd))
+        return result
+    }
+
+    finditer(string)
+    {
+        return this.AhkStdlibFindMatches(string).__Enum(1)
+    }
+
+    AhkStdlibFindMatches(string)
+    {
+        matches := []
+        startPos := 1
+        textLength := StrLen(string)
+
+        loop {
+            found := RegExMatch(string, this.Needle, &raw, startPos)
+            if !found
+                break
+            matches.Push(AhkStdlibReMatch(this, string, raw))
+            nextPos := raw.Pos[0] + raw.Len[0]
+            if raw.Len[0] = 0
+                nextPos += 1
+            startPos := nextPos
+            if startPos > textLength + 1
+                break
+        }
+        return matches
+    }
 }
 
 class AhkStdlibReMatch
@@ -165,6 +263,11 @@ class AhkStdlibReMatch
             result[name] := value
         }
         return result
+    }
+
+    expand(template)
+    {
+        return AhkStdlibReExpandTemplate(this, template)
     }
 
     start(group := 0)
@@ -292,4 +395,83 @@ AhkStdlibReLastGroupName(raw)
         }
     }
     return ""
+}
+
+AhkStdlibReEscape(pattern)
+{
+    if !(pattern is String)
+        throw TypeError("expected string", -1)
+
+    special := "()[]{}?*+-|^$\.&~# `t`n`r" Chr(11) Chr(12)
+    output := ""
+    Loop Parse, pattern {
+        char := A_LoopField
+        if InStr(special, char, true)
+            output .= "\" char
+        else
+            output .= char
+    }
+    return output
+}
+
+AhkStdlibReExpandTemplate(match, template)
+{
+    output := ""
+    index := 1
+    length := StrLen(template)
+
+    while index <= length {
+        char := SubStr(template, index, 1)
+        if char != "\" {
+            output .= char
+            index += 1
+            continue
+        }
+
+        if index = length {
+            output .= "\"
+            index += 1
+            continue
+        }
+
+        nextChar := SubStr(template, index + 1, 1)
+        if AhkStdlibReIsDigit(nextChar) {
+            digits := nextChar
+            index += 2
+            while index <= length {
+                maybeDigit := SubStr(template, index, 1)
+                if !AhkStdlibReIsDigit(maybeDigit)
+                    break
+                digits .= maybeDigit
+                index += 1
+            }
+            output .= match.Raw[Integer(digits)]
+            continue
+        }
+
+        if nextChar = "g" && SubStr(template, index + 2, 1) = "<" {
+            closePos := InStr(template, ">", , index + 3)
+            if closePos {
+                name := SubStr(template, index + 3, closePos - index - 3)
+                output .= AhkStdlibReIsDigit(SubStr(name, 1, 1)) ? match.Raw[Integer(name)] : match.Raw[name]
+                index := closePos + 1
+                continue
+            }
+        }
+
+        switch nextChar {
+            case "n":
+                output .= "`n"
+            case "r":
+                output .= "`r"
+            case "t":
+                output .= "`t"
+            case "\":
+                output .= "\"
+            default:
+                output .= "\" nextChar
+        }
+        index += 2
+    }
+    return output
 }

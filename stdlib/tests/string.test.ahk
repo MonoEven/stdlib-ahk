@@ -36,6 +36,37 @@ class StdlibStringTest
         AhkTest.RaisesMatch(AttributeError, "^'bool' object has no attribute 'join'$", (*) => stdlib.string.capwords("abc", stdlib.True))
         AhkTest.RaisesMatch(TypeError, "^must be str or None, not bool$", (*) => stdlib.string.capwords("abc", stdlib.False))
     }
+
+    static TestTemplateSubstituteFollowsPython()
+    {
+        template := stdlib.string.Template("$who likes $what")
+
+        AhkTest.AssertEqual("tim likes pie", template.substitute(Map("who", "tim", "what", "pie")))
+        AhkTest.AssertEqual("tim likes pie", template.substitute({ who: "tim", what: "pie" }))
+    }
+
+    static TestTemplateSupportsBracesAndEscaping()
+    {
+        AhkTest.AssertEqual("gentrification", stdlib.string.Template("${noun}ification").substitute(Map("noun", "gentr")))
+        AhkTest.AssertEqual("Give $5", stdlib.string.Template("Give $$5").substitute(Map()))
+    }
+
+    static TestTemplateSafeSubstituteLeavesMissing()
+    {
+        template := stdlib.string.Template("$who likes $what")
+
+        AhkTest.AssertEqual("tim likes $what", template.safe_substitute(Map("who", "tim")))
+    }
+
+    static TestTemplateMissingKeyRaisesKeyError()
+    {
+        AhkTest.RaisesMatch(stdlib.KeyError, "who", (*) => stdlib.string.Template("$who").substitute(Map()))
+    }
+
+    static TestTemplateInvalidTrailingDollarRaisesValueError()
+    {
+        AhkTest.RaisesMatch(ValueError, "Invalid placeholder in string", (*) => stdlib.string.Template("abc $").substitute(Map()))
+    }
 }
 
 AhkTest.Collect(StdlibStringTest)

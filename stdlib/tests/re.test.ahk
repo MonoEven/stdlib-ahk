@@ -98,6 +98,43 @@ class StdlibReTest
         AhkTest.AssertEqual("name", groups["key"])
         AhkTest.AssertEqual("42", groups["value"])
     }
+
+    static TestSplitFollowsPythonReturnShapes()
+    {
+        AhkTest.AssertEqual(["Words", "words", "words", ""], stdlib.re.split("\W+", "Words, words, words."))
+        AhkTest.AssertEqual(["Words", ", ", "words", ", ", "words", ".", ""], stdlib.re.split("(\W+)", "Words, words, words."))
+        AhkTest.AssertEqual(["Words", "words, words."], stdlib.re.split("\W+", "Words, words, words.", 1))
+        AhkTest.AssertEqual(["a", "1", "b", "2", ""], stdlib.re.split("(\d)", "a1b2"))
+    }
+
+    static TestSubnReturnsTupleWithCount()
+    {
+        AhkTest.AssertEqual(["a# b# c#", 3], stdlib.re.subn("\d+", "#", "a1 b22 c333"))
+        AhkTest.AssertEqual(["a# b# c333", 2], stdlib.re.subn("\d+", "#", "a1 b22 c333", 2))
+    }
+
+    static TestEscapeQuotesSpecialCharacters()
+    {
+        AhkTest.AssertEqual("a\.b\*c\+\?\[\]", stdlib.re.escape("a.b*c+?[]"))
+        AhkTest.AssertEqual("https://x\.y/z", stdlib.re.escape("https://x.y/z"))
+    }
+
+    static TestFinditerYieldsMatchObjects()
+    {
+        spans := []
+        for match in stdlib.re.finditer("\d+", "a1 b22 c333")
+            spans.Push([match.group(0), match.start(), match.end()])
+
+        AhkTest.AssertEqual([["1", 1, 2], ["22", 4, 6], ["333", 8, 11]], spans)
+    }
+
+    static TestExpandSubstitutesGroups()
+    {
+        match := stdlib.re.search("(\w+) (\w+)", "foo bar")
+
+        AhkTest.AssertEqual("bar foo", match.expand("\2 \1"))
+        AhkTest.AssertEqual("bar foo", match.expand("\g<2> \g<1>"))
+    }
 }
 
 AhkTest.Collect(StdlibReTest)

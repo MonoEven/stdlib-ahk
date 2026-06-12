@@ -195,6 +195,20 @@ class StdlibOperatorTest
         AhkTest.AssertEqual(9, stdlib.operator.length_hint(unlimited, 9))
         AhkTest.AssertEqual(0, stdlib.operator.length_hint(exhausted))
     }
+
+    static TestBitwisePowerConcatAndIndex()
+    {
+        AhkTest.AssertEqual(8, stdlib.operator.pow(2, 3))
+        AhkTest.AssertEqual(16, stdlib.operator.lshift(2, 3))
+        AhkTest.AssertEqual(8, stdlib.operator.rshift(64, 3))
+        AhkTest.AssertEqual(6, stdlib.operator.xor(5, 3))
+        AhkTest.AssertEqual(-6, stdlib.operator.inv(5))
+        AhkTest.AssertEqual(-6, stdlib.operator.invert(5))
+        AhkTest.AssertEqual([1, 2, 3, 4], stdlib.operator.concat([1, 2], [3, 4]))
+        AhkTest.AssertEqual("abcd", stdlib.operator.concat("ab", "cd"))
+        AhkTest.AssertEqual(7, stdlib.operator.index(7))
+        AhkTest.AssertEqual(1, stdlib.operator.index(stdlib.True))
+    }
 }
 
 class StdlibOperatorLengthHintValue

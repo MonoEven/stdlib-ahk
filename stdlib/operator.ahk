@@ -28,6 +28,14 @@ class AhkStdlibOperator
     static neg(a) => AhkStdlibOperatorNeg(a)
     static pos(a) => AhkStdlibOperatorPos(a)
     static abs(a) => AhkStdlibOperatorAbs(a)
+    static pow(a, b) => AhkStdlibOperatorPow(a, b)
+    static lshift(a, b) => AhkStdlibOperatorLshift(a, b)
+    static rshift(a, b) => AhkStdlibOperatorRshift(a, b)
+    static xor(a, b) => AhkStdlibOperatorXor(a, b)
+    static inv(a) => AhkStdlibOperatorInvert(a)
+    static invert(a) => AhkStdlibOperatorInvert(a)
+    static concat(a, b) => AhkStdlibOperatorConcat(a, b)
+    static index(a) => AhkStdlibOperatorIndex(a)
 
     static contains(a, b) => AhkStdlibOperatorContains(a, b)
     static countOf(a, b) => AhkStdlibOperatorCountOf(a, b)
@@ -519,6 +527,69 @@ AhkStdlibOperatorOr(left, right)
     if right is AhkStdlibCollectionsCounter
         throw TypeError("unsupported operand type(s) for |: '" Type(left) "' and 'Counter'", -1)
     return left | right
+}
+
+AhkStdlibOperatorPow(left, right)
+{
+    if !(left is Number) || !(right is Number)
+        throw TypeError("unsupported operand type(s) for ** or pow(): '" AhkStdlibOperatorPythonTypeName(left) "' and '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
+    return left ** right
+}
+
+AhkStdlibOperatorLshift(left, right)
+{
+    if !(left is Integer) || !(right is Integer)
+        throw TypeError("unsupported operand type(s) for <<: '" AhkStdlibOperatorPythonTypeName(left) "' and '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
+    if right < 0
+        throw ValueError("negative shift count", -1)
+    return left << right
+}
+
+AhkStdlibOperatorRshift(left, right)
+{
+    if !(left is Integer) || !(right is Integer)
+        throw TypeError("unsupported operand type(s) for >>: '" AhkStdlibOperatorPythonTypeName(left) "' and '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
+    if right < 0
+        throw ValueError("negative shift count", -1)
+    return left >> right
+}
+
+AhkStdlibOperatorXor(left, right)
+{
+    if !(left is Integer) || !(right is Integer)
+        throw TypeError("unsupported operand type(s) for ^: '" AhkStdlibOperatorPythonTypeName(left) "' and '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
+    return left ^ right
+}
+
+AhkStdlibOperatorInvert(value)
+{
+    if !(value is Integer)
+        throw TypeError("bad operand type for unary ~: '" AhkStdlibOperatorPythonTypeName(value) "'", -1)
+    return ~value
+}
+
+AhkStdlibOperatorConcat(left, right)
+{
+    if left is String && right is String
+        return left right
+    if left is Array && right is Array {
+        result := []
+        for value in left
+            result.Push(value)
+        for value in right
+            result.Push(value)
+        return result
+    }
+    throw TypeError("'" AhkStdlibOperatorPythonTypeName(left) "' object can't be concatenated", -1)
+}
+
+AhkStdlibOperatorIndex(value)
+{
+    if value is Integer
+        return value
+    if AhkStdlibIsBool(value)
+        return value.Value ? 1 : 0
+    throw TypeError("'" AhkStdlibOperatorPythonTypeName(value) "' object cannot be interpreted as an integer", -1)
 }
 
 AhkStdlibOperatorNeg(value)

@@ -1,9 +1,12 @@
 #Requires AutoHotkey v2.0
 
 #Include <stdlib\init>
+#Include <stdlib\base64>
 
 class AhkStdlibSecrets
 {
+    static DEFAULT_ENTROPY := 32
+
     static choice(sequence)
     {
         if sequence is Array {
@@ -64,6 +67,33 @@ class AhkStdlibSecrets
         return AhkStdlibSecretsBufferToHex(this.token_bytes(nbytes))
     }
 
+    static token_urlsafe(nbytes := unset)
+    {
+        if !IsSet(nbytes) || AhkStdlibIsNone(nbytes)
+            nbytes := this.DEFAULT_ENTROPY
+        tok := this.token_bytes(nbytes)
+        encoded := stdlib.base64.urlsafe_b64encode(tok)
+        text := StrGet(encoded, encoded.Size, "UTF-8")
+        return StrReplace(text, "=", "")
+    }
+
+    static randbits(k)
+    {
+        if AhkStdlibIsNone(k)
+            throw TypeError("'NoneType' object cannot be interpreted as an integer", -1)
+        if k is Float
+            throw TypeError("'float' object cannot be interpreted as an integer", -1)
+        if !(k is Integer) && !AhkStdlibIsBool(k)
+            throw TypeError("'" AhkStdlibPythonTypeName(k) "' object cannot be interpreted as an integer", -1)
+        if AhkStdlibIsBool(k)
+            k := k.Value ? 1 : 0
+        if k < 0
+            throw ValueError("number of bits must be non-negative", -1)
+        if k = 0
+            return 0
+        return AhkStdlibSecretsRandBits(k)
+    }
+
     static compare_digest(args*)
     {
         if args.Length != 2
@@ -88,6 +118,104 @@ class AhkStdlibSecrets
 }
 
 stdlib.secrets := AhkStdlibSecrets
+
+class AhkStdlibSecretsSystemRandom
+{
+    static Call(thisClass, args*)
+    {
+        if args.Length > 0
+            throw TypeError("SystemRandom() takes no arguments (" args.Length " given)", -1)
+        instance := Object()
+        ObjSetBase(instance, AhkStdlibSecretsSystemRandom.Prototype)
+        return instance
+    }
+
+    randbelow(exclusiveUpperBound)
+    {
+        return AhkStdlibSecrets.randbelow(exclusiveUpperBound)
+    }
+
+    getrandbits(k)
+    {
+        return AhkStdlibSecrets.randbits(k)
+    }
+
+    randbits(k)
+    {
+        return AhkStdlibSecrets.randbits(k)
+    }
+
+    choice(sequence)
+    {
+        return AhkStdlibSecrets.choice(sequence)
+    }
+
+    randrange(args*)
+    {
+        if args.Length = 0
+            throw TypeError("randrange() missing 1 required positional argument: 'start'", -1)
+        if args.Length > 3
+            throw TypeError("randrange() takes from 1 to 3 positional arguments but " args.Length " were given", -1)
+
+        if args.Length = 1 {
+            stop := AhkStdlibSecretsRequireIndex(args[1], "stop")
+            if stop <= 0
+                throw ValueError("empty range for randrange()", -1)
+            return AhkStdlibSecrets.randbelow(stop)
+        }
+
+        start := AhkStdlibSecretsRequireIndex(args[1], "start")
+        stop := AhkStdlibSecretsRequireIndex(args[2], "stop")
+        step := args.Length = 3 ? AhkStdlibSecretsRequireIndex(args[3], "step") : 1
+        if step = 0
+            throw ValueError("zero step for randrange()", -1)
+
+        if step > 0
+            width := stop - start
+        else
+            width := start - stop
+        if width <= 0
+            throw ValueError("empty range for randrange()", -1)
+
+        absStep := step > 0 ? step : -step
+        n := (width + absStep - 1) // absStep
+        if n <= 0
+            throw ValueError("empty range for randrange()", -1)
+        return start + step * AhkStdlibSecrets.randbelow(n)
+    }
+
+    randint(a, b)
+    {
+        a := AhkStdlibSecretsRequireIndex(a, "a")
+        b := AhkStdlibSecretsRequireIndex(b, "b")
+        if a > b
+            throw ValueError("empty range for randrange() (" a ", " (b + 1) ", " (b + 1 - a) ")", -1)
+        return a + AhkStdlibSecrets.randbelow(b - a + 1)
+    }
+}
+
+AhkStdlibSecrets.DefineProp("SystemRandom", { Value: AhkStdlibSecretsSystemRandom })
+
+AhkStdlibSecretsRequireIndex(value, name)
+{
+    if AhkStdlibIsBool(value)
+        return value.Value ? 1 : 0
+    if value is Integer
+        return value
+    if value is Float
+        throw TypeError("'float' object cannot be interpreted as an integer", -1)
+    throw TypeError("'" AhkStdlibPythonTypeName(value) "' object cannot be interpreted as an integer", -1)
+}
+
+AhkStdlibSecretsRandBits(k)
+{
+    nbytes := Ceil(k / 8)
+    value := AhkStdlibRandomBytesToInteger(AhkStdlibSecrets.token_bytes(nbytes))
+    excessBits := (nbytes * 8) - k
+    if excessBits > 0
+        value := value >>> excessBits
+    return value
+}
 
 AhkStdlibSecretsTypeErrorForRandbelow(value)
 {

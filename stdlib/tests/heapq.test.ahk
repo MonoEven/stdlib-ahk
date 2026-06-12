@@ -78,6 +78,29 @@ class StdlibHeapqTest
         AhkTest.RaisesMatch(TypeError, "heappush\(\) argument 1 must be list", (*) => stdlib.heapq.heappush(Map(), 1))
         AhkTest.RaisesMatch(TypeError, "heapify\(\) argument must be list", (*) => stdlib.heapq.heapify(Map()))
     }
+
+    static TestNlargestAndNsmallestFollowPython()
+    {
+        AhkTest.AssertEqual([42, 37, 23], stdlib.heapq.nlargest(3, [1, 23, 12, 42, 37, 4]))
+        AhkTest.AssertEqual([-4, 1, 2], stdlib.heapq.nsmallest(3, [1, 23, -4, 2, 42]))
+        AhkTest.AssertEqual([], stdlib.heapq.nlargest(0, [1, 2, 3]))
+        AhkTest.AssertEqual([3, 2, 1], stdlib.heapq.nlargest(5, [3, 1, 2]))
+    }
+
+    static TestNlargestWithKeyFollowsPython()
+    {
+        words := ["a", "bbb", "cc", "dddd"]
+        lengthKey := (w) => StrLen(w)
+
+        AhkTest.AssertEqual(["dddd", "bbb"], stdlib.heapq.nlargest(2, words, lengthKey))
+        AhkTest.AssertEqual(["a", "cc"], stdlib.heapq.nsmallest(2, words, lengthKey))
+    }
+
+    static TestMergeCombinesSortedInputs()
+    {
+        AhkTest.AssertEqual([1, 2, 3, 4, 5, 6, 7, 8, 9], stdlib.heapq.merge([1, 4, 7], [2, 5, 8], [3, 6, 9]))
+        AhkTest.AssertEqual([8, 7, 5, 4, 2, 1], stdlib.heapq.merge([8, 4, 2], [7, 5, 1], { reverse: true }))
+    }
 }
 
 AhkTest.Collect(StdlibHeapqTest)

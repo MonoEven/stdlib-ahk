@@ -24,6 +24,29 @@ class AhkStdlibFunctools
         }
         return AhkStdlibFunctoolsPartial(callback, boundArgs*)
     }
+
+    static cache(user_function)
+    {
+        if !HasMethod(user_function, "Call")
+            throw TypeError("the first argument must be callable", -1)
+        return AhkStdlibFunctoolsLruCache(user_function, stdlib.None, false)
+    }
+
+    static lru_cache(maxsize := 128, typed := false)
+    {
+        if HasMethod(maxsize, "Call") && !AhkStdlibIsBool(maxsize)
+            return AhkStdlibFunctoolsLruCache(maxsize, 128, false)
+        if !AhkStdlibIsNone(maxsize) && !(maxsize is Integer)
+            throw TypeError("Expected first argument to be an integer, a callable, or None", -1)
+        return AhkStdlibFunctoolsLruDecorator(maxsize, AhkStdlibTruthValue(typed))
+    }
+
+    static cmp_to_key(mycmp)
+    {
+        if !HasMethod(mycmp, "Call")
+            throw TypeError("the first argument must be callable", -1)
+        return AhkStdlibFunctoolsKeyFactory(mycmp)
+    }
 }
 
 stdlib.functools := AhkStdlibFunctools
@@ -435,4 +458,204 @@ AhkStdlibFunctoolsMapRepr(mapping)
 AhkStdlibFunctoolsObjectRepr(value)
 {
     return "<" Type(value) " object at 0x" Format("{:X}", ObjPtr(value)) ">"
+}
+
+AhkStdlibFunctoolsLruDecorator(maxsize, typed)
+{
+    apply(user_function) => AhkStdlibFunctoolsLruCache(user_function, maxsize, typed)
+    return apply
+}
+
+AhkStdlibFunctoolsLruCache(user_function, maxsize, typed)
+{
+    if !HasMethod(user_function, "Call")
+        throw TypeError("the first argument must be callable", -1)
+    if !AhkStdlibIsNone(maxsize) {
+        if !(maxsize is Integer)
+            throw TypeError("Expected first argument to be an integer, a callable, or None", -1)
+        if maxsize < 0
+            maxsize := 0
+    }
+    return AhkStdlibFunctoolsLruCacheValue(user_function, maxsize, typed)
+}
+
+AhkStdlibFunctoolsMakeKey(args, typed)
+{
+    if typed {
+        parts := []
+        for value in args
+            parts.Push(AhkStdlibFunctoolsKeyToken(value))
+        for value in args
+            parts.Push("<type:" AhkStdlibPythonTypeName(value) ">")
+        return "seq" Chr(31) AhkStdlibFunctoolsJoinKey(parts)
+    }
+
+    if args.Length = 1 {
+        value := args[1]
+        if (value is Integer && !AhkStdlibIsBool(value)) || (value is String)
+            return AhkStdlibFunctoolsKeyToken(value)
+    }
+
+    parts := []
+    for value in args
+        parts.Push(AhkStdlibFunctoolsKeyToken(value))
+    return "seq" Chr(31) AhkStdlibFunctoolsJoinKey(parts)
+}
+
+AhkStdlibFunctoolsJoinKey(parts)
+{
+    result := ""
+    for index, value in parts {
+        if index > 1
+            result .= Chr(31)
+        result .= value
+    }
+    return result
+}
+
+AhkStdlibFunctoolsKeyToken(value)
+{
+    if AhkStdlibIsNone(value)
+        return "N"
+    if AhkStdlibIsBool(value)
+        return value.Value ? "B1" : "B0"
+    if (value is Integer) || (value is Float) {
+        if value = Round(value) && Abs(value) < 1.0e15
+            return "n" Format("{:d}", Integer(value))
+        return "n" value
+    }
+    if value is String
+        return "s" value
+    if IsObject(value)
+        return "o" ObjPtr(value)
+    return "?" String(value)
+}
+
+class AhkStdlibFunctoolsCacheInfo
+{
+    __New(hits, misses, maxsize, currsize)
+    {
+        this.hits := hits
+        this.misses := misses
+        this.maxsize := maxsize
+        this.currsize := currsize
+    }
+
+    __Repr()
+    {
+        maxsizeText := AhkStdlibIsNone(this.maxsize) ? "None" : this.maxsize ""
+        return "CacheInfo(hits=" this.hits ", misses=" this.misses ", maxsize=" maxsizeText ", currsize=" this.currsize ")"
+    }
+}
+
+class AhkStdlibFunctoolsLruCacheValue
+{
+    __New(user_function, maxsize, typed)
+    {
+        this.DefineProp("AhkStdlibFunc", { Value: user_function })
+        this.DefineProp("AhkStdlibMaxsize", { Value: maxsize })
+        this.DefineProp("AhkStdlibTyped", { Value: typed })
+        this.AhkStdlibCache := Map()
+        this.AhkStdlibOrder := []
+        this.AhkStdlibHits := 0
+        this.AhkStdlibMisses := 0
+    }
+
+    __wrapped__ {
+        get => this.AhkStdlibFunc
+    }
+
+    Call(args*)
+    {
+        maxsize := this.AhkStdlibMaxsize
+        if !AhkStdlibIsNone(maxsize) && maxsize = 0 {
+            this.AhkStdlibMisses += 1
+            return this.AhkStdlibFunc.Call(args*)
+        }
+
+        key := AhkStdlibFunctoolsMakeKey(args, this.AhkStdlibTyped)
+        cache := this.AhkStdlibCache
+        if cache.Has(key) {
+            this.AhkStdlibHits += 1
+            if !AhkStdlibIsNone(maxsize)
+                AhkStdlibFunctoolsTouchKey(this.AhkStdlibOrder, key)
+            return cache[key]
+        }
+
+        result := this.AhkStdlibFunc.Call(args*)
+        this.AhkStdlibMisses += 1
+        cache[key] := result
+        if !AhkStdlibIsNone(maxsize) {
+            this.AhkStdlibOrder.Push(key)
+            if cache.Count > maxsize {
+                evicted := this.AhkStdlibOrder.RemoveAt(1)
+                cache.Delete(evicted)
+            }
+        }
+        return result
+    }
+
+    cache_info()
+    {
+        return AhkStdlibFunctoolsCacheInfo(this.AhkStdlibHits, this.AhkStdlibMisses, this.AhkStdlibMaxsize, this.AhkStdlibCache.Count)
+    }
+
+    cache_clear()
+    {
+        this.AhkStdlibCache := Map()
+        this.AhkStdlibOrder := []
+        this.AhkStdlibHits := 0
+        this.AhkStdlibMisses := 0
+        return stdlib.None
+    }
+
+    cache_parameters()
+    {
+        return Map("maxsize", this.AhkStdlibMaxsize, "typed", this.AhkStdlibTyped ? stdlib.True : stdlib.False)
+    }
+}
+
+AhkStdlibFunctoolsTouchKey(order, key)
+{
+    loop order.Length {
+        if order[A_Index] == key {
+            order.RemoveAt(A_Index)
+            break
+        }
+    }
+    order.Push(key)
+}
+
+AhkStdlibFunctoolsKeyFactory(mycmp)
+{
+    make(obj) => AhkStdlibFunctoolsKeyValue(mycmp, obj)
+    return make
+}
+
+class AhkStdlibFunctoolsKeyValue
+{
+    __New(mycmp, obj)
+    {
+        this.DefineProp("AhkStdlibCmp", { Value: mycmp })
+        this.obj := obj
+    }
+
+    Compare(other)
+    {
+        return this.AhkStdlibCmp.Call(this.obj, other.obj)
+    }
+
+    __Compare(other, operation := "")
+    {
+        if !(other is AhkStdlibFunctoolsKeyValue)
+            return ""
+        return this.AhkStdlibCmp.Call(this.obj, other.obj)
+    }
+
+    lt(other) => this.AhkStdlibCmp.Call(this.obj, other.obj) < 0
+    le(other) => this.AhkStdlibCmp.Call(this.obj, other.obj) <= 0
+    gt(other) => this.AhkStdlibCmp.Call(this.obj, other.obj) > 0
+    ge(other) => this.AhkStdlibCmp.Call(this.obj, other.obj) >= 0
+    eq(other) => this.AhkStdlibCmp.Call(this.obj, other.obj) = 0
+    ne(other) => this.AhkStdlibCmp.Call(this.obj, other.obj) != 0
 }

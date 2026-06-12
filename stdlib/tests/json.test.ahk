@@ -98,6 +98,47 @@ class StdlibTextJsonTest
     {
         AhkTest.AssertThrows(ValueError, (*) => stdlib.json.loads("{bad"))
     }
+
+    static TestDumpsSortKeysOrdersMapKeys()
+    {
+        AhkTest.AssertEqual("{`"a`": 2, `"b`": 1}",
+            stdlib.json.dumps(Map("b", 1, "a", 2), { sort_keys: true }))
+    }
+
+    static TestDumpsIndentProducesPrettyOutput()
+    {
+        value := Map("a", 1, "b", [1, 2])
+        expected := "{`n  `"a`": 1,`n  `"b`": [`n    1,`n    2`n  ]`n}"
+        AhkTest.AssertEqual(expected, stdlib.json.dumps(value, { indent: 2, sort_keys: true }))
+    }
+
+    static TestDumpsIndentEmptyContainersStayInline()
+    {
+        AhkTest.AssertEqual("[]", stdlib.json.dumps([], { indent: 2 }))
+        AhkTest.AssertEqual("{}", stdlib.json.dumps(Map(), { indent: 2 }))
+    }
+
+    static TestDumpsCustomSeparators()
+    {
+        AhkTest.AssertEqual("{`"a`":1;`"b`":2}",
+            stdlib.json.dumps(Map("a", 1, "b", 2), { sort_keys: true, separators: [";", ":"] }))
+    }
+
+    static TestDumpsDefaultCallbackConvertsUnknownTypes()
+    {
+        toText(value) => "converted"
+        AhkTest.AssertEqual("`"converted`"",
+            stdlib.json.dumps(StdlibJsonUnserializable(), { default: toText }))
+    }
+
+    static TestDumpsWithoutDefaultRaisesOnUnknownTypes()
+    {
+        AhkTest.AssertThrows(TypeError, (*) => stdlib.json.dumps(StdlibJsonUnserializable()))
+    }
+}
+
+class StdlibJsonUnserializable
+{
 }
 
 AhkTest.Collect(StdlibTextJsonTest)
