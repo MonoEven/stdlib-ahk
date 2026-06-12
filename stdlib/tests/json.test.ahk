@@ -135,6 +135,45 @@ class StdlibTextJsonTest
     {
         AhkTest.AssertThrows(TypeError, (*) => stdlib.json.dumps(StdlibJsonUnserializable()))
     }
+
+    static TestDumpsEnsureAsciiFalseEmitsRawUnicode()
+    {
+        ; U+00E9 is LATIN SMALL LETTER E WITH ACUTE.
+        text := Chr(0x00E9)
+        ; ensure_ascii=false lets the character pass through unescaped.
+        AhkTest.AssertEqual("`"" text "`"", stdlib.json.dumps(text, { ensure_ascii: false }))
+        ; Default escapes it as a lowercase \u sequence (like Python's json).
+        AhkTest.AssertEqual(Chr(34) . "\u00e9" . Chr(34), stdlib.json.dumps(text))
+    }
+
+    static TestLoadsObjectHookTransformsObjects()
+    {
+        tag(obj) => (obj["seen"] := true, obj)
+        result := stdlib.json.loads("{`"a`": 1}", { object_hook: tag })
+        AhkTest.AssertTrue(result["seen"])
+        AhkTest.AssertEqual(1, result["a"])
+    }
+
+    static TestLoadsParseFloatAndParseInt()
+    {
+        floats := stdlib.json.loads("[1.5, 2]", { parse_float: (s) => "F:" s, parse_int: (s) => "I:" s })
+        AhkTest.AssertEqual("F:1.5", floats[1])
+        AhkTest.AssertEqual("I:2", floats[2])
+    }
+
+    static TestLoadsRaisesJSONDecodeErrorWithPosition()
+    {
+        err := ""
+        try
+            stdlib.json.loads("{bad}")
+        catch ValueError as e
+            err := e
+        AhkTest.AssertTrue(IsObject(err))
+        AhkTest.AssertTrue(err is stdlib.json.JSONDecodeError)
+        AhkTest.AssertEqual(1, err.pos)
+        AhkTest.AssertEqual(1, err.lineno)
+        AhkTest.AssertEqual(2, err.colno)
+    }
 }
 
 class StdlibJsonUnserializable

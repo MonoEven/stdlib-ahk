@@ -8,19 +8,29 @@ class AhkStdlibTextJson
     static True := stdlib.True
     static False := stdlib.False
 
+    static JSONDecodeError
+    {
+        get => AhkStdlibJsonDecodeError
+    }
+
+    static JSONDecodeError(args*)
+    {
+        return AhkStdlibJsonDecodeError(args*)
+    }
+
     static Bool(value)
     {
         return AhkStdlibTruthValue(value) ? this.True : this.False
     }
 
-    static load(path, encoding := "UTF-8")
+    static load(path, options := unset, encoding := "UTF-8")
     {
-        return AhkStdlibJsonLoads(FileRead(path, encoding))
+        return AhkStdlibJsonLoads(FileRead(path, encoding), options?)
     }
 
-    static loads(text)
+    static loads(text, options := unset)
     {
-        return AhkStdlibJsonLoads(text)
+        return AhkStdlibJsonLoads(text, options?)
     }
 
     static dump(value, path, encoding := "UTF-8", options := unset)
@@ -46,9 +56,22 @@ AhkStdlibJsonNull()
     return value
 }
 
-AhkStdlibJsonLoads(text)
+AhkStdlibJsonLoads(text, options := unset)
 {
-    return AhkStdlibJsonParser(text).Parse()
+    parseConfig := {
+        object_hook: stdlib.None,
+        parse_float: stdlib.None,
+        parse_int: stdlib.None
+    }
+    if IsSet(options) && IsObject(options) {
+        if HasProp(options, "object_hook") && !AhkStdlibIsNone(options.object_hook)
+            parseConfig.object_hook := options.object_hook
+        if HasProp(options, "parse_float") && !AhkStdlibIsNone(options.parse_float)
+            parseConfig.parse_float := options.parse_float
+        if HasProp(options, "parse_int") && !AhkStdlibIsNone(options.parse_int)
+            parseConfig.parse_int := options.parse_int
+    }
+    return AhkStdlibJsonParser(text, parseConfig).Parse()
 }
 
 AhkStdlibJsonDumps(value, options := unset)
@@ -65,6 +88,7 @@ AhkStdlibJsonOptions(options := unset)
         itemSep: ", ",
         keySep: ": ",
         default: stdlib.None,
+        ensure_ascii: true,
         hasSeparators: false
     }
     if !IsSet(options)
@@ -78,6 +102,8 @@ AhkStdlibJsonOptions(options := unset)
         config.sort_keys := AhkStdlibTruthValue(options.sort_keys)
     if HasProp(options, "default")
         config.default := options.default
+    if HasProp(options, "ensure_ascii")
+        config.ensure_ascii := AhkStdlibTruthValue(options.ensure_ascii)
     if HasProp(options, "separators") && !AhkStdlibIsNone(options.separators) {
         seps := options.separators
         config.itemSep := seps[1]
@@ -126,7 +152,7 @@ AhkStdlibJsonStringify(value, config, depth)
     valueType := Type(value)
     switch valueType {
         case "String":
-            return AhkStdlibJsonQuote(value)
+            return AhkStdlibJsonQuote(value, config)
         case "Integer":
             return value ""
         case "Float":
@@ -163,7 +189,7 @@ AhkStdlibJsonMapToString(values, config, depth)
         AhkStdlibJsonSortPairs(pairs)
     parts := []
     for pair in pairs
-        parts.Push(AhkStdlibJsonQuote(pair[1]) config.keySep AhkStdlibJsonStringify(pair[2], config, depth + 1))
+        parts.Push(AhkStdlibJsonQuote(pair[1], config) config.keySep AhkStdlibJsonStringify(pair[2], config, depth + 1))
     return AhkStdlibJsonWrap(parts, "{", "}", config, depth)
 }
 
@@ -209,8 +235,12 @@ AhkStdlibJsonObjectToString(value, config, depth)
     return AhkStdlibJsonWrap(parts, "{", "}", config, depth)
 }
 
-AhkStdlibJsonQuote(text)
+AhkStdlibJsonQuote(text, config := unset)
 {
+    ; ensure_ascii defaults to true (Python's default): escape all non-ASCII.
+    ensureAscii := true
+    if IsSet(config) && IsObject(config) && HasProp(config, "ensure_ascii")
+        ensureAscii := config.ensure_ascii
     result := "`""
     Loop Parse, text {
         ch := A_LoopField
@@ -231,7 +261,9 @@ AhkStdlibJsonQuote(text)
             case "`t":
                 result .= "\t"
             default:
-                if code < 32 || code > 127
+                if code < 32
+                    result .= AhkStdlibJsonUnicodeEscape(code)
+                else if code > 127 && ensureAscii
                     result .= AhkStdlibJsonUnicodeEscape(code)
                 else
                     result .= ch
@@ -264,11 +296,14 @@ AhkStdlibJsonJoin(values, delimiter := "")
 
 class AhkStdlibJsonParser
 {
-    __New(text)
+    __New(text, config := unset)
     {
         this.Text := text
         this.Pos := 1
         this.Length := StrLen(text)
+        this.ObjectHook := IsSet(config) ? config.object_hook : stdlib.None
+        this.ParseFloat := IsSet(config) ? config.parse_float : stdlib.None
+        this.ParseInt := IsSet(config) ? config.parse_int : stdlib.None
     }
 
     Parse()
@@ -317,7 +352,7 @@ class AhkStdlibJsonParser
         this.ExpectChar("{")
         this.SkipWhitespace()
         if this.MatchChar("}")
-            return result
+            return this.ApplyObjectHook(result)
 
         loop {
             this.SkipWhitespace()
@@ -331,9 +366,16 @@ class AhkStdlibJsonParser
 
             this.SkipWhitespace()
             if this.MatchChar("}")
-                return result
+                return this.ApplyObjectHook(result)
             this.ExpectChar(",")
         }
+    }
+
+    ApplyObjectHook(result)
+    {
+        if AhkStdlibIsNone(this.ObjectHook)
+            return result
+        return this.ObjectHook.Call(result)
     }
 
     ParseArray()
@@ -451,7 +493,14 @@ class AhkStdlibJsonParser
         }
 
         token := SubStr(this.Text, start, this.Pos - start)
-        return isFloat ? Float(token) : Integer(token)
+        if isFloat {
+            if !AhkStdlibIsNone(this.ParseFloat)
+                return this.ParseFloat.Call(token)
+            return Float(token)
+        }
+        if !AhkStdlibIsNone(this.ParseInt)
+            return this.ParseInt.Call(token)
+        return Integer(token)
     }
 
     ExpectLiteral(literal)
@@ -512,6 +561,29 @@ class AhkStdlibJsonParser
 
     Fail(message)
     {
-        throw ValueError("JSON parse error at position " this.Pos ": " message, -1)
+        lineno := 1
+        colno := 1
+        i := 1
+        charIndex := this.Pos - 1
+        while i <= charIndex && i <= this.Length {
+            if SubStr(this.Text, i, 1) = "`n" {
+                lineno += 1
+                colno := 1
+            } else {
+                colno += 1
+            }
+            i += 1
+        }
+        detail := message ": line " lineno " column " colno " (char " charIndex ")"
+        err := AhkStdlibJsonDecodeError(detail)
+        err.msg := message
+        err.pos := charIndex
+        err.lineno := lineno
+        err.colno := colno
+        throw err
     }
+}
+
+class AhkStdlibJsonDecodeError extends ValueError
+{
 }
