@@ -63,6 +63,110 @@ class StdlibPathlibTest
                 DirDelete root, true
         }
     }
+
+    static TestPartsAnchorDriveRootFollowPython310()
+    {
+        path := stdlib.pathlib.Path("C:/a/b/file.tar.gz")
+        AhkTest.AssertEqual("C:\,a,b,file.tar.gz", StdlibPathlibTest.JoinParts(path.parts))
+        AhkTest.AssertEqual("C:", path.drive)
+        AhkTest.AssertEqual("\", path.root)
+        AhkTest.AssertEqual("C:\", path.anchor)
+        AhkTest.AssertTrue(path.is_absolute())
+        AhkTest.AssertFalse(stdlib.pathlib.Path("a/b").is_absolute())
+    }
+
+    static TestSuffixesAndWithMethodsFollowPython310()
+    {
+        path := stdlib.pathlib.Path("C:/a/b/file.tar.gz")
+        AhkTest.AssertEqual(".tar,.gz", StdlibPathlibTest.JoinParts(path.suffixes))
+        AhkTest.AssertEqual("C:\a\b\x.txt", String(path.with_name("x.txt")))
+        AhkTest.AssertEqual("C:\a\b\file.tar.zip", String(path.with_suffix(".zip")))
+        AhkTest.AssertEqual("C:\a\b\y.gz", String(path.with_stem("y")))
+    }
+
+    static TestParentsYieldsAncestorChain()
+    {
+        path := stdlib.pathlib.Path("C:/a/b/c")
+        chain := []
+        for p in path.parents
+            chain.Push(String(p))
+        AhkTest.AssertEqual("C:\a\b", chain[1])
+        AhkTest.AssertEqual("C:\a", chain[2])
+        AhkTest.AssertEqual("C:\", chain[3])
+    }
+
+    static TestRelativeToAndMatch()
+    {
+        AhkTest.AssertEqual("b\c", String(stdlib.pathlib.Path("C:/a/b/c").relative_to("C:/a")))
+        AhkTest.AssertTrue(AhkStdlibTruthValue(stdlib.pathlib.Path("a/b.txt").match("*.txt")))
+        AhkTest.AssertFalse(AhkStdlibTruthValue(stdlib.pathlib.Path("a/b.txt").match("*.md")))
+    }
+
+    static TestIterdirAndGlob()
+    {
+        root := A_Temp "\stdlib-pathlib-glob-" A_TickCount "-" Random(100000, 999999)
+        DirCreate root
+        try {
+            FileAppend "a", root "\a.txt"
+            FileAppend "b", root "\b.txt"
+            FileAppend "c", root "\c.log"
+            DirCreate root "\sub"
+            FileAppend "d", root "\sub\d.txt"
+
+            base := stdlib.pathlib.Path(root)
+
+            names := []
+            for entry in base.iterdir()
+                names.Push(entry.name)
+            AhkTest.AssertEqual(4, names.Length)
+
+            txt := []
+            for entry in base.glob("*.txt")
+                txt.Push(entry.name)
+            AhkTest.AssertEqual(2, txt.Length)
+
+            allTxt := []
+            for entry in base.rglob("*.txt")
+                allTxt.Push(entry.name)
+            AhkTest.AssertEqual(3, allTxt.Length)
+        } finally {
+            if DirExist(root)
+                DirDelete root, true
+        }
+    }
+
+    static TestReadWriteBytesAndTouch()
+    {
+        root := A_Temp "\stdlib-pathlib-bytes-" A_TickCount "-" Random(100000, 999999)
+        DirCreate root
+        try {
+            file := stdlib.pathlib.Path(root, "data.bin")
+            buf := Buffer(3, 0)
+            NumPut("UChar", 1, buf, 0)
+            NumPut("UChar", 2, buf, 1)
+            NumPut("UChar", 255, buf, 2)
+            AhkTest.AssertEqual(3, file.write_bytes(buf))
+
+            readBack := file.read_bytes()
+            AhkTest.AssertEqual(3, readBack.Size)
+            AhkTest.AssertEqual(255, NumGet(readBack, 2, "UChar"))
+
+            touched := stdlib.pathlib.Path(root, "touched.txt")
+            touched.touch()
+            AhkTest.AssertTrue(touched.exists())
+        } finally {
+            if DirExist(root)
+                DirDelete root, true
+        }
+    }
+
+    static JoinParts(iterable)
+    {
+        out := ""
+        for item in iterable
+            out := out = "" ? String(item) : out "," String(item)
+        return out
+    }
 }
 
 AhkTest.Collect(StdlibPathlibTest)
