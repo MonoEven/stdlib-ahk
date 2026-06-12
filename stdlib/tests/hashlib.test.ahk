@@ -32,6 +32,30 @@ class StdlibHashlibTest
         AhkTest.AssertEqual("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", stdlib.hashlib.new("SHA256", StdlibHashlibTest.Bytes("abc")).hexdigest())
     }
 
+    static TestSha2FamilyMatchesPython310()
+    {
+        AhkTest.AssertEqual("23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7", stdlib.hashlib.sha224(StdlibHashlibTest.Bytes("abc")).hexdigest())
+        AhkTest.AssertEqual("cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7", stdlib.hashlib.sha384(StdlibHashlibTest.Bytes("abc")).hexdigest())
+        AhkTest.AssertEqual("ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f", stdlib.hashlib.sha512(StdlibHashlibTest.Bytes("abc")).hexdigest())
+
+        sha224Hash := stdlib.hashlib.sha224()
+        AhkTest.AssertEqual("sha224", sha224Hash.name)
+        AhkTest.AssertEqual(28, sha224Hash.digest_size)
+        AhkTest.AssertEqual(64, sha224Hash.block_size)
+
+        sha384Hash := stdlib.hashlib.sha384()
+        AhkTest.AssertEqual("sha384", sha384Hash.name)
+        AhkTest.AssertEqual(48, sha384Hash.digest_size)
+        AhkTest.AssertEqual(128, sha384Hash.block_size)
+
+        sha512Hash := stdlib.hashlib.sha512()
+        AhkTest.AssertEqual("sha512", sha512Hash.name)
+        AhkTest.AssertEqual(64, sha512Hash.digest_size)
+        AhkTest.AssertEqual(128, sha512Hash.block_size)
+
+        AhkTest.AssertEqual("23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7", stdlib.hashlib.new("SHA224", StdlibHashlibTest.Bytes("abc")).hexdigest())
+    }
+
     static TestHashObjectsExposePython310MetadataAndDigestBehavior()
     {
         hash := stdlib.hashlib.md5()
