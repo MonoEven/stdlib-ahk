@@ -252,6 +252,23 @@ class AhkStdlibOs
     {
         ExitApp 3
     }
+
+    static kill(pid, sig := 9)
+    {
+        ; AHK has no Unix signals; sig is ignored on Windows. Open the process
+        ; with PROCESS_TERMINATE access and call TerminateProcess. Matches
+        ; CPython's os.kill behavior on Windows where sig is meaningless.
+        if !(pid is Integer)
+            throw TypeError("an integer is required (got " AhkStdlibPythonTypeName(pid) ")", -1)
+        handle := DllCall("OpenProcess", "UInt", 0x0001, "Int", 0, "UInt", pid, "Ptr")
+        if !handle
+            throw OSError("[WinError 87] The parameter is incorrect: '" pid "'", -1)
+        success := DllCall("TerminateProcess", "Ptr", handle, "UInt", sig, "Int")
+        DllCall("CloseHandle", "Ptr", handle)
+        if !success
+            throw OSError("TerminateProcess failed for pid " pid, -1)
+        return stdlib.None
+    }
 }
 
 class AhkStdlibOsEnviron

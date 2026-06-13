@@ -160,6 +160,25 @@ class StdlibPathlibTest
         }
     }
 
+    static TestStatReturnsOsStatResult()
+    {
+        root := A_Temp "\stdlib-pathlib-stat-" A_TickCount "-" Random(100000, 999999)
+        DirCreate root
+        try {
+            file := stdlib.pathlib.Path(root, "test.txt")
+            file.write_text("hello", "UTF-8")
+            st := file.stat()
+            ; UTF-8 with BOM: 3 BOM bytes + 5 chars = 8 bytes
+            AhkTest.AssertTrue(st.st_size > 0)
+            AhkTest.AssertTrue(st.st_mtime > 0)
+            ; lstat returns the same shape on Windows (no real symlink semantics)
+            AhkTest.AssertEqual(st.st_size, file.lstat().st_size)
+        } finally {
+            if DirExist(root)
+                DirDelete root, true
+        }
+    }
+
     static JoinParts(iterable)
     {
         out := ""

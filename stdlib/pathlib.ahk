@@ -2,6 +2,7 @@
 
 #Include <stdlib\init>
 #Include <stdlib\fnmatch>
+#Include <stdlib\os>
 
 class AhkStdlibPathlib
 {
@@ -118,6 +119,18 @@ class AhkStdlibPathlibPath
     is_file()
     {
         return FileExist(this.Path) != "" && DirExist(this.Path) = ""
+    }
+
+    stat()
+    {
+        if !FileExist(this.Path) && !DirExist(this.Path)
+            throw OSError("[WinError 2] The system cannot find the file specified: '" this.Path "'", -1)
+        return AhkStdlibOsStatResult(this.Path)
+    }
+
+    lstat()
+    {
+        return this.stat()
     }
 
     read_text(encoding := "UTF-8")
