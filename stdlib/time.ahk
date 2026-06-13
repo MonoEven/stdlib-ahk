@@ -4,6 +4,27 @@
 
 class AhkStdlibTime
 {
+    ; Python's time module exposes these as module-level variables via _strptime
+    ; / tzset machinery. Compute them lazily from Win32 time-zone info so the
+    ; values track the host setting at first access (matching CPython behavior
+    ; where the values are captured at process start).
+    static timezone
+    {
+        get => AhkStdlibTimeTimeZoneSeconds()
+    }
+    static altzone
+    {
+        get => AhkStdlibTimeAltZoneSeconds()
+    }
+    static tzname
+    {
+        get => AhkStdlibTimeTzNames()
+    }
+    static daylight
+    {
+        get => AhkStdlibTimeDaylightFlag()
+    }
+
     static struct_time(sequence)
     {
         return AhkStdlibTimeStructTime(sequence)
@@ -479,4 +500,61 @@ AhkStdlibTimePythonTypeName(value)
     if IsObject(value)
         return "object"
     return Type(value)
+}
+
+; Lazy timezone module variables. Computed via GetTimeZoneInformation; cached
+; once for the process lifetime to match CPython's tzset-at-import behavior.
+; CPython's time.timezone is "seconds west of UTC for standard time", inverted
+; from Windows' TIME_ZONE_INFORMATION.Bias (minutes). altzone is the same for
+; daylight time. tzname is (std_name, dst_name).
+AhkStdlibTimeTimeZoneSeconds()
+{
+    info := AhkStdlibTimeGetTimeZoneInfo()
+    return info.timezone
+}
+
+AhkStdlibTimeAltZoneSeconds()
+{
+    info := AhkStdlibTimeGetTimeZoneInfo()
+    return info.altzone
+}
+
+AhkStdlibTimeTzNames()
+{
+    info := AhkStdlibTimeGetTimeZoneInfo()
+    return stdlib.tuple([info.stdName, info.dstName])
+}
+
+AhkStdlibTimeDaylightFlag()
+{
+    info := AhkStdlibTimeGetTimeZoneInfo()
+    return info.daylight
+}
+
+AhkStdlibTimeGetTimeZoneInfo()
+{
+    static cached := unset
+    if IsSet(cached)
+        return cached
+    ; TIME_ZONE_INFORMATION layout (sizeof=172):
+    ;   LONG Bias                             [0..3]
+    ;   WCHAR StandardName[32]                [4..67]
+    ;   SYSTEMTIME StandardDate (16 bytes)    [68..83]
+    ;   LONG StandardBias                     [84..87]
+    ;   WCHAR DaylightName[32]                [88..151]
+    ;   SYSTEMTIME DaylightDate               [152..167]
+    ;   LONG DaylightBias                     [168..171]
+    buf := Buffer(172, 0)
+    rc := DllCall("GetTimeZoneInformation", "Ptr", buf.Ptr, "UInt")
+    bias := NumGet(buf, 0, "Int")
+    standardBias := NumGet(buf, 84, "Int")
+    daylightBias := NumGet(buf, 168, "Int")
+    stdName := StrGet(buf.Ptr + 4, 32, "UTF-16")
+    dstName := StrGet(buf.Ptr + 88, 32, "UTF-16")
+    ; CPython: timezone = (bias + standardBias) * 60 (signed seconds west of UTC).
+    timezone := (bias + standardBias) * 60
+    altzone := (bias + daylightBias) * 60
+    daylight := daylightBias != 0 ? 1 : 0
+    cached := { timezone: timezone, altzone: altzone, stdName: stdName, dstName: dstName, daylight: daylight }
+    return cached
 }

@@ -247,6 +247,21 @@ class StdlibTimeTest
         AhkTest.AssertEqual("Feb", stdlib.time.strftime("%b", t2))
     }
 
+    static TestTimezoneVariablesExposeWindowsTzInfo()
+    {
+        ; timezone is signed seconds west of UTC; integer
+        AhkTest.AssertTrue(stdlib.time.timezone is Integer)
+        AhkTest.AssertTrue(stdlib.time.altzone is Integer)
+        ; daylight is 0 or 1
+        d := stdlib.time.daylight
+        AhkTest.AssertTrue(d = 0 || d = 1)
+        ; tzname is a 2-tuple of strings
+        names := stdlib.time.tzname
+        AhkTest.AssertEqual(2, names.Length)
+        AhkTest.AssertTrue(names[1] is String)
+        AhkTest.AssertTrue(names[2] is String)
+    }
+
     static ToArray(iterable)
     {
         result := []
