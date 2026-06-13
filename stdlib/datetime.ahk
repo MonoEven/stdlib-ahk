@@ -370,6 +370,52 @@ class AhkStdlibDateTimeTimedelta
             AhkStdlibDateTimeTimedeltaTotalMicroseconds(this.days, this.seconds, this.microseconds) * other
         )
     }
+
+    add(other)
+    {
+        if !(other is AhkStdlibDateTimeTimedelta)
+            throw TypeError("unsupported operand type(s) for +: 'datetime.timedelta' and '" AhkStdlibDateTimePythonTypeName(other) "'", -1)
+        return AhkStdlibDateTimeTimedeltaFromTotalMicroseconds(
+            AhkStdlibDateTimeTimedeltaTotalMicroseconds(this.days, this.seconds, this.microseconds)
+            + AhkStdlibDateTimeTimedeltaTotalMicroseconds(other.days, other.seconds, other.microseconds)
+        )
+    }
+
+    sub(other)
+    {
+        if !(other is AhkStdlibDateTimeTimedelta)
+            throw TypeError("unsupported operand type(s) for -: 'datetime.timedelta' and '" AhkStdlibDateTimePythonTypeName(other) "'", -1)
+        return AhkStdlibDateTimeTimedeltaFromTotalMicroseconds(
+            AhkStdlibDateTimeTimedeltaTotalMicroseconds(this.days, this.seconds, this.microseconds)
+            - AhkStdlibDateTimeTimedeltaTotalMicroseconds(other.days, other.seconds, other.microseconds)
+        )
+    }
+
+    mul(factor)
+    {
+        if !(factor is Integer)
+            throw TypeError("unsupported operand type(s) for *: 'datetime.timedelta' and '" AhkStdlibDateTimePythonTypeName(factor) "'", -1)
+        return AhkStdlibDateTimeTimedeltaFromTotalMicroseconds(
+            AhkStdlibDateTimeTimedeltaTotalMicroseconds(this.days, this.seconds, this.microseconds) * factor
+        )
+    }
+
+    div(divisor)
+    {
+        if divisor is AhkStdlibDateTimeTimedelta {
+            right := AhkStdlibDateTimeTimedeltaTotalMicroseconds(divisor.days, divisor.seconds, divisor.microseconds)
+            if right = 0
+                throw ZeroDivisionError("division by zero", -1)
+            return AhkStdlibDateTimeTimedeltaTotalMicroseconds(this.days, this.seconds, this.microseconds) / right
+        }
+        if !(divisor is Integer)
+            throw TypeError("unsupported operand type(s) for /: 'datetime.timedelta' and '" AhkStdlibDateTimePythonTypeName(divisor) "'", -1)
+        if divisor = 0
+            throw ZeroDivisionError("division by zero", -1)
+        total := AhkStdlibDateTimeTimedeltaTotalMicroseconds(this.days, this.seconds, this.microseconds)
+        rounded := AhkStdlibDateTimeRoundHalfEven(total, divisor)
+        return AhkStdlibDateTimeTimedeltaFromTotalMicroseconds(rounded)
+    }
 }
 
 class AhkStdlibDateTimeDateValue
@@ -1068,6 +1114,23 @@ AhkStdlibDateTimeTimedeltaSplit(totalMicroseconds)
     seconds := Floor(remainder / 1000000)
     microseconds := Mod(remainder, 1000000)
     return { days: days, seconds: seconds, microseconds: microseconds }
+}
+
+AhkStdlibDateTimeRoundHalfEven(numerator, denominator)
+{
+    quotient := numerator // denominator
+    remainder := numerator - (quotient * denominator)
+    if remainder < 0 {
+        remainder += Abs(denominator)
+        quotient -= 1
+    }
+    doubled := remainder * 2
+    absDen := Abs(denominator)
+    if doubled > absDen
+        quotient += 1
+    else if doubled = absDen && Mod(quotient, 2) != 0
+        quotient += 1
+    return quotient
 }
 
 AhkStdlibDateTimeTimedeltaFromTotalMicroseconds(totalMicroseconds)

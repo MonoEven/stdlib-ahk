@@ -414,6 +414,37 @@ class StdlibDateTimeTest
         AhkTest.RaisesMatch(TypeError, "unsupported type for timedelta seconds component: str", (*) => stdlib.datetime.timedelta({ seconds: "1" }))
         AhkTest.RaisesMatch(stdlib.datetime.OverflowError, "days=1000000000; must have magnitude <= 999999999", (*) => stdlib.datetime.timedelta({ days: 1000000000 }))
     }
+    static TestTimedeltaNamedArithmeticMethodsLikePython310()
+    {
+        two := stdlib.datetime.timedelta({ seconds: 2 })
+        day := stdlib.datetime.timedelta({ days: 1 })
+
+        AhkTest.AssertEqual("1 day, 0:00:02", String(day.add(two)))
+        AhkTest.AssertEqual("23:59:58", String(day.sub(two)))
+        AhkTest.AssertEqual("0:00:06", String(two.mul(3)))
+        AhkTest.AssertEqual("0:00:00.000004", String(stdlib.datetime.timedelta({ microseconds: 7 }).div(2)))
+        AhkTest.AssertEqual("0:00:00.000002", String(stdlib.datetime.timedelta({ microseconds: 5 }).div(2)))
+        AhkTest.AssertEqual("0:00:03.333333", String(stdlib.datetime.timedelta({ seconds: 10 }).div(3)))
+        AhkTest.AssertApprox(3.5, stdlib.datetime.timedelta({ seconds: 7 }).div(two))
+
+        AhkTest.RaisesMatch(ZeroDivisionError, "division by zero", (*) => stdlib.datetime.timedelta({ seconds: 1 }).div(0))
+        AhkTest.RaisesMatch(ZeroDivisionError, "division by zero", (*) => stdlib.datetime.timedelta({ seconds: 1 }).div(stdlib.datetime.timedelta()))
+        AhkTest.RaisesMatch(TypeError, "unsupported operand type\(s\) for \+: 'datetime.timedelta' and 'str'", (*) => stdlib.datetime.timedelta({ seconds: 1 }).add("x"))
+        AhkTest.RaisesMatch(TypeError, "unsupported operand type\(s\) for \*: 'datetime.timedelta' and 'str'", (*) => stdlib.datetime.timedelta({ seconds: 1 }).mul("x"))
+    }
+
+    static TestDateLeapDayCalendarGateMatchesPython310()
+    {
+        leapDay := stdlib.datetime.date(2020, 2, 29)
+
+        AhkTest.AssertEqual("1970-01-01T00:00:00", stdlib.datetime.datetime.utcfromtimestamp(0).isoformat())
+        AhkTest.AssertEqual(5, leapDay.weekday())
+        AhkTest.AssertEqual(6, leapDay.isoweekday())
+        AhkTest.AssertEqual([2020, 9, 6], leapDay.isocalendar())
+        AhkTest.AssertEqual(737484, leapDay.toordinal())
+        AhkTest.AssertEqual("Sat Feb 29 00:00:00 2020", leapDay.ctime())
+        AhkTest.AssertEqual("2020-02-29", String(stdlib.datetime.date.fromordinal(737484)))
+    }
 }
 
 AhkTest.Collect(StdlibDateTimeTest)
