@@ -220,6 +220,33 @@ class StdlibTimeTest
         AhkTest.RaisesMatch(ValueError, "month out of range", (*) => stdlib.time.strftime("%Y", stdlib.time.struct_time([2024, 13, 2, 3, 4, 5, 1, 2, -1])))
     }
 
+    static TestStrftimeFullDirectivesMatchPython310()
+    {
+        ; Reference values gated against py -3.10 time.strftime(fmt, time.gmtime(0))
+        ; gmtime(0) -> 1970-01-01 00:00:00 Thursday, year-day 1.
+        ; Build the equivalent struct_time directly to avoid timezone variance.
+        t := stdlib.time.struct_time([1970, 1, 1, 0, 0, 0, 3, 1, 0])
+        AhkTest.AssertEqual("Thu", stdlib.time.strftime("%a", t))
+        AhkTest.AssertEqual("Thursday", stdlib.time.strftime("%A", t))
+        AhkTest.AssertEqual("Jan", stdlib.time.strftime("%b", t))
+        AhkTest.AssertEqual("January", stdlib.time.strftime("%B", t))
+        AhkTest.AssertEqual("AM", stdlib.time.strftime("%p", t))
+        AhkTest.AssertEqual("12", stdlib.time.strftime("%I", t))
+        AhkTest.AssertEqual("70", stdlib.time.strftime("%y", t))
+        AhkTest.AssertEqual("00", stdlib.time.strftime("%U", t))
+        AhkTest.AssertEqual("00", stdlib.time.strftime("%W", t))
+        AhkTest.AssertEqual("01/01/70", stdlib.time.strftime("%x", t))
+        AhkTest.AssertEqual("00:00:00", stdlib.time.strftime("%X", t))
+
+        ; PM marker on a non-zero hour
+        t2 := stdlib.time.struct_time([2020, 2, 29, 13, 30, 45, 5, 60, 0])
+        AhkTest.AssertEqual("PM", stdlib.time.strftime("%p", t2))
+        AhkTest.AssertEqual("01", stdlib.time.strftime("%I", t2))
+        AhkTest.AssertEqual("Sat", stdlib.time.strftime("%a", t2))
+        AhkTest.AssertEqual("Saturday", stdlib.time.strftime("%A", t2))
+        AhkTest.AssertEqual("Feb", stdlib.time.strftime("%b", t2))
+    }
+
     static ToArray(iterable)
     {
         result := []

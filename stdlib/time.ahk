@@ -350,17 +350,35 @@ AhkStdlibTimeFormatTimestamp(timestamp, format, timeTuple := unset)
 
 AhkStdlibTimeFormatDirective(timestamp, token, timeTuple := unset)
 {
+    static dayNames := ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    static dayFullNames := ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    static monthNames := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    static monthFullNames := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
     switch token {
         case "%":
             return "%"
         case "Y":
             return FormatTime(timestamp, "yyyy")
+        case "y":
+            ; Two-digit year (00-99). Python uses %y locale-style.
+            return SubStr(FormatTime(timestamp, "yyyy"), 3, 2)
         case "m":
             return FormatTime(timestamp, "MM")
         case "d":
             return FormatTime(timestamp, "dd")
         case "H":
             return FormatTime(timestamp, "HH")
+        case "I":
+            ; 12-hour clock, zero-padded (01-12).
+            h24 := Integer(FormatTime(timestamp, "HH"))
+            h12 := Mod(h24, 12)
+            if h12 = 0
+                h12 := 12
+            return Format("{:02}", h12)
+        case "p":
+            ; AM/PM marker.
+            return Integer(FormatTime(timestamp, "HH")) < 12 ? "AM" : "PM"
         case "M":
             return FormatTime(timestamp, "mm")
         case "S":
@@ -371,9 +389,83 @@ AhkStdlibTimeFormatDirective(timestamp, token, timeTuple := unset)
             if IsSet(timeTuple)
                 return Mod(Integer(timeTuple.tm_wday) + 1, 7)
             return Mod(Integer(FormatTime(timestamp, "WDay")), 7)
+        case "a":
+            ; Abbreviated weekday name (Mon..Sun). Use timeTuple.tm_wday if
+            ; provided (0=Mon..6=Sun), else FormatTime WDay (1=Sun..7=Sat).
+            if IsSet(timeTuple)
+                return dayNames[Integer(timeTuple.tm_wday) + 1]
+            wd := Integer(FormatTime(timestamp, "WDay"))  ; 1=Sun..7=Sat
+            ; Convert to 0=Mon..6=Sun: ((wd+5) mod 7) gives 0=Mon
+            return dayNames[Mod(wd + 5, 7) + 1]
+        case "A":
+            if IsSet(timeTuple)
+                return dayFullNames[Integer(timeTuple.tm_wday) + 1]
+            wd := Integer(FormatTime(timestamp, "WDay"))
+            return dayFullNames[Mod(wd + 5, 7) + 1]
+        case "b":
+            return monthNames[Integer(FormatTime(timestamp, "MM"))]
+        case "B":
+            return monthFullNames[Integer(FormatTime(timestamp, "MM"))]
+        case "U":
+            ; Week of year, Sunday as first day, 00..53. Days before first
+            ; Sunday belong to week 0.
+            return AhkStdlibTimeWeekNumber(timestamp, timeTuple?, 0)
+        case "W":
+            ; Week of year, Monday as first day, 00..53.
+            return AhkStdlibTimeWeekNumber(timestamp, timeTuple?, 1)
+        case "Z":
+            ; Time zone name (locale-dependent). FormatTime "ZZZ" is reasonable.
+            return FormatTime(timestamp, "ZZZ")
+        case "z":
+            ; UTC offset in form +HHMM or -HHMM.
+            offsetMin := DateDiff(A_Now, A_NowUTC, "Minutes")
+            sign := offsetMin < 0 ? "-" : "+"
+            absMin := Abs(offsetMin)
+            return sign Format("{:02}{:02}", absMin // 60, Mod(absMin, 60))
+        case "c":
+            ; Locale's date+time. Python's default form: "Thu Jan  1 00:00:00 1970".
+            return AhkStdlibTimeFormatDirective(timestamp, "a", timeTuple?)
+                . " " AhkStdlibTimeFormatDirective(timestamp, "b", timeTuple?)
+                . " " Format("{:2}", Integer(FormatTime(timestamp, "dd")))
+                . " " FormatTime(timestamp, "HH:mm:ss")
+                . " " FormatTime(timestamp, "yyyy")
+        case "x":
+            ; Locale's date. Python default: "MM/DD/YY".
+            return FormatTime(timestamp, "MM") "/" FormatTime(timestamp, "dd") "/" SubStr(FormatTime(timestamp, "yyyy"), 3, 2)
+        case "X":
+            ; Locale's time. Python default: "HH:MM:SS".
+            return FormatTime(timestamp, "HH:mm:ss")
         default:
             return "%" token
     }
+}
+
+; Compute week-of-year per Python strftime %U (firstDay=0=Sunday) or %W (=1=Monday).
+AhkStdlibTimeWeekNumber(timestamp, timeTuple, firstDay)
+{
+    yday := IsSet(timeTuple) ? Integer(timeTuple.tm_yday) : Integer(FormatTime(timestamp, "YDay"))
+    ; Day of week (0=Mon..6=Sun) on the date itself
+    if IsSet(timeTuple) {
+        wday := Integer(timeTuple.tm_wday)  ; 0=Mon..6=Sun
+    } else {
+        wd := Integer(FormatTime(timestamp, "WDay"))  ; 1=Sun..7=Sat
+        wday := Mod(wd + 5, 7)
+    }
+    ; Convert to "days since first <firstDay>"
+    if firstDay = 0 {
+        ; Sunday-first: Python's tm_wday=6 means Sunday, which is week-day 0
+        wd0 := Mod(wday + 1, 7)  ; 0=Sun..6=Sat
+    } else {
+        ; Monday-first: tm_wday already maps directly
+        wd0 := wday  ; 0=Mon..6=Sun
+    }
+    ; jan1 weekday: how many days before the first <firstDay> from Jan 1
+    jan1Wd0 := Mod(wd0 - (yday - 1) + 7000, 7)
+    daysBefore := Mod(7 - jan1Wd0, 7)
+    if yday <= daysBefore
+        return "00"
+    week := ((yday - daysBefore - 1) // 7) + 1
+    return Format("{:02}", week)
 }
 
 AhkStdlibTimePythonTypeName(value)
