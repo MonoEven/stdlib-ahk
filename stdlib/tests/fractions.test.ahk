@@ -2,6 +2,7 @@
 
 #Include <stdlib\ahktest>
 #Include <stdlib\fractions>
+#Include <stdlib\decimal>
 #Include <stdlib\operator>
 
 class StdlibFractionsTest
@@ -106,6 +107,70 @@ class StdlibFractionsTest
         AhkTest.RaisesMatch(TypeError, "only takes floats, not '0.5'|str", (*) => stdlib.fractions.Fraction.from_float("0.5"))
         AhkTest.RaisesMatch(TypeError, "only takes floats, not \\{\\}|dict", (*) => stdlib.fractions.Fraction.from_float(Map()))
         AhkTest.RaisesMatch(ValueError, "max_denominator should be at least 1", (*) => stdlib.fractions.Fraction(1, 2).limit_denominator(0))
+    }
+
+    static TestFractionPowReturnsExactFractionForIntegerExponentsLikePython310()
+    {
+        half := stdlib.fractions.Fraction(1, 2)
+        twoThirds := stdlib.fractions.Fraction(2, 3)
+        negTwoThirds := stdlib.fractions.Fraction(-2, 3)
+        two := stdlib.fractions.Fraction(2, 1)
+
+        ; Fraction(1,2)**3 -> Fraction(1,8)
+        AhkTest.AssertEqual("1/8", String(half.pow(3)))
+        ; Fraction(2,3)**-2 -> Fraction(9,4)
+        AhkTest.AssertEqual("9/4", String(twoThirds.pow(-2)))
+        ; Fraction(-2,3)**3 -> Fraction(-8,27)
+        AhkTest.AssertEqual("-8/27", String(negTwoThirds.pow(3)))
+        ; Fraction(1,2)**0 -> Fraction(1,1)
+        AhkTest.AssertEqual("1", String(half.pow(0)))
+        ; Fraction(2,1)**3 -> Fraction(8,1)
+        AhkTest.AssertEqual("8", String(two.pow(3)))
+        ; __Pow meta-function mirrors .pow()
+        AhkTest.AssertEqual("1/8", String(half.__Pow(3)))
+        ; Fraction-valued integer exponent (denominator 1) stays exact
+        AhkTest.AssertEqual("8", String(two.pow(stdlib.fractions.Fraction(3, 1))))
+    }
+
+    static TestFractionPowReturnsFloatForFractionalExponentsLikePython310()
+    {
+        half := stdlib.fractions.Fraction(1, 2)
+        four := stdlib.fractions.Fraction(4, 1)
+
+        ; Fraction(1,2)**0.5 -> 0.7071067811865476 (float)
+        AhkTest.AssertEqual(0.7071067811865476, half.pow(0.5))
+        ; Fraction(4,1)**0.5 -> 2.0 (float)
+        AhkTest.AssertEqual(2.0, four.pow(0.5))
+        ; Fraction(1,2) ** Fraction(1,2) -> float
+        AhkTest.AssertEqual(0.7071067811865476, half.pow(stdlib.fractions.Fraction(1, 2)))
+    }
+
+    static TestFractionPowZeroToNegativeExponentRaisesLikePython310()
+    {
+        zero := stdlib.fractions.Fraction(0, 1)
+        AhkTest.RaisesMatch(ZeroDivisionError, "1, 0", (*) => zero.pow(-1))
+    }
+
+    static TestFractionFromDecimalMatchesPython310()
+    {
+        ; Fraction.from_decimal(Decimal("0.25")) -> Fraction(1,4)
+        AhkTest.AssertEqual("1/4", String(stdlib.fractions.Fraction.from_decimal(stdlib.decimal.Decimal("0.25"))))
+        ; Fraction.from_decimal(Decimal("1.5")) -> Fraction(3,2)
+        AhkTest.AssertEqual("3/2", String(stdlib.fractions.Fraction.from_decimal(stdlib.decimal.Decimal("1.5"))))
+        ; Fraction.from_decimal(Decimal("-2.75")) -> Fraction(-11,4)
+        AhkTest.AssertEqual("-11/4", String(stdlib.fractions.Fraction.from_decimal(stdlib.decimal.Decimal("-2.75"))))
+        ; Fraction.from_decimal(Decimal("100")) -> Fraction(100,1)
+        AhkTest.AssertEqual("100", String(stdlib.fractions.Fraction.from_decimal(stdlib.decimal.Decimal("100"))))
+        ; Fraction.from_decimal(Decimal("0")) -> Fraction(0,1)
+        AhkTest.AssertEqual("0", String(stdlib.fractions.Fraction.from_decimal(stdlib.decimal.Decimal("0"))))
+        ; Fraction.from_decimal(5) -> Fraction(5,1)
+        AhkTest.AssertEqual("5", String(stdlib.fractions.Fraction.from_decimal(5)))
+    }
+
+    static TestFractionFromDecimalRejectsPython310InvalidArguments()
+    {
+        AhkTest.RaisesMatch(TypeError, "only takes Decimals, not 0.5 \(float\)", (*) => stdlib.fractions.Fraction.from_decimal(0.5))
+        AhkTest.RaisesMatch(TypeError, "only takes Decimals, not 'x' \(str\)", (*) => stdlib.fractions.Fraction.from_decimal("x"))
     }
 }
 

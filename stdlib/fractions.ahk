@@ -23,6 +23,16 @@ class AhkStdlibFractionsFraction
         ratio := AhkStdlibFractionsFloatIntegerRatio(value)
         return AhkStdlibFractionsFractionValue(ratio[1], ratio[2])
     }
+
+    static from_decimal(value)
+    {
+        if value is Integer
+            return AhkStdlibFractionsFractionValue(value, 1)
+        if Type(value) != "AhkStdlibDecimalValue"
+            throw TypeError("Fraction.from_decimal() only takes Decimals, not " AhkStdlibFractionsFromDecimalTypeString(value), -1)
+        ratio := AhkStdlibFractionsDecimalIntegerRatio(value)
+        return AhkStdlibFractionsFractionValue(ratio[1], ratio[2])
+    }
 }
 
 class AhkStdlibFractionsFractionValue
@@ -54,6 +64,16 @@ class AhkStdlibFractionsFractionValue
     as_integer_ratio()
     {
         return [this.numerator, this.denominator]
+    }
+
+    pow(exponent)
+    {
+        return AhkStdlibFractionsPow(this, exponent)
+    }
+
+    __Pow(exponent)
+    {
+        return AhkStdlibFractionsPow(this, exponent)
     }
 
     limit_denominator(max_denominator := 1000000)
@@ -195,6 +215,59 @@ AhkStdlibFractionsCoerceRational(value)
     return ""
 }
 
+AhkStdlibFractionsPow(target, exponent)
+{
+    ; Integer-valued Fraction exponents (denominator = 1) stay exact.
+    if Type(exponent) = "AhkStdlibFractionsFractionValue" {
+        if exponent.denominator = 1
+            return AhkStdlibFractionsPowInteger(target, exponent.numerator)
+        return target.to_float() ** exponent.to_float()
+    }
+    if exponent is Integer
+        return AhkStdlibFractionsPowInteger(target, exponent)
+    if exponent is Float
+        return target.to_float() ** exponent
+    throw TypeError("unsupported operand type(s) for ** or pow(): 'Fraction' and '" AhkStdlibFractionsTypeName(exponent) "'", -1)
+}
+
+AhkStdlibFractionsPowInteger(target, exponent)
+{
+    if exponent >= 0 {
+        num := AhkStdlibFractionsIntPow(target.numerator, exponent)
+        den := AhkStdlibFractionsIntPow(target.denominator, exponent)
+        return AhkStdlibFractionsFractionValue(num, den)
+    }
+    if target.numerator = 0
+        throw ZeroDivisionError("Fraction(1, 0)", -1)
+    power := -exponent
+    num := AhkStdlibFractionsIntPow(target.denominator, power)
+    den := AhkStdlibFractionsIntPow(target.numerator, power)
+    return AhkStdlibFractionsFractionValue(num, den)
+}
+
+AhkStdlibFractionsIntPow(baseValue, exponent)
+{
+    result := 1
+    loop exponent
+        result *= baseValue
+    return result
+}
+
+AhkStdlibFractionsDecimalIntegerRatio(value)
+{
+    sign := value.sign ? -1 : 1
+    digits := value.digits
+    exponent := value.exponent
+    intDigits := Integer(digits) * sign
+    if exponent >= 0 {
+        numerator := intDigits * AhkStdlibFractionsIntPow(10, exponent)
+        return [AhkStdlibFractionsNormalizePair(numerator, 1).numerator, 1]
+    }
+    denominator := AhkStdlibFractionsIntPow(10, -exponent)
+    normalized := AhkStdlibFractionsNormalizePair(intDigits, denominator)
+    return [normalized.numerator, normalized.denominator]
+}
+
 AhkStdlibFractionsTypeName(value)
 {
     if AhkStdlibIsNone(value)
@@ -228,6 +301,21 @@ AhkStdlibFractionsFromFloatTypeString(value)
         return "[] (list)"
     if value is String
         return "'" value "' (str)"
+    return AhkStdlibFractionsTypeName(value)
+}
+
+AhkStdlibFractionsFromDecimalTypeString(value)
+{
+    if AhkStdlibIsNone(value)
+        return "None (NoneType)"
+    if value is Map
+        return "{} (dict)"
+    if value is Array
+        return "[] (list)"
+    if value is String
+        return "'" value "' (str)"
+    if value is Float
+        return value " (float)"
     return AhkStdlibFractionsTypeName(value)
 }
 
