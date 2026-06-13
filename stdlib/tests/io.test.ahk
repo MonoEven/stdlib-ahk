@@ -195,6 +195,76 @@ class StdlibIoTest
             bytes.Push(NumGet(buffer, A_Index - 1, "UChar"))
         return bytes
     }
+
+    static TestStringIOReadlinesWritelinesAndDefaultBufferSize()
+    {
+        AhkTest.AssertEqual(8192, stdlib.io.DEFAULT_BUFFER_SIZE)
+
+        AhkTest.AssertEqual(["a`n", "b`n", "c"], stdlib.io.StringIO("a`nb`nc").readlines())
+        AhkTest.AssertEqual(["a`n", "b"], stdlib.io.StringIO("a`nb").readlines())
+        AhkTest.AssertEqual(["a`n", "b`n"], stdlib.io.StringIO("a`nb`n").readlines())
+        AhkTest.AssertEqual([], stdlib.io.StringIO("").readlines())
+        AhkTest.AssertEqual(["abc"], stdlib.io.StringIO("abc").readlines(0))
+        AhkTest.AssertEqual(["aa`n", "bb`n"], stdlib.io.StringIO("aa`nbb`ncc`n").readlines(3))
+
+        mid := stdlib.io.StringIO("a`nb`nc")
+        mid.read(1)
+        AhkTest.AssertEqual(["`n", "b`n", "c"], mid.readlines())
+
+        writer := stdlib.io.StringIO()
+        AhkTest.AssertSame(stdlib.None, writer.writelines(["a`n", "b"]))
+        AhkTest.AssertEqual("a`nb", writer.getvalue())
+
+        AhkTest.RaisesMatch(TypeError, "string argument expected, got 'Integer'", (*) => stdlib.io.StringIO().writelines([1]))
+        AhkTest.RaisesMatch(TypeError, "'int' object is not iterable", (*) => stdlib.io.StringIO().writelines(5))
+    }
+
+    static TestOpenWritesAndReadsTempFileLikePython310()
+    {
+        path := A_Temp "\ahk_io_open_probe.txt"
+        if FileExist(path)
+            FileDelete(path)
+
+        try {
+            writer := stdlib.io.open(path, "w")
+            AhkTest.AssertEqual(11, writer.write("hello`nworld"))
+            writer.close()
+
+            reader := stdlib.io.open(path, "r")
+            AhkTest.AssertEqual("hello`nworld", reader.read())
+            AhkTest.AssertEqual(0, reader.seek(0))
+            AhkTest.AssertEqual("hello`n", reader.readline())
+            AhkTest.AssertEqual(["world"], reader.readlines())
+            reader.close()
+
+            appender := stdlib.io.open(path, "a")
+            appender.write("!")
+            appender.close()
+            after := stdlib.io.open(path, "r")
+            AhkTest.AssertEqual("hello`nworld!", after.read())
+            after.close()
+        } finally {
+            if FileExist(path)
+                FileDelete(path)
+        }
+
+        AhkTest.RaisesMatch(ValueError, "invalid mode: 'q'", (*) => stdlib.io.open(path, "q"))
+        AhkTest.RaisesMatch(OSError, "No such file or directory", (*) => stdlib.io.open(A_Temp "\ahk_io_missing_xyz.txt", "r"))
+    }
+
+    static TestTextIOWrapperOverByteBuffer()
+    {
+        buf := stdlib.io.BytesIO([104, 105, 10, 98, 121, 101])
+        wrapper := stdlib.io.TextIOWrapper(buf)
+        AhkTest.AssertEqual("hi`nbye", wrapper.read())
+        AhkTest.AssertEqual(0, wrapper.seek(0))
+        AhkTest.AssertEqual("hi`n", wrapper.readline())
+
+        writeBuf := stdlib.io.BytesIO()
+        writeWrapper := stdlib.io.TextIOWrapper(writeBuf)
+        AhkTest.AssertEqual(2, writeWrapper.write("ab"))
+        AhkTest.AssertEqual([97, 98], writeBuf.getvalue())
+    }
 }
 
 AhkTest.Collect(StdlibIoTest)

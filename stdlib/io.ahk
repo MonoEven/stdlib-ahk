@@ -8,6 +8,8 @@ class AhkStdlibIo
     static SEEK_CUR := 1
     static SEEK_END := 2
 
+    static DEFAULT_BUFFER_SIZE := 8192
+
     static UnsupportedOperation
     {
         get => AhkStdlibIoUnsupportedOperation
@@ -32,6 +34,20 @@ class AhkStdlibIo
         if !IsSet(initial_bytes) || AhkStdlibIsNone(initial_bytes)
             return AhkStdlibIoBytesIO([])
         return AhkStdlibIoBytesIO(AhkStdlibIoBytesFromValue(initial_bytes))
+    }
+
+    static open(file, mode := "r", buffering := -1, encoding := unset, errors := unset, newline := unset, closefd := true, opener := unset)
+    {
+        if !(file is String)
+            throw TypeError("expected str, bytes or os.PathLike object, not " AhkStdlibIoPythonTypeName(file), -1)
+        if !(mode is String)
+            throw TypeError("open() argument 2 must be str, not " AhkStdlibIoPythonTypeName(mode), -1)
+        return AhkStdlibIoFileWrapper(file, mode)
+    }
+
+    static TextIOWrapper(buffer, encoding := unset, errors := unset, newline := unset, line_buffering := false, write_through := false)
+    {
+        return AhkStdlibIoTextIOWrapper(buffer)
     }
 }
 
@@ -119,6 +135,37 @@ class AhkStdlibIoStringIO
 
         this.AhkStdlibPosition += StrLen(line)
         return line
+    }
+
+    readlines(hint := -1)
+    {
+        this.AhkStdlibEnsureOpen()
+        if AhkStdlibIsNone(hint)
+            hint := -1
+        if !(hint is Integer)
+            throw TypeError("integer argument expected, got " AhkStdlibIoPythonTypeName(hint), -1)
+        lines := []
+        total := 0
+        loop {
+            line := this.readline()
+            if line = ""
+                break
+            lines.Push(line)
+            total += StrLen(line)
+            if hint > 0 && total > hint
+                break
+        }
+        return lines
+    }
+
+    writelines(lines)
+    {
+        this.AhkStdlibEnsureOpen()
+        if !(IsObject(lines) && HasMethod(lines, "__Enum"))
+            throw TypeError("'" AhkStdlibIoPythonTypeName(lines) "' object is not iterable", -1)
+        for line in lines
+            this.write(line)
+        return stdlib.None
     }
 
     write(text)
@@ -475,6 +522,338 @@ class AhkStdlibIoBytesIO
             target[A_Index] := this.AhkStdlibBuffer[this.AhkStdlibPosition + A_Index]
         this.AhkStdlibPosition += count
         return count
+    }
+}
+
+class AhkStdlibIoFileWrapper
+{
+    __New(path, mode)
+    {
+        this.AhkStdlibPath := path
+        this.AhkStdlibMode := mode
+        this.AhkStdlibParseMode(mode)
+
+        if this.AhkStdlibReadInitial {
+            if !FileExist(path) {
+                if this.AhkStdlibMustExist
+                    throw OSError("[Errno 2] No such file or directory: '" path "'", -1)
+                content := ""
+            } else {
+                content := FileRead(path, "UTF-8")
+            }
+        } else {
+            content := ""
+        }
+
+        this.AhkStdlibContent := content
+        this.AhkStdlibLength := StrLen(content)
+        this.AhkStdlibPosition := this.AhkStdlibAtEnd ? this.AhkStdlibLength : 0
+        this.AhkStdlibDirty := !this.AhkStdlibReadInitial || this.AhkStdlibTruncate
+        this.closed := false
+
+        if this.AhkStdlibTruncate || !this.AhkStdlibReadInitial
+            this.AhkStdlibFlushToDisk()
+    }
+
+    AhkStdlibParseMode(mode)
+    {
+        normalized := StrReplace(StrReplace(mode, "b"), "t")
+        switch normalized {
+            case "r":
+                this.AhkStdlibCanRead := true, this.AhkStdlibCanWrite := false
+                this.AhkStdlibReadInitial := true, this.AhkStdlibMustExist := true
+                this.AhkStdlibTruncate := false, this.AhkStdlibAtEnd := false
+            case "w":
+                this.AhkStdlibCanRead := false, this.AhkStdlibCanWrite := true
+                this.AhkStdlibReadInitial := false, this.AhkStdlibMustExist := false
+                this.AhkStdlibTruncate := true, this.AhkStdlibAtEnd := false
+            case "a":
+                this.AhkStdlibCanRead := false, this.AhkStdlibCanWrite := true
+                this.AhkStdlibReadInitial := true, this.AhkStdlibMustExist := false
+                this.AhkStdlibTruncate := false, this.AhkStdlibAtEnd := true
+            case "r+", "+r":
+                this.AhkStdlibCanRead := true, this.AhkStdlibCanWrite := true
+                this.AhkStdlibReadInitial := true, this.AhkStdlibMustExist := true
+                this.AhkStdlibTruncate := false, this.AhkStdlibAtEnd := false
+            case "w+", "+w":
+                this.AhkStdlibCanRead := true, this.AhkStdlibCanWrite := true
+                this.AhkStdlibReadInitial := false, this.AhkStdlibMustExist := false
+                this.AhkStdlibTruncate := true, this.AhkStdlibAtEnd := false
+            case "a+", "+a":
+                this.AhkStdlibCanRead := true, this.AhkStdlibCanWrite := true
+                this.AhkStdlibReadInitial := true, this.AhkStdlibMustExist := false
+                this.AhkStdlibTruncate := false, this.AhkStdlibAtEnd := true
+            default:
+                throw ValueError("invalid mode: '" mode "'", -1)
+        }
+    }
+
+    read(size := -1)
+    {
+        this.AhkStdlibEnsureOpen()
+        if !this.AhkStdlibCanRead
+            throw AhkStdlibIoUnsupportedOperation("not readable", -1)
+        if AhkStdlibIsNone(size)
+            size := -1
+        if !(size is Integer)
+            throw TypeError("argument should be integer or None, not " AhkStdlibIoPythonTypeName(size), -1)
+        if size < 0
+            size := this.AhkStdlibLength - this.AhkStdlibPosition
+        if size <= 0
+            return ""
+        text := SubStr(this.AhkStdlibContent, this.AhkStdlibPosition + 1, size)
+        this.AhkStdlibPosition += StrLen(text)
+        return text
+    }
+
+    readline(size := -1)
+    {
+        this.AhkStdlibEnsureOpen()
+        if !this.AhkStdlibCanRead
+            throw AhkStdlibIoUnsupportedOperation("not readable", -1)
+        remaining := SubStr(this.AhkStdlibContent, this.AhkStdlibPosition + 1)
+        if remaining = ""
+            return ""
+        newline := InStr(remaining, "`n")
+        line := newline ? SubStr(remaining, 1, newline) : remaining
+        if size > 0 && StrLen(line) > size
+            line := SubStr(line, 1, size)
+        this.AhkStdlibPosition += StrLen(line)
+        return line
+    }
+
+    readlines(hint := -1)
+    {
+        this.AhkStdlibEnsureOpen()
+        lines := []
+        loop {
+            line := this.readline()
+            if line = ""
+                break
+            lines.Push(line)
+        }
+        return lines
+    }
+
+    write(text)
+    {
+        this.AhkStdlibEnsureOpen()
+        if !this.AhkStdlibCanWrite
+            throw AhkStdlibIoUnsupportedOperation("not writable", -1)
+        if !(text is String)
+            throw TypeError("write() argument must be str, not " AhkStdlibIoPythonTypeName(text), -1)
+
+        pos := this.AhkStdlibPosition
+        if pos > this.AhkStdlibLength {
+            this.AhkStdlibContent .= AhkStdlibIoRepeatChar(Chr(0), pos - this.AhkStdlibLength)
+            this.AhkStdlibLength := pos
+        }
+        before := SubStr(this.AhkStdlibContent, 1, pos)
+        after := SubStr(this.AhkStdlibContent, pos + StrLen(text) + 1)
+        this.AhkStdlibContent := before text after
+        this.AhkStdlibLength := StrLen(this.AhkStdlibContent)
+        this.AhkStdlibPosition := pos + StrLen(text)
+        this.AhkStdlibDirty := true
+        return StrLen(text)
+    }
+
+    writelines(lines)
+    {
+        this.AhkStdlibEnsureOpen()
+        if !(IsObject(lines) && HasMethod(lines, "__Enum"))
+            throw TypeError("'" AhkStdlibIoPythonTypeName(lines) "' object is not iterable", -1)
+        for line in lines
+            this.write(line)
+        return stdlib.None
+    }
+
+    tell()
+    {
+        this.AhkStdlibEnsureOpen()
+        return this.AhkStdlibPosition
+    }
+
+    seek(pos, whence := 0)
+    {
+        this.AhkStdlibEnsureOpen()
+        if !(pos is Integer)
+            throw TypeError("an integer is required", -1)
+        switch whence {
+            case 0:
+                target := pos
+            case 1:
+                target := this.AhkStdlibPosition + pos
+            case 2:
+                target := this.AhkStdlibLength + pos
+            default:
+                throw ValueError("invalid whence (" whence ", should be 0, 1 or 2)", -1)
+        }
+        if target < 0
+            throw ValueError("negative seek value " target, -1)
+        this.AhkStdlibPosition := target
+        return this.AhkStdlibPosition
+    }
+
+    readable()
+    {
+        this.AhkStdlibEnsureOpen()
+        return this.AhkStdlibCanRead
+    }
+
+    writable()
+    {
+        this.AhkStdlibEnsureOpen()
+        return this.AhkStdlibCanWrite
+    }
+
+    seekable()
+    {
+        this.AhkStdlibEnsureOpen()
+        return true
+    }
+
+    flush()
+    {
+        this.AhkStdlibEnsureOpen()
+        this.AhkStdlibFlushToDisk()
+        return stdlib.None
+    }
+
+    close()
+    {
+        if this.closed
+            return stdlib.None
+        if this.AhkStdlibDirty
+            this.AhkStdlibFlushToDisk()
+        this.closed := true
+        return stdlib.None
+    }
+
+    AhkStdlibFlushToDisk()
+    {
+        if !this.AhkStdlibCanWrite
+            return
+        handle := FileOpen(this.AhkStdlibPath, "w", "UTF-8")
+        if !handle
+            throw OSError("could not open '" this.AhkStdlibPath "' for writing", -1)
+        handle.Write(this.AhkStdlibContent)
+        handle.Close()
+        this.AhkStdlibDirty := false
+    }
+
+    AhkStdlibEnsureOpen()
+    {
+        if this.closed
+            throw ValueError("I/O operation on closed file.", -1)
+    }
+}
+
+class AhkStdlibIoTextIOWrapper
+{
+    __New(buffer)
+    {
+        this.AhkStdlibBuffer := buffer
+        this.AhkStdlibPosition := 0
+        this.closed := false
+        this.AhkStdlibLoad()
+    }
+
+    AhkStdlibLoad()
+    {
+        bytes := this.AhkStdlibBuffer.getvalue()
+        text := ""
+        for byte in bytes
+            text .= Chr(byte)
+        this.AhkStdlibContent := text
+        this.AhkStdlibLength := StrLen(text)
+    }
+
+    read(size := -1)
+    {
+        this.AhkStdlibEnsureOpen()
+        if AhkStdlibIsNone(size)
+            size := -1
+        if size < 0
+            size := this.AhkStdlibLength - this.AhkStdlibPosition
+        if size <= 0
+            return ""
+        text := SubStr(this.AhkStdlibContent, this.AhkStdlibPosition + 1, size)
+        this.AhkStdlibPosition += StrLen(text)
+        return text
+    }
+
+    readline(size := -1)
+    {
+        this.AhkStdlibEnsureOpen()
+        remaining := SubStr(this.AhkStdlibContent, this.AhkStdlibPosition + 1)
+        if remaining = ""
+            return ""
+        newline := InStr(remaining, "`n")
+        line := newline ? SubStr(remaining, 1, newline) : remaining
+        this.AhkStdlibPosition += StrLen(line)
+        return line
+    }
+
+    readlines(hint := -1)
+    {
+        this.AhkStdlibEnsureOpen()
+        lines := []
+        loop {
+            line := this.readline()
+            if line = ""
+                break
+            lines.Push(line)
+        }
+        return lines
+    }
+
+    write(text)
+    {
+        this.AhkStdlibEnsureOpen()
+        if !(text is String)
+            throw TypeError("write() argument must be str, not " AhkStdlibIoPythonTypeName(text), -1)
+        bytes := []
+        loop StrLen(text) {
+            code := Ord(SubStr(text, A_Index, 1))
+            bytes.Push(code & 0xFF)
+        }
+        this.AhkStdlibBuffer.write(bytes)
+        this.AhkStdlibContent .= text
+        this.AhkStdlibLength := StrLen(this.AhkStdlibContent)
+        this.AhkStdlibPosition := this.AhkStdlibLength
+        return StrLen(text)
+    }
+
+    tell()
+    {
+        this.AhkStdlibEnsureOpen()
+        return this.AhkStdlibPosition
+    }
+
+    seek(pos, whence := 0)
+    {
+        this.AhkStdlibEnsureOpen()
+        switch whence {
+            case 0:
+                this.AhkStdlibPosition := pos
+            case 2:
+                this.AhkStdlibPosition := this.AhkStdlibLength
+            default:
+                this.AhkStdlibPosition += pos
+        }
+        return this.AhkStdlibPosition
+    }
+
+    close()
+    {
+        this.closed := true
+        return stdlib.None
+    }
+
+    AhkStdlibEnsureOpen()
+    {
+        if this.closed
+            throw ValueError("I/O operation on closed file.", -1)
     }
 }
 
