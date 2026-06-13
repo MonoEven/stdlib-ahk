@@ -118,6 +118,50 @@ class StdlibMathStatisticsTest
         AhkTest.AssertEqual(0, stdlib.statistics.median([0]))
         AhkTest.AssertApprox(249.5, stdlib.statistics.median(values))
     }
+
+    static TestMedianGroupedFollowsPythonStatistics()
+    {
+        AhkTest.AssertApprox(4.166666666666667, stdlib.statistics.median_grouped([1, 2, 2, 3, 4, 4, 4, 5, 5, 5, 5, 5]))
+        AhkTest.AssertApprox(52.5, stdlib.statistics.median_grouped([52, 52, 53, 54]))
+        AhkTest.AssertApprox(3.5, stdlib.statistics.median_grouped([1, 3, 3, 5, 7], 2))
+        AhkTest.AssertEqual(5, stdlib.statistics.median_grouped([5]))
+    }
+
+    static TestCovarianceFollowsPythonStatistics()
+    {
+        AhkTest.AssertApprox(1.0, stdlib.statistics.covariance([1, 2, 3], [1, 2, 3]))
+        AhkTest.AssertApprox(0.75, stdlib.statistics.covariance([1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 1, 2, 3, 1, 2, 3]))
+    }
+
+    static TestCorrelationFollowsPythonStatistics()
+    {
+        AhkTest.AssertApprox(1.0, stdlib.statistics.correlation([1, 2, 3, 4], [2, 4, 6, 8]))
+        AhkTest.AssertApprox(-0.7426106572325056, stdlib.statistics.correlation([1, 2, 3, 4, 5], [10, 9, 2.5, 6, 4]))
+    }
+
+    static TestLinearRegressionFollowsPythonStatistics()
+    {
+        result := stdlib.statistics.linear_regression([1, 2, 3], [2, 4, 6])
+        AhkTest.AssertApprox(2.0, result[1])
+        AhkTest.AssertApprox(0.0, result[2])
+
+        result2 := stdlib.statistics.linear_regression([1, 2, 3, 4, 5], [2, 1, 4, 3, 5])
+        AhkTest.AssertApprox(0.8, result2[1])
+        AhkTest.AssertApprox(0.5999999999999996, result2[2])
+    }
+
+    static TestStatisticsPairwiseErrors()
+    {
+        errorType := stdlib.statistics.StatisticsError
+
+        AhkTest.RaisesMatch(errorType, "covariance requires that both inputs have same number of data points", (*) => stdlib.statistics.covariance([1, 2, 3], [1, 2]))
+        AhkTest.RaisesMatch(errorType, "covariance requires at least two data points", (*) => stdlib.statistics.covariance([1], [1]))
+        AhkTest.RaisesMatch(errorType, "correlation requires that both inputs have same number of data points", (*) => stdlib.statistics.correlation([1, 2, 3], [1, 2]))
+        AhkTest.RaisesMatch(errorType, "correlation requires at least two data points", (*) => stdlib.statistics.correlation([1], [1]))
+        AhkTest.RaisesMatch(errorType, "at least one of the inputs is constant", (*) => stdlib.statistics.correlation([1, 2, 3], [5, 5, 5]))
+        AhkTest.RaisesMatch(errorType, "linear regression requires at least two data points", (*) => stdlib.statistics.linear_regression([1], [1]))
+        AhkTest.RaisesMatch(errorType, "x is constant", (*) => stdlib.statistics.linear_regression([5, 5, 5], [1, 2, 3]))
+    }
 }
 
 class StdlibMathStatisticsEnumerable

@@ -218,6 +218,98 @@ class AhkStdlibMathStatistics
         }
         throw ValueError("Unknown method: '" method "'", -1)
     }
+
+    static median_grouped(data, interval := 1)
+    {
+        values := AhkStdlibStatisticsSorted(data)
+        n := values.Length
+        if n = 1
+            return values[1]
+
+        x := values[n // 2 + 1]
+        L := x - interval / 2
+
+        l1 := 0
+        f := 0
+        for value in values {
+            if value < x
+                l1 += 1
+            else if value = x
+                f += 1
+        }
+        cf := l1
+        return L + interval * (n / 2 - cf) / f
+    }
+
+    static covariance(x, y)
+    {
+        xs := AhkStdlibStatisticsList(x)
+        ys := AhkStdlibStatisticsList(y)
+        n := xs.Length
+        if ys.Length != n
+            throw AhkStdlibStatisticsError("covariance requires that both inputs have same number of data points", -1)
+        if n < 2
+            throw AhkStdlibStatisticsError("covariance requires at least two data points", -1)
+
+        xbar := AhkStdlibStatisticsSum(xs) / n
+        ybar := AhkStdlibStatisticsSum(ys) / n
+        sxy := 0.0
+        for index, xi in xs
+            sxy += (xi - xbar) * (ys[index] - ybar)
+        return sxy / (n - 1)
+    }
+
+    static correlation(x, y)
+    {
+        xs := AhkStdlibStatisticsList(x)
+        ys := AhkStdlibStatisticsList(y)
+        n := xs.Length
+        if ys.Length != n
+            throw AhkStdlibStatisticsError("correlation requires that both inputs have same number of data points", -1)
+        if n < 2
+            throw AhkStdlibStatisticsError("correlation requires at least two data points", -1)
+
+        xbar := AhkStdlibStatisticsSum(xs) / n
+        ybar := AhkStdlibStatisticsSum(ys) / n
+        sxy := 0.0
+        sxx := 0.0
+        syy := 0.0
+        for index, xi in xs {
+            yi := ys[index]
+            sxy += (xi - xbar) * (yi - ybar)
+            sxx += (xi - xbar) ** 2.0
+            syy += (yi - ybar) ** 2.0
+        }
+        denom := Sqrt(sxx * syy)
+        if denom = 0
+            throw AhkStdlibStatisticsError("at least one of the inputs is constant", -1)
+        return sxy / denom
+    }
+
+    static linear_regression(x, y)
+    {
+        xs := AhkStdlibStatisticsList(x)
+        ys := AhkStdlibStatisticsList(y)
+        n := xs.Length
+        if ys.Length != n
+            throw AhkStdlibStatisticsError("linear regression requires that both inputs have same number of data points", -1)
+        if n < 2
+            throw AhkStdlibStatisticsError("linear regression requires at least two data points", -1)
+
+        xbar := AhkStdlibStatisticsSum(xs) / n
+        ybar := AhkStdlibStatisticsSum(ys) / n
+        sxy := 0.0
+        sxx := 0.0
+        for index, xi in xs {
+            sxy += (xi - xbar) * (ys[index] - ybar)
+            sxx += (xi - xbar) ** 2.0
+        }
+        if sxx = 0
+            throw AhkStdlibStatisticsError("x is constant", -1)
+        slope := sxy / sxx
+        intercept := ybar - slope * xbar
+        return stdlib.tuple([slope, intercept])
+    }
 }
 
 stdlib.statistics := AhkStdlibMathStatistics
