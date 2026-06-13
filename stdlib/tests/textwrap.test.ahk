@@ -68,6 +68,60 @@ class StdlibTextwrapTest
         AhkTest.AssertEqual(["The quick brown", "fox jumped over"],
             stdlib.textwrap.wrap("The quick brown fox jumped over", { width: 15, max_lines: 2 }))
     }
+
+    static TestTextWrapperDefaultsMatchPython310()
+    {
+        w := stdlib.textwrap.TextWrapper()
+        AhkTest.AssertEqual(70, w.width)
+        AhkTest.AssertEqual("", w.initial_indent)
+        AhkTest.AssertEqual("", w.subsequent_indent)
+        AhkTest.AssertSame(stdlib.True, w.expand_tabs)
+        AhkTest.AssertSame(stdlib.True, w.replace_whitespace)
+        AhkTest.AssertSame(stdlib.False, w.fix_sentence_endings)
+        AhkTest.AssertSame(stdlib.True, w.break_long_words)
+        AhkTest.AssertSame(stdlib.True, w.drop_whitespace)
+        AhkTest.AssertSame(stdlib.True, w.break_on_hyphens)
+        AhkTest.AssertSame(stdlib.None, w.max_lines)
+        AhkTest.AssertEqual(" [...]", w.placeholder)
+    }
+
+    static TestTextWrapperWrapAndFill()
+    {
+        w := stdlib.textwrap.TextWrapper({ width: 10 })
+        AhkTest.AssertEqual(["the quick", "brown fox"], w.wrap("the quick brown fox"))
+        AhkTest.AssertEqual("the quick`nbrown fox", w.fill("the quick brown fox"))
+    }
+
+    static TestTextWrapperInitialAndSubsequentIndent()
+    {
+        w := stdlib.textwrap.TextWrapper({ width: 12, initial_indent: "> ", subsequent_indent: ".. " })
+        AhkTest.AssertEqual(["> the quick", ".. brown fox", ".. jumped"],
+            w.wrap("the quick brown fox jumped"))
+        AhkTest.AssertEqual("> the quick`n.. brown fox`n.. jumped",
+            w.fill("the quick brown fox jumped"))
+    }
+
+    static TestTextWrapperBreakLongWordsToggle()
+    {
+        wOn := stdlib.textwrap.TextWrapper({ width: 10, break_long_words: stdlib.True })
+        AhkTest.AssertEqual(["supercalif", "ragilistic", "word"],
+            wOn.wrap("supercalifragilistic word"))
+        wOff := stdlib.textwrap.TextWrapper({ width: 10, break_long_words: stdlib.False })
+        AhkTest.AssertEqual(["supercalifragilistic", "word"],
+            wOff.wrap("supercalifragilistic word"))
+    }
+
+    static TestTextWrapperMaxLines()
+    {
+        w := stdlib.textwrap.TextWrapper({ width: 15, max_lines: 1 })
+        AhkTest.AssertEqual(["The quick [...]"],
+            w.wrap("The quick brown fox jumped over the lazy dog"))
+    }
+
+    static TestTextWrapperRejectsNonObjectOptions()
+    {
+        AhkTest.AssertThrows(TypeError, (*) => stdlib.textwrap.TextWrapper(5))
+    }
 }
 
 AhkTest.Collect(StdlibTextwrapTest)

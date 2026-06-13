@@ -61,9 +61,80 @@ class AhkStdlibTextwrap
             throw TypeError("expected string", -1)
         return AhkStdlibTextwrapShorten(text, AhkStdlibTextwrapOptions(options?))
     }
+
+    static TextWrapper(options := unset)
+    {
+        return AhkStdlibTextWrapper(options?)
+    }
+}
+
+class AhkStdlibTextWrapper
+{
+    __New(options := unset)
+    {
+        config := AhkStdlibTextwrapWrapperDefaults()
+        if IsSet(options) {
+            if !IsObject(options)
+                throw TypeError("options must be an object", -1)
+            for name in AhkStdlibTextwrapWrapperOptionNames() {
+                if HasProp(options, name)
+                    config.%name% := options.%name%
+            }
+        }
+        ; Expose each option as an instance property, mirroring Python's TextWrapper.
+        for name in AhkStdlibTextwrapWrapperOptionNames()
+            this.%name% := config.%name%
+    }
+
+    Config()
+    {
+        config := {}
+        for name in AhkStdlibTextwrapWrapperOptionNames()
+            config.%name% := this.%name%
+        ; The shared core treats break_long_words in a native boolean context, so
+        ; coerce stdlib bool objects (or any value) to a real AHK truth value.
+        config.break_long_words := AhkStdlibTruthValue(this.break_long_words)
+        return config
+    }
+
+    wrap(text)
+    {
+        if !(text is String)
+            throw TypeError("expected string", -1)
+        return AhkStdlibTextwrapWrap(text, this.Config())
+    }
+
+    fill(text)
+    {
+        return AhkStdlibTextwrapJoinLines(this.wrap(text))
+    }
 }
 
 stdlib.textwrap := AhkStdlibTextwrap
+
+AhkStdlibTextwrapWrapperOptionNames()
+{
+    return ["width", "initial_indent", "subsequent_indent", "expand_tabs", "replace_whitespace"
+        , "fix_sentence_endings", "break_long_words", "drop_whitespace", "break_on_hyphens"
+        , "max_lines", "placeholder"]
+}
+
+AhkStdlibTextwrapWrapperDefaults()
+{
+    return {
+        width: 70,
+        initial_indent: "",
+        subsequent_indent: "",
+        expand_tabs: stdlib.True,
+        replace_whitespace: stdlib.True,
+        fix_sentence_endings: stdlib.False,
+        break_long_words: stdlib.True,
+        drop_whitespace: stdlib.True,
+        break_on_hyphens: stdlib.True,
+        max_lines: stdlib.None,
+        placeholder: " [...]"
+    }
+}
 
 AhkStdlibTextwrapOptions(options := unset)
 {
