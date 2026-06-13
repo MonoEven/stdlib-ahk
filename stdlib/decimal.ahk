@@ -130,6 +130,11 @@ class AhkStdlibDecimalValueClass
     {
         return AhkStdlibDecimalValue(value)
     }
+
+    static from_float(value)
+    {
+        return AhkStdlibDecimalFromFloat(value)
+    }
 }
 
 class AhkStdlibDecimalValue
@@ -204,7 +209,7 @@ class AhkStdlibDecimalValue
         scale := this.exponent < other.exponent ? this.exponent : other.exponent
         leftInt := AhkStdlibDecimalScaledInteger(this.sign, this.digits, this.exponent, scale)
         rightInt := AhkStdlibDecimalScaledInteger(other.sign, other.digits, other.exponent, scale)
-        return AhkStdlibDecimalFromScaledInteger(leftInt + rightInt, scale)
+        return AhkStdlibDecimalFixToPrecision(AhkStdlibDecimalFromScaledInteger(leftInt + rightInt, scale))
     }
 
     __Sub(other)
@@ -215,7 +220,7 @@ class AhkStdlibDecimalValue
         scale := this.exponent < other.exponent ? this.exponent : other.exponent
         leftInt := AhkStdlibDecimalScaledInteger(this.sign, this.digits, this.exponent, scale)
         rightInt := AhkStdlibDecimalScaledInteger(other.sign, other.digits, other.exponent, scale)
-        return AhkStdlibDecimalFromScaledInteger(leftInt - rightInt, scale)
+        return AhkStdlibDecimalFixToPrecision(AhkStdlibDecimalFromScaledInteger(leftInt - rightInt, scale))
     }
 
     __Mul(other)
@@ -223,9 +228,10 @@ class AhkStdlibDecimalValue
         other := AhkStdlibDecimalCoerce(other)
         if other = ""
             return ""
-        leftInt := (this.sign ? -1 : 1) * Integer(this.digits)
-        rightInt := (other.sign ? -1 : 1) * Integer(other.digits)
-        return AhkStdlibDecimalFromScaledInteger(leftInt * rightInt, this.exponent + other.exponent)
+        product := AhkStdlibDecimalBigMul(this.digits, other.digits)
+        resultSign := (this.sign != other.sign) ? 1 : 0
+        built := AhkStdlibDecimalFromParts(resultSign, AhkStdlibDecimalNormalizeIntString(product), this.exponent + other.exponent)
+        return AhkStdlibDecimalFixToPrecision(built)
     }
 
     __Div(other)
@@ -261,10 +267,11 @@ class AhkStdlibDecimalValue
         if this.sign != other.sign
             numerator := 0 - numerator
 
+        prec := AhkStdlibDecimalCurrentContext().prec
         if denominator != 1
-            return AhkStdlibDecimalDivideToContext(String(numerator), String(denominator), scaleExponent, 28)
+            return AhkStdlibDecimalDivideToContext(String(numerator), String(denominator), scaleExponent, prec)
 
-        return AhkStdlibDecimalFromScaledInteger(numerator, scaleExponent)
+        return AhkStdlibDecimalFixToPrecision(AhkStdlibDecimalFromScaledInteger(numerator, scaleExponent))
     }
 
     __FloorDiv(other)
@@ -306,6 +313,138 @@ class AhkStdlibDecimalValue
     __Pos()
     {
         return AhkStdlibDecimalValue(this.ToString())
+    }
+
+    quantize(other, rounding := unset)
+    {
+        target := AhkStdlibDecimalCoerce(other)
+        if target = ""
+            throw TypeError("quantize() argument must be a Decimal", -1)
+        mode := IsSet(rounding) ? rounding : AhkStdlibDecimalCurrentContext().rounding
+        AhkStdlibDecimalValidateRounding(mode)
+        return AhkStdlibDecimalQuantizeTo(this.sign, this.digits, this.exponent, target.exponent, mode)
+    }
+
+    to_integral_value(rounding := unset)
+    {
+        mode := IsSet(rounding) ? rounding : AhkStdlibDecimalCurrentContext().rounding
+        AhkStdlibDecimalValidateRounding(mode)
+        if this.exponent >= 0
+            return AhkStdlibDecimalFromParts(this.sign, this.digits, this.exponent)
+        return AhkStdlibDecimalQuantizeTo(this.sign, this.digits, this.exponent, 0, mode)
+    }
+
+    to_integral(rounding := unset)
+    {
+        return IsSet(rounding) ? this.to_integral_value(rounding) : this.to_integral_value()
+    }
+
+    sqrt()
+    {
+        return AhkStdlibDecimalSqrt(this.sign, this.digits, this.exponent)
+    }
+
+    ln()
+    {
+        return AhkStdlibDecimalLn(this.sign, this.digits, this.exponent)
+    }
+
+    log10()
+    {
+        return AhkStdlibDecimalLog10(this.sign, this.digits, this.exponent)
+    }
+
+    exp()
+    {
+        return AhkStdlibDecimalExp(this.sign, this.digits, this.exponent)
+    }
+
+    compare(other)
+    {
+        result := this.__Compare(other, "")
+        if result = ""
+            throw TypeError("unsupported operand for compare", -1)
+        return AhkStdlibDecimalValue(String(result))
+    }
+
+    copy_abs()
+    {
+        return AhkStdlibDecimalFromParts(0, this.digits, this.exponent)
+    }
+
+    copy_sign(other)
+    {
+        source := AhkStdlibDecimalCoerce(other)
+        if source = ""
+            throw TypeError("copy_sign() argument must be a Decimal", -1)
+        return AhkStdlibDecimalFromParts(source.sign, this.digits, this.exponent)
+    }
+
+    copy_negate()
+    {
+        return AhkStdlibDecimalFromParts(this.sign ? 0 : 1, this.digits, this.exponent)
+    }
+
+    as_tuple()
+    {
+        digitArray := []
+        loop StrLen(this.digits)
+            digitArray.Push(Integer(SubStr(this.digits, A_Index, 1)))
+        return [this.sign, digitArray, this.exponent]
+    }
+
+    as_integer_ratio()
+    {
+        if this.digits = "0"
+            return [0, 1]
+        if this.exponent >= 0 {
+            numerator := AhkStdlibDecimalBigMul(this.digits, AhkStdlibDecimalBigPow10(this.exponent))
+            denominator := "1"
+        } else {
+            numerator := this.digits
+            denominator := AhkStdlibDecimalBigPow10(-this.exponent)
+        }
+        common := AhkStdlibDecimalBigGcd(numerator, denominator)
+        numerator := AhkStdlibDecimalBigDivMod(numerator, common).q
+        denominator := AhkStdlibDecimalBigDivMod(denominator, common).q
+        if this.sign
+            numerator := AhkStdlibDecimalBigNeg(numerator)
+        return [AhkStdlibDecimalBigToScalar(numerator), AhkStdlibDecimalBigToScalar(denominator)]
+    }
+
+    is_nan()
+    {
+        return false
+    }
+
+    is_qnan()
+    {
+        return false
+    }
+
+    is_snan()
+    {
+        return false
+    }
+
+    is_infinite()
+    {
+        return false
+    }
+
+    is_finite()
+    {
+        return true
+    }
+
+    is_zero()
+    {
+        return this.digits = "0"
+    }
+
+    is_signed()
+    {
+        return this.sign != 0
     }
 }
 
@@ -704,9 +843,8 @@ AhkStdlibDecimalCompareIntStrings(left, right)
     right := AhkStdlibDecimalNormalizeIntString(right)
     if StrLen(left) != StrLen(right)
         return StrLen(left) < StrLen(right) ? -1 : 1
-    if left = right
-        return 0
-    return left < right ? -1 : 1
+    cmp := StrCompare(left, right)
+    return cmp = 0 ? 0 : (cmp < 0 ? -1 : 1)
 }
 
 AhkStdlibDecimalMultiplyIntStringDigit(value, digit)
@@ -855,4 +993,803 @@ AhkStdlibDecimalTypeName(value)
     if IsObject(value)
         return "object"
     return Type(value)
+}
+
+; ---- rounding / quantize / precision fix ----
+
+AhkStdlibDecimalRoundUp(mode, sign, firstDropped, restNonZero, lastKept)
+{
+    if mode = "ROUND_DOWN"
+        return false
+    if mode = "ROUND_UP"
+        return firstDropped > 0 || restNonZero
+    if mode = "ROUND_CEILING"
+        return (firstDropped > 0 || restNonZero) && !sign
+    if mode = "ROUND_FLOOR"
+        return (firstDropped > 0 || restNonZero) && sign
+    if mode = "ROUND_HALF_UP"
+        return firstDropped >= 5
+    if mode = "ROUND_HALF_DOWN"
+        return firstDropped > 5 || (firstDropped = 5 && restNonZero)
+    if mode = "ROUND_HALF_EVEN" {
+        if firstDropped > 5
+            return true
+        if firstDropped < 5
+            return false
+        if restNonZero
+            return true
+        return Mod(lastKept, 2) = 1
+    }
+    if mode = "ROUND_05UP"
+        return (firstDropped > 0 || restNonZero) && (lastKept = 0 || lastKept = 5)
+    return false
+}
+
+; Drop `dropCount` low digits from `digits`, rounding per `mode`.
+; Returns { digits, grew } where grew=1 if a carry lengthened the result.
+AhkStdlibDecimalRoundCoeff(sign, digits, dropCount, mode)
+{
+    total := StrLen(digits)
+    padded := digits
+    while StrLen(padded) < dropCount + 1
+        padded := "0" padded
+    keepLen := StrLen(padded) - dropCount
+    kept := SubStr(padded, 1, keepLen)
+    dropped := SubStr(padded, keepLen + 1)
+    firstDropped := dropped = "" ? 0 : Integer(SubStr(dropped, 1, 1))
+    rest := SubStr(dropped, 2)
+    restNonZero := RegExMatch(rest, "[1-9]") ? true : false
+    lastKept := Integer(SubStr(kept, -1))
+    grew := 0
+    if AhkStdlibDecimalRoundUp(mode, sign, firstDropped, restNonZero, lastKept) {
+        before := StrLen(kept)
+        kept := AhkStdlibDecimalIncrementIntString(kept)
+        if StrLen(kept) > before
+            grew := 1
+    }
+    return { digits: AhkStdlibDecimalNormalizeIntString(kept), grew: grew }
+}
+
+; Round value (sign,digits,exponent) so it fits the current context precision.
+AhkStdlibDecimalFixToPrecision(value)
+{
+    sign := value.sign
+    digits := value.digits
+    exponent := value.exponent
+    if digits = "0"
+        return AhkStdlibDecimalFromParts(0, "0", exponent)
+    prec := AhkStdlibDecimalCurrentContext().prec
+    if StrLen(digits) <= prec
+        return AhkStdlibDecimalFromParts(sign, digits, exponent)
+    mode := AhkStdlibDecimalCurrentContext().rounding
+    dropCount := StrLen(digits) - prec
+    rounded := AhkStdlibDecimalRoundCoeff(sign, digits, dropCount, mode)
+    newExp := exponent + dropCount
+    newDigits := rounded.digits
+    if rounded.grew && StrLen(newDigits) > prec {
+        newDigits := SubStr(newDigits, 1, prec)
+        newExp += 1
+    }
+    return AhkStdlibDecimalFromParts(sign, newDigits, newExp)
+}
+
+; Rescale (sign,digits,exponent) to targetExponent, rounding per mode.
+AhkStdlibDecimalQuantizeTo(sign, digits, exponent, targetExponent, mode)
+{
+    if digits = "0"
+        return AhkStdlibDecimalFromParts(sign, "0", targetExponent)
+    if exponent >= targetExponent {
+        ; need more (or equal) fractional places: pad with zeros
+        pad := exponent - targetExponent
+        newDigits := digits
+        while pad > 0 {
+            newDigits .= "0"
+            pad -= 1
+        }
+        return AhkStdlibDecimalFromParts(sign, newDigits, targetExponent)
+    }
+    dropCount := targetExponent - exponent
+    rounded := AhkStdlibDecimalRoundCoeff(sign, digits, dropCount, mode)
+    return AhkStdlibDecimalFromParts(sign, rounded.digits, targetExponent)
+}
+
+; ---- end rounding helpers ----
+
+; ---- signed big-integer (decimal string) layer ----
+
+AhkStdlibDecimalBigNorm(value)
+{
+    sign := ""
+    if SubStr(value, 1, 1) = "-" {
+        sign := "-"
+        value := SubStr(value, 2)
+    }
+    value := RegExReplace(value, "^0+(?=\d)")
+    if value = "" || value = "0"
+        return "0"
+    return sign value
+}
+
+AhkStdlibDecimalBigIsNeg(value)
+{
+    return SubStr(value, 1, 1) = "-"
+}
+
+AhkStdlibDecimalBigAbs(value)
+{
+    return AhkStdlibDecimalBigIsNeg(value) ? SubStr(value, 2) : value
+}
+
+AhkStdlibDecimalBigNeg(value)
+{
+    value := AhkStdlibDecimalBigNorm(value)
+    if value = "0"
+        return "0"
+    return AhkStdlibDecimalBigIsNeg(value) ? SubStr(value, 2) : "-" value
+}
+
+AhkStdlibDecimalBigCmpAbs(left, right)
+{
+    return AhkStdlibDecimalCompareIntStrings(AhkStdlibDecimalBigAbs(left), AhkStdlibDecimalBigAbs(right))
+}
+
+AhkStdlibDecimalBigCmp(left, right)
+{
+    leftNeg := AhkStdlibDecimalBigIsNeg(left)
+    rightNeg := AhkStdlibDecimalBigIsNeg(right)
+    if leftNeg && !rightNeg
+        return -1
+    if !leftNeg && rightNeg
+        return 1
+    magnitude := AhkStdlibDecimalBigCmpAbs(left, right)
+    return leftNeg ? -magnitude : magnitude
+}
+
+AhkStdlibDecimalBigAdd(left, right)
+{
+    left := AhkStdlibDecimalBigNorm(left)
+    right := AhkStdlibDecimalBigNorm(right)
+    leftNeg := AhkStdlibDecimalBigIsNeg(left)
+    rightNeg := AhkStdlibDecimalBigIsNeg(right)
+    leftAbs := AhkStdlibDecimalBigAbs(left)
+    rightAbs := AhkStdlibDecimalBigAbs(right)
+    if leftNeg = rightNeg {
+        sum := AhkStdlibDecimalAddIntStrings(leftAbs, rightAbs)
+        return AhkStdlibDecimalBigNorm((leftNeg ? "-" : "") sum)
+    }
+    cmp := AhkStdlibDecimalCompareIntStrings(leftAbs, rightAbs)
+    if cmp = 0
+        return "0"
+    if cmp > 0 {
+        diff := AhkStdlibDecimalSubtractIntStrings(leftAbs, rightAbs)
+        return AhkStdlibDecimalBigNorm((leftNeg ? "-" : "") diff)
+    }
+    diff := AhkStdlibDecimalSubtractIntStrings(rightAbs, leftAbs)
+    return AhkStdlibDecimalBigNorm((rightNeg ? "-" : "") diff)
+}
+
+AhkStdlibDecimalBigSub(left, right)
+{
+    return AhkStdlibDecimalBigAdd(left, AhkStdlibDecimalBigNeg(right))
+}
+
+AhkStdlibDecimalBigMul(left, right)
+{
+    leftNeg := AhkStdlibDecimalBigIsNeg(left)
+    rightNeg := AhkStdlibDecimalBigIsNeg(right)
+    product := AhkStdlibDecimalMulIntStrings(AhkStdlibDecimalBigAbs(left), AhkStdlibDecimalBigAbs(right))
+    if product = "0"
+        return "0"
+    return (leftNeg != rightNeg ? "-" : "") product
+}
+
+AhkStdlibDecimalAddIntStrings(left, right)
+{
+    left := AhkStdlibDecimalNormalizeIntString(left)
+    right := AhkStdlibDecimalNormalizeIntString(right)
+    carry := 0
+    result := ""
+    maxLen := StrLen(left) > StrLen(right) ? StrLen(left) : StrLen(right)
+    loop maxLen {
+        li := StrLen(left) - A_Index + 1
+        ri := StrLen(right) - A_Index + 1
+        ld := li >= 1 ? Integer(SubStr(left, li, 1)) : 0
+        rd := ri >= 1 ? Integer(SubStr(right, ri, 1)) : 0
+        total := ld + rd + carry
+        result := Mod(total, 10) result
+        carry := total // 10
+    }
+    if carry
+        result := String(carry) result
+    return AhkStdlibDecimalNormalizeIntString(result)
+}
+
+AhkStdlibDecimalMulIntStrings(left, right)
+{
+    left := AhkStdlibDecimalNormalizeIntString(left)
+    right := AhkStdlibDecimalNormalizeIntString(right)
+    if left = "0" || right = "0"
+        return "0"
+    result := "0"
+    loop StrLen(right) {
+        rIndex := StrLen(right) - A_Index + 1
+        shift := A_Index - 1
+        digit := Integer(SubStr(right, rIndex, 1))
+        partial := AhkStdlibDecimalMultiplyIntStringDigit(left, digit)
+        if partial != "0" {
+            zeros := shift
+            while zeros > 0 {
+                partial .= "0"
+                zeros -= 1
+            }
+            result := AhkStdlibDecimalAddIntStrings(result, partial)
+        }
+    }
+    return AhkStdlibDecimalNormalizeIntString(result)
+}
+
+; floor division: returns { q, r } with r having the sign of divisor (Python semantics)
+AhkStdlibDecimalBigDivModFloor(numerator, divisor)
+{
+    numNeg := AhkStdlibDecimalBigIsNeg(numerator)
+    divNeg := AhkStdlibDecimalBigIsNeg(divisor)
+    numAbs := AhkStdlibDecimalBigAbs(numerator)
+    divAbs := AhkStdlibDecimalBigAbs(divisor)
+    division := AhkStdlibDecimalDivideIntegerStrings(numAbs, divAbs)
+    qAbs := division.quotient
+    rAbs := division.remainder
+    if numNeg = divNeg {
+        q := (numNeg && qAbs != "0") ? "-" qAbs : qAbs
+        r := (numNeg && rAbs != "0") ? "-" rAbs : rAbs
+        return { q: AhkStdlibDecimalBigNorm(q), r: AhkStdlibDecimalBigNorm(r) }
+    }
+    ; signs differ: floor rounds toward -inf
+    if rAbs = "0" {
+        q := qAbs = "0" ? "0" : "-" qAbs
+        return { q: AhkStdlibDecimalBigNorm(q), r: "0" }
+    }
+    q := "-" AhkStdlibDecimalAddIntStrings(qAbs, "1")
+    rMag := AhkStdlibDecimalSubtractIntStrings(divAbs, rAbs)
+    r := divNeg ? "-" rMag : rMag
+    return { q: AhkStdlibDecimalBigNorm(q), r: AhkStdlibDecimalBigNorm(r) }
+}
+
+; truncating division for positive operands: returns { q, r }
+AhkStdlibDecimalBigDivMod(numerator, divisor)
+{
+    division := AhkStdlibDecimalDivideIntegerStrings(AhkStdlibDecimalBigAbs(numerator), AhkStdlibDecimalBigAbs(divisor))
+    return { q: division.quotient, r: division.remainder }
+}
+
+AhkStdlibDecimalBigGcd(left, right)
+{
+    left := AhkStdlibDecimalBigAbs(left)
+    right := AhkStdlibDecimalBigAbs(right)
+    while right != "0" {
+        remainder := AhkStdlibDecimalDivideIntegerStrings(left, right).remainder
+        left := right
+        right := remainder
+    }
+    return left = "0" ? "1" : left
+}
+
+AhkStdlibDecimalBigPow10(exp)
+{
+    result := "1"
+    while exp > 0 {
+        result .= "0"
+        exp -= 1
+    }
+    return result
+}
+
+AhkStdlibDecimalBigPow5(exp)
+{
+    result := "1"
+    while exp > 0 {
+        result := AhkStdlibDecimalMultiplyIntStringDigit(result, 5)
+        exp -= 1
+    }
+    return result
+}
+
+AhkStdlibDecimalBigPow2(exp)
+{
+    result := "1"
+    while exp > 0 {
+        result := AhkStdlibDecimalMultiplyIntStringDigit(result, 2)
+        exp -= 1
+    }
+    return result
+}
+
+AhkStdlibDecimalBigToScalar(value)
+{
+    return Integer(value)
+}
+
+AhkStdlibDecimalBigLen(value)
+{
+    return StrLen(AhkStdlibDecimalBigAbs(value))
+}
+
+AhkStdlibDecimalBigOdd(value)
+{
+    return Mod(Integer(SubStr(AhkStdlibDecimalBigAbs(value), -1)), 2) = 1
+}
+
+; ---- end big-integer layer ----
+
+; ---- from_float ----
+
+AhkStdlibDecimalFromFloat(value)
+{
+    if value is Integer
+        return AhkStdlibDecimalValue(value)
+    if !(value is Float)
+        throw TypeError("argument must be int or float", -1)
+
+    buf := Buffer(8)
+    NumPut("Double", value, buf)
+    bits := NumGet(buf, 0, "Int64")
+
+    signBit := (bits >> 63) & 1
+    exponentField := (bits >> 52) & 0x7FF
+    mantissaField := bits & 0xFFFFFFFFFFFFF
+
+    if exponentField = 0x7FF
+        throw Error("[<class 'decimal.InvalidOperation'>] cannot convert NaN/Infinity", -1)
+
+    if exponentField = 0 {
+        ; subnormal
+        mantissa := mantissaField
+        binExp := -1074
+    } else {
+        mantissa := mantissaField + 0x10000000000000
+        binExp := exponentField - 1075
+    }
+
+    if mantissa = 0
+        return AhkStdlibDecimalFromParts(signBit, "0", 0)
+
+    mantissaStr := String(mantissa)
+    ; remove common factors of two: mantissa * 2**binExp
+    if binExp >= 0 {
+        coeff := AhkStdlibDecimalMulIntStrings(mantissaStr, AhkStdlibDecimalBigPow2(binExp))
+        exponent := 0
+    } else {
+        k := -binExp
+        ; strip trailing factors of 2 from mantissa to reduce 5**k size
+        while k > 0 && AhkStdlibDecimalEndsWithEven(mantissaStr) {
+            mantissaStr := AhkStdlibDecimalHalveIntString(mantissaStr)
+            k -= 1
+        }
+        coeff := AhkStdlibDecimalMulIntStrings(mantissaStr, AhkStdlibDecimalBigPow5(k))
+        exponent := -k
+    }
+    return AhkStdlibDecimalFromParts(signBit, AhkStdlibDecimalNormalizeIntString(coeff), exponent)
+}
+
+AhkStdlibDecimalEndsWithEven(value)
+{
+    return Mod(Integer(SubStr(value, -1)), 2) = 0
+}
+
+AhkStdlibDecimalHalveIntString(value)
+{
+    value := AhkStdlibDecimalNormalizeIntString(value)
+    carry := 0
+    result := ""
+    loop StrLen(value) {
+        digit := carry * 10 + Integer(SubStr(value, A_Index, 1))
+        result .= String(digit // 2)
+        carry := Mod(digit, 2)
+    }
+    return AhkStdlibDecimalNormalizeIntString(result)
+}
+
+; ---- end from_float ----
+
+; ---- transcendental math (big-integer fixed-point, ported from CPython _pydecimal) ----
+
+AhkStdlibDecimalDivNearest(a, b)
+{
+    ; a, b big strings, b > 0; closest integer to a/b, round half to even
+    divmod := AhkStdlibDecimalBigDivModFloor(a, b)
+    q := divmod.q
+    r := divmod.r
+    twoR := AhkStdlibDecimalMulIntStrings(AhkStdlibDecimalBigAbs(r), "2")
+    parity := AhkStdlibDecimalBigOdd(q) ? "1" : "0"
+    lhs := AhkStdlibDecimalAddIntStrings(twoR, parity)
+    if AhkStdlibDecimalCompareIntStrings(lhs, AhkStdlibDecimalBigAbs(b)) > 0
+        return AhkStdlibDecimalBigAdd(q, "1")
+    return q
+}
+
+AhkStdlibDecimalRshiftNearest(x, shift)
+{
+    b := AhkStdlibDecimalBigPow2(shift)
+    return AhkStdlibDecimalDivNearest(x, b)
+}
+
+AhkStdlibDecimalLshift(x, shift)
+{
+    return AhkStdlibDecimalBigMul(x, AhkStdlibDecimalBigPow2(shift))
+}
+
+AhkStdlibDecimalSqrtNearest(n, a)
+{
+    ; closest integer to sqrt(n); a is initial approximation (positive)
+    b := "0"
+    while AhkStdlibDecimalBigCmp(a, b) != 0 {
+        b := a
+        ; a = (a - -n//a) >> 1  == (a + n//a) >> 1
+        quotient := AhkStdlibDecimalBigDivModFloor(n, a).q
+        sum := AhkStdlibDecimalBigAdd(a, quotient)
+        a := AhkStdlibDecimalBigDivModFloor(sum, "2").q
+    }
+    return a
+}
+
+AhkStdlibDecimalNbits(value)
+{
+    n := 0
+    value := AhkStdlibDecimalBigAbs(value)
+    while value != "0" {
+        value := AhkStdlibDecimalHalveIntString(value)
+        n += 1
+    }
+    return n
+}
+
+AhkStdlibDecimalCeilDivNeg(a, b)
+{
+    ; compute -int(-a//b) for positive a, b == ceil(a/b)
+    divmod := AhkStdlibDecimalBigDivMod(a, b)
+    if divmod.r = "0"
+        return divmod.q
+    return AhkStdlibDecimalAddIntStrings(divmod.q, "1")
+}
+
+; integer approximation to M*log(x/M)
+AhkStdlibDecimalIlog(x, M)
+{
+    L := 8
+    y := AhkStdlibDecimalBigSub(x, M)
+    R := 0
+    loop {
+        absY := AhkStdlibDecimalBigAbs(y)
+        if R <= L {
+            lhs := AhkStdlibDecimalLshift(absY, L - R)
+            cont := AhkStdlibDecimalCompareIntStrings(lhs, AhkStdlibDecimalBigAbs(M)) >= 0
+        } else {
+            lhs := AhkStdlibDecimalRshiftFloor(absY, R - L)
+            cont := AhkStdlibDecimalCompareIntStrings(lhs, AhkStdlibDecimalBigAbs(M)) >= 0
+        }
+        if !cont
+            break
+        ; y = div_nearest((M*y)<<1, M + sqrt_nearest(M*(M+rshift_nearest(y,R)), M))
+        num := AhkStdlibDecimalLshift(AhkStdlibDecimalBigMul(M, y), 1)
+        inner := AhkStdlibDecimalBigAdd(M, AhkStdlibDecimalRshiftNearest(y, R))
+        radicand := AhkStdlibDecimalBigMul(M, inner)
+        denom := AhkStdlibDecimalBigAdd(M, AhkStdlibDecimalSqrtNearest(radicand, M))
+        y := AhkStdlibDecimalDivNearest(num, denom)
+        R += 1
+    }
+    ; T = ceil(10*len(str(M)) / (3*L))
+    T := AhkStdlibDecimalCeilDivScalar(10 * StrLen(AhkStdlibDecimalBigAbs(M)), 3 * L)
+    yshift := AhkStdlibDecimalRshiftNearest(y, R)
+    w := AhkStdlibDecimalDivNearest(M, String(T))
+    k := T - 1
+    while k > 0 {
+        term := AhkStdlibDecimalDivNearest(AhkStdlibDecimalBigMul(yshift, w), M)
+        w := AhkStdlibDecimalBigSub(AhkStdlibDecimalDivNearest(M, String(k)), term)
+        k -= 1
+    }
+    return AhkStdlibDecimalDivNearest(AhkStdlibDecimalBigMul(w, y), M)
+}
+
+AhkStdlibDecimalCeilDivScalar(a, b)
+{
+    return (a + b - 1) // b
+}
+
+AhkStdlibDecimalRshiftFloor(x, shift)
+{
+    return AhkStdlibDecimalBigDivModFloor(x, AhkStdlibDecimalBigPow2(shift)).q
+}
+
+; ---- end transcendental math part 1 ----
+
+; cached: floor(10**p * log(10)) as a big string, truncated
+AhkStdlibDecimalLog10Digits(p)
+{
+    static digits := ""
+    if p < 0
+        throw ValueError("p should be nonnegative", -1)
+    if p >= StrLen(digits) {
+        extra := 3
+        loop {
+            M := AhkStdlibDecimalBigPow10(p + extra + 2)
+            tenM := AhkStdlibDecimalMultiplyIntStringDigit(M, 10)
+            computed := AhkStdlibDecimalDivNearest(AhkStdlibDecimalIlog(tenM, M), "100")
+            computed := AhkStdlibDecimalBigAbs(computed)
+            tail := SubStr(computed, -extra)
+            if RegExMatch(tail, "[1-9]")
+                break
+            extra += 3
+        }
+        ; rstrip zeros, drop last digit
+        trimmed := RegExReplace(computed, "0+$")
+        digits := SubStr(trimmed, 1, StrLen(trimmed) - 1)
+    }
+    return SubStr(digits, 1, p + 1)
+}
+
+; integer approximation to 10**p * log(c*10**e)
+AhkStdlibDecimalDlog(c, e, p)
+{
+    p += 2
+    l := StrLen(AhkStdlibDecimalBigAbs(c))
+    f := e + l - ((e + l >= 1) ? 1 : 0)
+    if p > 0 {
+        k := e + p - f
+        if k >= 0
+            c := AhkStdlibDecimalBigMul(c, AhkStdlibDecimalBigPow10(k))
+        else
+            c := AhkStdlibDecimalDivNearest(c, AhkStdlibDecimalBigPow10(-k))
+        logD := AhkStdlibDecimalIlog(c, AhkStdlibDecimalBigPow10(p))
+    } else {
+        logD := "0"
+    }
+    if f != 0 {
+        extra := StrLen(String(Abs(f))) - 1
+        if p + extra >= 0 {
+            fLog := AhkStdlibDecimalDivNearest(AhkStdlibDecimalBigMul(String(f), AhkStdlibDecimalLog10Digits(p + extra)), AhkStdlibDecimalBigPow10(extra))
+        } else {
+            fLog := "0"
+        }
+    } else {
+        fLog := "0"
+    }
+    return AhkStdlibDecimalDivNearest(AhkStdlibDecimalBigAdd(fLog, logD), "100")
+}
+
+; integer approximation to 10**p * log10(c*10**e)
+AhkStdlibDecimalDlog10(c, e, p)
+{
+    p += 2
+    l := StrLen(AhkStdlibDecimalBigAbs(c))
+    f := e + l - ((e + l >= 1) ? 1 : 0)
+    if p > 0 {
+        M := AhkStdlibDecimalBigPow10(p)
+        k := e + p - f
+        if k >= 0
+            c := AhkStdlibDecimalBigMul(c, AhkStdlibDecimalBigPow10(k))
+        else
+            c := AhkStdlibDecimalDivNearest(c, AhkStdlibDecimalBigPow10(-k))
+        logD := AhkStdlibDecimalIlog(c, M)
+        log10 := AhkStdlibDecimalLog10Digits(p)
+        logD := AhkStdlibDecimalDivNearest(AhkStdlibDecimalBigMul(logD, M), log10)
+        logTenpower := AhkStdlibDecimalBigMul(String(f), M)
+    } else {
+        logD := "0"
+        logTenpower := AhkStdlibDecimalDivNearest(String(f), AhkStdlibDecimalBigPow10(-p))
+    }
+    return AhkStdlibDecimalDivNearest(AhkStdlibDecimalBigAdd(logTenpower, logD), "100")
+}
+
+; integer approximation to M*exp(x/M) for x/M small
+AhkStdlibDecimalIexp(x, M)
+{
+    L := 8
+    R := AhkStdlibDecimalNbits(AhkStdlibDecimalBigDivModFloor(AhkStdlibDecimalLshift(x, L), M).q)
+    T := AhkStdlibDecimalCeilDivScalar(10 * StrLen(AhkStdlibDecimalBigAbs(M)), 3 * L)
+    y := AhkStdlibDecimalDivNearest(x, String(T))
+    Mshift := AhkStdlibDecimalLshift(M, R)
+    i := T - 1
+    while i > 0 {
+        ; y = div_nearest(x*(Mshift + y), Mshift * i)
+        num := AhkStdlibDecimalBigMul(x, AhkStdlibDecimalBigAdd(Mshift, y))
+        denom := AhkStdlibDecimalBigMul(Mshift, String(i))
+        y := AhkStdlibDecimalDivNearest(num, denom)
+        i -= 1
+    }
+    k := R - 1
+    while k >= 0 {
+        Mshift := AhkStdlibDecimalLshift(M, k + 2)
+        ; y = div_nearest(y*(y+Mshift), Mshift)
+        y := AhkStdlibDecimalDivNearest(AhkStdlibDecimalBigMul(y, AhkStdlibDecimalBigAdd(y, Mshift)), Mshift)
+        k -= 1
+    }
+    return AhkStdlibDecimalBigAdd(M, y)
+}
+
+; compute approximation to exp(c*10**e); returns { coeff, exp }
+AhkStdlibDecimalDexp(c, e, p)
+{
+    p += 2
+    cLen := StrLen(AhkStdlibDecimalBigAbs(c))
+    extra := (e + cLen - 1) > 0 ? (e + cLen - 1) : 0
+    q := p + extra
+    shift := e + q
+    if shift >= 0
+        cshift := AhkStdlibDecimalBigMul(c, AhkStdlibDecimalBigPow10(shift))
+    else
+        cshift := AhkStdlibDecimalBigDivModFloor(c, AhkStdlibDecimalBigPow10(-shift)).q
+    log10q := AhkStdlibDecimalLog10Digits(q)
+    divmod := AhkStdlibDecimalBigDivModFloor(cshift, log10q)
+    quot := divmod.q
+    rem := divmod.r
+    rem := AhkStdlibDecimalDivNearest(rem, AhkStdlibDecimalBigPow10(extra))
+    coeff := AhkStdlibDecimalDivNearest(AhkStdlibDecimalIexp(rem, AhkStdlibDecimalBigPow10(p)), "1000")
+    expOut := AhkStdlibDecimalBigSub(quot, String(p - 3))
+    return { coeff: coeff, exp: AhkStdlibDecimalBigToScalar(expOut) }
+}
+
+; ---- end transcendental math part 2 ----
+
+; round (sign, digitsString, exponent) to precision p with ROUND_HALF_EVEN
+AhkStdlibDecimalFixHalfEven(sign, digits, exponent, prec)
+{
+    if digits = "0"
+        return AhkStdlibDecimalFromParts(0, "0", exponent)
+    if StrLen(digits) <= prec
+        return AhkStdlibDecimalFromParts(sign, digits, exponent)
+    dropCount := StrLen(digits) - prec
+    rounded := AhkStdlibDecimalRoundCoeff(sign, digits, dropCount, "ROUND_HALF_EVEN")
+    newExp := exponent + dropCount
+    newDigits := rounded.digits
+    if rounded.grew && StrLen(newDigits) > prec {
+        newDigits := SubStr(newDigits, 1, prec)
+        newExp += 1
+    }
+    return AhkStdlibDecimalFromParts(sign, newDigits, newExp)
+}
+
+AhkStdlibDecimalSqrt(sign, digits, exponent)
+{
+    prec := AhkStdlibDecimalCurrentContext().prec
+    if digits = "0" {
+        ideal := exponent // 2
+        return AhkStdlibDecimalFromParts(sign, "0", ideal)
+    }
+    if sign
+        throw Error("[<class 'decimal.InvalidOperation'>] sqrt(-x), x > 0", -1)
+
+    workPrec := prec + 1
+    intStr := digits
+    e := exponent >> 1
+    if exponent & 1 {
+        c := AhkStdlibDecimalMultiplyIntStringDigit(intStr, 10)
+        l := (StrLen(intStr) >> 1) + 1
+    } else {
+        c := intStr
+        l := (StrLen(intStr) + 1) >> 1
+    }
+    shift := workPrec - l
+    exact := true
+    if shift >= 0 {
+        c := AhkStdlibDecimalMulIntStrings(c, AhkStdlibDecimalBigPow100(shift))
+    } else {
+        divmod := AhkStdlibDecimalBigDivMod(c, AhkStdlibDecimalBigPow100(-shift))
+        c := divmod.q
+        exact := (divmod.r = "0")
+    }
+    e -= shift
+
+    ; Newton: n = floor(sqrt(c))
+    n := AhkStdlibDecimalBigPow10(workPrec)
+    loop {
+        q := AhkStdlibDecimalBigDivModFloor(c, n).q
+        if AhkStdlibDecimalBigCmp(n, q) <= 0
+            break
+        n := AhkStdlibDecimalBigDivModFloor(AhkStdlibDecimalBigAdd(n, q), "2").q
+    }
+    exact := exact && (AhkStdlibDecimalBigMul(n, n) = c)
+
+    if exact {
+        if shift >= 0
+            n := AhkStdlibDecimalBigDivMod(n, AhkStdlibDecimalBigPow10(shift)).q
+        else
+            n := AhkStdlibDecimalMulIntStrings(n, AhkStdlibDecimalBigPow10(-shift))
+        e += shift
+    } else {
+        if AhkStdlibDecimalBigDivMod(n, "5").r = "0"
+            n := AhkStdlibDecimalBigAdd(n, "1")
+    }
+    return AhkStdlibDecimalFixHalfEven(0, AhkStdlibDecimalNormalizeIntString(n), e, prec)
+}
+
+AhkStdlibDecimalBigPow100(exp)
+{
+    result := "1"
+    while exp > 0 {
+        result .= "00"
+        exp -= 1
+    }
+    return result
+}
+
+AhkStdlibDecimalLn(sign, digits, exponent)
+{
+    if digits = "0"
+        throw Error("[<class 'decimal.InvalidOperation'>] ln(0)", -1)
+    if sign
+        throw Error("[<class 'decimal.InvalidOperation'>] ln of a negative value", -1)
+    if digits = "1" && exponent = 0
+        return AhkStdlibDecimalFromParts(0, "0", 0)
+
+    prec := AhkStdlibDecimalCurrentContext().prec
+    c := digits
+    e := exponent
+    places := prec + 3
+    coeff := ""
+    loop {
+        coeff := AhkStdlibDecimalDlog(c, e, places)
+        coeffLen := StrLen(AhkStdlibDecimalBigAbs(coeff))
+        modBase := AhkStdlibDecimalMultiplyIntStringDigit(AhkStdlibDecimalBigPow10(coeffLen - prec - 1), 5)
+        if AhkStdlibDecimalBigDivMod(coeff, modBase).r != "0"
+            break
+        places += 3
+    }
+    resultSign := AhkStdlibDecimalBigIsNeg(coeff) ? 1 : 0
+    return AhkStdlibDecimalFixHalfEven(resultSign, AhkStdlibDecimalBigAbs(coeff), -places, prec)
+}
+
+AhkStdlibDecimalLog10(sign, digits, exponent)
+{
+    if digits = "0"
+        throw Error("[<class 'decimal.InvalidOperation'>] log10(0)", -1)
+    if sign
+        throw Error("[<class 'decimal.InvalidOperation'>] log10 of a negative value", -1)
+
+    prec := AhkStdlibDecimalCurrentContext().prec
+    ; log10(10**n) = n exactly
+    if SubStr(digits, 1, 1) = "1" && RegExReplace(SubStr(digits, 2), "0", "") = "" {
+        n := exponent + StrLen(digits) - 1
+        return AhkStdlibDecimalFixHalfEven(n < 0 ? 1 : 0, String(Abs(n)) = "0" ? "0" : String(Abs(n)), 0, prec)
+    }
+
+    c := digits
+    e := exponent
+    places := prec + 3
+    coeff := ""
+    loop {
+        coeff := AhkStdlibDecimalDlog10(c, e, places)
+        coeffLen := StrLen(AhkStdlibDecimalBigAbs(coeff))
+        modBase := AhkStdlibDecimalMultiplyIntStringDigit(AhkStdlibDecimalBigPow10(coeffLen - prec - 1), 5)
+        if AhkStdlibDecimalBigDivMod(coeff, modBase).r != "0"
+            break
+        places += 3
+    }
+    resultSign := AhkStdlibDecimalBigIsNeg(coeff) ? 1 : 0
+    return AhkStdlibDecimalFixHalfEven(resultSign, AhkStdlibDecimalBigAbs(coeff), -places, prec)
+}
+
+AhkStdlibDecimalExp(sign, digits, exponent)
+{
+    if digits = "0"
+        return AhkStdlibDecimalFromParts(0, "1", 0)
+
+    prec := AhkStdlibDecimalCurrentContext().prec
+    c := digits
+    e := exponent
+    if sign
+        c := "-" c
+
+    extra := 3
+    coeff := ""
+    expOut := 0
+    loop {
+        result := AhkStdlibDecimalDexp(c, e, prec + extra)
+        coeff := result.coeff
+        expOut := result.exp
+        coeffLen := StrLen(AhkStdlibDecimalBigAbs(coeff))
+        modBase := AhkStdlibDecimalMultiplyIntStringDigit(AhkStdlibDecimalBigPow10(coeffLen - prec - 1), 5)
+        if AhkStdlibDecimalBigDivMod(coeff, modBase).r != "0"
+            break
+        extra += 3
+    }
+    return AhkStdlibDecimalFixHalfEven(0, AhkStdlibDecimalBigAbs(coeff), expOut, prec)
 }
