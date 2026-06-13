@@ -33,20 +33,15 @@ class AhkStdlibEnumModule
 
     static unique(enumType)
     {
-        ; Decorator: raise if any two members share a value (aliases present).
-        seen := Map()
-        duplicates := []
-        for member in enumType.AhkStdlibEnumMembers {
-            key := AhkStdlibEnumReprValue(member.value)
-            if seen.Has(key)
-                duplicates.Push(member.name " -> " seen[key])
-            else
-                seen[key] := member.name
-        }
-        if duplicates.Length > 0 {
+        ; Decorator: raise if any two member names share a value (aliases).
+        ; Use the alias-tracking list captured at construction.
+        aliases := enumType.AhkStdlibEnumAliases
+        if aliases.Length > 0 {
             joined := ""
-            for d in duplicates
-                joined := joined = "" ? d : joined ", " d
+            for pair in aliases {
+                entry := pair[1] " -> " pair[2]
+                joined := joined = "" ? entry : joined ", " entry
+            }
             throw ValueError("duplicate values found in <enum '" enumType.__name "'>: " joined, -1)
         }
         return enumType
@@ -73,12 +68,24 @@ class AhkStdlibEnumType
         this.__kind := kind
         this.__name := name
         this.AhkStdlibEnumMemberMap := Map()
-        this.AhkStdlibEnumMembers := []
+        this.AhkStdlibEnumMembers := []         ; canonical members only (iteration order)
+        this.AhkStdlibEnumAllMembers := []      ; canonical + aliases (definition order)
+        this.AhkStdlibEnumAliases := []         ; names of alias entries -> canonical name pairs
 
         for row in memberRows {
+            ; Alias detection: if a previous canonical member already has this
+            ; value, reuse that member object so the new name is an alias.
+            existing := AhkStdlibEnumFindMemberByValue(this.AhkStdlibEnumMembers, row.Value)
+            if existing != "" {
+                this.AhkStdlibEnumMemberMap[row.Name] := existing
+                this.DefineProp(row.Name, { Value: existing })
+                this.AhkStdlibEnumAliases.Push([row.Name, existing.name])
+                continue
+            }
             member := AhkStdlibEnumMember(this, row.Name, row.Value, row.Factory)
             this.AhkStdlibEnumMemberMap[row.Name] := member
             this.AhkStdlibEnumMembers.Push(member)
+            this.AhkStdlibEnumAllMembers.Push(member)
             this.DefineProp(row.Name, { Value: member })
         }
         this.__members := AhkStdlibEnumMembersView(this)
@@ -89,6 +96,15 @@ class AhkStdlibEnumType
         for member in this.AhkStdlibEnumMembers {
             if AhkStdlibEnumValuesEqual(member.value, value)
                 return member
+        }
+        ; Python: enum class can override _missing_ to handle unknown values.
+        if HasMethod(this, "_missing_") {
+            try {
+                result := this._missing_(value)
+                if IsObject(result) && (result is AhkStdlibEnumMember)
+                    return result
+            } catch {
+            }
         }
         throw ValueError(AhkStdlibEnumReprValue(value) " is not a valid " this.__name, -1)
     }
@@ -319,6 +335,15 @@ AhkStdlibEnumValuesEqual(left, right)
     if IsObject(left) || IsObject(right)
         return !(left !== right)
     return left == right
+}
+
+AhkStdlibEnumFindMemberByValue(members, value)
+{
+    for member in members {
+        if AhkStdlibEnumValuesEqual(member.value, value)
+            return member
+    }
+    return ""
 }
 
 AhkStdlibEnumNextValue(value)

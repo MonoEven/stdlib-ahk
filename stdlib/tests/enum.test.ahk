@@ -79,6 +79,21 @@ class StdlibEnumTest
         AhkTest.RaisesMatch(ValueError, "duplicate values found", (*) => stdlib.enum.unique(Dup))
     }
 
+    static TestEnumAliasesShareMemberObject()
+    {
+        ; Defining two names with the same value creates an alias: the second
+        ; name maps to the same member as the first (Python enum behavior).
+        Aliased := stdlib.enum.Enum("Aliased", [["A", 1], ["B", 1], ["C", 2]])
+        AhkTest.AssertSame(Aliased.A, Aliased.B)
+        ; Iteration excludes aliases.
+        canonical := []
+        for member in Aliased
+            canonical.Push(member.name)
+        AhkTest.AssertEqual(["A", "C"], canonical)
+        ; Lookup-by-value finds the canonical member.
+        AhkTest.AssertSame(Aliased.A, Aliased(1))
+    }
+
     static MemberNames(enumType)
     {
         names := []
