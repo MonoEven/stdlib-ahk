@@ -14,6 +14,21 @@ class AhkStdlibRe
     static S := 16
     static VERBOSE := 64
     static X := 64
+    static UNICODE := 32
+    static U := 32
+    static LOCALE := 4
+    static L := 4
+    static DEBUG := 128
+
+    static error
+    {
+        get => AhkStdlibReError
+    }
+
+    static error(args*)
+    {
+        return AhkStdlibReError(args*)
+    }
 
     static compile(pattern, flags := 0)
     {
@@ -78,6 +93,7 @@ class AhkStdlibRePattern
         this.pattern := pattern
         this.flags := flags
         this.Needle := AhkStdlibReBuildNeedle(pattern, flags)
+        AhkStdlibReValidate(this.Needle, pattern)
     }
 
     search(string)
@@ -293,6 +309,33 @@ class AhkStdlibReMatch
 }
 
 stdlib.re := AhkStdlibRe
+
+class AhkStdlibReError extends Error
+{
+}
+
+AhkStdlibReValidate(needle, pattern)
+{
+    try {
+        RegExMatch("", needle)
+    } catch Error as err {
+        detail := AhkStdlibReCompileMessage(err, pattern)
+        throw AhkStdlibReError(detail, -1)
+    }
+}
+
+AhkStdlibReCompileMessage(err, pattern)
+{
+    message := err.Message
+    if RegExMatch(message, "i)at offset\s+(\d+)", &offsetMatch) {
+        offset := offsetMatch[1]
+        reason := "invalid pattern"
+        if RegExMatch(message, "i):\s*(.+?)\s*$", &reasonMatch)
+            reason := reasonMatch[1]
+        return reason " at position " offset
+    }
+    return message
+}
 
 AhkStdlibReSearch(pattern, string, startPos := 1)
 {

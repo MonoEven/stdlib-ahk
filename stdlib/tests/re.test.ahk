@@ -135,6 +135,33 @@ class StdlibReTest
         AhkTest.AssertEqual("bar foo", match.expand("\2 \1"))
         AhkTest.AssertEqual("bar foo", match.expand("\g<2> \g<1>"))
     }
+
+    static TestFlagConstantsMatchPython()
+    {
+        AhkTest.AssertEqual(256, stdlib.re.A)
+        AhkTest.AssertEqual(2, stdlib.re.I)
+        AhkTest.AssertEqual(8, stdlib.re.M)
+        AhkTest.AssertEqual(16, stdlib.re.S)
+        AhkTest.AssertEqual(64, stdlib.re.X)
+        AhkTest.AssertEqual(32, stdlib.re.U)
+        AhkTest.AssertEqual(32, stdlib.re.UNICODE)
+        AhkTest.AssertEqual(4, stdlib.re.L)
+        AhkTest.AssertEqual(4, stdlib.re.LOCALE)
+        AhkTest.AssertEqual(128, stdlib.re.DEBUG)
+    }
+
+    static TestCompileRaisesReErrorOnBadPattern()
+    {
+        AhkTest.AssertThrows(stdlib.re.error, () => stdlib.re.compile("("))
+        AhkTest.AssertThrows(stdlib.re.error, () => stdlib.re.search("(", "abc"))
+    }
+
+    static TestReErrorIsAccessibleClass()
+    {
+        err := stdlib.re.error("boom")
+        AhkTest.AssertTrue(err is stdlib.re.error)
+        AhkTest.AssertEqual("boom", err.Message)
+    }
 }
 
 AhkTest.Collect(StdlibReTest)
