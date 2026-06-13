@@ -60,6 +60,82 @@ class StdlibCopyTest
         AhkTest.RaisesMatch(TypeError, "^copy\(\) missing 1 required positional argument: 'x'$", (*) => stdlib.copy.copy())
         AhkTest.RaisesMatch(TypeError, "^deepcopy\(\) missing 1 required positional argument: 'x'$", (*) => stdlib.copy.deepcopy())
     }
+
+    static TestDeepcopyHonorsDeepcopyHook()
+    {
+        ; An object defining __deepcopy__ is invoked and receives the memo.
+        obj := StdlibCopyCustomDeepCopy()
+        result := stdlib.copy.deepcopy(obj)
+        AhkTest.AssertEqual(["custom-deepcopy", true, "StdlibCopyCustomDeepCopy"], result)
+    }
+
+    static TestCopyHonorsCopyHook()
+    {
+        ; An object defining __copy__ is invoked by copy().
+        obj := StdlibCopyCustomCopy()
+        result := stdlib.copy.copy(obj)
+        AhkTest.AssertEqual(["custom-copy", "StdlibCopyCustomCopy"], result)
+    }
+
+    static TestDispatchTableOverridesDeepcopyByTypeName()
+    {
+        ; A dispatch_table entry keyed by AHK type name overrides default copying.
+        marker := []
+        dispatch := Map("StdlibCopyPlain", (value, memo) => ["dispatched-deep", value.tag])
+        obj := StdlibCopyPlain()
+        obj.tag := "T"
+        result := stdlib.copy.deepcopy(obj, { dispatch_table: dispatch })
+        AhkTest.AssertEqual(["dispatched-deep", "T"], result)
+    }
+
+    static TestDispatchTableOverridesCopyByTypeName()
+    {
+        dispatch := Map("StdlibCopyPlain", (value) => ["dispatched-shallow", value.tag])
+        obj := StdlibCopyPlain()
+        obj.tag := "S"
+        result := stdlib.copy.copy(obj, { dispatch_table: dispatch })
+        AhkTest.AssertEqual(["dispatched-shallow", "S"], result)
+    }
+
+    static TestDispatchTableAcceptedAsBareMap()
+    {
+        ; The options argument may be the dispatch_table Map itself.
+        dispatch := Map("StdlibCopyPlain", (value, memo) => "bare-map")
+        obj := StdlibCopyPlain()
+        AhkTest.AssertSame("bare-map", stdlib.copy.deepcopy(obj, dispatch))
+    }
+
+    static TestDispatchTableKeyedByObjectIdentity()
+    {
+        ; Registering the object itself selects the copier.
+        obj := StdlibCopyPlain()
+        dispatch := Map(obj, (value, memo) => "by-identity")
+        AhkTest.AssertSame("by-identity", stdlib.copy.deepcopy(obj, dispatch))
+    }
+
+    static TestDeepcopyHookWinsOverDispatchTable()
+    {
+        ; CPython checks __deepcopy__ before the dispatch_table reductor.
+        obj := StdlibCopyCustomDeepCopy()
+        dispatch := Map("StdlibCopyCustomDeepCopy", (value, memo) => "from-dispatch")
+        result := stdlib.copy.deepcopy(obj, dispatch)
+        AhkTest.AssertEqual(["custom-deepcopy", true, "StdlibCopyCustomDeepCopy"], result)
+    }
+
+    static TestDispatchTableDoesNotAffectUnregisteredTypes()
+    {
+        ; Default deepcopy still applies when no entry matches.
+        dispatch := Map("SomeOtherType", (value, memo) => "nope")
+        values := [1, [2]]
+        deep := stdlib.copy.deepcopy(values, dispatch)
+        AhkTest.AssertFalse(deep == values)
+        AhkTest.AssertFalse(deep[2] == values[2])
+        AhkTest.AssertEqual(2, deep[2][1])
+    }
+}
+
+class StdlibCopyPlain
+{
 }
 
 class StdlibCopyCycleNode
