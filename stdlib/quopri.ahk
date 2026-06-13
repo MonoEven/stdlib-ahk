@@ -30,6 +30,43 @@ class AhkStdlibQuopri
 
         return AhkStdlibQuopriDecode(source, header)
     }
+
+    static encode(args*)
+    {
+        if args.Length < 3 {
+            missing := AhkStdlibQuopriMissingArgs(["input", "output", "quotetabs"], args.Length)
+            throw TypeError("encode() missing " missing, -1)
+        }
+        if args.Length > 4
+            throw TypeError("encode() takes from 3 to 4 positional arguments but " args.Length " were given", -1)
+
+        input := args[1]
+        output := args[2]
+        quotetabs := AhkStdlibQuopriCoerceIntFlag(args[3])
+        header := args.Length >= 4 ? AhkStdlibQuopriCoerceIntFlag(args[4]) : false
+
+        data := AhkStdlibQuopriRequireBytesLike(input.read(), "str")
+        output.write(AhkStdlibQuopriEncode(data, quotetabs, header))
+        return stdlib.None
+    }
+
+    static decode(args*)
+    {
+        if args.Length < 2 {
+            missing := AhkStdlibQuopriMissingArgs(["input", "output"], args.Length)
+            throw TypeError("decode() missing " missing, -1)
+        }
+        if args.Length > 3
+            throw TypeError("decode() takes from 2 to 3 positional arguments but " args.Length " were given", -1)
+
+        input := args[1]
+        output := args[2]
+        header := args.Length >= 3 ? AhkStdlibQuopriCoerceIntFlag(args[3]) : false
+
+        data := AhkStdlibQuopriRequireDecodeSource(input.read())
+        output.write(AhkStdlibQuopriDecode(data, header))
+        return stdlib.None
+    }
 }
 
 stdlib.quopri := AhkStdlibQuopri
