@@ -13,11 +13,11 @@ class AhkStdlibGlob
             throw TypeError("glob() takes 1 positional argument but " args.Length " were given", -1)
 
         pathname := AhkStdlibGlobRequireStringLike(args[1], "pathname")
-        recursive := false
+        options := { recursive: false, root_dir: "" }
         if args.Length = 2
-            recursive := AhkStdlibGlobParseOptions(args[2])
+            options := AhkStdlibGlobParseOptions(args[2])
 
-        return AhkStdlibGlobCollect(pathname, recursive)
+        return AhkStdlibGlobCollectWithRoot(pathname, options.recursive, options.root_dir)
     }
 
     static iglob(args*)
@@ -28,11 +28,11 @@ class AhkStdlibGlob
             throw TypeError("iglob() takes 1 positional argument but " args.Length " were given", -1)
 
         pathname := AhkStdlibGlobRequireStringLike(args[1], "pathname")
-        recursive := false
+        options := { recursive: false, root_dir: "" }
         if args.Length = 2
-            recursive := AhkStdlibGlobParseOptions(args[2])
+            options := AhkStdlibGlobParseOptions(args[2])
 
-        return AhkStdlibGlobCollect(pathname, recursive).__Enum(1)
+        return AhkStdlibGlobCollectWithRoot(pathname, options.recursive, options.root_dir).__Enum(1)
     }
 
     static has_magic(args*)
@@ -82,18 +82,43 @@ AhkStdlibGlobParseOptions(options)
     if !(IsObject(options))
         throw TypeError("glob() takes 1 positional argument but 2 were given", -1)
 
-    allowed := Map("recursive", true)
-    count := 0
-    recursive := false
+    allowed := Map("recursive", true, "root_dir", true, "dir_fd", true)
+    result := { recursive: false, root_dir: "" }
 
     for key, value in options.OwnProps() {
-        count += 1
         if !allowed.Has(key)
             throw TypeError("glob() got an unexpected keyword argument '" key "'", -1)
-        recursive := AhkStdlibTruthValue(value)
+        if key = "recursive"
+            result.recursive := AhkStdlibTruthValue(value)
+        else if key = "root_dir" {
+            if IsObject(value) {
+                if value == stdlib.None
+                    result.root_dir := ""
+                else
+                    result.root_dir := AhkStdlibGlobRequireStringLike(value, "root_dir")
+            } else if value = "" {
+                result.root_dir := ""
+            } else {
+                result.root_dir := AhkStdlibGlobRequireStringLike(value, "root_dir")
+            }
+        }
     }
 
-    return recursive
+    return result
+}
+
+AhkStdlibGlobCollectWithRoot(pathname, recursive, root_dir)
+{
+    if root_dir = ""
+        return AhkStdlibGlobCollect(pathname, recursive)
+
+    previousWorkingDir := A_WorkingDir
+    SetWorkingDir StrReplace(root_dir, "/", "\")
+    try {
+        return AhkStdlibGlobCollect(pathname, recursive)
+    } finally {
+        SetWorkingDir previousWorkingDir
+    }
 }
 
 AhkStdlibGlobRequireStringLike(value, paramName)
