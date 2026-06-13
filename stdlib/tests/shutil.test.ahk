@@ -4,6 +4,8 @@
 #Include <stdlib\shutil>
 #Include <stdlib\tempfile>
 #Include <stdlib\pathlib>
+#Include <stdlib\io>
+#Include <stdlib\io>
 
 class StdlibShutilTest
 {
@@ -77,6 +79,128 @@ class StdlibShutilTest
             if DirExist(root)
                 DirDelete root, true
         }
+    }
+
+    static TestCopy2PreservesContentAndModificationTimeLikePython310()
+    {
+        root := stdlib.tempfile.mkdtemp("", "stdlib-shutil-copy2-", stdlib.tempfile.gettempdir())
+
+        try {
+            src := stdlib.pathlib.Path(root, "src.txt")
+            dst := stdlib.pathlib.Path(root, "dst.txt")
+            src.write_text("beta")
+
+            srcPath := String(src)
+            FileSetTime "20200102030405", srcPath, "M"
+
+            result := stdlib.shutil.copy2(src, dst)
+            AhkTest.AssertEqual(String(dst), result)
+            AhkTest.AssertEqual("beta", dst.read_text())
+            AhkTest.AssertEqual(FileGetTime(srcPath, "M"), FileGetTime(String(dst), "M"))
+        } finally {
+            if DirExist(root)
+                DirDelete root, true
+        }
+    }
+
+    static TestCopyfileobjCopiesBetweenFileLikeObjectsLikePython310()
+    {
+        srcObj := stdlib.io.StringIO("hello world payload")
+        dstObj := stdlib.io.StringIO()
+
+        result := stdlib.shutil.copyfileobj(srcObj, dstObj, 4)
+        AhkTest.AssertTrue(AhkStdlibIsNone(result))
+        AhkTest.AssertEqual("hello world payload", dstObj.getvalue())
+    }
+
+    static TestCopytreeRecursivelyCopiesTreeLikePython310()
+    {
+        root := stdlib.tempfile.mkdtemp("", "stdlib-shutil-copytree-", stdlib.tempfile.gettempdir())
+
+        try {
+            srcTree := stdlib.pathlib.Path(root, "src")
+            nested := srcTree.joinpath("nested")
+            nested.mkdir({ Parents: true })
+            srcTree.joinpath("top.txt").write_text("top")
+            nested.joinpath("deep.txt").write_text("deep")
+
+            dstTree := stdlib.pathlib.Path(root, "dst")
+            stdlib.shutil.copytree(srcTree, dstTree)
+
+            AhkTest.AssertTrue(dstTree.joinpath("top.txt").exists())
+            AhkTest.AssertEqual("top", dstTree.joinpath("top.txt").read_text())
+            AhkTest.AssertEqual("deep", dstTree.joinpath("nested", "deep.txt").read_text())
+
+            ; existing target without dirs_exist_ok raises
+            AhkTest.RaisesMatch(OSError, "already exists", (*) => stdlib.shutil.copytree(srcTree, dstTree))
+            ; with dirs_exist_ok it succeeds
+            stdlib.shutil.copytree(srcTree, dstTree, { dirs_exist_ok: true })
+            AhkTest.AssertEqual("top", dstTree.joinpath("top.txt").read_text())
+        } finally {
+            if DirExist(root)
+                DirDelete root, true
+        }
+    }
+
+    static TestCopytreeHonorsIgnorePatternsLikePython310()
+    {
+        root := stdlib.tempfile.mkdtemp("", "stdlib-shutil-ignore-", stdlib.tempfile.gettempdir())
+
+        try {
+            srcTree := stdlib.pathlib.Path(root, "src")
+            srcTree.mkdir()
+            srcTree.joinpath("keep.txt").write_text("keep")
+            srcTree.joinpath("skip.pyc").write_text("skip")
+
+            dstTree := stdlib.pathlib.Path(root, "dst")
+            stdlib.shutil.copytree(srcTree, dstTree, { ignore: stdlib.shutil.ignore_patterns("*.pyc") })
+
+            AhkTest.AssertTrue(dstTree.joinpath("keep.txt").exists())
+            AhkTest.AssertFalse(dstTree.joinpath("skip.pyc").exists())
+        } finally {
+            if DirExist(root)
+                DirDelete root, true
+        }
+    }
+
+    static TestDiskUsageReturnsPlausibleTotalsLikePython310()
+    {
+        usage := stdlib.shutil.disk_usage(stdlib.tempfile.gettempdir())
+        AhkTest.AssertEqual(3, usage.Length)
+
+        total := usage[1]
+        used := usage[2]
+        free := usage[3]
+
+        AhkTest.AssertTrue(total > 0)
+        AhkTest.AssertTrue(free >= 0)
+        AhkTest.AssertTrue(free <= total)
+        AhkTest.AssertEqual(total, used + free)
+    }
+
+    static TestWhichFindsExecutableOnPathLikePython310()
+    {
+        ; cmd.exe is on PATH; reference: shutil.which("cmd") finds it
+        found := stdlib.shutil.which("cmd")
+        AhkTest.AssertFalse(AhkStdlibIsNone(found))
+        AhkTest.AssertTrue(InStr(found, "cmd.exe") > 0 || InStr(found, "cmd.EXE") > 0)
+        AhkTest.AssertTrue(FileExist(found) != "")
+
+        ; nonexistent command returns None
+        AhkTest.AssertTrue(AhkStdlibIsNone(stdlib.shutil.which("definitely-not-a-real-command-xyz")))
+    }
+
+    static TestGetTerminalSizeReturnsFallbackWithoutConsoleLikePython310()
+    {
+        ; No console attached during test runs, so the fallback is returned.
+        size := stdlib.shutil.get_terminal_size()
+        AhkTest.AssertEqual(2, size.Length)
+        AhkTest.AssertEqual(80, size[1])
+        AhkTest.AssertEqual(24, size[2])
+
+        custom := stdlib.shutil.get_terminal_size([120, 40])
+        AhkTest.AssertEqual(120, custom[1])
+        AhkTest.AssertEqual(40, custom[2])
     }
 }
 
