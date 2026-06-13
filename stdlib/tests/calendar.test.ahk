@@ -103,6 +103,24 @@ class StdlibCalendarTest
         AhkTest.AssertEqual([[[0, 0], [0, 1], [0, 2], [1, 3], [2, 4], [3, 5], [4, 6]], [[5, 0], [6, 1], [7, 2], [8, 3], [9, 4], [10, 5], [11, 6]], [[12, 0], [13, 1], [14, 2], [15, 3], [16, 4], [17, 5], [18, 6]], [[19, 0], [20, 1], [21, 2], [22, 3], [23, 4], [24, 5], [25, 6]], [[26, 0], [27, 1], [28, 2], [29, 3], [0, 4], [0, 5], [0, 6]]], cal.monthdays2calendar(2024, 2))
     }
 
+    static TestTextCalendarFormatMonthMatchesPython310()
+    {
+        ; Reference value gated against py -3.10 -c "import calendar; print(repr(calendar.TextCalendar().formatmonth(2020,2)))"
+        expected := "   February 2020`nMo Tu We Th Fr Sa Su`n                1  2`n 3  4  5  6  7  8  9`n10 11 12 13 14 15 16`n17 18 19 20 21 22 23`n24 25 26 27 28 29`n"
+        actual := stdlib.calendar.TextCalendar().formatmonth(2020, 2)
+        AhkTest.AssertEqual(expected, actual)
+        ; Module-level month() delegates to TextCalendar
+        AhkTest.AssertEqual(expected, stdlib.calendar.month(2020, 2))
+    }
+
+    static TestHTMLCalendarFormatMonthHasExpectedStructure()
+    {
+        html := stdlib.calendar.HTMLCalendar().formatmonth(2020, 2)
+        AhkTest.AssertContains('class="month"', html)
+        AhkTest.AssertContains("February 2020", html)
+        AhkTest.AssertContains("<td", html)
+    }
+
     static Collect(iterable)
     {
         values := []

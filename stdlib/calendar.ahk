@@ -210,6 +210,37 @@ class AhkStdlibCalendar
     {
         return AhkStdlibCalendarMonthCalendar(year, month, this._FirstWeekday)
     }
+
+    static TextCalendar
+    {
+        get => AhkStdlibCalendarTextCalendar
+    }
+
+    static TextCalendar(args*)
+    {
+        return AhkStdlibCalendarTextCalendar(args*)
+    }
+
+    static HTMLCalendar
+    {
+        get => AhkStdlibCalendarHTMLCalendar
+    }
+
+    static HTMLCalendar(args*)
+    {
+        return AhkStdlibCalendarHTMLCalendar(args*)
+    }
+
+    static month(theyear, themonth, w := 0, l := 0)
+    {
+        return AhkStdlibCalendarTextCalendar(this._FirstWeekday).formatmonth(theyear, themonth, w, l)
+    }
+
+    static prmonth(theyear, themonth, w := 0, l := 0)
+    {
+        FileAppend(this.month(theyear, themonth, w, l), "*")
+        return stdlib.None
+    }
 }
 
 stdlib.calendar := AhkStdlibCalendar
@@ -383,4 +414,255 @@ AhkStdlibCalendarFloorDiv(value, divisor)
 AhkStdlibCalendarPythonMod(value, divisor)
 {
     return value - divisor * AhkStdlibCalendarFloorDiv(value, divisor)
+}
+
+; ---------------------------------------------------------------------------
+; TextCalendar — produces month/year strings byte-for-byte matching CPython.
+; Algorithm mirrors Lib/calendar.py: formatmonth uses 7*(w+1)-1 column width,
+; centers the month name, then rstrips each line.
+; ---------------------------------------------------------------------------
+
+class AhkStdlibCalendarTextCalendar extends AhkStdlibCalendarCalendar
+{
+    formatday(day, weekday, width)
+    {
+        if day = 0
+            s := ""
+        else
+            s := String(day)
+        return AhkStdlibCalendarRJust(s, width)
+    }
+
+    formatweek(theweek, width)
+    {
+        parts := []
+        for entry in theweek
+            parts.Push(this.formatday(entry[1], entry[2], width))
+        return AhkStdlibCalendarJoin(parts, " ")
+    }
+
+    formatweekday(day, width)
+    {
+        if width >= 9
+            names := AhkStdlibCalendar.day_name
+        else
+            names := AhkStdlibCalendar.day_abbr
+        return AhkStdlibCalendarCenter(SubStr(names[day], 1, width), width)
+    }
+
+    formatweekheader(width)
+    {
+        parts := []
+        for weekday in this.iterweekdays()
+            parts.Push(this.formatweekday(weekday, width))
+        return AhkStdlibCalendarJoin(parts, " ")
+    }
+
+    formatmonthname(theyear, themonth, width, withyear := true)
+    {
+        if withyear
+            s := AhkStdlibCalendar.month_name[themonth] " " String(theyear)
+        else
+            s := AhkStdlibCalendar.month_name[themonth]
+        return AhkStdlibCalendarCenter(s, width)
+    }
+
+    formatmonth(theyear, themonth, w := 0, l := 0)
+    {
+        w := Max(2, w)
+        l := Max(1, l)
+        ; Header line: month name centered then rstripped (matches CPython).
+        s := AhkStdlibCalendarRStrip(this.formatmonthname(theyear, themonth, 7 * (w + 1) - 1))
+        s .= AhkStdlibCalendarRepeat("`n", l)
+        s .= AhkStdlibCalendarRStrip(this.formatweekheader(w))
+        s .= AhkStdlibCalendarRepeat("`n", l)
+        for week in this.monthdays2calendar(theyear, themonth) {
+            s .= AhkStdlibCalendarRStrip(this.formatweek(week, w))
+            s .= AhkStdlibCalendarRepeat("`n", l)
+        }
+        return s
+    }
+
+    formatyear(theyear, w := 2, l := 1, c := 6, m := 3)
+    {
+        w := Max(2, w)
+        l := Max(1, l)
+        c := Max(2, c)
+        ; Per CPython: header = year centered in colwidth*m + c*(m-1)
+        colwidth := (w + 1) * 7 - 1
+        v := []
+        a := []
+        a.Push(AhkStdlibCalendarRepeat(" ", colwidth * m + c * (m - 1)))
+        ; rstripped year header centered then padded; CPython uses .rstrip on appended block lines
+        header := AhkStdlibCalendarCenter(String(theyear), colwidth * m + c * (m - 1))
+        s := AhkStdlibCalendarRStrip(header) AhkStdlibCalendarRepeat("`n", l * 2)
+        ; Iterate months in groups of m
+        for monthRow in AhkStdlibCalendarChunkRange(12, m) {
+            ; Month name row
+            names := []
+            for monthIdx in monthRow
+                names.Push(AhkStdlibCalendarCenter(AhkStdlibCalendar.month_name[monthIdx], colwidth))
+            s .= AhkStdlibCalendarRStrip(AhkStdlibCalendarJoin(names, AhkStdlibCalendarRepeat(" ", c)))
+            s .= AhkStdlibCalendarRepeat("`n", l)
+            ; Header row (weekdays)
+            headers := []
+            for monthIdx in monthRow
+                headers.Push(this.formatweekheader(w))
+            s .= AhkStdlibCalendarRStrip(AhkStdlibCalendarJoin(headers, AhkStdlibCalendarRepeat(" ", c)))
+            s .= AhkStdlibCalendarRepeat("`n", l)
+            ; Week rows: align each month's weeks side-by-side
+            monthsWeeks := []
+            maxWeeks := 0
+            for monthIdx in monthRow {
+                weeks := this.monthdays2calendar(theyear, monthIdx)
+                monthsWeeks.Push(weeks)
+                if weeks.Length > maxWeeks
+                    maxWeeks := weeks.Length
+            }
+            loop maxWeeks {
+                weekIdx := A_Index
+                rowParts := []
+                for weeks in monthsWeeks {
+                    if weekIdx <= weeks.Length
+                        rowParts.Push(this.formatweek(weeks[weekIdx], w))
+                    else
+                        rowParts.Push(AhkStdlibCalendarRepeat(" ", colwidth))
+                }
+                s .= AhkStdlibCalendarRStrip(AhkStdlibCalendarJoin(rowParts, AhkStdlibCalendarRepeat(" ", c)))
+                s .= AhkStdlibCalendarRepeat("`n", l)
+            }
+        }
+        return s
+    }
+
+    pryear(theyear, w := 0, l := 0, c := 6, m := 3)
+    {
+        FileAppend(this.formatyear(theyear, w, l, c, m), "*")
+        return stdlib.None
+    }
+
+    prmonth(theyear, themonth, w := 0, l := 0)
+    {
+        FileAppend(this.formatmonth(theyear, themonth, w, l), "*")
+        return stdlib.None
+    }
+}
+
+; ---------------------------------------------------------------------------
+; HTMLCalendar — best-effort table output matching Python's tag layout.
+; ---------------------------------------------------------------------------
+
+class AhkStdlibCalendarHTMLCalendar extends AhkStdlibCalendarCalendar
+{
+    static cssclasses := ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    static cssclass_noday := "noday"
+    static cssclass_month_head := "month"
+    static cssclass_month := "month"
+    static cssclass_year := "year"
+    static cssclass_year_head := "year"
+
+    formatday(day, weekday)
+    {
+        if day = 0
+            return '<td class="' AhkStdlibCalendarHTMLCalendar.cssclass_noday '">&nbsp;</td>'
+        return '<td class="' AhkStdlibCalendarHTMLCalendar.cssclasses[weekday + 1] '">' day '</td>'
+    }
+
+    formatweek(theweek)
+    {
+        s := "<tr>"
+        for entry in theweek
+            s .= this.formatday(entry[1], entry[2])
+        s .= "</tr>"
+        return s
+    }
+
+    formatweekday(day)
+    {
+        ; day is 0..6 (Mon..Sun); cssclasses is an AHK Array (1-indexed) so use
+        ; day+1, but day_abbr is a NameSequence with Python 0-indexing.
+        return '<th class="' AhkStdlibCalendarHTMLCalendar.cssclasses[day + 1] '">' AhkStdlibCalendar.day_abbr[day] '</th>'
+    }
+
+    formatweekheader()
+    {
+        s := "<tr>"
+        for d in this.iterweekdays()
+            s .= this.formatweekday(d)
+        s .= "</tr>"
+        return s
+    }
+
+    formatmonthname(theyear, themonth, withyear := true)
+    {
+        if withyear
+            s := AhkStdlibCalendar.month_name[themonth] " " String(theyear)
+        else
+            s := AhkStdlibCalendar.month_name[themonth]
+        return '<tr><th colspan="7" class="' AhkStdlibCalendarHTMLCalendar.cssclass_month_head '">' s '</th></tr>'
+    }
+
+    formatmonth(theyear, themonth, withyear := true)
+    {
+        s := '<table border="0" cellpadding="0" cellspacing="0" class="' AhkStdlibCalendarHTMLCalendar.cssclass_month '">`n'
+        s .= this.formatmonthname(theyear, themonth, withyear) "`n"
+        s .= this.formatweekheader() "`n"
+        for week in this.monthdays2calendar(theyear, themonth)
+            s .= this.formatweek(week) "`n"
+        s .= "</table>`n"
+        return s
+    }
+}
+
+; ---------------------------------------------------------------------------
+; String helpers for TextCalendar formatting (Python str.center/rstrip parity)
+; ---------------------------------------------------------------------------
+
+AhkStdlibCalendarCenter(text, width)
+{
+    n := StrLen(text)
+    if n >= width
+        return text
+    gap := width - n
+    left := gap // 2
+    right := gap - left
+    return AhkStdlibCalendarRepeat(" ", left) text AhkStdlibCalendarRepeat(" ", right)
+}
+
+AhkStdlibCalendarRJust(text, width)
+{
+    n := StrLen(text)
+    if n >= width
+        return text
+    return AhkStdlibCalendarRepeat(" ", width - n) text
+}
+
+AhkStdlibCalendarRStrip(text)
+{
+    return RegExReplace(text, "[ `t]+$")
+}
+
+AhkStdlibCalendarRepeat(text, count)
+{
+    out := ""
+    loop count
+        out .= text
+    return out
+}
+
+AhkStdlibCalendarChunkRange(total, chunk)
+{
+    rows := []
+    i := 1
+    while i <= total {
+        row := []
+        loop chunk {
+            if i + A_Index - 1 > total
+                break
+            row.Push(i + A_Index - 1)
+        }
+        rows.Push(row)
+        i += chunk
+    }
+    return rows
 }
