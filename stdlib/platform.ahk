@@ -111,6 +111,27 @@ class AhkStdlibPlatform
             throw TypeError("system_alias() takes 3 positional arguments but " args.Length " were given", -1)
         return stdlib.tuple([args[1], args[2], args[3]])
     }
+
+    static win32_ver(args*)
+    {
+        ; Python: win32_ver(release='', version='', csd='', ptype='').
+        ; On Windows the values are always re-detected, so the supplied
+        ; positional fallbacks (0..4) are accepted but ignored here.
+        if args.Length > 4
+            throw TypeError("win32_ver() takes from 0 to 4 positional arguments but " args.Length " were given", -1)
+        return stdlib.tuple([
+            AhkStdlibPlatformWindowsRelease(),
+            A_OSVersion,
+            AhkStdlibPlatformServicePack(),
+            AhkStdlibPlatformProductType()
+        ])
+    }
+
+    static win32_edition(args*)
+    {
+        AhkStdlibPlatformExpectNoArgs("win32_edition", args)
+        return AhkStdlibPlatformWin32Edition()
+    }
 }
 
 class uname_result extends AhkStdlibTuple
@@ -138,6 +159,7 @@ class uname_result extends AhkStdlibTuple
 
 stdlib.platform := AhkStdlibPlatform
 AhkStdlibPlatform.DefineProp(AhkStdlibPlatformPyVersionName(), { Call: AhkStdlibPlatformPyVersionCall })
+AhkStdlibPlatform.DefineProp(AhkStdlibPlatformPyVersionTupleName(), { Call: AhkStdlibPlatformPyVersionTupleCall })
 AhkStdlibPlatform.DefineProp(AhkStdlibPlatformPyImplementationName(), { Call: AhkStdlibPlatformPyImplementationCall })
 
 AhkStdlibPlatformExpectNoArgs(name, args)
@@ -189,6 +211,31 @@ AhkStdlibPlatformArchitectureBits()
     return A_Is64bitOS ? "64bit" : "32bit"
 }
 
+AhkStdlibPlatformServicePack()
+{
+    ; sys.getwindowsversion().service_pack_major is 0 on modern Windows,
+    ; which Python formats as "SP0".
+    return "SP0"
+}
+
+AhkStdlibPlatformProductType()
+{
+    ; Python reads CurrentType from the registry for win32_ver()[3].
+    try
+        return RegRead("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentType")
+    catch
+        return ""
+}
+
+AhkStdlibPlatformWin32Edition()
+{
+    ; Python reads EditionID from the registry for win32_edition().
+    try
+        return RegRead("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "EditionID")
+    catch
+        return stdlib.None
+}
+
 AhkStdlibPlatformPlatformString(aliased, terse)
 {
     system := AhkStdlibPlatform.system()
@@ -215,6 +262,11 @@ AhkStdlibPlatformPyVersionName()
     return Chr(112) Chr(121) "thon_version"
 }
 
+AhkStdlibPlatformPyVersionTupleName()
+{
+    return Chr(112) Chr(121) "thon_version_tuple"
+}
+
 AhkStdlibPlatformPyImplementationName()
 {
     return Chr(112) Chr(121) "thon_implementation"
@@ -224,6 +276,13 @@ AhkStdlibPlatformPyVersionCall(this, args*)
 {
     AhkStdlibPlatformExpectNoArgs(AhkStdlibPlatformPyVersionName(), args)
     return "3.10.11"
+}
+
+AhkStdlibPlatformPyVersionTupleCall(this, args*)
+{
+    ; Placeholder version, mirrors python_version() = "3.10.11".
+    AhkStdlibPlatformExpectNoArgs(AhkStdlibPlatformPyVersionTupleName(), args)
+    return stdlib.tuple(["3", "10", "11"])
 }
 
 AhkStdlibPlatformPyImplementationCall(this, args*)
