@@ -72,6 +72,34 @@ class AhkStdlibUuid
         return AhkStdlibUuidFromHex(hexValue)
     }
 
+    static uuid1(args*)
+    {
+        if args.Length > 2
+            throw TypeError("uuid1() takes from 0 to 2 positional arguments but " args.Length " were given", -1)
+
+        node := args.Length >= 1 ? args[1] : stdlib.None
+        clockSeq := args.Length >= 2 ? args[2] : stdlib.None
+
+        if AhkStdlibIsNone(node)
+            node := AhkStdlibUuid.getnode()
+        else if node is Integer {
+            if node < 0 || node >= 0x1000000000000
+                throw ValueError("field 6 out of range (need a 48-bit value)", -1)
+        }
+
+        if AhkStdlibIsNone(clockSeq)
+            clockSeq := Random(0, 0x3FFF)
+
+        return AhkStdlibUuidFromTime(node, clockSeq)
+    }
+
+    static getnode(args*)
+    {
+        if args.Length > 0
+            throw TypeError("getnode() takes 0 positional arguments but " args.Length (args.Length = 1 ? " was" : " were") " given", -1)
+        return AhkStdlibUuidGetNode()
+    }
+
     static uuid4(args*)
     {
         if args.Length = 1
@@ -179,6 +207,60 @@ class AhkStdlibUuidValue
 }
 
 stdlib.uuid := AhkStdlibUuid
+
+AhkStdlibUuidFromTime(node, clockSeq)
+{
+    ; UUID timestamp is 100-ns intervals since 1582-10-15. FILETIME is 100-ns
+    ; intervals since 1601-01-01, so add the 1582->1601 offset (0x146bf33e42c000).
+    static lastTimestamp := 0
+    ft := Buffer(8, 0)
+    DllCall("GetSystemTimeAsFileTime", "Ptr", ft)
+    fileTime := NumGet(ft, 0, "Int64")
+    timestamp := fileTime + 5748192000000000
+    ; Like CPython, force monotonic uniqueness when the clock has not advanced.
+    if timestamp <= lastTimestamp
+        timestamp := lastTimestamp + 1
+    lastTimestamp := timestamp
+
+    timeLow := timestamp & 0xFFFFFFFF
+    timeMid := (timestamp >> 32) & 0xFFFF
+    timeHiVersion := ((timestamp >> 48) & 0x0FFF) | 0x1000
+    clockSeqHiVariant := ((clockSeq >> 8) & 0x3F) | 0x80
+    clockSeqLow := clockSeq & 0xFF
+
+    hex := Format("{:08x}{:04x}{:04x}{:02x}{:02x}{:012x}"
+        , timeLow, timeMid, timeHiVersion, clockSeqHiVariant, clockSeqLow, node)
+    return AhkStdlibUuidValue(hex)
+}
+
+AhkStdlibUuidGetNode()
+{
+    node := AhkStdlibUuidGetNodeFromAdapters()
+    if node != 0
+        return node
+    ; Fallback: random 48-bit node with the multicast bit set, as CPython does.
+    return Random(0, 0xFFFFFFFFFFFF) | 0x010000000000
+}
+
+AhkStdlibUuidGetNodeFromAdapters()
+{
+    size := 0
+    DllCall("iphlpapi\GetAdaptersInfo", "Ptr", 0, "UInt*", &size)
+    if size = 0
+        return 0
+    buf := Buffer(size, 0)
+    if DllCall("iphlpapi\GetAdaptersInfo", "Ptr", buf, "UInt*", &size, "UInt") != 0
+        return 0
+
+    ; IP_ADAPTER_INFO: AddressLength at offset 400, Address (8 bytes) at 404.
+    addrLen := NumGet(buf, 400, "UInt")
+    if addrLen != 6
+        return 0
+    node := 0
+    loop 6
+        node := (node << 8) | NumGet(buf, 404 + A_Index - 1, "UChar")
+    return node
+}
 
 AhkStdlibUuidFromHex(hexValue)
 {

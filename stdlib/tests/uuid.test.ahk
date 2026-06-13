@@ -92,6 +92,53 @@ class StdlibUuidTest
         AhkTest.RaisesMatch(TypeError, "^uuid3\(\) takes 2 positional arguments but 3 were given$", (*) => stdlib.uuid.uuid3(stdlib.uuid.NAMESPACE_DNS, "a", "b"))
         AhkTest.RaisesMatch(TypeError, "^uuid5\(\) takes 2 positional arguments but 3 were given$", (*) => stdlib.uuid.uuid5(stdlib.uuid.NAMESPACE_DNS, "a", "b"))
     }
+
+    static TestGetNodeReturns48BitIntegerLikeLocal310()
+    {
+        node := stdlib.uuid.getnode()
+        AhkTest.AssertTrue(node is Integer)
+        AhkTest.AssertTrue(node >= 0)
+        AhkTest.AssertTrue(node < 0x1000000000000)
+    }
+
+    static TestGetNodeRejectsArgsLikeLocal310()
+    {
+        AhkTest.RaisesMatch(TypeError, "^getnode\(\) takes 0 positional arguments but 1 was given$", (*) => stdlib.uuid.getnode(1))
+    }
+
+    static TestUuid1VersionAndVariantBitsMatchLocal310()
+    {
+        value := stdlib.uuid.uuid1()
+        AhkTest.AssertEqual(1, value.version)
+        AhkTest.AssertEqual("specified in RFC 4122", value.variant)
+        AhkTest.AssertEqual(32, StrLen(value.hex))
+        AhkTest.AssertTrue(RegExMatch(value.hex, "^[0-9a-f]{32}$") > 0)
+        AhkTest.AssertTrue(RegExMatch(String(value), "^[0-9a-f]{8}-[0-9a-f]{4}-1[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$") > 0)
+    }
+
+    static TestUuid1HonorsExplicitNodeAndClockSeqLikeLocal310()
+    {
+        value := stdlib.uuid.uuid1(0x123456789abc, 0x1234)
+        AhkTest.AssertEqual(0x123456789abc, value.node)
+        AhkTest.AssertEqual(1, value.version)
+        ; clock_seq_hi_variant = ((0x1234 >> 8) & 0x3f) | 0x80 = 0x92, clock_seq_low = 0x34
+        AhkTest.AssertEqual(0x92, value.clock_seq_hi_variant)
+        AhkTest.AssertEqual(0x34, value.clock_seq_low)
+    }
+
+    static TestUuid1TwoCallsDifferLikeLocal310()
+    {
+        first := stdlib.uuid.uuid1(0x123456789abc, 0x1234)
+        second := stdlib.uuid.uuid1(0x123456789abc, 0x1234)
+        AhkTest.AssertTrue(String(first) != String(second))
+    }
+
+    static TestUuid1RejectsOutOfRangeNodeAndArityLikeLocal310()
+    {
+        AhkTest.RaisesMatch(ValueError, "^field 6 out of range \(need a 48-bit value\)$", (*) => stdlib.uuid.uuid1(0x1000000000000))
+        AhkTest.RaisesMatch(ValueError, "^field 6 out of range \(need a 48-bit value\)$", (*) => stdlib.uuid.uuid1(-1))
+        AhkTest.RaisesMatch(TypeError, "^uuid1\(\) takes from 0 to 2 positional arguments but 3 were given$", (*) => stdlib.uuid.uuid1(1, 2, 3))
+    }
 }
 
 AhkStdlibUuidBufferToHexForTest(buffer)
