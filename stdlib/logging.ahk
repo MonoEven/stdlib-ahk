@@ -10,6 +10,8 @@ class AhkStdlibLogging
     static Formatter := AhkStdlibLoggingFormatterClass
     static FileHandler := AhkStdlibLoggingFileHandlerClass
     static StreamHandler := AhkStdlibLoggingStreamHandlerClass
+    static Filter := AhkStdlibLoggingFilterClass
+    static NullHandler := AhkStdlibLoggingNullHandlerClass
     static DEBUG {
         get => 10
     }
@@ -40,8 +42,16 @@ class AhkStdlibLogging
             throw TypeError("A logger name must be a string", -1)
         if name = "root"
             return this.Root()
-        if !this._Loggers.Has(name)
-            this._Loggers[name] := AhkStdlibLoggingLogger(name, 0, this.Root())
+        if !this._Loggers.Has(name) {
+            ; Build proper parent chain: "a.b.c" parent is the "a.b" logger, not
+            ; root directly. Recursively materialize each ancestor.
+            dotIdx := InStr(name, ".", , -1)
+            if dotIdx > 1
+                parent := this.getLogger(SubStr(name, 1, dotIdx - 1))
+            else
+                parent := this.Root()
+            this._Loggers[name] := AhkStdlibLoggingLogger(name, 0, parent)
+        }
         return this._Loggers[name]
     }
 
@@ -271,6 +281,89 @@ class AhkStdlibLoggingStreamHandlerClass
     }
 }
 
+class AhkStdlibLoggingFilterClass
+{
+    static Call(thisClass, name := "")
+    {
+        return AhkStdlibLoggingFilter(name)
+    }
+}
+
+; Logger Filter: passes records whose .name matches the filter's name or is a
+; descendant ('a.b' matches 'a.b' and 'a.b.c'). Matches CPython logging.Filter.
+class AhkStdlibLoggingFilter
+{
+    __New(name := "")
+    {
+        this.name := name
+        this.nlen := StrLen(name)
+    }
+
+    filter(record)
+    {
+        if this.nlen = 0
+            return true
+        if this.name = record.name
+            return true
+        if SubStr(record.name, 1, this.nlen) != this.name
+            return false
+        return SubStr(record.name, this.nlen + 1, 1) = "."
+    }
+}
+
+class AhkStdlibLoggingNullHandlerClass
+{
+    static Call(thisClass)
+    {
+        return AhkStdlibLoggingNullHandler()
+    }
+}
+
+; Drop-everything handler: matches CPython logging.NullHandler. handle/emit
+; both return without writing anywhere.
+class AhkStdlibLoggingNullHandler
+{
+    __New()
+    {
+        this.level := 0
+        this.formatter := stdlib.None
+        this.filters := []
+    }
+
+    setLevel(level)
+    {
+        this.level := level
+        return ""
+    }
+
+    setFormatter(formatter)
+    {
+        this.formatter := formatter
+        return ""
+    }
+
+    addFilter(f)
+    {
+        this.filters.Push(f)
+        return ""
+    }
+
+    handle(record)
+    {
+        return ""
+    }
+
+    emit(record)
+    {
+        return ""
+    }
+
+    close()
+    {
+        return ""
+    }
+}
+
 class AhkStdlibLoggingStreamHandler
 {
     __New(stream)
@@ -347,17 +440,31 @@ class AhkStdlibLoggingFileHandler extends AhkStdlibLoggingStreamHandler
 
 class AhkStdlibLoggingFormatterClass
 {
-    static Call(thisClass, fmt := "%(levelname)s:%(name)s:%(message)s")
+    static Call(thisClass, fmt := "%(levelname)s:%(name)s:%(message)s", datefmt := unset)
     {
-        return AhkStdlibLoggingFormatter(AhkStdlibLoggingNormalizeFormat(fmt))
+        return AhkStdlibLoggingFormatter(AhkStdlibLoggingNormalizeFormat(fmt), datefmt?)
     }
 }
 
 class AhkStdlibLoggingFormatter
 {
-    __New(fmt := "%(levelname)s:%(name)s:%(message)s")
+    __New(fmt := "%(levelname)s:%(name)s:%(message)s", datefmt := unset)
     {
         this._fmt := fmt
+        this._datefmt := IsSet(datefmt) ? datefmt : ""
+    }
+
+    formatTime(record, datefmt := unset)
+    {
+        ; Default ISO-style: 2024-01-02 03:04:05,007 (Python's default)
+        ts := record.created
+        df := IsSet(datefmt) ? datefmt : (this._datefmt = "" ? "" : this._datefmt)
+        if df = "" {
+            ; Default: yyyy-MM-dd HH:mm:ss,msec
+            base := FormatTime(ts, "yyyy-MM-dd HH:mm:ss")
+            return base "," Format("{:03}", record.msecs)
+        }
+        return FormatTime(ts, df)
     }
 
     format(record)
@@ -367,6 +474,13 @@ class AhkStdlibLoggingFormatter
         text := StrReplace(text, "%(levelno)s", String(record.levelno))
         text := StrReplace(text, "%(name)s", record.name)
         text := StrReplace(text, "%(message)s", record.message)
+        text := StrReplace(text, "%(filename)s", record.filename)
+        text := StrReplace(text, "%(module)s", record.module)
+        text := StrReplace(text, "%(funcName)s", record.funcName)
+        text := StrReplace(text, "%(lineno)d", String(record.lineno))
+        text := StrReplace(text, "%(lineno)s", String(record.lineno))
+        if InStr(text, "%(asctime)s")
+            text := StrReplace(text, "%(asctime)s", this.formatTime(record))
         return text
     }
 }
@@ -379,6 +493,13 @@ class AhkStdlibLoggingLogRecord
         this.levelno := level
         this.levelname := AhkStdlibLoggingLevelName(level)
         this.message := message is String ? message : String(message)
+        this.created := A_Now
+        ; AHK A_Now has no millisecond resolution; use 0 placeholder.
+        this.msecs := 0
+        this.filename := ""   ; AHK has no traceback at log site; left blank.
+        this.module := ""
+        this.funcName := ""
+        this.lineno := 0
     }
 }
 

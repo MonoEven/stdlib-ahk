@@ -459,6 +459,49 @@ class StdlibLoggingTest
         AhkTest.AssertContains("error fallback", result.Entries[1].Captured.Err)
         AhkTest.AssertContains("critical fallback", result.Entries[1].Captured.Err)
     }
+
+    static TestNamedHierarchyParentChainMatchesPython310()
+    {
+        ; getLogger("a.b.c").parent should be the "a.b" logger, not jump to root.
+        stdlib.logging._resetForTests()
+        c := stdlib.logging.getLogger("a.b.c")
+        b := stdlib.logging.getLogger("a.b")
+        a := stdlib.logging.getLogger("a")
+        AhkTest.AssertSame(b, c.parent)
+        AhkTest.AssertSame(a, b.parent)
+        AhkTest.AssertSame(stdlib.logging.getLogger(), a.parent)
+    }
+
+    static TestFilterMatchesNameAndDescendants()
+    {
+        f := stdlib.logging.Filter("a.b")
+        rec1 := stdlib.logging.LogRecord := unset  ; placeholder
+        ; Build records by hand using the public Logger; we test the filter
+        ; predicate directly.
+        rec := { name: "a.b", message: "x", levelno: 20, levelname: "INFO" }
+        AhkTest.AssertTrue(f.filter(rec))
+        rec.name := "a.b.c"
+        AhkTest.AssertTrue(f.filter(rec))
+        rec.name := "a"
+        AhkTest.AssertFalse(f.filter(rec))
+        rec.name := "a.bc"
+        AhkTest.AssertFalse(f.filter(rec))
+
+        ; Empty filter passes everything.
+        f0 := stdlib.logging.Filter()
+        AhkTest.AssertTrue(f0.filter(rec))
+    }
+
+    static TestNullHandlerDropsEverything()
+    {
+        h := stdlib.logging.NullHandler()
+        ; Should not throw on any handle/emit/close call regardless of input.
+        h.handle({ name: "x", message: "y", levelno: 20, levelname: "INFO" })
+        h.emit({ name: "x", message: "y", levelno: 20, levelname: "INFO" })
+        h.setLevel(50)
+        h.close()
+        AhkTest.AssertEqual(50, h.level)
+    }
 }
 
 AhkTest.Collect(StdlibLoggingTest)
