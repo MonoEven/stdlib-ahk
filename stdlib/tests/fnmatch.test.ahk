@@ -31,6 +31,33 @@ class StdlibFnmatchTest
         AhkTest.RaisesMatch(TypeError, "^translate\(\) takes 1 positional argument but 2 were given$", (*) => stdlib.fnmatch.translate("*", "x"))
         AhkTest.RaisesMatch(TypeError, "^cannot use a bytes pattern on a string-like object$", (*) => stdlib.fnmatch.fnmatch("a", Buffer(1)))
     }
+
+    static TestTranslateOutputMatchesLocal310()
+    {
+        ; Reference values from py -3.10 -c "import fnmatch; print(fnmatch.translate(p))"
+        AhkTest.AssertEqual("(?s:.*\.txt)\Z", stdlib.fnmatch.translate("*.txt"))
+        AhkTest.AssertEqual("(?s:[^a].*\.txt)\Z", stdlib.fnmatch.translate("[!a]*.txt"))
+        AhkTest.AssertEqual("(?s:a.b.*c)\Z", stdlib.fnmatch.translate("a?b*c"))
+        AhkTest.AssertEqual("(?s:[a-z]\.py)\Z", stdlib.fnmatch.translate("[a-z].py"))
+        AhkTest.AssertEqual("(?s:\[\])\Z", stdlib.fnmatch.translate("[]"))
+        AhkTest.AssertEqual("(?s:\[!\])\Z", stdlib.fnmatch.translate("[!]"))
+        AhkTest.AssertEqual("(?s:a\[b)\Z", stdlib.fnmatch.translate("a[b"))
+        AhkTest.AssertEqual("(?s:.*)\Z", stdlib.fnmatch.translate("*"))
+        AhkTest.AssertEqual("(?s:)\Z", stdlib.fnmatch.translate(""))
+    }
+
+    static TestTranslateRegexUsableWithRegExMatch()
+    {
+        ; The translate() output is a regex string; verify it works under AHK RegExMatch
+        AhkTest.AssertTrue(stdlib.fnmatch.fnmatch("fooXbarYbaz", "foo*bar*baz"))
+        AhkTest.AssertFalse(stdlib.fnmatch.fnmatch("fooXbazYbar", "foo*bar*baz"))
+        AhkTest.AssertTrue(stdlib.fnmatch.fnmatchcase("a.py", "[a-z].py"))
+        AhkTest.AssertFalse(stdlib.fnmatch.fnmatchcase("A.py", "[a-z].py"))
+        AhkTest.AssertTrue(stdlib.fnmatch.fnmatchcase("anything", "*"))
+        AhkTest.AssertTrue(stdlib.fnmatch.fnmatchcase("", "*"))
+        AhkTest.AssertTrue(stdlib.fnmatch.fnmatchcase("", ""))
+        AhkTest.AssertFalse(stdlib.fnmatch.fnmatchcase("x", ""))
+    }
 }
 
 AhkTest.Collect(StdlibFnmatchTest)
