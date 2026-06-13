@@ -502,6 +502,21 @@ class StdlibLoggingTest
         h.close()
         AhkTest.AssertEqual(50, h.level)
     }
+
+    static TestLoggerAdapterDelegatesToWrappedLogger()
+    {
+        stdlib.logging._resetForTests()
+        log := stdlib.logging.getLogger("adapter.test")
+        adapter := stdlib.logging.LoggerAdapter(log, Map("user_id", 42))
+        AhkTest.AssertEqual("adapter.test", adapter.name)
+        AhkTest.AssertSame(log, adapter.logger)
+        AhkTest.AssertEqual(42, adapter.extra["user_id"])
+        ; setLevel/isEnabledFor delegate
+        adapter.setLevel(stdlib.logging.DEBUG)
+        AhkTest.AssertTrue(adapter.isEnabledFor(stdlib.logging.DEBUG))
+        ; process returns msg unchanged by default
+        AhkTest.AssertEqual("hello", adapter.process("hello"))
+    }
 }
 
 AhkTest.Collect(StdlibLoggingTest)

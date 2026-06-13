@@ -12,6 +12,7 @@ class AhkStdlibLogging
     static StreamHandler := AhkStdlibLoggingStreamHandlerClass
     static Filter := AhkStdlibLoggingFilterClass
     static NullHandler := AhkStdlibLoggingNullHandlerClass
+    static LoggerAdapter := AhkStdlibLoggingLoggerAdapterClass
     static DEBUG {
         get => 10
     }
@@ -361,6 +362,80 @@ class AhkStdlibLoggingNullHandler
     close()
     {
         return ""
+    }
+}
+
+class AhkStdlibLoggingLoggerAdapterClass
+{
+    static Call(thisClass, logger, extra := unset)
+    {
+        return AhkStdlibLoggingLoggerAdapter(logger, extra?)
+    }
+}
+
+; LoggerAdapter wraps a Logger and adds contextual information to every log
+; call. Subclasses typically override process(msg, kwargs) to merge extra
+; context. Matches CPython's logging.LoggerAdapter at the level/info/debug/...
+; surface; AHK has no kwargs so 'extra' is held for the user's own logic.
+class AhkStdlibLoggingLoggerAdapter
+{
+    __New(logger, extra := unset)
+    {
+        this.logger := logger
+        this.extra := IsSet(extra) ? extra : Map()
+    }
+
+    setLevel(level)
+    {
+        this.logger.setLevel(level)
+        return ""
+    }
+
+    isEnabledFor(level)
+    {
+        return this.logger.isEnabledFor(level)
+    }
+
+    process(msg)
+    {
+        ; Default: return the message unchanged. Subclasses can mix in
+        ; this.extra contents (which is an arbitrary mapping).
+        return msg
+    }
+
+    debug(msg)
+    {
+        this.logger.debug(this.process(msg))
+    }
+
+    info(msg)
+    {
+        this.logger.info(this.process(msg))
+    }
+
+    warning(msg)
+    {
+        this.logger.warning(this.process(msg))
+    }
+
+    error(msg)
+    {
+        this.logger.error(this.process(msg))
+    }
+
+    critical(msg)
+    {
+        this.logger.critical(this.process(msg))
+    }
+
+    log(level, msg)
+    {
+        this.logger.log(level, this.process(msg))
+    }
+
+    name
+    {
+        get => this.logger.name
     }
 }
 
