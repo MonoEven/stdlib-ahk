@@ -145,6 +145,105 @@ class AhkStdlibInspect
         }
         return AhkStdlibInspectFullArgSpec(args, varargs)
     }
+
+    static getmodule(object, kwargs*)
+    {
+        ; AHK v2 has no real module objects, so unlike CPython we cannot map an
+        ; arbitrary function/class back to a defining module. We honour the only
+        ; introspectable case: an explicit module-like namespace (SimpleNamespace
+        ; or types.ModuleType carrying the module marker). Everything else yields
+        ; None, matching Python's behaviour for non-introspectable inputs
+        ; (e.g. inspect.getmodule(42) -> None).
+        if AhkStdlibInspect.ismodule(object)
+            return object
+        return stdlib.None
+    }
+
+    static currentframe(kwargs*)
+    {
+        ; CPython returns the caller's live frame object. AHK has no frame
+        ; objects, so we reconstruct a frame-like record (.filename/.lineno/
+        ; .function) for the caller by parsing a freshly thrown Error's stack.
+        frames := AhkStdlibInspectCaptureFrames()
+        if frames.Length = 0
+            return stdlib.None
+        return frames[1]
+    }
+
+    static stack(kwargs*)
+    {
+        ; Returns frame-like records from the caller outward (caller first),
+        ; mirroring inspect.stack() ordering (innermost frame first).
+        return AhkStdlibInspectCaptureFrames()
+    }
+
+    static trace(error := unset, kwargs*)
+    {
+        ; CPython's trace() walks the traceback of the exception currently being
+        ; handled. AHK exposes no "current exception" outside a catch block, so
+        ; we accept the caught Error explicitly and parse its .Stack into
+        ; frame-like records (innermost/raise site first). With no Error given
+        ; there is no active traceback, so we return an empty list.
+        if !IsSet(error)
+            return []
+        if !(IsObject(error) && HasProp(error, "Stack"))
+            throw TypeError("trace() argument must be an Error with a Stack", -1)
+        return AhkStdlibInspectParseStack(error.Stack)
+    }
+}
+
+class AhkStdlibInspectFrameInfo
+{
+    __New(filename, lineno, functionName, code)
+    {
+        this.filename := filename
+        this.lineno := lineno
+        this.function := functionName
+        this.code := code
+    }
+
+    __Repr()
+    {
+        return "<FrameInfo " this.filename ":" this.lineno " in " this.function ">"
+    }
+}
+
+AhkStdlibInspectCaptureFrames()
+{
+    ; Throw+catch to obtain a stack, then drop the internal inspect frames so
+    ; the first record is the genuine caller of the public API.
+    try {
+        throw Error("inspect-frame-probe")
+    } catch as e {
+        frames := AhkStdlibInspectParseStack(e.Stack)
+    }
+    result := []
+    for frame in frames {
+        ; Skip our own machinery (helper free-functions AhkStdlibInspect* and the
+        ; AhkStdlibInspect.<method> public entry points all share this prefix).
+        if SubStr(frame.function, 1, 16) = "AhkStdlibInspect"
+            continue
+        result.Push(frame)
+    }
+    return result
+}
+
+AhkStdlibInspectParseStack(stackText)
+{
+    frames := []
+    if !(stackText is String) || stackText = ""
+        return frames
+    for line in StrSplit(stackText, "`n", "`r") {
+        if line = ""
+            continue
+        ; AHK stack lines look like:
+        ;   FILENAME (LINENO) : [FUNCNAME] SOURCETEXT
+        ; The trailing "> Auto-execute" marker has no frame data.
+        if !RegExMatch(line, "^(.*) \((\d+)\) : \[([^\]]*)\] (.*)$", &m)
+            continue
+        frames.Push(AhkStdlibInspectFrameInfo(m[1], Integer(m[2]), m[3], m[4]))
+    }
+    return frames
 }
 
 class AhkStdlibInspectParameter

@@ -108,6 +108,64 @@ class StdlibInspectTest
         AhkTest.AssertEqual("beta", names[2])
         AhkTest.AssertEqual("gamma", names[3])
     }
+
+    static TestCurrentframeReportsCallerFunction()
+    {
+        frame := stdlib.inspect.currentframe()
+        ; CPython: currentframe().f_code.co_name == enclosing function name.
+        ; AHK static methods appear in the stack as "Class.Method".
+        AhkTest.AssertEqual("StdlibInspectTest.TestCurrentframeReportsCallerFunction", frame.function)
+        AhkTest.AssertTrue(frame.lineno is Integer)
+        AhkTest.AssertTrue(frame.lineno > 0)
+        AhkTest.AssertTrue(InStr(frame.filename, "inspect.test.ahk") > 0)
+    }
+
+    static TestStackReturnsCallerFirst()
+    {
+        frames := stdlib.inspect.stack()
+        ; inspect.stack()[0] is the innermost (current) frame.
+        AhkTest.AssertTrue(frames.Length >= 1)
+        AhkTest.AssertEqual("StdlibInspectTest.TestStackReturnsCallerFirst", frames[1].function)
+    }
+
+    static TestGetmoduleReturnsNoneForNonModule()
+    {
+        ; AHK has no module objects; arbitrary values map to None, matching
+        ; Python's inspect.getmodule(42) -> None.
+        AhkTest.AssertTrue(AhkStdlibIsNone(stdlib.inspect.getmodule(42)))
+        AhkTest.AssertTrue(AhkStdlibIsNone(stdlib.inspect.getmodule(stdlib_inspect_probe_free)))
+    }
+
+    static TestGetmoduleReturnsModuleLikeObject()
+    {
+        ; A namespace carrying the module marker is recognised and returned.
+        modlike := { __AhkStdlibModule: true, name: "demo" }
+        AhkTest.AssertSame(modlike, stdlib.inspect.getmodule(modlike))
+    }
+
+    static TestTraceParsesErrorStack()
+    {
+        captured := ""
+        try {
+            StdlibInspectTraceRaiser()
+        } catch as err {
+            captured := err
+        }
+        frames := stdlib.inspect.trace(captured)
+        ; Innermost frame (the raise site) comes first.
+        AhkTest.AssertTrue(frames.Length >= 1)
+        AhkTest.AssertEqual("StdlibInspectTraceRaiser", frames[1].function)
+    }
+
+    static TestTraceWithoutErrorReturnsEmpty()
+    {
+        AhkTest.AssertEqual(0, stdlib.inspect.trace().Length)
+    }
+}
+
+StdlibInspectTraceRaiser()
+{
+    throw Error("trace probe")
 }
 
 AhkTest.Collect(StdlibInspectTest)
