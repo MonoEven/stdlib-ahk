@@ -78,6 +78,39 @@ class StdlibBinasciiTest
         AhkTest.AssertEqual("", StdlibBinasciiTest.BufferHex(stdlib.binascii.a2b_base64(StdlibBinasciiTest.Bytes("!!!!"))))
     }
 
+    static TestCrcHqxMatchesPython310()
+    {
+        AhkTest.AssertEqual(50018, stdlib.binascii.crc_hqx(StdlibBinasciiTest.Bytes("hello"), 0))
+        AhkTest.AssertEqual(65535, stdlib.binascii.crc_hqx(StdlibBinasciiTest.Bytes(""), 0xffff))
+        AhkTest.AssertEqual(31879, stdlib.binascii.crc_hqx(StdlibBinasciiTest.Bytes("a"), 0))
+        AhkTest.RaisesMatch(TypeError, "crc_hqx", (*) => stdlib.binascii.crc_hqx(StdlibBinasciiTest.Bytes("a")))
+    }
+
+    static TestQpEncodeDecodeRoundTripMatchesPython310()
+    {
+        ; b2a_qp simple ASCII -> unchanged
+        AhkTest.AssertEqual("hi", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_qp(StdlibBinasciiTest.Bytes("hi"))))
+        ; b2a_qp with '=' -> =3D
+        AhkTest.AssertEqual("a=3Db", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_qp(StdlibBinasciiTest.Bytes("a=b"))))
+        ; b2a_qp non-ASCII (0xE9) -> =E9
+        nonAscii := Buffer(4, 0)
+        NumPut("UChar", Ord("c"), nonAscii, 0)
+        NumPut("UChar", Ord("a"), nonAscii, 1)
+        NumPut("UChar", Ord("f"), nonAscii, 2)
+        NumPut("UChar", 0xE9, nonAscii, 3)
+        AhkTest.AssertEqual("caf=E9", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_qp(nonAscii)))
+
+        ; a2b_qp =XX -> bytes
+        AhkTest.AssertEqual("hi", StdlibBinasciiTest.BufferText(stdlib.binascii.a2b_qp(StdlibBinasciiTest.Bytes("=68=69"))))
+        ; a2b_qp soft line break (=\n) drops both
+        softBreak := Buffer(4, 0)
+        NumPut("UChar", Ord("a"), softBreak, 0)
+        NumPut("UChar", Ord("="), softBreak, 1)
+        NumPut("UChar", 0x0A, softBreak, 2)
+        NumPut("UChar", Ord("b"), softBreak, 3)
+        AhkTest.AssertEqual("ab", StdlibBinasciiTest.BufferText(stdlib.binascii.a2b_qp(softBreak)))
+    }
+
     static Bytes(text)
     {
         size := StrPut(text, "UTF-8") - 1
