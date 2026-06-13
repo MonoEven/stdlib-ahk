@@ -59,6 +59,59 @@ class AhkStdlibHashlib
     {
         return AhkStdlibHashlibCreateNamed("sha512", data?, kwargs*)
     }
+
+    static sha3_224(data := unset, kwargs*)
+    {
+        return AhkStdlibHashlibCreateNamed("sha3_224", data?, kwargs*)
+    }
+
+    static sha3_256(data := unset, kwargs*)
+    {
+        return AhkStdlibHashlibCreateNamed("sha3_256", data?, kwargs*)
+    }
+
+    static sha3_384(data := unset, kwargs*)
+    {
+        return AhkStdlibHashlibCreateNamed("sha3_384", data?, kwargs*)
+    }
+
+    static sha3_512(data := unset, kwargs*)
+    {
+        return AhkStdlibHashlibCreateNamed("sha3_512", data?, kwargs*)
+    }
+
+    static shake_128(data := unset, kwargs*)
+    {
+        return AhkStdlibHashlibCreateNamed("shake_128", data?, kwargs*)
+    }
+
+    static shake_256(data := unset, kwargs*)
+    {
+        return AhkStdlibHashlibCreateNamed("shake_256", data?, kwargs*)
+    }
+
+    ; Python exposes algorithms_available as the set of names this build can
+    ; actually use. On Windows we back hashes with CNG (BCrypt) providers plus a
+    ; pure-AHK SHA-224, so the membership is probed against the live OS rather
+    ; than hard-coded: SHA3 and SHAKE exist on recent Windows 11 builds but not
+    ; on older systems, and BLAKE2 has no CNG provider at all. A set has no
+    ; native AHK type, so this mirrors it as a case-sensitive Map whose keys are
+    ; the usable names (membership via .Has, iteration via for-each key).
+    static algorithms_available {
+        get {
+            available := Map()
+            available.CaseSense := true
+            for name in AhkStdlibHashlibCandidateAlgorithms()
+                if AhkStdlibHashlibAlgorithmUsable(name)
+                    available[name] := true
+            return available
+        }
+    }
+
+    static pbkdf2_hmac(hash_name, password, salt, iterations, dklen := unset)
+    {
+        return AhkStdlibHashlibPbkdf2Hmac(hash_name, password, salt, iterations, dklen?)
+    }
 }
 
 stdlib.hashlib := AhkStdlibHashlib
@@ -83,14 +136,16 @@ class AhkStdlibHash
         return ""
     }
 
-    digest()
+    digest(length := unset)
     {
-        return AhkStdlibHashlibComputeDigestBuffer(this.AhkStdlibAlgorithmName, this.AhkStdlibChunks)
+        outLen := AhkStdlibHashlibResolveDigestLength(this.AhkStdlibAlgorithmName, "digest", length?)
+        return AhkStdlibHashlibComputeDigestBuffer(this.AhkStdlibAlgorithmName, this.AhkStdlibChunks, outLen)
     }
 
-    hexdigest()
+    hexdigest(length := unset)
     {
-        return AhkStdlibHashlibBufferToHex(this.digest())
+        outLen := AhkStdlibHashlibResolveDigestLength(this.AhkStdlibAlgorithmName, "hexdigest", length?)
+        return AhkStdlibHashlibBufferToHex(AhkStdlibHashlibComputeDigestBuffer(this.AhkStdlibAlgorithmName, this.AhkStdlibChunks, outLen))
     }
 
     copy()
@@ -123,14 +178,17 @@ AhkStdlibHashlibPropGetDigestSize(this)
         return 16
     case "sha1":
         return 20
-    case "sha224":
+    case "sha224", "sha3_224":
         return 28
-    case "sha256":
+    case "sha256", "sha3_256":
         return 32
-    case "sha384":
+    case "sha384", "sha3_384":
         return 48
-    case "sha512":
+    case "sha512", "sha3_512":
         return 64
+    case "shake_128", "shake_256":
+        ; SHAKE is an extendable-output function; Python reports digest_size 0.
+        return 0
     default:
         throw ValueError("unsupported hash type " this.AhkStdlibAlgorithmName, -1)
     }
@@ -143,6 +201,16 @@ AhkStdlibHashlibPropGetBlockSize(this)
         return 64
     case "sha384", "sha512":
         return 128
+    case "sha3_224":
+        return 144
+    case "sha3_256", "shake_256":
+        return 136
+    case "sha3_384":
+        return 104
+    case "sha3_512":
+        return 72
+    case "shake_128":
+        return 168
     default:
         throw ValueError("unsupported hash type " this.AhkStdlibAlgorithmName, -1)
     }
@@ -171,13 +239,22 @@ AhkStdlibHashlibFirstUnexpectedKeyword(keyword)
 
 AhkStdlibHashlibNormalizeAlgorithm(name)
 {
-    normalized := StrLower(StrReplace(String(name), "-", ""))
+    ; Python accepts dash- and underscore-spelled SHA3/SHAKE names (e.g.
+    ; "sha3-256" and "sha3_256"); fold both onto the underscore canonical form.
+    normalized := StrLower(StrReplace(String(name), "-", "_"))
     switch normalized {
     case "md5", "sha1", "sha224", "sha256", "sha384", "sha512":
+        return normalized
+    case "sha3_224", "sha3_256", "sha3_384", "sha3_512", "shake_128", "shake_256":
         return normalized
     default:
         throw ValueError("unsupported hash type " String(name), -1)
     }
+}
+
+AhkStdlibHashlibIsShake(name)
+{
+    return name = "shake_128" || name = "shake_256"
 }
 
 AhkStdlibHashlibRequireBytesLike(data)
@@ -197,27 +274,30 @@ AhkStdlibHashlibCloneBuffer(bytes)
     return cloned
 }
 
-AhkStdlibHashlibComputeDigestBuffer(name, chunks)
+AhkStdlibHashlibComputeDigestBuffer(name, chunks, outLen := unset)
 {
     ; Windows CNG (BCrypt) ships providers for MD5/SHA1/SHA256/SHA384/SHA512 but
     ; not SHA-224, so back that single algorithm with a pure-AHK SHA-256 core.
     if name = "sha224"
         return AhkStdlibHashlibSha224Digest(chunks)
 
+    isShake := AhkStdlibHashlibIsShake(name)
     algorithmHandle := 0
     hashHandle := 0
 
     try {
         status := DllCall("bcrypt\BCryptOpenAlgorithmProvider"
             , "Ptr*", &algorithmHandle
-            , "WStr", StrUpper(name)
+            , "WStr", AhkStdlibHashlibBCryptName(name)
             , "Ptr", 0
             , "UInt", 0
             , "UInt")
         AhkStdlibHashlibThrowNtStatus(status, "BCryptOpenAlgorithmProvider failed")
 
         objectLength := AhkStdlibHashlibGetUIntProperty(algorithmHandle, "ObjectLength")
-        digestLength := AhkStdlibHashlibGetUIntProperty(algorithmHandle, "HashDigestLength")
+        ; SHAKE is an extendable-output function: the caller picks the byte count,
+        ; so honour the requested length instead of the provider's fixed digest.
+        digestLength := isShake ? outLen : AhkStdlibHashlibGetUIntProperty(algorithmHandle, "HashDigestLength")
         hashObject := Buffer(objectLength, 0)
 
         status := DllCall("bcrypt\BCryptCreateHash"
@@ -243,21 +323,184 @@ AhkStdlibHashlibComputeDigestBuffer(name, chunks)
             AhkStdlibHashlibThrowNtStatus(status, "BCryptHashData failed")
         }
 
-        digest := Buffer(digestLength, 0)
+        digest := Buffer(digestLength > 0 ? digestLength : 1, 0)
         status := DllCall("bcrypt\BCryptFinishHash"
             , "Ptr", hashHandle
             , "Ptr", digest.Ptr
-            , "UInt", digest.Size
+            , "UInt", digestLength
             , "UInt", 0
             , "UInt")
         AhkStdlibHashlibThrowNtStatus(status, "BCryptFinishHash failed")
 
+        if digest.Size != digestLength {
+            trimmed := Buffer(digestLength, 0)
+            if digestLength > 0
+                DllCall("RtlMoveMemory", "Ptr", trimmed.Ptr, "Ptr", digest.Ptr, "UPtr", digestLength)
+            return trimmed
+        }
         return digest
     } finally {
         if hashHandle
             DllCall("bcrypt\BCryptDestroyHash", "Ptr", hashHandle)
         if algorithmHandle
             DllCall("bcrypt\BCryptCloseAlgorithmProvider", "Ptr", algorithmHandle, "UInt", 0)
+    }
+}
+
+; Map the stdlib/Python canonical name onto the CNG (BCrypt) provider name.
+; MD5/SHA1/SHA256/SHA384/SHA512 use the plain uppercase form; SHA3 uses a dash
+; ("SHA3-256") and SHAKE drops the underscore ("SHAKE128").
+AhkStdlibHashlibBCryptName(name)
+{
+    switch name {
+    case "sha3_224":
+        return "SHA3-224"
+    case "sha3_256":
+        return "SHA3-256"
+    case "sha3_384":
+        return "SHA3-384"
+    case "sha3_512":
+        return "SHA3-512"
+    case "shake_128":
+        return "SHAKE128"
+    case "shake_256":
+        return "SHAKE256"
+    default:
+        return StrUpper(name)
+    }
+}
+
+; Candidate algorithms whose membership in algorithms_available is probed live.
+AhkStdlibHashlibCandidateAlgorithms()
+{
+    return ["md5", "sha1", "sha224", "sha256", "sha384", "sha512"
+        , "sha3_224", "sha3_256", "sha3_384", "sha3_512", "shake_128", "shake_256"]
+}
+
+; True when this build can actually compute the algorithm: SHA-224 is the pure
+; AHK fallback, every other name needs a working CNG provider on this OS.
+AhkStdlibHashlibAlgorithmUsable(name)
+{
+    if name = "sha224"
+        return true
+    algorithmHandle := 0
+    status := DllCall("bcrypt\BCryptOpenAlgorithmProvider"
+        , "Ptr*", &algorithmHandle
+        , "WStr", AhkStdlibHashlibBCryptName(name)
+        , "Ptr", 0
+        , "UInt", 0
+        , "UInt")
+    if algorithmHandle
+        DllCall("bcrypt\BCryptCloseAlgorithmProvider", "Ptr", algorithmHandle, "UInt", 0)
+    return status = 0
+}
+
+; Resolve the byte length for digest()/hexdigest(). SHAKE requires an explicit
+; length (Python raises TypeError without one); all other algorithms reject a
+; length argument outright.
+AhkStdlibHashlibResolveDigestLength(name, methodName, length := unset)
+{
+    if AhkStdlibHashlibIsShake(name) {
+        if !IsSet(length)
+            throw TypeError(methodName "() missing required argument 'length' (pos 1)", -1)
+        value := AhkStdlibHashlibIndex(length)
+        if value < 0
+            throw ValueError("negative digest length", -1)
+        return value
+    }
+    if IsSet(length)
+        throw TypeError("HASH." methodName "() takes no arguments (1 given)", -1)
+    return 0
+}
+
+AhkStdlibHashlibIndex(value)
+{
+    if value is Integer
+        return value
+    if value is Float {
+        if value != Floor(value)
+            throw TypeError("'float' object cannot be interpreted as an integer", -1)
+        return Integer(value)
+    }
+    if value is String && RegExMatch(value, "^-?\d+$")
+        return Integer(value)
+    throw TypeError("'" AhkStdlibPythonTypeName(value) "' object cannot be interpreted as an integer", -1)
+}
+
+; pbkdf2_hmac via BCryptDeriveKeyPBKDF2. The HMAC hash is opened with the CNG
+; reusable-HMAC flag (0x08); dklen defaults to the underlying digest size.
+AhkStdlibHashlibPbkdf2Hmac(hash_name, password, salt, iterations, dklen := unset)
+{
+    canonical := AhkStdlibHashlibNormalizePbkdf2Hash(hash_name)
+    pwd := AhkStdlibHashlibRequireBytesLike(password)
+    saltBytes := AhkStdlibHashlibRequireBytesLike(salt)
+    iters := AhkStdlibHashlibIndex(iterations)
+    if iters < 1
+        throw ValueError("iteration value must be greater than 0.", -1)
+
+    if !IsSet(dklen) || AhkStdlibIsNone(dklen) {
+        keyLen := AhkStdlibHashlibPbkdf2DigestSize(canonical)
+    } else {
+        keyLen := AhkStdlibHashlibIndex(dklen)
+        if keyLen < 1
+            throw ValueError("key length must be greater than 0.", -1)
+    }
+
+    algorithmHandle := 0
+    try {
+        status := DllCall("bcrypt\BCryptOpenAlgorithmProvider"
+            , "Ptr*", &algorithmHandle
+            , "WStr", AhkStdlibHashlibBCryptName(canonical)
+            , "Ptr", 0
+            , "UInt", 0x00000008
+            , "UInt")
+        AhkStdlibHashlibThrowNtStatus(status, "BCryptOpenAlgorithmProvider failed")
+
+        derived := Buffer(keyLen, 0)
+        status := DllCall("bcrypt\BCryptDeriveKeyPBKDF2"
+            , "Ptr", algorithmHandle
+            , "Ptr", pwd.Size > 0 ? pwd.Ptr : 0
+            , "UInt", pwd.Size
+            , "Ptr", saltBytes.Size > 0 ? saltBytes.Ptr : 0
+            , "UInt", saltBytes.Size
+            , "UInt64", iters
+            , "Ptr", derived.Ptr
+            , "UInt", derived.Size
+            , "UInt")
+        AhkStdlibHashlibThrowNtStatus(status, "BCryptDeriveKeyPBKDF2 failed")
+        return derived
+    } finally {
+        if algorithmHandle
+            DllCall("bcrypt\BCryptCloseAlgorithmProvider", "Ptr", algorithmHandle, "UInt", 0)
+    }
+}
+
+AhkStdlibHashlibNormalizePbkdf2Hash(name)
+{
+    normalized := StrLower(StrReplace(String(name), "-", "_"))
+    switch normalized {
+    case "sha1", "sha256", "sha384", "sha512", "md5":
+        return normalized
+    default:
+        throw ValueError("unsupported hash type " String(name), -1)
+    }
+}
+
+AhkStdlibHashlibPbkdf2DigestSize(name)
+{
+    switch name {
+    case "md5":
+        return 16
+    case "sha1":
+        return 20
+    case "sha256":
+        return 32
+    case "sha384":
+        return 48
+    case "sha512":
+        return 64
+    default:
+        throw ValueError("unsupported hash type " name, -1)
     }
 }
 

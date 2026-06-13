@@ -83,6 +83,107 @@ class StdlibHashlibTest
         AhkTest.RaisesMatch(TypeError, "Strings must be encoded before hashing", (*) => stdlib.hashlib.md5().update("abc"))
     }
 
+    static TestSha3FamilyMatchesPython310()
+    {
+        ; SHA3-224 has no Windows CNG provider on every build; skip gracefully
+        ; when absent rather than failing. SHA3-256/384/512 ship on Win11.
+        if !stdlib.hashlib.algorithms_available.Has("sha3_256")
+            AhkTest.SkipNow("Windows CNG provider 'SHA3-256' is unavailable on this OS")
+
+        AhkTest.AssertEqual("3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532", stdlib.hashlib.sha3_256(StdlibHashlibTest.Bytes("abc")).hexdigest())
+        AhkTest.AssertEqual("ec01498288516fc926459f58e2c6ad8df9b473cb0fc08c2596da7cf0e49be4b298d88cea927ac7f539f1edf228376d25", stdlib.hashlib.sha3_384(StdlibHashlibTest.Bytes("abc")).hexdigest())
+        AhkTest.AssertEqual("b751850b1a57168a5693cd924b6b096e08f621827444f70d884f5d0240d2712e10e116e9192af3c91a7ec57647e3934057340b4cf408d5a56592f8274eec53f0", stdlib.hashlib.sha3_512(StdlibHashlibTest.Bytes("abc")).hexdigest())
+        AhkTest.AssertEqual("a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a", stdlib.hashlib.sha3_256().hexdigest())
+
+        sha3 := stdlib.hashlib.sha3_256()
+        AhkTest.AssertEqual("sha3_256", sha3.name)
+        AhkTest.AssertEqual(32, sha3.digest_size)
+        AhkTest.AssertEqual(136, sha3.block_size)
+
+        sha3b := stdlib.hashlib.sha3_512()
+        AhkTest.AssertEqual(64, sha3b.digest_size)
+        AhkTest.AssertEqual(72, sha3b.block_size)
+
+        AhkTest.AssertEqual("3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532", stdlib.hashlib.new("SHA3-256", StdlibHashlibTest.Bytes("abc")).hexdigest())
+        AhkTest.AssertEqual("3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532", stdlib.hashlib.new("sha3_256", StdlibHashlibTest.Bytes("abc")).hexdigest())
+    }
+
+    static TestShakeVariableLengthMatchesPython310()
+    {
+        if !stdlib.hashlib.algorithms_available.Has("shake_128")
+            AhkTest.SkipNow("Windows CNG provider 'SHAKE128' is unavailable on this OS")
+
+        AhkTest.AssertEqual("5881092dd818bf5cf8a3ddb793fbcba7", stdlib.hashlib.shake_128(StdlibHashlibTest.Bytes("abc")).hexdigest(16))
+        AhkTest.AssertEqual("483366601360a8771c6863080cc4114d8db44530f8f1e1ee4f94ea37e78b5739", stdlib.hashlib.shake_256(StdlibHashlibTest.Bytes("abc")).hexdigest(32))
+        AhkTest.AssertEqual("7f9c2ba4e88f827d616045507605853e", stdlib.hashlib.shake_128().hexdigest(16))
+        AhkTest.AssertEqual("46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed5762f", stdlib.hashlib.shake_256().hexdigest(32))
+
+        shake := stdlib.hashlib.shake_128()
+        AhkTest.AssertEqual("shake_128", shake.name)
+        AhkTest.AssertEqual(0, shake.digest_size)
+        AhkTest.AssertEqual(168, shake.block_size)
+        AhkTest.AssertEqual(136, stdlib.hashlib.shake_256().block_size)
+
+        ; SHAKE digest()/hexdigest() require an explicit length (Python TypeError).
+        AhkTest.RaisesMatch(TypeError, "digest\(\) missing required argument 'length' \(pos 1\)", (*) => stdlib.hashlib.shake_128(StdlibHashlibTest.Bytes("abc")).digest())
+        AhkTest.RaisesMatch(TypeError, "hexdigest\(\) missing required argument 'length' \(pos 1\)", (*) => stdlib.hashlib.shake_128(StdlibHashlibTest.Bytes("abc")).hexdigest())
+    }
+
+    static TestNonShakeDigestRejectsLengthArgumentLikePython310()
+    {
+        AhkTest.RaisesMatch(TypeError, "HASH.digest\(\) takes no arguments \(1 given\)", (*) => stdlib.hashlib.sha256(StdlibHashlibTest.Bytes("abc")).digest(5))
+        AhkTest.RaisesMatch(TypeError, "HASH.hexdigest\(\) takes no arguments \(1 given\)", (*) => stdlib.hashlib.md5().hexdigest(5))
+    }
+
+    static TestAlgorithmsAvailableReportsUsableNames()
+    {
+        available := stdlib.hashlib.algorithms_available
+
+        ; Names always usable on Windows (CNG providers + pure-AHK SHA-224).
+        for name in ["md5", "sha1", "sha224", "sha256", "sha384", "sha512"]
+            AhkTest.AssertTrue(available.Has(name), "expected " name " in algorithms_available")
+
+        ; BLAKE2 has no CNG provider, so it must never be reported usable here.
+        AhkTest.AssertFalse(available.Has("blake2b"))
+        AhkTest.AssertFalse(available.Has("blake2s"))
+
+        ; Every reported name must actually produce a digest (SHAKE needs a length).
+        for name in available {
+            hash := stdlib.hashlib.new(name, StdlibHashlibTest.Bytes("abc"))
+            out := InStr(name, "shake") ? hash.digest(16) : hash.digest()
+            AhkTest.AssertTrue(out.Size > 0, "expected non-empty digest for " name)
+        }
+    }
+
+    static TestPbkdf2HmacMatchesPython310()
+    {
+        AhkTest.AssertEqual("0a38253555ce37f5c72a6b703f996814ebf241f203af146e93dcdeb031c5567e"
+            , StdlibHashlibTest.Hex(stdlib.hashlib.pbkdf2_hmac("sha256", StdlibHashlibTest.Bytes("pw"), StdlibHashlibTest.Bytes("salt"), 1000)))
+        AhkTest.AssertEqual("0c60c80f961f0e71f3a9b524af6012062fe037a6"
+            , StdlibHashlibTest.Hex(stdlib.hashlib.pbkdf2_hmac("sha1", StdlibHashlibTest.Bytes("password"), StdlibHashlibTest.Bytes("salt"), 1)))
+        AhkTest.AssertEqual("c5e478d59288c841aa530db6845c4c8d962893a001ce4e11a4963873aa98134af7ad98c1b458ce3f"
+            , StdlibHashlibTest.Hex(stdlib.hashlib.pbkdf2_hmac("sha256", StdlibHashlibTest.Bytes("password"), StdlibHashlibTest.Bytes("salt"), 4096, 40)))
+        AhkTest.AssertEqual("9bbcdf4f0b03e358d9a6f311a95c29f8df1dfac308b5b4734bb2a52f712fd3f3380a648301abd4796bbc873c3c18c2d7ee5ce68818d1eeb631a59ba9208eb3a5"
+            , StdlibHashlibTest.Hex(stdlib.hashlib.pbkdf2_hmac("sha512", StdlibHashlibTest.Bytes("pw"), StdlibHashlibTest.Bytes("salt"), 1)))
+        AhkTest.AssertEqual("9887054ca80d1507d8b6e84a29476d04"
+            , StdlibHashlibTest.Hex(stdlib.hashlib.pbkdf2_hmac("md5", StdlibHashlibTest.Bytes("pw"), StdlibHashlibTest.Bytes("salt"), 1)))
+
+        ; dklen defaults to the underlying digest size (32 for sha256).
+        AhkTest.AssertEqual(32, stdlib.hashlib.pbkdf2_hmac("sha256", StdlibHashlibTest.Bytes("pw"), StdlibHashlibTest.Bytes("salt"), 1000).Size)
+
+        AhkTest.RaisesMatch(ValueError, "iteration value must be greater than 0.", (*) => stdlib.hashlib.pbkdf2_hmac("sha256", StdlibHashlibTest.Bytes("pw"), StdlibHashlibTest.Bytes("salt"), 0))
+        AhkTest.RaisesMatch(ValueError, "key length must be greater than 0.", (*) => stdlib.hashlib.pbkdf2_hmac("sha256", StdlibHashlibTest.Bytes("pw"), StdlibHashlibTest.Bytes("salt"), 1000, -1))
+        AhkTest.RaisesMatch(ValueError, "unsupported hash type badhash", (*) => stdlib.hashlib.pbkdf2_hmac("badhash", StdlibHashlibTest.Bytes("pw"), StdlibHashlibTest.Bytes("salt"), 1))
+    }
+
+    static Hex(bytes)
+    {
+        text := ""
+        loop bytes.Size
+            text .= Format("{:02x}", NumGet(bytes, A_Index - 1, "UChar"))
+        return text
+    }
+
     static Bytes(text)
     {
         size := StrPut(text, "UTF-8") - 1
