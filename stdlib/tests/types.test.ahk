@@ -43,6 +43,40 @@ class StdlibTypesTest
         AhkTest.AssertFalse(HasProp(module, "__name__"))
         AhkTest.AssertFalse(HasProp(module, "__doc__"))
     }
+
+    static TestMappingProxyReadsThroughToMapping()
+    {
+        backing := Map("x", 1, "y", 2)
+        proxy := stdlib.types.MappingProxyType(backing)
+
+        AhkTest.AssertEqual(1, proxy["x"])
+        AhkTest.AssertEqual(2, proxy.Count)
+        AhkTest.AssertTrue(proxy.Has("y"))
+        AhkTest.AssertFalse(proxy.Has("z"))
+        AhkTest.AssertEqual(99, proxy.get("z", 99))
+
+        ; Reflects later mutations of the backing mapping.
+        backing["z"] := 3
+        AhkTest.AssertEqual(3, proxy["z"])
+        AhkTest.AssertEqual(3, proxy.Count)
+    }
+
+    static TestMappingProxyRejectsWritesAndNonMapping()
+    {
+        proxy := stdlib.types.MappingProxyType(Map("a", 1))
+        AhkTest.RaisesMatch(TypeError, "'mappingproxy' object does not support item assignment", (*) => proxy["a"] := 2)
+        AhkTest.RaisesMatch(KeyError, "'missing'", (*) => proxy["missing"])
+        AhkTest.RaisesMatch(TypeError, "mappingproxy\(\) argument must be a mapping", (*) => stdlib.types.MappingProxyType([1, 2]))
+    }
+
+    static TestMappingProxyCopyReturnsPlainMap()
+    {
+        proxy := stdlib.types.MappingProxyType(Map("a", 1, "b", 2))
+        copied := proxy.copy()
+        AhkTest.AssertEqual("Map", Type(copied))
+        copied["c"] := 3
+        AhkTest.AssertFalse(proxy.Has("c"))
+    }
 }
 
 AhkTest.Collect(StdlibTypesTest)

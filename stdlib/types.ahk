@@ -21,6 +21,11 @@ class AhkStdlibTypes
             return AhkStdlibTypesSimpleNamespace(attributes)
         return AhkStdlibTypesSimpleNamespace()
     }
+
+    static MappingProxyType(mapping)
+    {
+        return AhkStdlibTypesMappingProxy(mapping)
+    }
 }
 
 class AhkStdlibTypesSimpleNamespace
@@ -71,6 +76,120 @@ class AhkStdlibTypesModule
         this.__name := name
         this.__doc := doc
     }
+}
+
+; Read-only view over a Map (Python's types.MappingProxyType). Reads delegate to
+; the wrapped mapping and reflect later mutations of it; writes raise like
+; Python's "'mappingproxy' object does not support item assignment".
+class AhkStdlibTypesMappingProxy
+{
+    __New(mapping)
+    {
+        if !(mapping is Map)
+            throw TypeError("mappingproxy() argument must be a mapping, not " AhkStdlibPythonTypeName(mapping), -1)
+        this.AhkStdlibMapping := mapping
+    }
+
+    __Item[key]
+    {
+        get {
+            if !this.AhkStdlibMapping.Has(key)
+                throw KeyError(AhkStdlibTypesMappingKeyRepr(key), -1)
+            return this.AhkStdlibMapping[key]
+        }
+        set => AhkStdlibTypesMappingProxyReadonly()
+    }
+
+    Has(key) => this.AhkStdlibMapping.Has(key)
+
+    Count => this.AhkStdlibMapping.Count
+
+    get(key, default := unset)
+    {
+        if this.AhkStdlibMapping.Has(key)
+            return this.AhkStdlibMapping[key]
+        return IsSet(default) ? default : stdlib.None
+    }
+
+    keys()
+    {
+        result := []
+        for key in this.AhkStdlibMapping
+            result.Push(key)
+        return result
+    }
+
+    values()
+    {
+        result := []
+        for , value in this.AhkStdlibMapping
+            result.Push(value)
+        return result
+    }
+
+    items()
+    {
+        result := []
+        for key, value in this.AhkStdlibMapping
+            result.Push(stdlib.tuple([key, value]))
+        return result
+    }
+
+    copy()
+    {
+        ; Python's mappingproxy.copy() returns a plain dict.
+        cloned := Map()
+        for key, value in this.AhkStdlibMapping
+            cloned[key] := value
+        return cloned
+    }
+
+    __Enum(numberOfVars)
+    {
+        return this.AhkStdlibMapping.__Enum(numberOfVars)
+    }
+
+    __Repr()
+    {
+        return "mappingproxy(" AhkStdlibTypesMapRepr(this.AhkStdlibMapping) ")"
+    }
+}
+
+AhkStdlibTypesMappingProxyReadonly()
+{
+    throw TypeError("'mappingproxy' object does not support item assignment", -1)
+}
+
+AhkStdlibTypesMappingKeyRepr(key)
+{
+    if key is String
+        return "'" key "'"
+    return String(key)
+}
+
+AhkStdlibTypesMapRepr(mapping)
+{
+    parts := []
+    for key, value in mapping
+        parts.Push(AhkStdlibTypesMappingKeyRepr(key) ": " AhkStdlibTypesRepr(value))
+    joined := ""
+    for index, part in parts {
+        if index > 1
+            joined .= ", "
+        joined .= part
+    }
+    return "{" joined "}"
+}
+
+AhkStdlibTypesRepr(value)
+{
+    if value is String
+        return "'" value "'"
+    if AhkStdlibIsNone(value)
+        return "None"
+    if AhkStdlibIsBool(value)
+        return value.Value ? "True" : "False"
+    return String(value)
 }
 
 stdlib.types := AhkStdlibTypes
