@@ -266,6 +266,230 @@ class StdlibRandomTest
         AhkTest.RaisesMatch(ValueError, "Total of weights must be greater than zero", (*) => stdlib.random.choices(["a", "b"], [0, 0], unset, 1))
         AhkTest.AssertEqual([], stdlib.random.choices(["a", "b"], unset, unset, -1))
     }
+
+    static TestRandbytesReturnsBufferOfRequestedLength()
+    {
+        stdlib.random.seed(12345)
+        bytes := stdlib.random.randbytes(8)
+        AhkTest.AssertEqual("Buffer", Type(bytes))
+        AhkTest.AssertEqual(8, bytes.Size)
+
+        empty := stdlib.random.randbytes(0)
+        AhkTest.AssertEqual(0, empty.Size)
+
+        loop 16 {
+            value := NumGet(bytes, A_Index <= 8 ? A_Index - 1 : 0, "UChar")
+            AhkTest.AssertTrue(value >= 0 && value <= 255)
+        }
+
+        AhkTest.RaisesMatch(ValueError, "number of bits must be non-negative", (*) => stdlib.random.randbytes(-1))
+    }
+
+    static TestGetstateSetstateRoundTripReproducesSequence()
+    {
+        stdlib.random.seed(12345)
+        loop 5
+            stdlib.random.random()
+
+        saved := stdlib.random.getstate()
+        AhkTest.AssertEqual(3, saved[1])
+        AhkTest.AssertEqual(625, saved[2].Length)
+
+        expected := []
+        loop 10
+            expected.Push(stdlib.random.random())
+
+        stdlib.random.setstate(saved)
+        replayed := []
+        loop 10
+            replayed.Push(stdlib.random.random())
+
+        AhkTest.AssertEqual(expected, replayed)
+    }
+
+    static TestGetstateSetstatePreservesGaussCache()
+    {
+        stdlib.random.seed(999)
+        stdlib.random.gauss(0.0, 1.0)
+        saved := stdlib.random.getstate()
+
+        expected := stdlib.random.gauss(0.0, 1.0)
+        stdlib.random.setstate(saved)
+        replayed := stdlib.random.gauss(0.0, 1.0)
+        AhkTest.AssertApprox(expected, replayed)
+    }
+
+    static TestSetstateRejectsMalformedState()
+    {
+        AhkTest.RaisesMatch(ValueError, "state vector is the wrong size", (*) => stdlib.random.setstate([3, stdlib.tuple([1, 2])]))
+        AhkTest.RaisesMatch(ValueError, "version 2 passed", (*) => stdlib.random.setstate([2, stdlib.tuple([1]), stdlib.None]))
+    }
+
+    static TestRandomClassIsInstantiableAndSeedDeterministic()
+    {
+        first := stdlib.random.Random(424242)
+        second := stdlib.random.Random(424242)
+
+        a := []
+        b := []
+        loop 8 {
+            a.Push(first.random())
+            b.Push(second.random())
+        }
+        AhkTest.AssertEqual(a, b)
+
+        third := stdlib.random.Random(7)
+        AhkTest.AssertTrue(a[1] != third.random())
+    }
+
+    static TestGaussAndNormalvariateAreUnboundedWithExpectedMean()
+    {
+        gen := stdlib.random.Random(2024)
+        total := 0.0
+        loop 20000 {
+            value := gen.gauss(0.0, 1.0)
+            AhkTest.AssertEqual("Float", Type(value))
+            total += value
+        }
+        AhkTest.AssertApprox(0.0, total / 20000, {Abs: 0.05})
+
+        total := 0.0
+        loop 20000
+            total += gen.normalvariate(5.0, 2.0)
+        AhkTest.AssertApprox(5.0, total / 20000, {Abs: 0.1})
+    }
+
+    static TestExpovariateMeanMatchesInverseOfLambda()
+    {
+        gen := stdlib.random.Random(101)
+        total := 0.0
+        loop 20000 {
+            value := gen.expovariate(2.0)
+            AhkTest.AssertTrue(value >= 0.0)
+            total += value
+        }
+        AhkTest.AssertApprox(0.5, total / 20000, {Abs: 0.03})
+    }
+
+    static TestTriangularStaysInBoundsWithExpectedMean()
+    {
+        gen := stdlib.random.Random(55)
+        total := 0.0
+        loop 20000 {
+            value := gen.triangular(1.0, 5.0, 2.0)
+            AhkTest.AssertTrue(value >= 1.0 && value <= 5.0)
+            total += value
+        }
+        AhkTest.AssertApprox((1.0 + 5.0 + 2.0) / 3.0, total / 20000, {Abs: 0.05})
+
+        AhkTest.AssertEqual(3.0, gen.triangular(3.0, 3.0))
+
+        defaultGen := stdlib.random.Random(77)
+        total := 0.0
+        loop 20000 {
+            value := defaultGen.triangular()
+            AhkTest.AssertTrue(value >= 0.0 && value <= 1.0)
+            total += value
+        }
+        AhkTest.AssertApprox(0.5, total / 20000, {Abs: 0.02})
+    }
+
+    static TestParetoWeibullLognormStayPositive()
+    {
+        gen := stdlib.random.Random(13)
+        total := 0.0
+        loop 20000 {
+            value := gen.paretovariate(3.0)
+            AhkTest.AssertTrue(value >= 1.0)
+            total += value
+        }
+        AhkTest.AssertApprox(1.5, total / 20000, {Abs: 0.15})
+
+        total := 0.0
+        loop 20000 {
+            value := gen.weibullvariate(1.0, 1.0)
+            AhkTest.AssertTrue(value >= 0.0)
+            total += value
+        }
+        AhkTest.AssertApprox(1.0, total / 20000, {Abs: 0.06})
+
+        total := 0.0
+        loop 20000 {
+            value := gen.lognormvariate(0.0, 1.0)
+            AhkTest.AssertTrue(value > 0.0)
+            total += value
+        }
+        AhkTest.AssertApprox(1.6487212707, total / 20000, {Abs: 0.2})
+    }
+
+    static TestVonmisesStaysInZeroToTwoPi()
+    {
+        gen := stdlib.random.Random(321)
+        loop 5000 {
+            value := gen.vonmisesvariate(1.0, 3.0)
+            AhkTest.AssertTrue(value >= 0.0 && value <= 6.2831853072)
+        }
+
+        loop 200 {
+            value := gen.vonmisesvariate(0.0, 0.0)
+            AhkTest.AssertTrue(value >= 0.0 && value <= 6.2831853072)
+        }
+    }
+
+    static TestGammaAndBetaCoverAllBranchesWithExpectedMean()
+    {
+        gen := stdlib.random.Random(88)
+
+        ; alpha > 1 branch
+        total := 0.0
+        loop 20000
+            total += gen.gammavariate(2.0, 1.5)
+        AhkTest.AssertApprox(3.0, total / 20000, {Abs: 0.2})
+
+        ; alpha = 1 branch
+        total := 0.0
+        loop 20000
+            total += gen.gammavariate(1.0, 2.0)
+        AhkTest.AssertApprox(2.0, total / 20000, {Abs: 0.15})
+
+        ; alpha < 1 branch
+        total := 0.0
+        loop 20000 {
+            value := gen.gammavariate(0.5, 1.0)
+            AhkTest.AssertTrue(value >= 0.0)
+            total += value
+        }
+        AhkTest.AssertApprox(0.5, total / 20000, {Abs: 0.05})
+
+        ; betavariate range and mean
+        total := 0.0
+        loop 20000 {
+            value := gen.betavariate(2.0, 3.0)
+            AhkTest.AssertTrue(value >= 0.0 && value <= 1.0)
+            total += value
+        }
+        AhkTest.AssertApprox(0.4, total / 20000, {Abs: 0.02})
+
+        AhkTest.RaisesMatch(ValueError, "gammavariate: alpha and beta must be > 0.0", (*) => gen.gammavariate(0.0, 1.0))
+        AhkTest.RaisesMatch(ValueError, "gammavariate: alpha and beta must be > 0.0", (*) => gen.gammavariate(1.0, 0.0))
+    }
+
+    static TestSampleWithCountsExpandsPopulationLikePython310()
+    {
+        gen := stdlib.random.Random(12345)
+        result := gen.sample(["a", "b"], 3, [2, 2])
+        AhkTest.AssertEqual(3, result.Length)
+        for value in result
+            AhkTest.AssertTrue(value = "a" || value = "b")
+
+        ; counts let k exceed distinct population size
+        gen.seed(1)
+        full := gen.sample(["x", "y"], 4, [2, 2])
+        AhkTest.AssertEqual(4, full.Length)
+
+        AhkTest.RaisesMatch(ValueError, "The number of counts does not match the population", (*) => stdlib.random.sample(["a", "b"], 1, [1]))
+        AhkTest.RaisesMatch(ValueError, "Sample larger than population or is negative", (*) => stdlib.random.sample(["a", "b"], 5, [1, 1]))
+    }
 }
 
 stdlib_random_test_counts(values)

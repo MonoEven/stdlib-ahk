@@ -5,15 +5,31 @@
 class AhkStdlibRandom
 {
     static seed(a := unset) => AhkStdlibRandomDefault.seed(a?)
-    static random() => AhkStdlibRandomDefault.random()
+    ; NOTE: AHK identifiers are case-insensitive, so the Python names random.random()
+    ; and random.Random(seed) collide on the same member. We dispatch on the argument:
+    ; no argument -> next float from the default generator; a seed -> a new Random instance.
+    static random(seed := unset) => IsSet(seed) ? AhkStdlibRandomMt19937(seed) : AhkStdlibRandomDefault.random()
     static getrandbits(k) => AhkStdlibRandomDefault.getrandbits(k)
     static uniform(a, b) => AhkStdlibRandomDefault.uniform(a, b)
     static randrange(start, stop := unset, step := 1) => AhkStdlibRandomDefault.randrange(start, stop?, step)
     static randint(a, b) => AhkStdlibRandomDefault.randint(a, b)
     static choice(sequence) => AhkStdlibRandomDefault.choice(sequence)
     static choices(population, weights := unset, cum_weights := unset, k := 1) => AhkStdlibRandomDefault.choices(population, weights?, cum_weights?, k)
-    static sample(population, k) => AhkStdlibRandomDefault.sample(population, k)
+    static sample(population, k, counts := unset) => AhkStdlibRandomDefault.sample(population, k, counts?)
     static shuffle(sequence) => AhkStdlibRandomDefault.shuffle(sequence)
+    static randbytes(n) => AhkStdlibRandomDefault.randbytes(n)
+    static getstate() => AhkStdlibRandomDefault.getstate()
+    static setstate(state) => AhkStdlibRandomDefault.setstate(state)
+    static gauss(mu, sigma) => AhkStdlibRandomDefault.gauss(mu, sigma)
+    static normalvariate(mu, sigma) => AhkStdlibRandomDefault.normalvariate(mu, sigma)
+    static lognormvariate(mu, sigma) => AhkStdlibRandomDefault.lognormvariate(mu, sigma)
+    static expovariate(lambd) => AhkStdlibRandomDefault.expovariate(lambd)
+    static triangular(low := 0.0, high := 1.0, mode := unset) => AhkStdlibRandomDefault.triangular(low, high, mode?)
+    static paretovariate(alpha) => AhkStdlibRandomDefault.paretovariate(alpha)
+    static weibullvariate(alpha, beta) => AhkStdlibRandomDefault.weibullvariate(alpha, beta)
+    static vonmisesvariate(mu, kappa) => AhkStdlibRandomDefault.vonmisesvariate(mu, kappa)
+    static gammavariate(alpha, beta) => AhkStdlibRandomDefault.gammavariate(alpha, beta)
+    static betavariate(alpha, beta) => AhkStdlibRandomDefault.betavariate(alpha, beta)
 }
 
 class AhkStdlibRandomMt19937
@@ -28,6 +44,8 @@ class AhkStdlibRandomMt19937
     {
         this.State := []
         this.Index := AhkStdlibRandomMt19937.N + 1
+        this.HasGaussNext := false
+        this.GaussNext := 0.0
         if IsSet(seed)
             this.seed(seed)
         else
@@ -41,6 +59,7 @@ class AhkStdlibRandomMt19937
 
         key := AhkStdlibRandomSeedKey(a)
         this.AhkStdlibInitByArray(key)
+        this.HasGaussNext := false
     }
 
     random()
@@ -160,7 +179,7 @@ class AhkStdlibRandomMt19937
         return result
     }
 
-    sample(population, k)
+    sample(population, k, counts := unset)
     {
         if !(population is Array || population is String)
             throw TypeError("Population must be a sequence.  For dicts or sets, use sorted(d).", -1)
@@ -169,18 +188,47 @@ class AhkStdlibRandomMt19937
         if !(k is Integer)
             throw TypeError("'" Type(k) "' object cannot be interpreted as an integer", -1)
 
-        size := population is Array ? population.Length : StrLen(population)
+        baseValues := []
+        if population is Array {
+            for value in population
+                baseValues.Push(value)
+        } else {
+            loop StrLen(population)
+                baseValues.Push(SubStr(population, A_Index, 1))
+        }
+
+        if IsSet(counts) {
+            countValues := AhkStdlibRandomSequenceValues(counts)
+            if countValues.Length != baseValues.Length
+                throw ValueError("The number of counts does not match the population", -1)
+
+            cumulative := []
+            total := 0
+            for c in countValues {
+                if !(c is Integer)
+                    throw TypeError("'" Type(c) "' object cannot be interpreted as an integer", -1)
+                total += c
+                cumulative.Push(total)
+            }
+            if total < 0
+                throw ValueError("total number of items in counts must be greater than or equal to zero", -1)
+
+            indices := this.sample(AhkStdlibRandomRangeArray(total), k)
+            result := []
+            for idx in indices {
+                pos := AhkStdlibRandomBisectRight(cumulative, idx)
+                result.Push(baseValues[pos])
+            }
+            return result
+        }
+
+        size := baseValues.Length
         if k < 0 || k > size
             throw ValueError("Sample larger than population or is negative", -1)
 
         pool := []
-        if population is Array {
-            for value in population
-                pool.Push(value)
-        } else {
-            loop StrLen(population)
-                pool.Push(SubStr(population, A_Index, 1))
-        }
+        for value in baseValues
+            pool.Push(value)
 
         result := []
         loop k {
@@ -210,6 +258,214 @@ class AhkStdlibRandomMt19937
     uniform(a, b)
     {
         return a + ((b - a) * this.random())
+    }
+
+    randbytes(n)
+    {
+        if AhkStdlibIsBool(n)
+            n := n.Value ? 1 : 0
+        if !(n is Integer)
+            throw TypeError("'" AhkStdlibPythonTypeName(n) "' object cannot be interpreted as an integer", -1)
+        if n < 0
+            throw ValueError("number of bits must be non-negative", -1)
+
+        bytes := Buffer(n, 0)
+        loop n
+            NumPut("UChar", this.getrandbits(8), bytes, A_Index - 1)
+        return bytes
+    }
+
+    getstate()
+    {
+        words := []
+        loop AhkStdlibRandomMt19937.N
+            words.Push(this.State[A_Index])
+        words.Push(this.Index)
+        internal := stdlib.tuple(words)
+        gaussNext := this.HasGaussNext ? this.GaussNext : stdlib.None
+        return stdlib.tuple([3, internal, gaussNext])
+    }
+
+    setstate(state)
+    {
+        if !(state is Array)
+            throw TypeError("state vector is the wrong type", -1)
+        if state.Length != 3
+            throw ValueError("state vector is the wrong size", -1)
+
+        version := state[1]
+        if version != 3
+            throw ValueError("state with version " version " passed to Random.setstate() of version 3", -1)
+
+        internal := state[2]
+        if !(internal is Array)
+            throw TypeError("state vector is the wrong type", -1)
+        if internal.Length != AhkStdlibRandomMt19937.N + 1
+            throw ValueError("state vector is the wrong size", -1)
+
+        newState := []
+        newState.Length := AhkStdlibRandomMt19937.N
+        loop AhkStdlibRandomMt19937.N
+            newState[A_Index] := AhkStdlibRandomUInt32(Integer(internal[A_Index]))
+        this.State := newState
+        this.Index := Integer(internal[AhkStdlibRandomMt19937.N + 1])
+
+        gaussNext := state[3]
+        if AhkStdlibIsNone(gaussNext) {
+            this.HasGaussNext := false
+            this.GaussNext := 0.0
+        } else {
+            this.HasGaussNext := true
+            this.GaussNext := gaussNext + 0.0
+        }
+    }
+
+    gauss(mu, sigma)
+    {
+        z := this.HasGaussNext ? this.GaussNext : ""
+        this.HasGaussNext := false
+        if z = "" {
+            x2pi := this.random() * AhkStdlibRandomTwoPi()
+            g2rad := Sqrt(-2.0 * Ln(1.0 - this.random()))
+            z := Cos(x2pi) * g2rad
+            this.GaussNext := Sin(x2pi) * g2rad
+            this.HasGaussNext := true
+        }
+        return mu + (z * sigma)
+    }
+
+    normalvariate(mu, sigma)
+    {
+        nvMagic := 4.0 * Exp(-0.5) / Sqrt(2.0)
+        loop {
+            u1 := this.random()
+            u2 := 1.0 - this.random()
+            z := nvMagic * (u1 - 0.5) / u2
+            zz := z * z / 4.0
+            if zz <= -Ln(u2)
+                break
+        }
+        return mu + (z * sigma)
+    }
+
+    lognormvariate(mu, sigma)
+    {
+        return Exp(this.normalvariate(mu, sigma))
+    }
+
+    expovariate(lambd)
+    {
+        return -Ln(1.0 - this.random()) / lambd
+    }
+
+    triangular(low := 0.0, high := 1.0, mode := unset)
+    {
+        u := this.random()
+        if high = low
+            return low
+        c := !IsSet(mode) || AhkStdlibIsNone(mode) ? 0.5 : (mode - low) / (high - low)
+        if u > c {
+            u := 1.0 - u
+            c := 1.0 - c
+            temp := low
+            low := high
+            high := temp
+        }
+        return low + ((high - low) * Sqrt(u * c))
+    }
+
+    paretovariate(alpha)
+    {
+        u := 1.0 - this.random()
+        return u ** (-1.0 / alpha)
+    }
+
+    weibullvariate(alpha, beta)
+    {
+        u := 1.0 - this.random()
+        return alpha * (-Ln(u)) ** (1.0 / beta)
+    }
+
+    vonmisesvariate(mu, kappa)
+    {
+        twopi := AhkStdlibRandomTwoPi()
+        if kappa <= 0.000001
+            return twopi * this.random()
+
+        s := 0.5 / kappa
+        r := s + Sqrt(1.0 + (s * s))
+        loop {
+            u1 := this.random()
+            z := Cos(AhkStdlibMathPi() * u1)
+            d := z / (r + z)
+            u2 := this.random()
+            if u2 < 1.0 - (d * d) || u2 <= (1.0 - d) * Exp(d)
+                break
+        }
+        q := 1.0 / r
+        f := (q + z) / (1.0 + (q * z))
+        u3 := this.random()
+        if u3 > 0.5
+            theta := AhkStdlibRandomFloorMod(mu + ACos(f), twopi)
+        else
+            theta := AhkStdlibRandomFloorMod(mu - ACos(f), twopi)
+        return theta
+    }
+
+    gammavariate(alpha, beta)
+    {
+        if alpha <= 0.0 || beta <= 0.0
+            throw ValueError("gammavariate: alpha and beta must be > 0.0", -1)
+
+        if alpha > 1.0 {
+            ainv := Sqrt((2.0 * alpha) - 1.0)
+            bbb := alpha - Ln(4.0)
+            ccc := alpha + ainv
+            sgMagic := 1.0 + Ln(4.5)
+            loop {
+                u1 := this.random()
+                if !(0.0000001 < u1 && u1 < 0.9999999)
+                    continue
+                u2 := 1.0 - this.random()
+                v := Ln(u1 / (1.0 - u1)) / ainv
+                x := alpha * Exp(v)
+                z := u1 * u1 * u2
+                r := bbb + (ccc * v) - x
+                if (r + sgMagic - (4.5 * z)) >= 0.0 || r >= Ln(z)
+                    return x * beta
+            }
+        } else if alpha = 1.0 {
+            u := this.random()
+            while u <= 0.0000001
+                u := this.random()
+            return -Ln(u) * beta
+        } else {
+            eConst := AhkStdlibMathE()
+            loop {
+                u := this.random()
+                b := (eConst + alpha) / eConst
+                p := b * u
+                if p <= 1.0
+                    x := p ** (1.0 / alpha)
+                else
+                    x := -Ln((b - p) / alpha)
+                u1 := this.random()
+                if p > 1.0 {
+                    if u1 <= x ** (alpha - 1.0)
+                        break
+                } else if u1 <= Exp(-x)
+                    break
+            }
+            return x * beta
+        }
+    }
+
+    betavariate(alpha, beta)
+    {
+        y := this.gammavariate(alpha, 1.0)
+        if y
+            return y / (y + this.gammavariate(beta, 1.0))
+        return 0.0
     }
 
     AhkStdlibRandBelow(n)
@@ -422,4 +678,33 @@ AhkStdlibRandomBisectRight(values, needle)
             low := mid + 1
     }
     return low
+}
+
+AhkStdlibRandomTwoPi()
+{
+    return 6.283185307179586
+}
+
+AhkStdlibMathPi()
+{
+    return 3.141592653589793
+}
+
+AhkStdlibMathE()
+{
+    return 2.718281828459045
+}
+
+AhkStdlibRandomFloorMod(x, y)
+{
+    return x - (y * Floor(x / y))
+}
+
+AhkStdlibRandomRangeArray(n)
+{
+    result := []
+    result.Length := n
+    loop n
+        result[A_Index] := A_Index - 1
+    return result
 }
