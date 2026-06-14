@@ -13,6 +13,7 @@ class AhkStdlibLogging
     static Filter := AhkStdlibLoggingFilterClass
     static NullHandler := AhkStdlibLoggingNullHandlerClass
     static LoggerAdapter := AhkStdlibLoggingLoggerAdapterClass
+    static RotatingFileHandler := AhkStdlibLoggingRotatingFileHandlerClass
     static DEBUG {
         get => 10
     }
@@ -510,6 +511,84 @@ class AhkStdlibLoggingFileHandler extends AhkStdlibLoggingStreamHandler
         if IsObject(this.stream) && HasMethod(this.stream, "Close")
             this.stream.Close()
         return ""
+    }
+}
+
+class AhkStdlibLoggingRotatingFileHandlerClass
+{
+    static Call(thisClass, filename, mode := "a", maxBytes := 0, backupCount := 0, encoding := "UTF-8")
+    {
+        return AhkStdlibLoggingRotatingFileHandler(filename, mode, maxBytes, backupCount, encoding)
+    }
+}
+
+; Rotating-file handler matching CPython logging.handlers.RotatingFileHandler.
+; When a write would push the active log past maxBytes, the file is closed,
+; renamed to "<name>.1", existing "<name>.<i>" files shift up, and the oldest
+; (>backupCount) is dropped. maxBytes=0 disables rotation. Single-threaded AHK
+; means we never race the rotation, but we still re-check size after each write
+; so the handler behaves like Python's per-emit shouldRollover().
+class AhkStdlibLoggingRotatingFileHandler extends AhkStdlibLoggingFileHandler
+{
+    __New(filename, mode := "a", maxBytes := 0, backupCount := 0, encoding := "UTF-8")
+    {
+        ; If a rollover ever happens we need append semantics so re-opens append
+        ; rather than truncate the freshly-rotated active file.
+        if maxBytes > 0 && mode = "w"
+            mode := "a"
+        super.__New(filename, mode, encoding)
+        this.maxBytes := maxBytes
+        this.backupCount := backupCount
+    }
+
+    emit(record)
+    {
+        if this.shouldRollover(record)
+            this.doRollover()
+        super.emit(record)
+    }
+
+    shouldRollover(record)
+    {
+        if this.maxBytes <= 0
+            return false
+        if !IsObject(this.stream)
+            return false
+        currentSize := this.stream.Pos
+        text := IsObject(this.formatter) ? this.formatter.format(record) : record.message
+        addLen := StrPut(text "`n", this.AhkStdlibEncoding) - 1
+        return (currentSize + addLen) >= this.maxBytes
+    }
+
+    doRollover()
+    {
+        if IsObject(this.stream) && HasMethod(this.stream, "Close")
+            this.stream.Close()
+        this.stream := ""
+
+        if this.backupCount > 0 {
+            i := this.backupCount - 1
+            while i >= 1 {
+                src := this.AhkStdlibFilename "." i
+                dst := this.AhkStdlibFilename "." (i + 1)
+                if FileExist(src) {
+                    if FileExist(dst)
+                        FileDelete dst
+                    FileMove src, dst, 1
+                }
+                i -= 1
+            }
+            firstBackup := this.AhkStdlibFilename ".1"
+            if FileExist(this.AhkStdlibFilename) {
+                if FileExist(firstBackup)
+                    FileDelete firstBackup
+                FileMove this.AhkStdlibFilename, firstBackup, 1
+            }
+        } else if FileExist(this.AhkStdlibFilename) {
+            FileDelete this.AhkStdlibFilename
+        }
+
+        this.stream := FileOpen(this.AhkStdlibFilename, "w", this.AhkStdlibEncoding)
     }
 }
 

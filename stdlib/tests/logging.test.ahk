@@ -517,6 +517,25 @@ class StdlibLoggingTest
         ; process returns msg unchanged by default
         AhkTest.AssertEqual("hello", adapter.process("hello"))
     }
+
+    static TestRotatingFileHandlerRollsOverWhenSizeExceeded()
+    {
+        path := A_Temp "\ahk_logging_rotate_" Random(100000, 999999) ".log"
+        h := stdlib.logging.RotatingFileHandler(path, "w", 50, 2)
+        h.setFormatter(stdlib.logging.Formatter("%(message)s"))
+        record1 := { name: "r", levelno: 20, levelname: "INFO", message: "aaaaaaaaaaaaaaaaaaaaaaaaaaaa", filename: "", module: "", funcName: "", lineno: 0, created: A_Now, msecs: 0 }
+        record2 := { name: "r", levelno: 20, levelname: "INFO", message: "bbbbbbbbbbbbbbbbbbbbbbbbbbbb", filename: "", module: "", funcName: "", lineno: 0, created: A_Now, msecs: 0 }
+        record3 := { name: "r", levelno: 20, levelname: "INFO", message: "cccccccccccccccccccccccccccc", filename: "", module: "", funcName: "", lineno: 0, created: A_Now, msecs: 0 }
+        h.emit(record1)
+        h.emit(record2)
+        h.emit(record3)
+        h.close()
+        AhkTest.AssertTrue(FileExist(path) != "")
+        AhkTest.AssertTrue(FileExist(path ".1") != "")
+        try FileDelete path
+        try FileDelete path ".1"
+        try FileDelete path ".2"
+    }
 }
 
 AhkTest.Collect(StdlibLoggingTest)
