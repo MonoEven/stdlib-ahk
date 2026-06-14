@@ -142,6 +142,35 @@ class StdlibMathTest
         AhkTest.AssertFalse(stdlib.math.isfinite(stdlib.math.inf))
         AhkTest.AssertFalse(stdlib.math.isfinite(stdlib.math.nan))
     }
+
+    static TestExp2MatchesPower()
+    {
+        AhkTest.AssertEqual(stdlib.math.exp2(0), 1.0)
+        AhkTest.AssertEqual(stdlib.math.exp2(1), 2.0)
+        AhkTest.AssertEqual(stdlib.math.exp2(10), 1024.0)
+        AhkTest.AssertEqual(stdlib.math.exp2(-1), 0.5)
+        AhkTest.AssertTrue(Abs(stdlib.math.exp2(0.5) - Sqrt(2.0)) < 1e-12)
+    }
+
+    static TestNextafterMovesOneUlp()
+    {
+        ; nextafter(1.0, 2.0) yields 1.0 + 2**-52 (Python 3.10).
+        delta := stdlib.math.nextafter(1.0, 2.0) - 1.0
+        AhkTest.AssertTrue(delta > 0)
+        AhkTest.AssertTrue(delta < 1e-15)
+        AhkTest.AssertEqual(stdlib.math.nextafter(1.0, 1.0), 1.0)
+        AhkTest.AssertTrue(stdlib.math.nextafter(0.0, 1.0) > 0.0)
+        AhkTest.AssertTrue(stdlib.math.nextafter(0.0, -1.0) < 0.0)
+    }
+
+    static TestUlpMatchesPython()
+    {
+        AhkTest.AssertEqual(stdlib.math.ulp(0.0), stdlib.math.nextafter(0.0, stdlib.math.inf))
+        AhkTest.AssertTrue(stdlib.math.ulp(1.0) > 0)
+        AhkTest.AssertTrue(stdlib.math.ulp(1.0) < 1e-15)
+        AhkTest.AssertEqual(stdlib.math.ulp(stdlib.math.inf), stdlib.math.inf)
+        AhkTest.AssertTrue(stdlib.math.isnan(stdlib.math.ulp(stdlib.math.nan)))
+    }
 }
 
 class StdlibMathIterablePoint

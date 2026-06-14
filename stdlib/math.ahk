@@ -44,7 +44,10 @@ class AhkStdlibMath
     static acosh(x) => AhkStdlibMathCrt1("acosh", x)
     static atanh(x) => AhkStdlibMathCrt1("atanh", x)
     static exp(x) => AhkStdlibMathCrt1("exp", x)
+    static exp2(x) => AhkStdlibMathExp2(x)
     static expm1(x) => AhkStdlibMathCrt1("expm1", x)
+    static nextafter(x, y) => AhkStdlibMathCrt2("nextafter", x, y)
+    static ulp(x) => AhkStdlibMathUlp(x)
     static log(x, base := unset) => AhkStdlibMathLog(x, base?)
     static log2(x) => AhkStdlibMathCrt1("log2", x)
     static log10(x) => AhkStdlibMathCrt1("log10", x)
@@ -370,4 +373,25 @@ AhkStdlibMathIsFinite(x)
 {
     x := AhkStdlibMathRequireNumber(x)
     return x = x && x != AhkStdlibMathInf() && x != -AhkStdlibMathInf()
+}
+
+AhkStdlibMathExp2(x)
+{
+    x := AhkStdlibMathRequireNumber(x)
+    ; Python's math.exp2(x) = 2**x. CRT exp2 exists in ucrtbase.
+    return DllCall("ucrtbase\exp2", "Double", x, "Cdecl Double")
+}
+
+AhkStdlibMathUlp(x)
+{
+    x := AhkStdlibMathRequireNumber(x)
+    if x != x
+        return x  ; ulp(nan) is nan
+    inf := AhkStdlibMathInf()
+    if x = inf || x = -inf
+        return inf
+    if x = 0.0
+        return AhkStdlibMathBitsToDouble(1)  ; smallest subnormal positive
+    ax := Abs(x)
+    return DllCall("ucrtbase\nextafter", "Double", ax, "Double", inf, "Cdecl Double") - ax
 }
