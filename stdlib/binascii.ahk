@@ -118,6 +118,30 @@ class AhkStdlibBinascii
         return AhkStdlibBinasciiQpDecode(source, header)
     }
 
+    static a2b_uu(args*)
+    {
+        if args.Length != 1
+            throw TypeError("a2b_uu() takes exactly 1 argument (" args.Length " given)", -1)
+        source := AhkStdlibBinasciiRequireQpSource(args[1])
+        return AhkStdlibBinasciiUuDecode(source)
+    }
+
+    static b2a_uu(args*)
+    {
+        if args.Length = 0
+            throw TypeError("b2a_uu() missing required argument 'data' (pos 1)", -1)
+        if args.Length > 2
+            throw TypeError("b2a_uu() takes at most 1 positional argument (" args.Length " given)", -1)
+        data := AhkStdlibBinasciiRequireBytesLike(args[1])
+        backtick := false
+        if args.Length = 2 {
+            options := args[2]
+            if Type(options) = "Object" && options.HasOwnProp("backtick")
+                backtick := AhkStdlibTruthValue(options.backtick)
+        }
+        return AhkStdlibBinasciiUuEncode(data, backtick)
+    }
+
     static b2a_qp(args*)
     {
         if args.Length = 0
@@ -430,6 +454,81 @@ AhkStdlibBinasciiQpDecode(source, header)
     loop bytes.Length
         NumPut("UChar", bytes[A_Index], out, A_Index - 1)
     return out
+}
+
+; uuencode line format: leading length char + 4-char groups (3 bytes each) +
+; newline. Length char = chr(N + 0x20) for N data bytes (or '`' for 0 if
+; backtick=true). Each value is encoded as chr(v + 0x20), or '`' for 0 (with
+; backtick) -- Python b2a_uu returns single line at a time.
+AhkStdlibBinasciiUuEncode(data, backtick)
+{
+    n := data.Size
+    if n > 45
+        throw AhkStdlibBinasciiError("At most 45 bytes at once", -1)
+    fillByte := byte => (byte = 0 && backtick) ? "``" : Chr(byte + 0x20)
+    out := fillByte(n)
+    i := 0
+    while i < n {
+        b1 := NumGet(data, i, "UChar")
+        b2 := i + 1 < n ? NumGet(data, i + 1, "UChar") : 0
+        b3 := i + 2 < n ? NumGet(data, i + 2, "UChar") : 0
+        c1 := (b1 >> 2) & 0x3f
+        c2 := ((b1 << 4) | (b2 >> 4)) & 0x3f
+        c3 := ((b2 << 2) | (b3 >> 6)) & 0x3f
+        c4 := b3 & 0x3f
+        out .= fillByte(c1) fillByte(c2) fillByte(c3) fillByte(c4)
+        i += 3
+    }
+    out .= "`n"
+    return AhkStdlibBinasciiUtf8Bytes(out)
+}
+
+AhkStdlibBinasciiUuDecode(source)
+{
+    ; Strip trailing newline(s) and ignore empty input.
+    line := source
+    line := RegExReplace(line, "[`r`n]+$")
+    if line = ""
+        return Buffer(0)
+
+    lengthChar := SubStr(line, 1, 1)
+    n := lengthChar = "``" ? 0 : (Ord(lengthChar) - 0x20) & 0x3f
+    body := SubStr(line, 2)
+    decoded := []
+    bi := 1
+    bodyLen := StrLen(body)
+    while bi <= bodyLen && decoded.Length < n {
+        c1 := AhkStdlibBinasciiUuChar(body, bi)
+        c2 := AhkStdlibBinasciiUuChar(body, bi + 1)
+        c3 := AhkStdlibBinasciiUuChar(body, bi + 2)
+        c4 := AhkStdlibBinasciiUuChar(body, bi + 3)
+        b1 := ((c1 << 2) | (c2 >> 4)) & 0xff
+        b2 := ((c2 << 4) | (c3 >> 2)) & 0xff
+        b3 := ((c3 << 6) | c4) & 0xff
+        if decoded.Length < n
+            decoded.Push(b1)
+        if decoded.Length < n
+            decoded.Push(b2)
+        if decoded.Length < n
+            decoded.Push(b3)
+        bi += 4
+    }
+    if decoded.Length != n
+        throw AhkStdlibBinasciiError("Illegal char", -1)
+    out := Buffer(n, 0)
+    loop n
+        NumPut("UChar", decoded[A_Index], out, A_Index - 1)
+    return out
+}
+
+AhkStdlibBinasciiUuChar(body, idx)
+{
+    ch := SubStr(body, idx, 1)
+    if ch = ""
+        return 0
+    if ch = "``"
+        return 0
+    return (Ord(ch) - 0x20) & 0x3f
 }
 
 ; Quoted-printable encode. Bytes >127, '=', and (when quotetabs) tab/space get

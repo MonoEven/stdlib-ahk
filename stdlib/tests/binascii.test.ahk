@@ -111,6 +111,24 @@ class StdlibBinasciiTest
         AhkTest.AssertEqual("ab", StdlibBinasciiTest.BufferText(stdlib.binascii.a2b_qp(softBreak)))
     }
 
+    static TestUuEncodeDecodeMatchesPython310()
+    {
+        ; b2a_uu("hi") -> '":&D \n' (length char chr(2+0x20) = '"').
+        AhkTest.AssertEqual("`":&D `n", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_uu(StdlibBinasciiTest.Bytes("hi"))))
+        ; b2a_uu("hello world") -> '+:&5L;&\@=V]R;&0 \n' (11 bytes -> length '+')
+        AhkTest.AssertEqual("+:&5L;&\@=V]R;&0 `n", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_uu(StdlibBinasciiTest.Bytes("hello world"))))
+        ; Empty input -> ' \n' (length char is space)
+        AhkTest.AssertEqual(" `n", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_uu(StdlibBinasciiTest.Bytes(""))))
+        ; Empty input + backtick=True -> '`\n'
+        AhkTest.AssertEqual("```n", StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_uu(StdlibBinasciiTest.Bytes(""), {backtick: stdlib.True})))
+        ; Round-trip
+        AhkTest.AssertEqual("hello world", StdlibBinasciiTest.BufferText(stdlib.binascii.a2b_uu(StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_uu(StdlibBinasciiTest.Bytes("hello world"))))))
+        AhkTest.AssertEqual("hi", StdlibBinasciiTest.BufferText(stdlib.binascii.a2b_uu(StdlibBinasciiTest.BufferText(stdlib.binascii.b2a_uu(StdlibBinasciiTest.Bytes("hi"))))))
+        ; b2a_uu rejects > 45 bytes
+        big := Buffer(46, 0)
+        AhkTest.Raises(stdlib.binascii.Error, (*) => stdlib.binascii.b2a_uu(big))
+    }
+
     static Bytes(text)
     {
         size := StrPut(text, "UTF-8") - 1
