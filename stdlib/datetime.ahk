@@ -274,6 +274,16 @@ class AhkStdlibDateTimeDateTime
     {
         return AhkStdlibDateTimeDateTime.now()
     }
+
+    static strptime(dateString, format)
+    {
+        ; Reuse time.strptime to fill struct_time, then promote to datetime.
+        ; CPython's datetime.strptime returns a naive datetime unless the
+        ; format includes %z; the simple parser here treats %z as
+        ; informational and discards offsets.
+        st := stdlib.time.strptime(dateString, format)
+        return AhkStdlibDateTimeDateTimeValue(st.tm_year, st.tm_mon, st.tm_mday, st.tm_hour, st.tm_min, st.tm_sec, 0)
+    }
 }
 
 class AhkStdlibDateTimeTime
@@ -557,6 +567,29 @@ class AhkStdlibDateTimeDateTimeValue extends AhkStdlibDateTimeDateValue
     strftime(pattern)
     {
         return AhkStdlibDateTimeDateTimeStrftime(this, pattern)
+    }
+
+    astimezone(tz := unset)
+    {
+        ; CPython: convert this naive (treated as local) datetime to tz-aware
+        ; datetime in the requested zone (default = system local). Since this
+        ; build's DateTimeValue is always naive, we compute the local offset
+        ; from the system, then shift by (target_offset - local_offset).
+        localOffsetSeconds := DateDiff(A_Now, A_NowUTC, "Seconds")
+        if !IsSet(tz) {
+            ; Default: returns the same wall-clock — interpreted as local. CPython
+            ; would attach a timezone(local_offset) here; we just return self.
+            return this
+        }
+        if !IsObject(tz) || !HasMethod(tz, "utcoffset")
+            throw TypeError("tz argument must be a datetime.tzinfo, not " AhkStdlibDateTimePythonTypeName(tz), -1)
+        targetOffset := tz.utcoffset(this)
+        if !(targetOffset is AhkStdlibDateTimeTimedelta)
+            throw TypeError("tzinfo.utcoffset() must return a timedelta", -1)
+        targetSeconds := targetOffset.total_seconds()
+        deltaSeconds := Integer(Round(targetSeconds - localOffsetSeconds))
+        delta := AhkStdlibDateTimeTimedelta({ seconds: deltaSeconds })
+        return AhkStdlibDateTimeDateTimeAddTimedelta(this, delta)
     }
 
     replace(options := unset)

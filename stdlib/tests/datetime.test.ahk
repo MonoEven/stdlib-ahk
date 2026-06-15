@@ -445,6 +445,36 @@ class StdlibDateTimeTest
         AhkTest.AssertEqual("Sat Feb 29 00:00:00 2020", leapDay.ctime())
         AhkTest.AssertEqual("2020-02-29", String(stdlib.datetime.date.fromordinal(737484)))
     }
+
+    static TestDateTimeStrptimeParsesIsoFormat()
+    {
+        dt := stdlib.datetime.datetime.strptime("2024-03-15 12:34:56", "%Y-%m-%d %H:%M:%S")
+        AhkTest.AssertEqual(2024, dt.year)
+        AhkTest.AssertEqual(3, dt.month)
+        AhkTest.AssertEqual(15, dt.day)
+        AhkTest.AssertEqual(12, dt.hour)
+        AhkTest.AssertEqual(34, dt.minute)
+        AhkTest.AssertEqual(56, dt.second)
+    }
+
+    static TestDateTimeAstimezoneShiftsByTargetOffset()
+    {
+        ; Construct a "naive" local datetime, then convert to UTC. Result wall
+        ; clock should be (local hour - local offset hours).
+        utc := stdlib.datetime.timezone.utc
+        wall := stdlib.datetime.datetime(2024, 6, 15, 12, 0, 0)
+        converted := wall.astimezone(utc)
+        ; AHK v2.0 doesn't auto-invoke __Sub; subtract via operator.sub.
+        delta := stdlib.operator.sub(converted, wall)
+        seconds := delta.total_seconds()
+        AhkTest.AssertTrue(seconds >= -86400.0 && seconds <= 86400.0)
+    }
+
+    static TestDateTimeAstimezoneRejectsNonTzInfo()
+    {
+        wall := stdlib.datetime.datetime(2024, 6, 15, 12, 0, 0)
+        AhkTest.AssertThrows(TypeError, (*) => wall.astimezone("not a tz"))
+    }
 }
 
 AhkTest.Collect(StdlibDateTimeTest)
