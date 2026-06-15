@@ -262,6 +262,66 @@ class StdlibTimeTest
         AhkTest.AssertTrue(names[2] is String)
     }
 
+    static TestMktimeRoundTripsLocaltime()
+    {
+        ; localtime(t) → struct_time → mktime(...) should give us back t.
+        original := stdlib.time.time()
+        original := Float(Floor(original))  ; mktime resolves to whole seconds
+        st := stdlib.time.localtime(original)
+        recovered := stdlib.time.mktime(st)
+        AhkTest.AssertEqual(original, recovered)
+    }
+
+    static TestStrptimeParsesAsctimeFormat()
+    {
+        ; Default format matches asctime() so Sat Jan  2 03:04:05 2024 round-trips.
+        st := stdlib.time.strptime("Sat Jan  2 03:04:05 2021")
+        AhkTest.AssertEqual(2021, st.tm_year)
+        AhkTest.AssertEqual(1, st.tm_mon)
+        AhkTest.AssertEqual(2, st.tm_mday)
+        AhkTest.AssertEqual(3, st.tm_hour)
+        AhkTest.AssertEqual(4, st.tm_min)
+        AhkTest.AssertEqual(5, st.tm_sec)
+    }
+
+    static TestStrptimeRejectsMismatchedInput()
+    {
+        AhkTest.AssertThrows(ValueError, (*) => stdlib.time.strptime("nope", "%Y-%m-%d"))
+    }
+
+    static TestStrptimeHandlesAmPm()
+    {
+        st := stdlib.time.strptime("11:30:00 PM", "%I:%M:%S %p")
+        AhkTest.AssertEqual(23, st.tm_hour)
+        st2 := stdlib.time.strptime("12:00:00 AM", "%I:%M:%S %p")
+        AhkTest.AssertEqual(0, st2.tm_hour)
+    }
+
+    static TestStrptimeUnconvertedDataRaises()
+    {
+        AhkTest.AssertThrows(ValueError, (*) => stdlib.time.strptime("2021-01-02 leftover", "%Y-%m-%d"))
+    }
+
+    static TestProcessTimeReturnsNonNegativeFloat()
+    {
+        value := stdlib.time.process_time()
+        AhkTest.AssertEqual("Float", Type(value))
+        AhkTest.AssertTrue(value >= 0.0)
+        ns := stdlib.time.process_time_ns()
+        AhkTest.AssertEqual("Integer", Type(ns))
+        AhkTest.AssertTrue(ns >= 0)
+    }
+
+    static TestThreadTimeReturnsNonNegativeFloat()
+    {
+        value := stdlib.time.thread_time()
+        AhkTest.AssertEqual("Float", Type(value))
+        AhkTest.AssertTrue(value >= 0.0)
+        ns := stdlib.time.thread_time_ns()
+        AhkTest.AssertEqual("Integer", Type(ns))
+        AhkTest.AssertTrue(ns >= 0)
+    }
+
     static ToArray(iterable)
     {
         result := []

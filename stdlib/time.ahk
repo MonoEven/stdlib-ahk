@@ -89,6 +89,41 @@ class AhkStdlibTime
     {
         return AhkStdlibTimeStrftime(format, timeTuple?)
     }
+
+    static mktime(timeTuple)
+    {
+        ; CPython mktime treats the input as local time and returns Unix seconds.
+        return AhkStdlibTimeMktime(timeTuple)
+    }
+
+    static strptime(dateString, format := "%a %b %d %H:%M:%S %Y")
+    {
+        ; CPython parses dateString according to format and returns struct_time.
+        ; Default format matches asctime() output for round-trip parsing.
+        return AhkStdlibTimeStrptime(dateString, format)
+    }
+
+    static process_time()
+    {
+        ; CPython: sum of user + system CPU time consumed by current process.
+        return AhkStdlibTimeProcessTime()
+    }
+
+    static process_time_ns()
+    {
+        return Integer(Round(AhkStdlibTimeProcessTime() * 1000000000))
+    }
+
+    static thread_time()
+    {
+        ; CPython: sum of user + system CPU time consumed by current thread.
+        return AhkStdlibTimeThreadTime()
+    }
+
+    static thread_time_ns()
+    {
+        return Integer(Round(AhkStdlibTimeThreadTime() * 1000000000))
+    }
 }
 
 class AhkStdlibTimeStructTime
@@ -557,4 +592,274 @@ AhkStdlibTimeGetTimeZoneInfo()
     daylight := daylightBias != 0 ? 1 : 0
     cached := { timezone: timezone, altzone: altzone, stdName: stdName, dstName: dstName, daylight: daylight }
     return cached
+}
+
+AhkStdlibTimeMktime(timeTuple)
+{
+    if !IsObject(timeTuple)
+        throw TypeError("Tuple or struct_time argument required", -1)
+    timeTuple := AhkStdlibTimeNormalizeTupleArgument(timeTuple)
+    AhkStdlibTimeValidateStructTimeForStrftime(timeTuple)
+    ; Reconstruct local-time stamp, then offset to UTC seconds since epoch.
+    stamp := AhkStdlibTimeStructTimeToTimestamp(timeTuple)
+    offsetSeconds := DateDiff(A_Now, A_NowUTC, "Seconds")
+    return DateDiff(stamp, "19700101000000", "Seconds") - offsetSeconds + 0.0
+}
+
+AhkStdlibTimeStrptime(dateString, format)
+{
+    if !(dateString is String)
+        throw TypeError("strptime() argument 1 must be str, not " AhkStdlibTimePythonTypeName(dateString), -1)
+    if !(format is String)
+        throw TypeError("strptime() argument 2 must be str, not " AhkStdlibTimePythonTypeName(format), -1)
+
+    ; Parser: walk format and dateString in lockstep, with each %X consuming the
+    ; appropriate slice from dateString. Literal characters in format must match
+    ; literally. Unknown directives raise ValueError to match CPython.
+    parsed := { year: 1900, mon: 1, mday: 1, hour: 0, min: 0, sec: 0, wday: -1, yday: -1, isdst: -1 }
+
+    fi := 1
+    di := 1
+    flen := StrLen(format)
+    dlen := StrLen(dateString)
+
+    while fi <= flen {
+        fch := SubStr(format, fi, 1)
+        if fch != "%" {
+            ; Treat any single space in the format as "match one or more spaces"
+            ; — CPython does this so asctime's space-padded day ("Sat Jan  2 …")
+            ; round-trips through the asctime-format default.
+            if fch = " " {
+                if di > dlen
+                    throw ValueError("time data '" dateString "' does not match format '" format "'", -1)
+                while di <= dlen && SubStr(dateString, di, 1) = " "
+                    di += 1
+                fi += 1
+                continue
+            }
+            if di > dlen || SubStr(dateString, di, 1) != fch
+                throw ValueError("time data '" dateString "' does not match format '" format "'", -1)
+            fi += 1
+            di += 1
+            continue
+        }
+        fi += 1
+        if fi > flen
+            throw ValueError("stray %% at end of format string", -1)
+        token := SubStr(format, fi, 1)
+        fi += 1
+        if token = "%" {
+            if di > dlen || SubStr(dateString, di, 1) != "%"
+                throw ValueError("time data '" dateString "' does not match format '" format "'", -1)
+            di += 1
+            continue
+        }
+        di := AhkStdlibTimeStrptimeParseDirective(dateString, di, token, parsed)
+    }
+
+    if di <= dlen
+        throw ValueError("unconverted data remains: " SubStr(dateString, di), -1)
+
+    ; Compute wday/yday now that calendar fields are known.
+    yday := AhkStdlibTimeYearDay(parsed.year, parsed.mon, parsed.mday)
+    wday := AhkStdlibTimeWeekday(parsed.year, parsed.mon, parsed.mday)
+    return AhkStdlibTimeStructTime([
+        parsed.year, parsed.mon, parsed.mday,
+        parsed.hour, parsed.min, parsed.sec,
+        wday, yday, parsed.isdst
+    ])
+}
+
+AhkStdlibTimeStrptimeParseDirective(dateString, di, token, parsed)
+{
+    static dayNamesAbbr := ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    static dayNamesFull := ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    static monthNamesAbbr := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    static monthNamesFull := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    switch token {
+        case "Y":
+            ; 4-digit year. Pull up to 4 digits.
+            digits := AhkStdlibTimeStrptimeReadDigits(dateString, di, 4)
+            parsed.year := Integer(digits.value)
+            return digits.next
+        case "y":
+            ; 2-digit year. <69 → 2000+, else 1900+. Matches CPython.
+            digits := AhkStdlibTimeStrptimeReadDigits(dateString, di, 2)
+            yy := Integer(digits.value)
+            parsed.year := yy < 69 ? 2000 + yy : 1900 + yy
+            return digits.next
+        case "m":
+            digits := AhkStdlibTimeStrptimeReadDigits(dateString, di, 2)
+            parsed.mon := Integer(digits.value)
+            return digits.next
+        case "d":
+            digits := AhkStdlibTimeStrptimeReadDigits(dateString, di, 2)
+            parsed.mday := Integer(digits.value)
+            return digits.next
+        case "H":
+            digits := AhkStdlibTimeStrptimeReadDigits(dateString, di, 2)
+            parsed.hour := Integer(digits.value)
+            return digits.next
+        case "I":
+            digits := AhkStdlibTimeStrptimeReadDigits(dateString, di, 2)
+            parsed.hour := Integer(digits.value)
+            return digits.next
+        case "M":
+            digits := AhkStdlibTimeStrptimeReadDigits(dateString, di, 2)
+            parsed.min := Integer(digits.value)
+            return digits.next
+        case "S":
+            digits := AhkStdlibTimeStrptimeReadDigits(dateString, di, 2)
+            parsed.sec := Integer(digits.value)
+            return digits.next
+        case "j":
+            ; Day of year, 1-366. Up to 3 digits.
+            digits := AhkStdlibTimeStrptimeReadDigits(dateString, di, 3)
+            ; %j by itself doesn't tell us mon/mday — leave them at the default
+            ; and rely on tm_yday. Setting mon=1/mday=yday lets us round-trip.
+            yd := Integer(digits.value)
+            mm := AhkStdlibTimeYearDayToMonth(parsed.year, yd)
+            parsed.mon := mm.month
+            parsed.mday := mm.day
+            return digits.next
+        case "p":
+            ; AM/PM: must combine with %I above for the canonical case.
+            ampm := StrUpper(SubStr(dateString, di, 2))
+            if ampm = "AM" {
+                if parsed.hour = 12
+                    parsed.hour := 0
+            } else if ampm = "PM" {
+                if parsed.hour < 12
+                    parsed.hour += 12
+            } else {
+                throw ValueError("expected AM or PM at offset " di, -1)
+            }
+            return di + 2
+        case "a":
+            return AhkStdlibTimeStrptimeMatchName(dateString, di, dayNamesAbbr, "%a")
+        case "A":
+            return AhkStdlibTimeStrptimeMatchName(dateString, di, dayNamesFull, "%A")
+        case "b":
+            ; Returns position; record the matched index into mon.
+            r := AhkStdlibTimeStrptimeMatchNameAndIndex(dateString, di, monthNamesAbbr, "%b")
+            parsed.mon := r.index
+            return r.next
+        case "B":
+            r := AhkStdlibTimeStrptimeMatchNameAndIndex(dateString, di, monthNamesFull, "%B")
+            parsed.mon := r.index
+            return r.next
+        case "Z":
+            ; Skip a timezone abbrev: read until non-letter.
+            j := di
+            while j <= StrLen(dateString) {
+                ch := SubStr(dateString, j, 1)
+                if !RegExMatch(ch, "i)[a-z]")
+                    break
+                j += 1
+            }
+            return j
+        case "z":
+            ; +HHMM / -HHMM / Z / "" — informational only, not stored.
+            ch := SubStr(dateString, di, 1)
+            if ch = "Z"
+                return di + 1
+            if ch = "+" || ch = "-"
+                return di + 5
+            return di
+        default:
+            throw ValueError("'" token "' is a bad directive in format '%" token "'", -1)
+    }
+}
+
+AhkStdlibTimeStrptimeReadDigits(text, start, maxLen)
+{
+    j := start
+    end := Min(StrLen(text), start + maxLen - 1)
+    while j <= end {
+        ch := SubStr(text, j, 1)
+        if !RegExMatch(ch, "[0-9]")
+            break
+        j += 1
+    }
+    if j = start
+        throw ValueError("expected digits at offset " start, -1)
+    return { value: SubStr(text, start, j - start), next: j }
+}
+
+AhkStdlibTimeStrptimeMatchName(text, start, names, label)
+{
+    for name in names {
+        slice := SubStr(text, start, StrLen(name))
+        if StrLower(slice) = StrLower(name)
+            return start + StrLen(name)
+    }
+    throw ValueError("expected " label " at offset " start, -1)
+}
+
+AhkStdlibTimeStrptimeMatchNameAndIndex(text, start, names, label)
+{
+    for index, name in names {
+        slice := SubStr(text, start, StrLen(name))
+        if StrLower(slice) = StrLower(name)
+            return { index: index, next: start + StrLen(name) }
+    }
+    throw ValueError("expected " label " at offset " start, -1)
+}
+
+AhkStdlibTimeYearDay(year, month, day)
+{
+    static daysBefore := [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+    yd := daysBefore[month] + day
+    if month > 2 && AhkStdlibTimeIsLeap(year)
+        yd += 1
+    return yd
+}
+
+AhkStdlibTimeYearDayToMonth(year, yday)
+{
+    static daysInMonth := [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    leap := AhkStdlibTimeIsLeap(year)
+    remaining := yday
+    month := 1
+    while month <= 12 {
+        days := daysInMonth[month]
+        if month = 2 && leap
+            days += 1
+        if remaining <= days
+            return { month: month, day: remaining }
+        remaining -= days
+        month += 1
+    }
+    return { month: 12, day: 31 }
+}
+
+AhkStdlibTimeIsLeap(year)
+{
+    return Mod(year, 4) = 0 && (Mod(year, 100) != 0 || Mod(year, 400) = 0)
+}
+
+AhkStdlibTimeProcessTime()
+{
+    ; GetProcessTimes(handle, &creation, &exit, &kernel, &user). Times are
+    ; FILETIME (100-ns ticks). Sum kernel+user → CPU seconds.
+    handle := DllCall("GetCurrentProcess", "Ptr")
+    creation := Buffer(8, 0)
+    exitT := Buffer(8, 0)
+    kernel := Buffer(8, 0)
+    user := Buffer(8, 0)
+    if !DllCall("GetProcessTimes", "Ptr", handle, "Ptr", creation, "Ptr", exitT, "Ptr", kernel, "Ptr", user)
+        throw OSError("GetProcessTimes failed", -1)
+    return (NumGet(kernel, 0, "Int64") + NumGet(user, 0, "Int64")) / 10000000.0
+}
+
+AhkStdlibTimeThreadTime()
+{
+    handle := DllCall("GetCurrentThread", "Ptr")
+    creation := Buffer(8, 0)
+    exitT := Buffer(8, 0)
+    kernel := Buffer(8, 0)
+    user := Buffer(8, 0)
+    if !DllCall("GetThreadTimes", "Ptr", handle, "Ptr", creation, "Ptr", exitT, "Ptr", kernel, "Ptr", user)
+        throw OSError("GetThreadTimes failed", -1)
+    return (NumGet(kernel, 0, "Int64") + NumGet(user, 0, "Int64")) / 10000000.0
 }
