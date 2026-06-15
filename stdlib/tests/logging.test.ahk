@@ -536,6 +536,82 @@ class StdlibLoggingTest
         try FileDelete path ".1"
         try FileDelete path ".2"
     }
+
+    static TestFormatterBraceStyleSubstitutesPlaceholders()
+    {
+        f := stdlib.logging.Formatter("{levelname}|{name}|{message}", , "{")
+        rec := { name: "x", message: "hi", levelno: 20, levelname: "INFO", filename: "", module: "", funcName: "", lineno: 0, created: A_Now, msecs: 0, exc_info: "" }
+        AhkTest.AssertEqual("INFO|x|hi", f.format(rec))
+    }
+
+    static TestFormatterDollarStyleSubstitutesPlaceholders()
+    {
+        f := stdlib.logging.Formatter("$levelname $name $message", , "$")
+        rec := { name: "n", message: "m", levelno: 20, levelname: "INFO", filename: "", module: "", funcName: "", lineno: 0, created: A_Now, msecs: 0, exc_info: "" }
+        AhkTest.AssertEqual("INFO n m", f.format(rec))
+    }
+
+    static TestFormatterRejectsUnknownStyle()
+    {
+        AhkTest.AssertThrows(ValueError, (*) => stdlib.logging.Formatter("%(message)s", , "?"))
+    }
+
+    static TestFormatterAppendsExcInfoTraceback()
+    {
+        stdlib.logging._resetForTests()
+        buffer := stdlib.io.StringIO()
+        stdlib.logging.basicConfig({ stream: buffer, level: "INFO", format: "%(message)s" })
+        try {
+            throw ValueError("boom")
+        } catch ValueError as e {
+            stdlib.logging.error("crash", e)
+        }
+        text := buffer.getvalue()
+        AhkTest.AssertContains("crash", text)
+        AhkTest.AssertContains("Traceback (most recent call last):", text)
+        AhkTest.AssertContains("ValueError: boom", text)
+    }
+
+    static TestTimedRotatingFileHandlerRotatesAfterIntervalElapses()
+    {
+        path := A_Temp "\ahk_logging_timedrotate_" Random(100000, 999999) ".log"
+        h := stdlib.logging.TimedRotatingFileHandler(path, "S", 1, 3, "UTF-8")
+        h.setFormatter(stdlib.logging.Formatter("%(message)s"))
+
+        record := { name: "r", levelno: 20, levelname: "INFO", message: "first", filename: "", module: "", funcName: "", lineno: 0, created: A_Now, msecs: 0, exc_info: "" }
+        h.emit(record)
+
+        ; Force a rollover by backdating rolloverAt to "now-1s" so the next emit
+        ; trips shouldRollover(). This avoids waiting on the wall clock.
+        h.rolloverAt := DateAdd(A_Now, -1, "Seconds")
+        record2 := { name: "r", levelno: 20, levelname: "INFO", message: "second", filename: "", module: "", funcName: "", lineno: 0, created: A_Now, msecs: 0, exc_info: "" }
+        h.emit(record2)
+        h.close()
+
+        AhkTest.AssertTrue(FileExist(path) != "")
+        rotatedExists := false
+        SplitPath path, &fileBase, &dirPart
+        Loop Files dirPart "\" fileBase ".*" {
+            rotatedExists := true
+        }
+        AhkTest.AssertTrue(rotatedExists)
+        if FileExist(path)
+            FileDelete path
+        Loop Files dirPart "\" fileBase ".*" {
+            FileDelete A_LoopFileFullPath
+        }
+    }
+
+    static TestTimedRotatingFileHandlerRejectsUnknownWhen()
+    {
+        path := A_Temp "\ahk_logging_timedrotate_bad_" Random(100000, 999999) ".log"
+        try {
+            AhkTest.AssertThrows(ValueError, (*) => stdlib.logging.TimedRotatingFileHandler(path, "Z", 1, 1))
+        } finally {
+            if FileExist(path)
+                FileDelete path
+        }
+    }
 }
 
 AhkTest.Collect(StdlibLoggingTest)

@@ -14,6 +14,7 @@ class AhkStdlibLogging
     static NullHandler := AhkStdlibLoggingNullHandlerClass
     static LoggerAdapter := AhkStdlibLoggingLoggerAdapterClass
     static RotatingFileHandler := AhkStdlibLoggingRotatingFileHandlerClass
+    static TimedRotatingFileHandler := AhkStdlibLoggingTimedRotatingFileHandlerClass
     static DEBUG {
         get => 10
     }
@@ -122,34 +123,39 @@ class AhkStdlibLogging
         return ""
     }
 
-    static warning(message)
+    static warning(message, exc_info := unset)
     {
-        this.Root().warning(message)
+        this.Root().warning(message, exc_info?)
     }
 
-    static debug(message)
+    static debug(message, exc_info := unset)
     {
-        this.Root().debug(message)
+        this.Root().debug(message, exc_info?)
     }
 
-    static info(message)
+    static info(message, exc_info := unset)
     {
-        this.Root().info(message)
+        this.Root().info(message, exc_info?)
     }
 
-    static error(message)
+    static error(message, exc_info := unset)
     {
-        this.Root().error(message)
+        this.Root().error(message, exc_info?)
     }
 
-    static critical(message)
+    static critical(message, exc_info := unset)
     {
-        this.Root().critical(message)
+        this.Root().critical(message, exc_info?)
     }
 
-    static fatal(message)
+    static fatal(message, exc_info := unset)
     {
-        this.Root().critical(message)
+        this.Root().critical(message, exc_info?)
+    }
+
+    static exception(message, exc_info := unset)
+    {
+        this.Root().exception(message, exc_info?)
     }
 
     static _resetForTests()
@@ -202,37 +208,45 @@ class AhkStdlibLoggingLogger
         this.handlers.Push(handler)
     }
 
-    info(message)
+    info(message, exc_info := unset)
     {
-        this.log(AhkStdlibLogging.INFO, message)
+        this.log(AhkStdlibLogging.INFO, message, exc_info?)
     }
 
-    debug(message)
+    debug(message, exc_info := unset)
     {
-        this.log(AhkStdlibLogging.DEBUG, message)
+        this.log(AhkStdlibLogging.DEBUG, message, exc_info?)
     }
 
-    warning(message)
+    warning(message, exc_info := unset)
     {
-        this.log(AhkStdlibLogging.WARNING, message)
+        this.log(AhkStdlibLogging.WARNING, message, exc_info?)
     }
 
-    error(message)
+    error(message, exc_info := unset)
     {
-        this.log(AhkStdlibLogging.ERROR, message)
+        this.log(AhkStdlibLogging.ERROR, message, exc_info?)
     }
 
-    critical(message)
+    critical(message, exc_info := unset)
     {
-        this.log(AhkStdlibLogging.CRITICAL, message)
+        this.log(AhkStdlibLogging.CRITICAL, message, exc_info?)
     }
 
-    fatal(message)
+    fatal(message, exc_info := unset)
     {
-        this.log(AhkStdlibLogging.CRITICAL, message)
+        this.log(AhkStdlibLogging.CRITICAL, message, exc_info?)
     }
 
-    log(level, message)
+    exception(message, exc_info := unset)
+    {
+        ; CPython's Logger.exception logs at ERROR with the active exception
+        ; appended. AHK has no implicit "current exception", so callers must
+        ; pass the Error object explicitly.
+        this.log(AhkStdlibLogging.ERROR, message, exc_info?)
+    }
+
+    log(level, message, exc_info := unset)
     {
         level := AhkStdlibLoggingNormalizeLevel(level)
         if !this.isEnabledFor(level)
@@ -246,13 +260,14 @@ class AhkStdlibLoggingLogger
             } else {
                 if level < AhkStdlibLogging.WARNING
                     return ""
-                FileAppend AhkStdlibLoggingLogRecord(this.name, level, message).message "`n", "**", "UTF-8"
+                FileAppend AhkStdlibLoggingLogRecord(this.name, level, message, exc_info?).message "`n", "**", "UTF-8"
                 return ""
             }
         }
 
+        record := AhkStdlibLoggingLogRecord(this.name, level, message, exc_info?)
         for handler in targets
-            handler.emit(AhkStdlibLoggingLogRecord(this.name, level, message))
+            handler.emit(record)
         return ""
     }
 
@@ -592,20 +607,167 @@ class AhkStdlibLoggingRotatingFileHandler extends AhkStdlibLoggingFileHandler
     }
 }
 
+class AhkStdlibLoggingTimedRotatingFileHandlerClass
+{
+    static Call(thisClass, filename, when := "h", interval := 1, backupCount := 0, encoding := "UTF-8", utc := false, atTime := unset)
+    {
+        return AhkStdlibLoggingTimedRotatingFileHandler(filename, when, interval, backupCount, encoding, utc, atTime?)
+    }
+}
+
+; Time-based rotating file handler matching CPython logging.handlers.
+; TimedRotatingFileHandler. Supported `when` values: 'S','M','H','D','MIDNIGHT'
+; (case-insensitive); interval is the multiplier (e.g. when='M', interval=15
+; means every 15 minutes). backupCount keeps only the N most recent rotated
+; files; the rest are removed. The rotated suffix is YYYY-MM-DD_HH-MM-SS.
+; AHK A_Now is local time; utc=true switches to A_NowUTC for the comparison
+; clock so logs in UTC pipelines align.
+class AhkStdlibLoggingTimedRotatingFileHandler extends AhkStdlibLoggingFileHandler
+{
+    __New(filename, when := "h", interval := 1, backupCount := 0, encoding := "UTF-8", utc := false, atTime := unset)
+    {
+        super.__New(filename, "a", encoding)
+        this.when := StrUpper(when)
+        this.interval := interval
+        this.backupCount := backupCount
+        this.utc := utc
+        this.atTime := IsSet(atTime) ? atTime : ""
+        this.intervalSeconds := AhkStdlibLoggingTimedIntervalSeconds(this.when, interval)
+        this.rolloverAt := this.computeRollover(this._currentTimestamp())
+    }
+
+    _currentTimestamp()
+    {
+        return this.utc ? A_NowUTC : A_Now
+    }
+
+    computeRollover(currentTs)
+    {
+        ; CPython rolls at currentTs + intervalSeconds for S/M/H, but at the
+        ; next midnight (or atTime) for D/MIDNIGHT. We approximate by adding
+        ; intervalSeconds in EnvAdd Seconds; MIDNIGHT pins to next 00:00:00.
+        if this.when = "MIDNIGHT" {
+            ; Strip time component, add 1 day.
+            datePart := SubStr(currentTs, 1, 8)
+            base := datePart "000000"
+            base := DateAdd(base, 1, "Days")
+            return base
+        }
+        return DateAdd(currentTs, this.intervalSeconds, "Seconds")
+    }
+
+    shouldRollover(record)
+    {
+        return this._currentTimestamp() >= this.rolloverAt
+    }
+
+    emit(record)
+    {
+        if this.shouldRollover(record)
+            this.doRollover()
+        super.emit(record)
+    }
+
+    doRollover()
+    {
+        if IsObject(this.stream) && HasMethod(this.stream, "Close")
+            this.stream.Close()
+        this.stream := ""
+
+        ; Suffix is the timestamp at which we *would* have rolled over — i.e.
+        ; the filename keeps the period whose data it contains, matching
+        ; CPython behavior.
+        ts := this.rolloverAt
+        suffix := SubStr(ts, 1, 4) "-" SubStr(ts, 5, 2) "-" SubStr(ts, 7, 2)
+        suffix .= "_" SubStr(ts, 9, 2) "-" SubStr(ts, 11, 2) "-" SubStr(ts, 13, 2)
+        rotated := this.AhkStdlibFilename "." suffix
+        if FileExist(this.AhkStdlibFilename) {
+            if FileExist(rotated)
+                FileDelete rotated
+            FileMove this.AhkStdlibFilename, rotated, 1
+        }
+
+        if this.backupCount > 0
+            this._pruneOldBackups()
+
+        this.stream := FileOpen(this.AhkStdlibFilename, "w", this.AhkStdlibEncoding)
+        this.rolloverAt := this.computeRollover(this._currentTimestamp())
+    }
+
+    _pruneOldBackups()
+    {
+        ; Find every "<base>.<timestamp>" sibling, sort lexicographically, then
+        ; drop everything past backupCount. Lexicographic order of the
+        ; YYYY-MM-DD_HH-MM-SS suffix matches chronological order.
+        SplitPath this.AhkStdlibFilename, &fileBase, &dirPart
+        if dirPart = ""
+            dirPart := "."
+        prefix := fileBase "."
+        candidates := []
+        Loop Files dirPart "\" prefix "*"
+        {
+            candidates.Push(A_LoopFileName)
+        }
+        if candidates.Length <= this.backupCount
+            return
+        Loop candidates.Length - 1 {
+            outer := A_Index
+            Loop candidates.Length - outer {
+                i := A_Index
+                if StrCompare(candidates[i], candidates[i + 1]) > 0 {
+                    tmp := candidates[i]
+                    candidates[i] := candidates[i + 1]
+                    candidates[i + 1] := tmp
+                }
+            }
+        }
+        excess := candidates.Length - this.backupCount
+        Loop excess {
+            target := dirPart "\" candidates[A_Index]
+            if FileExist(target)
+                FileDelete target
+        }
+    }
+}
+
+AhkStdlibLoggingTimedIntervalSeconds(when, interval)
+{
+    switch when {
+        case "S":
+            return interval
+        case "M":
+            return interval * 60
+        case "H":
+            return interval * 60 * 60
+        case "D", "MIDNIGHT":
+            return interval * 24 * 60 * 60
+    }
+    throw ValueError("Invalid 'when' for TimedRotatingFileHandler: '" when "' (use S/M/H/D/MIDNIGHT)", -1)
+}
+
 class AhkStdlibLoggingFormatterClass
 {
-    static Call(thisClass, fmt := "%(levelname)s:%(name)s:%(message)s", datefmt := unset)
+    static Call(thisClass, fmt := unset, datefmt := unset, style := "%")
     {
-        return AhkStdlibLoggingFormatter(AhkStdlibLoggingNormalizeFormat(fmt), datefmt?)
+        defaultByStyle := Map("%", "%(levelname)s:%(name)s:%(message)s",
+                              "{", "{levelname}:{name}:{message}",
+                              "$", "$levelname:$name:$message")
+        if !defaultByStyle.Has(style)
+            throw ValueError("Style must be one of: %, {, $", -1)
+        ; CPython picks a style-specific default fmt; mirror that here so
+        ; switching styles doesn't accidentally use %-syntax against {} text.
+        chosen := IsSet(fmt) ? AhkStdlibLoggingNormalizeFormat(fmt) : defaultByStyle[style]
+        return AhkStdlibLoggingFormatter(chosen, datefmt?, style)
     }
 }
 
 class AhkStdlibLoggingFormatter
 {
-    __New(fmt := "%(levelname)s:%(name)s:%(message)s", datefmt := unset)
+    __New(fmt := "%(levelname)s:%(name)s:%(message)s", datefmt := unset, style := "%")
     {
         this._fmt := fmt
         this._datefmt := IsSet(datefmt) ? datefmt : ""
+        this._style := style
     }
 
     formatTime(record, datefmt := unset)
@@ -621,27 +783,98 @@ class AhkStdlibLoggingFormatter
         return FormatTime(ts, df)
     }
 
+    formatException(excInfo)
+    {
+        ; CPython returns a traceback string; AHK Errors carry .Message/.What/
+        ; .File/.Line/.Stack so we approximate the multi-line format.
+        if !IsObject(excInfo)
+            return ""
+        out := "Traceback (most recent call last):"
+        if HasProp(excInfo, "Stack") && excInfo.Stack != ""
+            out .= "`n" excInfo.Stack
+        excType := Type(excInfo)
+        msg := HasProp(excInfo, "Message") ? excInfo.Message : ""
+        out .= "`n" excType ": " msg
+        return out
+    }
+
     format(record)
     {
         text := this._fmt
-        text := StrReplace(text, "%(levelname)s", record.levelname)
-        text := StrReplace(text, "%(levelno)s", String(record.levelno))
-        text := StrReplace(text, "%(name)s", record.name)
-        text := StrReplace(text, "%(message)s", record.message)
-        text := StrReplace(text, "%(filename)s", record.filename)
-        text := StrReplace(text, "%(module)s", record.module)
-        text := StrReplace(text, "%(funcName)s", record.funcName)
-        text := StrReplace(text, "%(lineno)d", String(record.lineno))
-        text := StrReplace(text, "%(lineno)s", String(record.lineno))
-        if InStr(text, "%(asctime)s")
+        switch this._style {
+            case "{":
+                text := AhkStdlibLoggingFormatBraceStyle(text, record)
+            case "$":
+                text := AhkStdlibLoggingFormatDollarStyle(text, record)
+            default:
+                text := AhkStdlibLoggingFormatPercentStyle(text, record)
+        }
+        if InStr(text, "%(asctime)s") || InStr(text, "{asctime}") || InStr(text, "$asctime")
+            ; %-style asctime expansion is handled below; brace/$ already replaced.
             text := StrReplace(text, "%(asctime)s", this.formatTime(record))
+        if HasProp(record, "exc_info") && IsObject(record.exc_info) {
+            ; CPython appends traceback to message text on first format and caches
+            ; record.exc_text. Do the same so subsequent formats reuse the work.
+            if !HasProp(record, "exc_text") || record.exc_text = ""
+                record.exc_text := this.formatException(record.exc_info)
+            if record.exc_text != "" {
+                if !InStr(text, "`n", , -1) || SubStr(text, -1) != "`n"
+                    text .= "`n"
+                text .= record.exc_text
+            }
+        }
         return text
     }
 }
 
+; Resolve the standard %(name)s placeholders against a LogRecord. Kept separate
+; from the brace/$ variants so adding a new field only touches one place.
+AhkStdlibLoggingFormatPercentStyle(text, record)
+{
+    text := StrReplace(text, "%(levelname)s", record.levelname)
+    text := StrReplace(text, "%(levelno)s", String(record.levelno))
+    text := StrReplace(text, "%(name)s", record.name)
+    text := StrReplace(text, "%(message)s", record.message)
+    text := StrReplace(text, "%(filename)s", record.filename)
+    text := StrReplace(text, "%(module)s", record.module)
+    text := StrReplace(text, "%(funcName)s", record.funcName)
+    text := StrReplace(text, "%(lineno)d", String(record.lineno))
+    text := StrReplace(text, "%(lineno)s", String(record.lineno))
+    return text
+}
+
+AhkStdlibLoggingFormatBraceStyle(text, record)
+{
+    text := StrReplace(text, "{levelname}", record.levelname)
+    text := StrReplace(text, "{levelno}", String(record.levelno))
+    text := StrReplace(text, "{name}", record.name)
+    text := StrReplace(text, "{message}", record.message)
+    text := StrReplace(text, "{filename}", record.filename)
+    text := StrReplace(text, "{module}", record.module)
+    text := StrReplace(text, "{funcName}", record.funcName)
+    text := StrReplace(text, "{lineno}", String(record.lineno))
+    text := StrReplace(text, "{asctime}", HasProp(record, "asctime") ? record.asctime : "")
+    return text
+}
+
+AhkStdlibLoggingFormatDollarStyle(text, record)
+{
+    ; Longest names first so "$levelname" doesn't get truncated by a "$level" rule.
+    text := StrReplace(text, "$levelname", record.levelname)
+    text := StrReplace(text, "$levelno", String(record.levelno))
+    text := StrReplace(text, "$filename", record.filename)
+    text := StrReplace(text, "$funcName", record.funcName)
+    text := StrReplace(text, "$message", record.message)
+    text := StrReplace(text, "$module", record.module)
+    text := StrReplace(text, "$lineno", String(record.lineno))
+    text := StrReplace(text, "$asctime", HasProp(record, "asctime") ? record.asctime : "")
+    text := StrReplace(text, "$name", record.name)
+    return text
+}
+
 class AhkStdlibLoggingLogRecord
 {
-    __New(name, level, message)
+    __New(name, level, message, exc_info := unset)
     {
         this.name := name
         this.levelno := level
@@ -654,6 +887,8 @@ class AhkStdlibLoggingLogRecord
         this.module := ""
         this.funcName := ""
         this.lineno := 0
+        this.exc_info := IsSet(exc_info) ? exc_info : ""
+        this.exc_text := ""
     }
 }
 
