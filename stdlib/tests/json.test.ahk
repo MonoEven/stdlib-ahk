@@ -174,6 +174,42 @@ class StdlibTextJsonTest
         AhkTest.AssertEqual(1, err.lineno)
         AhkTest.AssertEqual(2, err.colno)
     }
+
+    static TestJSONEncoderEncodeAndIterencode()
+    {
+        encoder := stdlib.json.JSONEncoder({ indent: 2, sort_keys: true })
+        encoded := encoder.encode(Map("a", 1, "b", 2))
+        AhkTest.AssertEqual("{`n  `"a`": 1,`n  `"b`": 2`n}", encoded)
+        AhkTest.AssertEqual(2, encoder.indent)
+        AhkTest.AssertTrue(encoder.sort_keys)
+        chunks := encoder.iterencode([1, 2, 3])
+        AhkTest.AssertEqual(1, chunks.Length)
+        AhkTest.AssertEqual("[`n  1,`n  2,`n  3`n]", chunks[1])
+    }
+
+    static TestJSONEncoderDefaultRaises()
+    {
+        encoder := stdlib.json.JSONEncoder()
+        AhkTest.AssertThrows(TypeError, (*) => encoder.default(StdlibJsonUnserializable()))
+    }
+
+    static TestJSONDecoderDecodeAndRawDecode()
+    {
+        decoder := stdlib.json.JSONDecoder()
+        AhkTest.AssertEqual(42, decoder.decode("42"))
+        result := decoder.raw_decode("  123 trailing data")
+        AhkTest.AssertEqual(123, result[1])
+        AhkTest.AssertTrue(result[2] >= 4)
+    }
+
+    static TestJSONDecoderObjectHook()
+    {
+        tag(obj) => (obj["tagged"] := true, obj)
+        decoder := stdlib.json.JSONDecoder({ object_hook: tag })
+        out := decoder.decode("{`"x`": 1}")
+        AhkTest.AssertTrue(out["tagged"])
+        AhkTest.AssertEqual(1, out["x"])
+    }
 }
 
 class StdlibJsonUnserializable

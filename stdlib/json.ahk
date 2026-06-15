@@ -18,6 +18,26 @@ class AhkStdlibTextJson
         return AhkStdlibJsonDecodeError(args*)
     }
 
+    static JSONEncoder
+    {
+        get => AhkStdlibJsonEncoder
+    }
+
+    static JSONEncoder(options := unset)
+    {
+        return AhkStdlibJsonEncoder(options?)
+    }
+
+    static JSONDecoder
+    {
+        get => AhkStdlibJsonDecoder
+    }
+
+    static JSONDecoder(options := unset)
+    {
+        return AhkStdlibJsonDecoder(options?)
+    }
+
     static Bool(value)
     {
         return AhkStdlibTruthValue(value) ? this.True : this.False
@@ -586,4 +606,85 @@ class AhkStdlibJsonParser
 
 class AhkStdlibJsonDecodeError extends ValueError
 {
+}
+
+; CPython JSONEncoder: holds dump options (indent/sort_keys/ensure_ascii/...)
+; and exposes encode(value) / iterencode(value) / default(obj). Subclassing for
+; custom serialization works by overriding default; here AHK lets the caller
+; pass options.default = a Func, which AhkStdlibJsonStringify already honors.
+class AhkStdlibJsonEncoder
+{
+    __New(options := unset)
+    {
+        this._config := AhkStdlibJsonOptions(options?)
+        this.indent := IsSet(options) && IsObject(options) && HasProp(options, "indent") && !AhkStdlibIsNone(options.indent) ? options.indent : stdlib.None
+        this.sort_keys := this._config.sort_keys
+        this.ensure_ascii := this._config.ensure_ascii
+        this.item_separator := this._config.itemSep
+        this.key_separator := this._config.keySep
+    }
+
+    encode(value)
+    {
+        return AhkStdlibJsonStringify(value, this._config, 0)
+    }
+
+    iterencode(value)
+    {
+        ; Python's iterencode yields chunks; AHK has no generators, so emit the
+        ; whole encoded string as a single-element array. Callers iterating over
+        ; this still see correct concatenated output.
+        return [this.encode(value)]
+    }
+
+    default(obj)
+    {
+        ; Mirrors CPython: by default, raises TypeError; subclasses override to
+        ; produce a serializable substitute. Callers using options.default get
+        ; their hook routed through AhkStdlibJsonStringify before this fires.
+        throw TypeError("Object of type " Type(obj) " is not JSON serializable", -1)
+    }
+}
+
+; CPython JSONDecoder: configurable parser holding object_hook/parse_float/etc.
+; Exposes decode(text) / raw_decode(text) -> [value, end_index] for streaming
+; parsers that need to know how many characters were consumed.
+class AhkStdlibJsonDecoder
+{
+    __New(options := unset)
+    {
+        config := {
+            object_hook: stdlib.None,
+            parse_float: stdlib.None,
+            parse_int: stdlib.None
+        }
+        if IsSet(options) && IsObject(options) {
+            if HasProp(options, "object_hook") && !AhkStdlibIsNone(options.object_hook)
+                config.object_hook := options.object_hook
+            if HasProp(options, "parse_float") && !AhkStdlibIsNone(options.parse_float)
+                config.parse_float := options.parse_float
+            if HasProp(options, "parse_int") && !AhkStdlibIsNone(options.parse_int)
+                config.parse_int := options.parse_int
+        }
+        this._config := config
+        this.object_hook := config.object_hook
+        this.parse_float := config.parse_float
+        this.parse_int := config.parse_int
+    }
+
+    decode(text)
+    {
+        return AhkStdlibJsonParser(text, this._config).Parse()
+    }
+
+    raw_decode(text)
+    {
+        ; Skip leading whitespace per CPython, then parse one value and return
+        ; (value, end_index_after_value) without complaining about trailing
+        ; data — this is the streaming-friendly entry point.
+        parser := AhkStdlibJsonParser(text, this._config)
+        parser.SkipWhitespace()
+        value := parser.ParseValue()
+        return AhkStdlibTuple([value, parser.Pos - 1])
+    }
 }
