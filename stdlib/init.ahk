@@ -568,3 +568,19 @@ AhkStdlibToArray(data)
     }
     throw TypeError("'" Type(data) "' object is not iterable", -1)
 }
+
+; Canonical Python-style repr() for a string: backslash-escape \ n r t and the
+; quote, preferring single quotes but switching to double quotes when the value
+; contains a single quote but no double quote (matching CPython). Modules with
+; richer escaping (array's \x/\b/\f) keep their own variant.
+AhkStdlibStringRepr(value)
+{
+    escaped := StrReplace(value, "\", "\\")
+    escaped := StrReplace(escaped, "`n", "\n")
+    escaped := StrReplace(escaped, "`r", "\r")
+    escaped := StrReplace(escaped, "`t", "\t")
+    escaped := StrReplace(escaped, "'", "\'")
+    if InStr(escaped, "\'") && !InStr(escaped, '"')
+        return '"' StrReplace(escaped, "\'", "'") '"'
+    return "'" escaped "'"
+}

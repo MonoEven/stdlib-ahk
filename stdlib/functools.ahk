@@ -443,14 +443,7 @@ AhkStdlibFunctoolsJoin(values, separator)
 
 AhkStdlibFunctoolsStringRepr(value)
 {
-    escaped := StrReplace(value, "\", "\\")
-    escaped := StrReplace(escaped, "`n", "\n")
-    escaped := StrReplace(escaped, "`r", "\r")
-    escaped := StrReplace(escaped, "`t", "\t")
-    escaped := StrReplace(escaped, "'", "\'")
-    if InStr(escaped, "\'") && !InStr(escaped, '"')
-        return '"' StrReplace(escaped, "\'", "'") '"'
-    return "'" escaped "'"
+    return AhkStdlibStringRepr(value)
 }
 
 AhkStdlibFunctoolsArrayRepr(values)
