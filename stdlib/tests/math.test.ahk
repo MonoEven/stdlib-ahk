@@ -171,6 +171,42 @@ class StdlibMathTest
         AhkTest.AssertEqual(stdlib.math.ulp(stdlib.math.inf), stdlib.math.inf)
         AhkTest.AssertTrue(stdlib.math.isnan(stdlib.math.ulp(stdlib.math.nan)))
     }
+
+    static TestErfAndErfcFollowPythonMath()
+    {
+        AhkTest.AssertEqual(0.0, stdlib.math.erf(0))
+        AhkTest.AssertApprox(0.8427007929497149, stdlib.math.erf(1), { Rel: 1.0e-12 })
+        AhkTest.AssertApprox(-0.8427007929497149, stdlib.math.erf(-1), { Rel: 1.0e-12 })
+        AhkTest.AssertApprox(0.1572992070502851, stdlib.math.erfc(1), { Rel: 1.0e-12 })
+        AhkTest.AssertEqual(1.0, stdlib.math.erfc(0))
+        AhkTest.AssertEqual(1.0, stdlib.math.erf(stdlib.math.inf))
+        AhkTest.AssertEqual(-1.0, stdlib.math.erf(-stdlib.math.inf))
+        AhkTest.AssertEqual(0.0, stdlib.math.erfc(stdlib.math.inf))
+        AhkTest.AssertEqual(2.0, stdlib.math.erfc(-stdlib.math.inf))
+    }
+
+    static TestGammaAndLgammaFollowPythonMath()
+    {
+        AhkTest.AssertApprox(1.7724538509055159, stdlib.math.gamma(0.5), { Rel: 1.0e-12 })
+        AhkTest.AssertApprox(24.0, stdlib.math.gamma(5), { Rel: 1.0e-12 })
+        AhkTest.AssertApprox(1.0, stdlib.math.gamma(1), { Rel: 1.0e-12 })
+        AhkTest.AssertApprox(-3.544907701811032, stdlib.math.gamma(-0.5), { Rel: 1.0e-12 })
+        AhkTest.AssertApprox(3.178053830347945, stdlib.math.lgamma(5), { Rel: 1.0e-12 })
+        AhkTest.AssertEqual(0.0, stdlib.math.lgamma(1.0))
+        AhkTest.AssertApprox(1.265512123484645, stdlib.math.lgamma(-0.5), { Rel: 1.0e-12 })
+        AhkTest.AssertEqual(stdlib.math.inf, stdlib.math.gamma(stdlib.math.inf))
+        AhkTest.AssertEqual(stdlib.math.inf, stdlib.math.lgamma(stdlib.math.inf))
+    }
+
+    static TestGammaAndLgammaRaiseOnPolesLikePython()
+    {
+        AhkTest.RaisesMatch(ValueError, "math domain error", (*) => stdlib.math.gamma(0))
+        AhkTest.RaisesMatch(ValueError, "math domain error", (*) => stdlib.math.gamma(0.0))
+        AhkTest.RaisesMatch(ValueError, "math domain error", (*) => stdlib.math.gamma(-1))
+        AhkTest.RaisesMatch(ValueError, "math domain error", (*) => stdlib.math.gamma(-3))
+        AhkTest.RaisesMatch(ValueError, "math domain error", (*) => stdlib.math.lgamma(0.0))
+        AhkTest.RaisesMatch(ValueError, "math domain error", (*) => stdlib.math.lgamma(-2))
+    }
 }
 
 class StdlibMathIterablePoint

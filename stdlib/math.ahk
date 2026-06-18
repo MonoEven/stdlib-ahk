@@ -63,6 +63,11 @@ class AhkStdlibMath
     static isnan(x) => AhkStdlibMathIsNan(x)
     static isinf(x) => AhkStdlibMathIsInf(x)
     static isfinite(x) => AhkStdlibMathIsFinite(x)
+
+    static erf(x) => AhkStdlibMathCrt1("erf", x)
+    static erfc(x) => AhkStdlibMathCrt1("erfc", x)
+    static gamma(x) => AhkStdlibMathGamma(x)
+    static lgamma(x) => AhkStdlibMathLgamma(x)
 }
 
 stdlib.math := AhkStdlibMath
@@ -394,4 +399,22 @@ AhkStdlibMathUlp(x)
         return AhkStdlibMathBitsToDouble(1)  ; smallest subnormal positive
     ax := Abs(x)
     return DllCall("ucrtbase\nextafter", "Double", ax, "Double", inf, "Cdecl Double") - ax
+}
+
+AhkStdlibMathGamma(x)
+{
+    x := AhkStdlibMathRequireNumber(x)
+    ; Poles at 0 and the negative integers raise ValueError in CPython.
+    if x = Floor(x) && x <= 0.0 && AhkStdlibMathIsFinite(x)
+        throw ValueError("math domain error", -1)
+    return DllCall("ucrtbase\tgamma", "Double", x, "Cdecl Double")
+}
+
+AhkStdlibMathLgamma(x)
+{
+    x := AhkStdlibMathRequireNumber(x)
+    ; Poles at 0 and the negative integers raise ValueError in CPython.
+    if x = Floor(x) && x <= 0.0 && AhkStdlibMathIsFinite(x)
+        throw ValueError("math domain error", -1)
+    return DllCall("ucrtbase\lgamma", "Double", x, "Cdecl Double")
 }

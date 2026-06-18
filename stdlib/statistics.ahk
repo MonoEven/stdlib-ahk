@@ -6,9 +6,172 @@ class AhkStdlibStatisticsError extends ValueError
 {
 }
 
+; Public facade for NormalDist. Calling stdlib.statistics.NormalDist(mu, sigma)
+; goes through obj.prop(args), which injects the module class as an implicit
+; first argument; static Call absorbs it as thisClass. from_samples stays a
+; static so stdlib.statistics.NormalDist.from_samples(...) keeps working.
+class AhkStdlibNormalDistClass
+{
+    static Call(thisClass, mu := 0.0, sigma := 1.0)
+    {
+        return AhkStdlibNormalDist(mu, sigma)
+    }
+
+    static from_samples(data)
+    {
+        return AhkStdlibNormalDist.from_samples(data)
+    }
+}
+
+class AhkStdlibNormalDist
+{
+    __New(mu := 0.0, sigma := 1.0)
+    {
+        if sigma < 0.0
+            throw AhkStdlibStatisticsError("sigma must be non-negative", -1)
+        this.AhkStdlibMu := mu + 0.0
+        this.AhkStdlibSigma := sigma + 0.0
+    }
+
+    static from_samples(data)
+    {
+        values := AhkStdlibStatisticsList(data)
+        xbar := AhkStdlibMathStatistics.fmean(values)
+        return AhkStdlibNormalDist(xbar, AhkStdlibMathStatistics.stdev(values, xbar))
+    }
+
+    mean => this.AhkStdlibMu
+    median => this.AhkStdlibMu
+    mode => this.AhkStdlibMu
+    stdev => this.AhkStdlibSigma
+    variance => this.AhkStdlibSigma ** 2.0
+
+    pdf(x)
+    {
+        sigma := this.AhkStdlibSigma
+        variance := sigma ** 2.0
+        if !variance
+            throw AhkStdlibStatisticsError("pdf() not defined when sigma is zero", -1)
+        tau := 2.0 * AhkStdlibStatisticsPi()
+        return DllCall("ucrtbase\exp", "Double", (x - this.AhkStdlibMu) ** 2.0 / (-2.0 * variance), "Cdecl Double") / Sqrt(tau * variance)
+    }
+
+    cdf(x)
+    {
+        sigma := this.AhkStdlibSigma
+        if !sigma
+            throw AhkStdlibStatisticsError("cdf() not defined when sigma is zero", -1)
+        return 0.5 * (1.0 + AhkStdlibStatisticsErf((x - this.AhkStdlibMu) / (sigma * Sqrt(2.0))))
+    }
+
+    inv_cdf(p)
+    {
+        if p <= 0.0 || p >= 1.0
+            throw AhkStdlibStatisticsError("p must be in the range 0.0 < p < 1.0", -1)
+        if this.AhkStdlibSigma <= 0.0
+            throw AhkStdlibStatisticsError("cdf() not defined when sigma at or below zero", -1)
+        return AhkStdlibStatisticsNormalInvCdf(p, this.AhkStdlibMu, this.AhkStdlibSigma)
+    }
+
+    quantiles(n := 4)
+    {
+        result := []
+        loop n - 1
+            result.Push(this.inv_cdf(A_Index / n))
+        return result
+    }
+
+    overlap(other)
+    {
+        if !(other is AhkStdlibNormalDist)
+            throw TypeError("Expected another NormalDist instance", -1)
+        X := this
+        Y := other
+        ; sort to assure commutativity: compare (sigma, mu) tuples
+        if (Y.AhkStdlibSigma < X.AhkStdlibSigma)
+            || (Y.AhkStdlibSigma = X.AhkStdlibSigma && Y.AhkStdlibMu < X.AhkStdlibMu) {
+            X := other
+            Y := this
+        }
+        xVar := X.variance
+        yVar := Y.variance
+        if !xVar || !yVar
+            throw AhkStdlibStatisticsError("overlap() not defined when sigma is zero", -1)
+        dv := yVar - xVar
+        dm := Abs(Y.AhkStdlibMu - X.AhkStdlibMu)
+        if !dv
+            return 1.0 - AhkStdlibStatisticsErf(dm / (2.0 * X.AhkStdlibSigma * Sqrt(2.0)))
+        a := X.AhkStdlibMu * yVar - Y.AhkStdlibMu * xVar
+        b := X.AhkStdlibSigma * Y.AhkStdlibSigma * Sqrt(dm ** 2.0 + dv * DllCall("ucrtbase\log", "Double", yVar / xVar, "Cdecl Double"))
+        x1 := (a + b) / dv
+        x2 := (a - b) / dv
+        return 1.0 - (Abs(Y.cdf(x1) - X.cdf(x1)) + Abs(Y.cdf(x2) - X.cdf(x2)))
+    }
+
+    zscore(x)
+    {
+        if !this.AhkStdlibSigma
+            throw AhkStdlibStatisticsError("zscore() not defined when sigma is zero", -1)
+        return (x - this.AhkStdlibMu) / this.AhkStdlibSigma
+    }
+
+    samples(n, seed := unset)
+    {
+        ; AHK v2's Random() has no seed argument; when a seed is supplied we
+        ; draw deterministic uniforms from a small LCG so output is repeatable.
+        state := IsSet(seed) ? (seed & 0xFFFFFFFF) : 0
+        result := []
+        loop n {
+            if IsSet(seed) {
+                state := Mod(state * 1103515245 + 12345, 2147483648)
+                u := (state + 0.5) / 2147483648.0
+            } else {
+                u := Random(0.0, 1.0)
+            }
+            if u <= 0.0
+                u := 2.2250738585072014e-308
+            else if u >= 1.0
+                u := 1.0 - 1.1102230246251565e-16
+            result.Push(AhkStdlibStatisticsNormalInvCdf(u, this.AhkStdlibMu, this.AhkStdlibSigma))
+        }
+        return result
+    }
+
+    ; Arithmetic. AHK v2 cannot cleanly overload '/', so these are methods.
+    ; translate/scale operate on a constant; add/subtract also accept a NormalDist.
+    translate(c) => AhkStdlibNormalDist(this.AhkStdlibMu + c, this.AhkStdlibSigma)
+    scale(c) => AhkStdlibNormalDist(this.AhkStdlibMu * c, this.AhkStdlibSigma * Abs(c))
+
+    add(other)
+    {
+        if other is AhkStdlibNormalDist
+            return AhkStdlibNormalDist(this.AhkStdlibMu + other.AhkStdlibMu, Sqrt(this.AhkStdlibSigma ** 2.0 + other.AhkStdlibSigma ** 2.0))
+        return AhkStdlibNormalDist(this.AhkStdlibMu + other, this.AhkStdlibSigma)
+    }
+
+    subtract(other)
+    {
+        if other is AhkStdlibNormalDist
+            return AhkStdlibNormalDist(this.AhkStdlibMu - other.AhkStdlibMu, Sqrt(this.AhkStdlibSigma ** 2.0 + other.AhkStdlibSigma ** 2.0))
+        return AhkStdlibNormalDist(this.AhkStdlibMu - other, this.AhkStdlibSigma)
+    }
+
+    multiply(c) => AhkStdlibNormalDist(this.AhkStdlibMu * c, this.AhkStdlibSigma * Abs(c))
+    divide(c) => AhkStdlibNormalDist(this.AhkStdlibMu / c, this.AhkStdlibSigma / Abs(c))
+    negate() => AhkStdlibNormalDist(-this.AhkStdlibMu, this.AhkStdlibSigma)
+
+    equals(other)
+    {
+        if !(other is AhkStdlibNormalDist)
+            return false
+        return this.AhkStdlibMu = other.AhkStdlibMu && this.AhkStdlibSigma = other.AhkStdlibSigma
+    }
+}
+
 class AhkStdlibMathStatistics
 {
     static StatisticsError := AhkStdlibStatisticsError
+    static NormalDist := AhkStdlibNormalDistClass
 
     static mean(data)
     {
@@ -372,4 +535,85 @@ AhkStdlibStatisticsQuickSort(arr, lo, hi)
             hi := j
         }
     }
+}
+
+AhkStdlibStatisticsPi()
+{
+    return 3.141592653589793
+}
+
+AhkStdlibStatisticsErf(x)
+{
+    return DllCall("ucrtbase\erf", "Double", x + 0.0, "Cdecl Double")
+}
+
+AhkStdlibStatisticsNormalInvCdf(p, mu, sigma)
+{
+    ; Wichura, M.J. (1988). "Algorithm AS241: The Percentage Points of the
+    ; Normal Distribution". Matches CPython statistics._normal_dist_inv_cdf.
+    q := p - 0.5
+    if Abs(q) <= 0.425 {
+        r := 0.180625 - q * q
+        num := (((((((2.5090809287301226727e+3 * r
+                    + 3.3430575583588128105e+4) * r
+                    + 6.7265770927008700853e+4) * r
+                    + 4.5921953931549871457e+4) * r
+                    + 1.3731693765509461125e+4) * r
+                    + 1.9715909503065514427e+3) * r
+                    + 1.3314166789178437745e+2) * r
+                    + 3.3871328727963666080e+0) * q
+        den := (((((((5.2264952788528545610e+3 * r
+                    + 2.8729085735721942674e+4) * r
+                    + 3.9307895800092710610e+4) * r
+                    + 2.1213794301586595867e+4) * r
+                    + 5.3941960214247511077e+3) * r
+                    + 6.8718700749205790830e+2) * r
+                    + 4.2313330701600911252e+1) * r
+                    + 1.0)
+        x := num / den
+        return mu + (x * sigma)
+    }
+    r := q <= 0.0 ? p : 1.0 - p
+    r := Sqrt(-DllCall("ucrtbase\log", "Double", r, "Cdecl Double"))
+    if r <= 5.0 {
+        r := r - 1.6
+        num := (((((((7.7454501427834140764e-4 * r
+                    + 2.2723844989269184583e-2) * r
+                    + 2.4178072517745061177e-1) * r
+                    + 1.2704582524523683826e+0) * r
+                    + 3.6478483247632046050e+0) * r
+                    + 5.7694972214606914055e+0) * r
+                    + 4.6303378461565452959e+0) * r
+                    + 1.4234371107496835773e+0)
+        den := (((((((1.0507500716444168432e-9 * r
+                    + 5.4759380849953449460e-4) * r
+                    + 1.5198666563616457196e-2) * r
+                    + 1.4810397642748007459e-1) * r
+                    + 6.8976733498510000455e-1) * r
+                    + 1.6763848301838038494e+0) * r
+                    + 2.0531916266377588219e+0) * r
+                    + 1.0)
+    } else {
+        r := r - 5.0
+        num := (((((((2.0103343992922881327e-7 * r
+                    + 2.7115555687434875782e-5) * r
+                    + 1.2426609473880784386e-3) * r
+                    + 2.6532189526576123093e-2) * r
+                    + 2.9656057182850489123e-1) * r
+                    + 1.7848265399172913358e+0) * r
+                    + 5.4637849111641143699e+0) * r
+                    + 6.6579046435011037772e+0)
+        den := (((((((2.0442631033899397856e-15 * r
+                    + 1.4215117583164458887e-7) * r
+                    + 1.8463183175100546818e-5) * r
+                    + 7.8686913114561325100e-4) * r
+                    + 1.4875361290850614852e-2) * r
+                    + 1.3692988092273580531e-1) * r
+                    + 5.9983220655588793769e-1) * r
+                    + 1.0)
+    }
+    x := num / den
+    if q < 0.0
+        x := -x
+    return mu + (x * sigma)
 }

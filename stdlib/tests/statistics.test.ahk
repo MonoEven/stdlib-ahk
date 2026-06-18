@@ -162,6 +162,152 @@ class StdlibMathStatisticsTest
         AhkTest.RaisesMatch(errorType, "linear regression requires at least two data points", (*) => stdlib.statistics.linear_regression([1], [1]))
         AhkTest.RaisesMatch(errorType, "x is constant", (*) => stdlib.statistics.linear_regression([5, 5, 5], [1, 2, 3]))
     }
+
+    static TestNormalDistPropertiesFollowPythonStatistics()
+    {
+        nd := stdlib.statistics.NormalDist(2, 3)
+        AhkTest.AssertEqual(2.0, nd.mean)
+        AhkTest.AssertEqual(2.0, nd.median)
+        AhkTest.AssertEqual(2.0, nd.mode)
+        AhkTest.AssertEqual(3.0, nd.stdev)
+        AhkTest.AssertEqual(9.0, nd.variance)
+
+        std := stdlib.statistics.NormalDist()
+        AhkTest.AssertEqual(0.0, std.mean)
+        AhkTest.AssertEqual(1.0, std.stdev)
+    }
+
+    static TestNormalDistRejectsNegativeSigma()
+    {
+        AhkTest.RaisesMatch(stdlib.statistics.StatisticsError, "sigma must be non-negative", (*) => stdlib.statistics.NormalDist(0, -1))
+    }
+
+    static TestNormalDistCdfFollowsPythonStatistics()
+    {
+        nd := stdlib.statistics.NormalDist(0, 1)
+        AhkTest.AssertApprox(0.5, nd.cdf(0))
+        AhkTest.AssertApprox(0.9750021048517796, nd.cdf(1.96))
+        AhkTest.AssertApprox(0.8413447460685428, stdlib.statistics.NormalDist(2, 3).cdf(5))
+    }
+
+    static TestNormalDistPdfFollowsPythonStatistics()
+    {
+        nd := stdlib.statistics.NormalDist(0, 1)
+        AhkTest.AssertApprox(0.3989422804014327, nd.pdf(0))
+        AhkTest.AssertApprox(0.1329807601338109, stdlib.statistics.NormalDist(2, 3).pdf(2))
+    }
+
+    static TestNormalDistInvCdfFollowsPythonStatistics()
+    {
+        nd := stdlib.statistics.NormalDist(0, 1)
+        AhkTest.AssertApprox(1.9599639845400536, nd.inv_cdf(0.975))
+        AhkTest.AssertApprox(-0.6744897501960817, nd.inv_cdf(0.25))
+        AhkTest.AssertApprox(5.844654696633802, stdlib.statistics.NormalDist(2, 3).inv_cdf(0.9))
+        ; round trip cdf(inv_cdf(p)) == p
+        AhkTest.AssertApprox(0.123, nd.cdf(nd.inv_cdf(0.123)))
+        ; deep tail exercises the r > 5 branch
+        AhkTest.AssertApprox(-7.034483825301132, nd.inv_cdf(1e-12), { rel: 1e-6 })
+    }
+
+    static TestNormalDistInvCdfRejectsOutOfRange()
+    {
+        nd := stdlib.statistics.NormalDist(0, 1)
+        AhkTest.RaisesMatch(stdlib.statistics.StatisticsError, "p must be in the range", (*) => nd.inv_cdf(0))
+        AhkTest.RaisesMatch(stdlib.statistics.StatisticsError, "p must be in the range", (*) => nd.inv_cdf(1))
+    }
+
+    static TestNormalDistQuantilesFollowPythonStatistics()
+    {
+        nd := stdlib.statistics.NormalDist(0, 1)
+        q := nd.quantiles()
+        AhkTest.AssertEqual(3, q.Length)
+        AhkTest.AssertApprox(-0.6744897501960817, q[1])
+        AhkTest.AssertApprox(0.0, q[2])
+        AhkTest.AssertApprox(0.6744897501960817, q[3])
+
+        q2 := stdlib.statistics.NormalDist(2, 3).quantiles()
+        AhkTest.AssertApprox(-0.023469250588245227, q2[1])
+        AhkTest.AssertApprox(2.0, q2[2])
+        AhkTest.AssertApprox(4.023469250588246, q2[3])
+    }
+
+    static TestNormalDistZscoreFollowsPythonStatistics()
+    {
+        AhkTest.AssertApprox(1.5, stdlib.statistics.NormalDist(0, 1).zscore(1.5))
+        AhkTest.AssertApprox(2.0, stdlib.statistics.NormalDist(2, 3).zscore(8))
+    }
+
+    static TestNormalDistOverlapFollowsPythonStatistics()
+    {
+        AhkTest.AssertApprox(0.6170750774519739, stdlib.statistics.NormalDist(0, 1).overlap(stdlib.statistics.NormalDist(1, 1)))
+        AhkTest.AssertApprox(0.6773254311652313, stdlib.statistics.NormalDist(0, 1).overlap(stdlib.statistics.NormalDist(0, 2)))
+        AhkTest.RaisesMatch(TypeError, "Expected another NormalDist instance", (*) => stdlib.statistics.NormalDist(0, 1).overlap(5))
+    }
+
+    static TestNormalDistFromSamplesFollowsPythonStatistics()
+    {
+        nd := stdlib.statistics.NormalDist.from_samples([1, 2, 3, 4, 5])
+        AhkTest.AssertApprox(3.0, nd.mean)
+        AhkTest.AssertApprox(1.5811388300841898, nd.stdev)
+    }
+
+    static TestNormalDistArithmeticFollowsPythonStatistics()
+    {
+        a := stdlib.statistics.NormalDist(1, 2)
+
+        scaled := a.scale(3)
+        AhkTest.AssertEqual(3.0, scaled.mean)
+        AhkTest.AssertEqual(6.0, scaled.stdev)
+
+        translated := a.translate(5)
+        AhkTest.AssertEqual(6.0, translated.mean)
+        AhkTest.AssertEqual(2.0, translated.stdev)
+
+        added := a.add(5)
+        AhkTest.AssertEqual(6.0, added.mean)
+        AhkTest.AssertEqual(2.0, added.stdev)
+
+        subbed := a.subtract(1)
+        AhkTest.AssertEqual(0.0, subbed.mean)
+        AhkTest.AssertEqual(2.0, subbed.stdev)
+
+        divided := stdlib.statistics.NormalDist(6, 4).divide(2)
+        AhkTest.AssertEqual(3.0, divided.mean)
+        AhkTest.AssertEqual(2.0, divided.stdev)
+
+        sumND := stdlib.statistics.NormalDist(1, 3).add(stdlib.statistics.NormalDist(2, 4))
+        AhkTest.AssertApprox(3.0, sumND.mean)
+        AhkTest.AssertApprox(5.0, sumND.stdev)
+
+        diffND := stdlib.statistics.NormalDist(5, 3).subtract(stdlib.statistics.NormalDist(2, 4))
+        AhkTest.AssertApprox(3.0, diffND.mean)
+        AhkTest.AssertApprox(5.0, diffND.stdev)
+
+        negated := a.negate()
+        AhkTest.AssertEqual(-1.0, negated.mean)
+        AhkTest.AssertEqual(2.0, negated.stdev)
+    }
+
+    static TestNormalDistEqualsFollowsPythonStatistics()
+    {
+        AhkTest.AssertTrue(stdlib.statistics.NormalDist(1, 2).equals(stdlib.statistics.NormalDist(1, 2)))
+        AhkTest.AssertFalse(stdlib.statistics.NormalDist(1, 2).equals(stdlib.statistics.NormalDist(1, 3)))
+        AhkTest.AssertFalse(stdlib.statistics.NormalDist(1, 2).equals(5))
+    }
+
+    static TestNormalDistSamplesAreDeterministicWithSeed()
+    {
+        nd := stdlib.statistics.NormalDist(10, 2)
+        first := nd.samples(50, 42)
+        second := nd.samples(50, 42)
+        AhkTest.AssertEqual(50, first.Length)
+        AhkTest.AssertEqual(first, second)
+        ; sample mean lands near the configured mean
+        total := 0.0
+        for value in first
+            total += value
+        AhkTest.AssertApprox(10.0, total / first.Length, { abs: 1.0 })
+    }
 }
 
 class StdlibMathStatisticsEnumerable
