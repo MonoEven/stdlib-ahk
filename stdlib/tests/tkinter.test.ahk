@@ -7531,6 +7531,11 @@ class StdlibTkinterTest
             AhkTest.AssertEqual(stdlib.None, label.pack())
             AhkTest.AssertEqual(stdlib.None, root.update_idletasks())
 
+            ; winfo_server embeds the live OS build, which changes with Windows
+            ; updates; derive the expected string from A_OSVersion (e.g.
+            ; "10.0.29610" -> "Windows 10.0 29610 Win64") instead of hardcoding.
+            osParts := StrSplit(A_OSVersion, ".")
+            expectedServer := "Windows " osParts[1] "." osParts[2] " " osParts[3] " Win64"
             for widget in [root, frame, label] {
                 AhkTest.AssertEqual(":0.0", widget.winfo_screen())
                 AhkTest.AssertEqual(452, widget.winfo_screenmmwidth())
@@ -7538,7 +7543,7 @@ class StdlibTkinterTest
                 AhkTest.AssertEqual(32, widget.winfo_screendepth())
                 AhkTest.AssertEqual(256, widget.winfo_screencells())
                 AhkTest.AssertEqual("truecolor", widget.winfo_screenvisual())
-                AhkTest.AssertEqual("Windows 10.0 29599 Win64", widget.winfo_server())
+                AhkTest.AssertEqual(expectedServer, widget.winfo_server())
             }
 
             label.destroy()
