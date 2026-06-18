@@ -220,15 +220,7 @@ AhkStdlibMathIsClose(a, b, rel_tol := 0.000000001, abs_tol := 0.0)
 
 AhkStdlibMathList(iterable)
 {
-    if iterable is Array
-        return iterable.Clone()
-    if IsObject(iterable) && HasMethod(iterable, "__Enum") {
-        values := []
-        for value in iterable
-            values.Push(value)
-        return values
-    }
-    throw TypeError("'" Type(iterable) "' object is not iterable", -1)
+    return AhkStdlibToArray(iterable)
 }
 
 AhkStdlibMathGcdPair(a, b)

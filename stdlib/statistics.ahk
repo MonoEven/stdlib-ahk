@@ -479,15 +479,7 @@ stdlib.statistics := AhkStdlibMathStatistics
 
 AhkStdlibStatisticsList(data)
 {
-    if data is Array
-        return data.Clone()
-    if IsObject(data) && HasMethod(data, "__Enum") {
-        values := []
-        for value in data
-            values.Push(value)
-        return values
-    }
-    throw TypeError("'" Type(data) "' object is not iterable", -1)
+    return AhkStdlibToArray(data)
 }
 
 AhkStdlibStatisticsSum(values)
