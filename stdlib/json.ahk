@@ -305,13 +305,7 @@ AhkStdlibJsonUnicodeEscape(code)
 
 AhkStdlibJsonJoin(values, delimiter := "")
 {
-    result := ""
-    for index, value in values {
-        if index > 1
-            result .= delimiter
-        result .= value
-    }
-    return result
+    return AhkStdlibJoinWith(values, delimiter)
 }
 
 class AhkStdlibJsonParser

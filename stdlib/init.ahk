@@ -527,3 +527,25 @@ AhkStdlibHeapSiftUp(heap, index, less)
     heap[index] := newItem
     AhkStdlibHeapSiftDown(heap, startIndex, index, less)
 }
+
+; Shared helpers deduped from per-module copies. Join concatenates an
+; enumerable's items with a separator; BufferToHex renders a byte buffer as
+; lowercase hex. Several modules kept byte-identical copies of these.
+AhkStdlibJoinWith(parts, separator)
+{
+    result := ""
+    for index, part in parts {
+        if index > 1
+            result .= separator
+        result .= part
+    }
+    return result
+}
+
+AhkStdlibBufferToHex(bytes)
+{
+    text := ""
+    loop bytes.Size
+        text .= Format("{:02x}", NumGet(bytes, A_Index - 1, "UChar"))
+    return text
+}

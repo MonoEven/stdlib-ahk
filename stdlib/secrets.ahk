@@ -263,10 +263,7 @@ AhkStdlibRandomBytesToInteger(bytes)
 
 AhkStdlibSecretsBufferToHex(bytes)
 {
-    text := ""
-    loop bytes.Size
-        text .= Format("{:02x}", NumGet(bytes, A_Index - 1, "UChar"))
-    return text
+    return AhkStdlibBufferToHex(bytes)
 }
 
 AhkStdlibSecretsDigestKind(value)

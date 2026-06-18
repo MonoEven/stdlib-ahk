@@ -458,13 +458,7 @@ AhkStdlibFunctoolsValueRepr(value)
 
 AhkStdlibFunctoolsJoin(values, separator)
 {
-    text := ""
-    for index, value in values {
-        if index > 1
-            text .= separator
-        text .= value
-    }
-    return text
+    return AhkStdlibJoinWith(values, separator)
 }
 
 AhkStdlibFunctoolsStringRepr(value)

@@ -557,10 +557,7 @@ AhkStdlibHashlibGetUIntProperty(handle, propertyName)
 
 AhkStdlibHashlibBufferToHex(bytes)
 {
-    text := ""
-    loop bytes.Size
-        text .= Format("{:02x}", NumGet(bytes, A_Index - 1, "UChar"))
-    return text
+    return AhkStdlibBufferToHex(bytes)
 }
 
 AhkStdlibHashlibThrowNtStatus(status, message)
@@ -904,13 +901,7 @@ AhkStdlibHashlibConcatChunks(chunks)
 
 AhkStdlibHashlibBufferToHexLower(buf)
 {
-    hex := ""
-    i := 0
-    while i < buf.Size {
-        hex .= Format("{:02x}", NumGet(buf, i, "UChar"))
-        i += 1
-    }
-    return hex
+    return AhkStdlibBufferToHex(buf)
 }
 
 

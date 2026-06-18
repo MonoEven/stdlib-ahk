@@ -83,13 +83,7 @@ AhkStdlibStringCapitalize(text)
 
 AhkStdlibStringJoin(parts, separator)
 {
-    result := ""
-    for index, part in parts {
-        if index > 1
-            result .= separator
-        result .= part
-    }
-    return result
+    return AhkStdlibJoinWith(parts, separator)
 }
 
 class AhkStdlibStringTemplate
