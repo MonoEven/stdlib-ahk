@@ -380,27 +380,7 @@ AhkStdlibFunctoolsEnum(iterable, context := "")
 
 AhkStdlibFunctoolsPythonTypeName(value)
 {
-    if AhkStdlibIsNone(value)
-        return "NoneType"
-    if AhkStdlibIsBool(value)
-        return "bool"
-    if Type(value) = "AhkStdlibTuple"
-        return "tuple"
-    if value is Map
-        return "dict"
-    if value is Array
-        return "list"
-    if value is String
-        return "str"
-    if value is Float
-        return "float"
-    if value is Integer
-        return "int"
-    if IsObject(value) && Type(value) != "Object"
-        return AhkStdlibFunctoolsLeafTypeName(Type(value))
-    if IsObject(value)
-        return "object"
-    return Type(value)
+    return AhkStdlibPythonTypeName(value)
 }
 
 AhkStdlibFunctoolsLeafTypeName(typeName)

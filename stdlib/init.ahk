@@ -459,6 +459,8 @@ AhkStdlibPythonTypeName(value)
         return "NotImplementedType"
     if AhkStdlibIsBool(value)
         return "bool"
+    if Type(value) = "AhkStdlibTuple"
+        return "tuple"
     if value is Map
         return "dict"
     if value is Array
