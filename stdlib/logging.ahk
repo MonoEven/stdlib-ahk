@@ -2,6 +2,7 @@
 
 #Include <stdlib\init>
 #Include <stdlib\io>
+#Include <stdlib\configparser>
 
 class AhkStdlibLogging
 {
@@ -121,6 +122,16 @@ class AhkStdlibLogging
         if IsSet(level)
             root.setLevel(level)
         return ""
+    }
+
+    static dictConfig(config)
+    {
+        return AhkStdlibLoggingDictConfig(this, config)
+    }
+
+    static fileConfig(fname)
+    {
+        return AhkStdlibLoggingFileConfig(this, fname)
     }
 
     static warning(message, exc_info := unset)
@@ -988,4 +999,272 @@ AhkStdlibLoggingCloseHandlers(logger)
             handler.close()
     }
     logger.handlers := []
+}
+
+; ---- dictConfig / fileConfig (logging.config) ----
+; A pragmatic subset of CPython's logging.config: enough to build formatters,
+; handlers, and loggers from a dict (Object/Map) or an INI file and wire them
+; together. Schema version is accepted but only "1" is meaningful.
+AhkStdlibLoggingDictConfig(loggingClass, config)
+{
+    version := AhkStdlibLoggingConfigGet(config, "version", 1)
+    if version != 1
+        throw ValueError("Unsupported logging config version: " version, -1)
+
+    disableExisting := AhkStdlibLoggingConfigTruthy(AhkStdlibLoggingConfigGet(config, "disable_existing_loggers", true))
+
+    ; 1) Formatters.
+    formatters := Map()
+    formattersCfg := AhkStdlibLoggingConfigGet(config, "formatters", "")
+    if IsObject(formattersCfg) {
+        for name, spec in AhkStdlibLoggingConfigItems(formattersCfg) {
+            style := AhkStdlibLoggingConfigGet(spec, "style", "%")
+            ; format/datefmt are optional: only pass them when present so the
+            ; Formatter's own defaults apply otherwise.
+            if AhkStdlibLoggingConfigHas(spec, "format") {
+                fmt := AhkStdlibLoggingConfigGet(spec, "format", "")
+                if AhkStdlibLoggingConfigHas(spec, "datefmt")
+                    formatters[name] := AhkStdlibLoggingFormatterClass.Call(0, fmt, AhkStdlibLoggingConfigGet(spec, "datefmt", ""), style)
+                else
+                    formatters[name] := AhkStdlibLoggingFormatterClass.Call(0, fmt, , style)
+            } else {
+                formatters[name] := AhkStdlibLoggingFormatterClass.Call(0, , , style)
+            }
+        }
+    }
+
+    ; 2) Handlers.
+    handlers := Map()
+    handlersCfg := AhkStdlibLoggingConfigGet(config, "handlers", "")
+    if IsObject(handlersCfg) {
+        for name, spec in AhkStdlibLoggingConfigItems(handlersCfg) {
+            handlers[name] := AhkStdlibLoggingBuildHandler(spec, formatters)
+        }
+    }
+
+    ; 3) Optionally disable existing non-root loggers (before reconfiguring).
+    if disableExisting {
+        for loggerName, logger in loggingClass._Loggers
+            logger.AhkStdlibDisabled := true
+    }
+
+    ; 4) Loggers.
+    loggersCfg := AhkStdlibLoggingConfigGet(config, "loggers", "")
+    if IsObject(loggersCfg) {
+        for name, spec in AhkStdlibLoggingConfigItems(loggersCfg) {
+            logger := loggingClass.getLogger(name)
+            AhkStdlibLoggingApplyLoggerSpec(logger, spec, handlers)
+            logger.AhkStdlibDisabled := false
+        }
+    }
+
+    ; 5) Root logger.
+    rootCfg := AhkStdlibLoggingConfigGet(config, "root", "")
+    if IsObject(rootCfg) {
+        root := loggingClass.Root()
+        AhkStdlibLoggingApplyLoggerSpec(root, rootCfg, handlers)
+    }
+    return ""
+}
+
+AhkStdlibLoggingBuildHandler(spec, formatters)
+{
+    className := AhkStdlibLoggingConfigGet(spec, "class", "StreamHandler")
+    ; Strip a "logging." prefix if present.
+    if SubStr(className, 1, 8) = "logging."
+        className := SubStr(className, 9)
+
+    switch className {
+        case "StreamHandler":
+            handler := AhkStdlibLoggingStreamHandlerClass.Call(0)
+        case "FileHandler":
+            if !AhkStdlibLoggingConfigHas(spec, "filename")
+                throw ValueError("FileHandler requires 'filename'", -1)
+            filename := AhkStdlibLoggingConfigGet(spec, "filename", "")
+            mode := AhkStdlibLoggingConfigGet(spec, "mode", "a")
+            handler := AhkStdlibLoggingFileHandlerClass.Call(0, filename, mode)
+        case "NullHandler":
+            handler := AhkStdlibLoggingNullHandlerClass.Call(0)
+        default:
+            ; Unknown handler classes fall back to a stream handler so config
+            ; doesn't hard-fail on an unsupported type.
+            handler := AhkStdlibLoggingStreamHandlerClass.Call(0)
+    }
+
+    if AhkStdlibLoggingConfigHas(spec, "level")
+        handler.setLevel(AhkStdlibLoggingConfigGet(spec, "level", 0))
+    if AhkStdlibLoggingConfigHas(spec, "formatter") {
+        formatterName := AhkStdlibLoggingConfigGet(spec, "formatter", "")
+        if formatters.Has(formatterName)
+            handler.setFormatter(formatters[formatterName])
+    }
+    return handler
+}
+
+AhkStdlibLoggingApplyLoggerSpec(logger, spec, handlers)
+{
+    if AhkStdlibLoggingConfigHas(spec, "level")
+        logger.setLevel(AhkStdlibLoggingConfigGet(spec, "level", 0))
+    ; Clear existing handlers so config is authoritative.
+    logger.handlers := []
+    if AhkStdlibLoggingConfigHas(spec, "propagate")
+        logger.propagate := AhkStdlibLoggingConfigTruthy(AhkStdlibLoggingConfigGet(spec, "propagate", true))
+    handlerNames := AhkStdlibLoggingConfigGet(spec, "handlers", "")
+    if IsObject(handlerNames) {
+        for hn in AhkStdlibLoggingConfigList(handlerNames) {
+            if handlers.Has(hn)
+                logger.addHandler(handlers[hn])
+        }
+    }
+    return ""
+}
+
+; fileConfig: parse an INI through configparser, then translate the CPython
+; [loggers]/[handlers]/[formatters] section layout into a dictConfig.
+AhkStdlibLoggingFileConfig(loggingClass, fname)
+{
+    ; CPython's fileConfig reads format strings verbatim; disable configparser
+    ; interpolation so a "%(levelname)s" pattern isn't treated as a reference.
+    parser := AhkStdlibConfigParser({ interpolation: stdlib.None })
+    ; Accept a raw INI string or a path.
+    if fname is String && (InStr(fname, "`n") || InStr(fname, "["))
+        parser.read_string(fname)
+    else
+        parser.read(fname)
+
+    config := Map()
+    config["version"] := 1
+    config["disable_existing_loggers"] := false
+
+    ; Formatters.
+    formatters := Map()
+    if parser.has_section("formatters") {
+        for key in AhkStdlibLoggingConfigSplitNames(parser.get("formatters", "keys", { fallback: "" })) {
+            sect := "formatter_" key
+            if !parser.has_section(sect)
+                continue
+            spec := Map()
+            if parser.has_option(sect, "format")
+                spec["format"] := parser.get(sect, "format")
+            if parser.has_option(sect, "datefmt")
+                spec["datefmt"] := parser.get(sect, "datefmt")
+            formatters[key] := spec
+        }
+    }
+    config["formatters"] := formatters
+
+    ; Handlers.
+    handlers := Map()
+    if parser.has_section("handlers") {
+        for key in AhkStdlibLoggingConfigSplitNames(parser.get("handlers", "keys", { fallback: "" })) {
+            sect := "handler_" key
+            if !parser.has_section(sect)
+                continue
+            spec := Map()
+            if parser.has_option(sect, "class")
+                spec["class"] := parser.get(sect, "class")
+            if parser.has_option(sect, "level")
+                spec["level"] := parser.get(sect, "level")
+            if parser.has_option(sect, "formatter")
+                spec["formatter"] := parser.get(sect, "formatter")
+            if parser.has_option(sect, "args") {
+                ; CPython args is a tuple literal like ('app.log','a'); pull the
+                ; first string for FileHandler filename support.
+                fnameArg := AhkStdlibLoggingConfigFirstStringArg(parser.get(sect, "args"))
+                if fnameArg != ""
+                    spec["filename"] := fnameArg
+            }
+            handlers[key] := spec
+        }
+    }
+    config["handlers"] := handlers
+
+    ; Loggers.
+    loggers := Map()
+    if parser.has_section("loggers") {
+        for key in AhkStdlibLoggingConfigSplitNames(parser.get("loggers", "keys", { fallback: "" })) {
+            sect := "logger_" key
+            if !parser.has_section(sect)
+                continue
+            spec := Map()
+            if parser.has_option(sect, "level")
+                spec["level"] := parser.get(sect, "level")
+            if parser.has_option(sect, "propagate")
+                spec["propagate"] := parser.get(sect, "propagate") != "0"
+            if parser.has_option(sect, "handlers")
+                spec["handlers"] := AhkStdlibLoggingConfigSplitNames(parser.get(sect, "handlers"))
+            qualname := parser.has_option(sect, "qualname") ? parser.get(sect, "qualname") : key
+            if key = "root" || qualname = "root"
+                config["root"] := spec
+            else
+                loggers[qualname] := spec
+        }
+    }
+    config["loggers"] := loggers
+
+    return AhkStdlibLoggingDictConfig(loggingClass, config)
+}
+
+; ---- config helpers ----
+; Membership + read helpers over either an Object (OwnProps) or a Map.
+AhkStdlibLoggingConfigHas(config, key)
+{
+    if config is Map
+        return config.Has(key)
+    return HasProp(config, key)
+}
+
+AhkStdlibLoggingConfigGet(config, key, default)
+{
+    if config is Map
+        return config.Has(key) ? config[key] : default
+    return HasProp(config, key) ? config.%key% : default
+}
+
+AhkStdlibLoggingConfigItems(config)
+{
+    result := Map()
+    if config is Map {
+        for k, v in config
+            result[k] := v
+    } else {
+        for k, v in config.OwnProps()
+            result[k] := v
+    }
+    return result
+}
+
+AhkStdlibLoggingConfigList(value)
+{
+    if value is Array
+        return value
+    if value is String
+        return AhkStdlibLoggingConfigSplitNames(value)
+    return [value]
+}
+
+AhkStdlibLoggingConfigTruthy(value)
+{
+    if value is String
+        return value != "" && value != "0" && StrLower(value) != "false"
+    return value ? true : false
+}
+
+AhkStdlibLoggingConfigSplitNames(text)
+{
+    names := []
+    for part in StrSplit(text, ",", " `t") {
+        trimmed := Trim(part)
+        if trimmed != ""
+            names.Push(trimmed)
+    }
+    return names
+}
+
+AhkStdlibLoggingConfigFirstStringArg(argText)
+{
+    ; Extract the first quoted string from a tuple-ish args value.
+    if RegExMatch(argText, "['`"]([^'`"]*)['`"]", &m)
+        return m[1]
+    return ""
 }

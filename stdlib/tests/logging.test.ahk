@@ -612,6 +612,49 @@ class StdlibLoggingTest
                 FileDelete path
         }
     }
+
+    static TestDictConfigSetsLevelAndAttachesHandler()
+    {
+        stdlib.logging._resetForTests()
+        buffer := stdlib.io.StringIO()
+        config := Map(
+            "version", 1,
+            "formatters", Map("simple", Map("format", "%(levelname)s:%(message)s")),
+            "handlers", Map("h1", Map("class", "StreamHandler", "level", "DEBUG", "formatter", "simple")),
+            "loggers", Map("dcfg", Map("level", "WARNING", "handlers", ["h1"], "propagate", false)))
+        stdlib.logging.dictConfig(config)
+        logger := stdlib.logging.getLogger("dcfg")
+        AhkTest.AssertEqual(stdlib.logging.WARNING, logger.level)
+        AhkTest.AssertEqual(1, logger.handlers.Length)
+        AhkTest.AssertFalse(logger.propagate)
+        ; The attached handler carries the configured formatter.
+        logger.handlers[1].stream := buffer
+        logger.warning("hello")
+        AhkTest.AssertContains("WARNING:hello", buffer.getvalue())
+    }
+
+    static TestFileConfigFromIniStringAppliesConfig()
+    {
+        stdlib.logging._resetForTests()
+        ini := "[loggers]`nkeys=root,fcfg`n`n"
+            . "[handlers]`nkeys=h1`n`n"
+            . "[formatters]`nkeys=f1`n`n"
+            . "[formatter_f1]`nformat=%(levelname)s:%(message)s`n`n"
+            . "[handler_h1]`nclass=StreamHandler`nlevel=DEBUG`nformatter=f1`n`n"
+            . "[logger_root]`nlevel=WARNING`nhandlers=h1`n`n"
+            . "[logger_fcfg]`nlevel=INFO`nhandlers=h1`npropagate=0`nqualname=fcfg`n"
+        stdlib.logging.fileConfig(ini)
+        logger := stdlib.logging.getLogger("fcfg")
+        AhkTest.AssertEqual(stdlib.logging.INFO, logger.level)
+        AhkTest.AssertEqual(1, logger.handlers.Length)
+        AhkTest.AssertFalse(logger.propagate)
+        AhkTest.AssertEqual(stdlib.logging.WARNING, stdlib.logging.getLogger().level)
+    }
+
+    static TestDictConfigRejectsUnsupportedVersion()
+    {
+        AhkTest.AssertThrows(ValueError, (*) => stdlib.logging.dictConfig(Map("version", 2)))
+    }
 }
 
 AhkTest.Collect(StdlibLoggingTest)
