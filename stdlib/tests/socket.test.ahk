@@ -63,6 +63,58 @@ class StdlibSocketTest
 
         AhkTest.AssertEqual("socket() got an unexpected keyword argument 'extra'", err.Message)
     }
+
+    static ByteOrderHelpersRoundTrip()
+    {
+        AhkTest.AssertEqual(0x3412, stdlib.socket.htons(0x1234))
+        AhkTest.AssertEqual(0x1234, stdlib.socket.ntohs(stdlib.socket.htons(0x1234)))
+    }
+
+    static GetHostByNameResolvesLoopback()
+    {
+        AhkTest.AssertEqual("127.0.0.1", stdlib.socket.gethostbyname("127.0.0.1"))
+        AhkTest.AssertEqual("127.0.0.1", stdlib.socket.gethostbyname("localhost"))
+    }
+
+    static LoopbackSendRecvRoundTrips()
+    {
+        ; Single-threaded TCP loopback: the kernel completes the handshake from
+        ; the listen backlog, so connect() returns before accept() is called.
+        server := stdlib.socket.socket()
+        client := ""
+        conn := ""
+        try {
+            server.setsockopt(stdlib.socket.SOL_SOCKET, stdlib.socket.SO_REUSEADDR, 1)
+            server.bind(["127.0.0.1", 0])
+            server.listen(1)
+            addr := server.getsockname()
+            port := addr[2]
+            AhkTest.AssertTrue(port > 0)
+
+            client := stdlib.socket.socket()
+            client.connect(["127.0.0.1", port])
+
+            accepted := server.accept()
+            conn := accepted[1]
+            AhkTest.AssertEqual("127.0.0.1", accepted[2][1])
+
+            client.sendall("ping")
+            data := conn.recv(16)
+            AhkTest.AssertEqual(4, data.Size)
+            AhkTest.AssertEqual(112, NumGet(data, 0, "UChar"))   ; 'p'
+
+            conn.sendall("pong")
+            back := client.recv(16)
+            AhkTest.AssertEqual(4, back.Size)
+            AhkTest.AssertEqual(111, NumGet(back, 1, "UChar"))   ; 'o'
+        } finally {
+            if IsObject(conn)
+                conn.close()
+            if IsObject(client)
+                client.close()
+            server.close()
+        }
+    }
 }
 
 AhkTest.Test("socket exposes module constants", (*) => StdlibSocketTest.SocketExposesModuleConstants())
@@ -71,3 +123,6 @@ AhkTest.Test("socket.gethostname rejects positional arguments", (*) => StdlibSoc
 AhkTest.Test("socket.socket builds closable default sockets", (*) => StdlibSocketTest.SocketFactoryBuildsClosableDefaultSocket())
 AhkTest.Test("socket.socket accepts covered keyword object", (*) => StdlibSocketTest.SocketFactoryAcceptsCoveredKeywordObject())
 AhkTest.Test("socket.socket rejects unexpected keyword objects", (*) => StdlibSocketTest.SocketFactoryRejectsUnexpectedKeyword())
+AhkTest.Test("socket byte-order helpers round-trip", (*) => StdlibSocketTest.ByteOrderHelpersRoundTrip())
+AhkTest.Test("socket.gethostbyname resolves loopback", (*) => StdlibSocketTest.GetHostByNameResolvesLoopback())
+AhkTest.Test("socket loopback send/recv round-trips", (*) => StdlibSocketTest.LoopbackSendRecvRoundTrips())
