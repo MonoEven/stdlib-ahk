@@ -4,6 +4,11 @@
 
 class AhkStdlibCollections
 {
+    static abc
+    {
+        get => AhkStdlibCollectionsAbc
+    }
+
     static Counter
     {
         get => AhkStdlibCollectionsCounter
@@ -1063,6 +1068,73 @@ class AhkStdlibCollectionsCounterElements
 }
 
 stdlib.collections := AhkStdlibCollections
+
+; collections.abc: AHK has no metaclass/virtual-subclass machinery, so the ABCs
+; are modeled as protocol objects whose isinstance(obj) duck-types the relevant
+; capability. This covers the structural ABCs (Hashable/Sized/Container/Callable
+; /Iterable) that map cleanly onto AHK runtime checks; the registration-heavy
+; ABCs (Mapping/Sequence/Set hierarchies) remain out of scope.
+class AhkStdlibCollectionsAbc
+{
+    static Hashable := AhkStdlibCollectionsAbcHashable
+    static Sized := AhkStdlibCollectionsAbcSized
+    static Container := AhkStdlibCollectionsAbcContainer
+    static Callable := AhkStdlibCollectionsAbcCallable
+    static Iterable := AhkStdlibCollectionsAbcIterable
+}
+
+class AhkStdlibCollectionsAbcHashable
+{
+    ; Numbers and strings are hashable; AHK arrays/maps/objects used as mutable
+    ; containers are treated as unhashable (closest analog to CPython).
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return true
+        return !(obj is Array || obj is Map)
+    }
+}
+
+class AhkStdlibCollectionsAbcSized
+{
+    ; Has a length: an array/map, or any object exposing Length/Count/__Len.
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return false
+        return obj is Array || obj is Map || HasProp(obj, "Length") || HasProp(obj, "Count") || HasMethod(obj, "__Len")
+    }
+}
+
+class AhkStdlibCollectionsAbcContainer
+{
+    ; Supports membership/indexing: array/map, or exposes Has/__Item/__Enum.
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return false
+        return obj is Array || obj is Map || HasMethod(obj, "Has") || HasMethod(obj, "__Item") || HasMethod(obj, "__Enum")
+    }
+}
+
+class AhkStdlibCollectionsAbcCallable
+{
+    static isinstance(obj)
+    {
+        return HasMethod(obj, "Call")
+    }
+}
+
+class AhkStdlibCollectionsAbcIterable
+{
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return obj is String   ; strings iterate by character in our helpers
+        return obj is Array || obj is Map || HasMethod(obj, "__Enum")
+    }
+}
+
 
 AhkStdlibCollectionsIsMapping(source)
 {

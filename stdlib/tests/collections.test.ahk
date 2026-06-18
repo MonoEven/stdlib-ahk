@@ -1083,6 +1083,26 @@ class StdlibCollectionsTest
         dq.appendleft(0)                    ; drops 4 from the right
         AhkTest.AssertEqual([0, 2, 3], stdlib_collections_test_array(dq))
     }
+
+    static TestCollectionsAbcProtocolChecks()
+    {
+        abc := stdlib.collections.abc
+        ; Hashable: scalars yes, mutable containers no.
+        AhkTest.AssertTrue(abc.Hashable.isinstance("x"))
+        AhkTest.AssertTrue(abc.Hashable.isinstance(5))
+        AhkTest.AssertFalse(abc.Hashable.isinstance([1, 2]))
+        ; Sized / Container: arrays and maps qualify.
+        AhkTest.AssertTrue(abc.Sized.isinstance([1, 2]))
+        AhkTest.AssertTrue(abc.Sized.isinstance(Map("a", 1)))
+        AhkTest.AssertFalse(abc.Sized.isinstance(5))
+        AhkTest.AssertTrue(abc.Container.isinstance(Map("a", 1)))
+        ; Callable: functions yes, data no.
+        AhkTest.AssertTrue(abc.Callable.isinstance((*) => 1))
+        AhkTest.AssertFalse(abc.Callable.isinstance(5))
+        ; Iterable: arrays/maps/strings.
+        AhkTest.AssertTrue(abc.Iterable.isinstance([1]))
+        AhkTest.AssertTrue(abc.Iterable.isinstance("abc"))
+    }
 }
 
 stdlib_collections_test_array(iterable)
