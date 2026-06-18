@@ -87,39 +87,13 @@ AhkStdlibHeapqCheckList(value, label)
 
 AhkStdlibHeapqSiftDown(heap, startIndex, index)
 {
-    newItem := heap[index]
-    while index > startIndex {
-        parentIndex := index // 2
-        parent := heap[parentIndex]
-        if newItem < parent {
-            heap[index] := parent
-            index := parentIndex
-            continue
-        }
-        break
-    }
-    heap[index] := newItem
+    ; Delegates to the shared heap core with native '<' ordering.
+    AhkStdlibHeapSiftDown(heap, startIndex, index, (a, b) => a < b)
 }
 
 AhkStdlibHeapqSiftUp(heap, index)
 {
-    endIndex := heap.Length
-    startIndex := index
-    newItem := heap[index]
-    childIndex := index * 2
-
-    while childIndex <= endIndex {
-        rightIndex := childIndex + 1
-        if rightIndex <= endIndex && !(heap[childIndex] < heap[rightIndex])
-            childIndex := rightIndex
-
-        heap[index] := heap[childIndex]
-        index := childIndex
-        childIndex := index * 2
-    }
-
-    heap[index] := newItem
-    AhkStdlibHeapqSiftDown(heap, startIndex, index)
+    AhkStdlibHeapSiftUp(heap, index, (a, b) => a < b)
 }
 
 AhkStdlibHeapqToArray(iterable)

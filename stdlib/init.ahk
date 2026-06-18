@@ -486,3 +486,44 @@ AhkStdlibLeafTypeName(typeName)
         return SubStr(typeName, dot + 1)
     return typeName
 }
+
+; Shared binary-heap core (min-heap). heapq and queue.PriorityQueue both need
+; the identical sift logic; they differ only in how two items compare, so the
+; comparator is injected as `less(a, b) -> bool`. Operating on a 1-based AHK
+; Array, matching CPython's list-backed heap.
+AhkStdlibHeapSiftDown(heap, startIndex, index, less)
+{
+    newItem := heap[index]
+    while index > startIndex {
+        parentIndex := index // 2
+        parent := heap[parentIndex]
+        if less(newItem, parent) {
+            heap[index] := parent
+            index := parentIndex
+            continue
+        }
+        break
+    }
+    heap[index] := newItem
+}
+
+AhkStdlibHeapSiftUp(heap, index, less)
+{
+    endIndex := heap.Length
+    startIndex := index
+    newItem := heap[index]
+    childIndex := index * 2
+
+    while childIndex <= endIndex {
+        rightIndex := childIndex + 1
+        if rightIndex <= endIndex && !less(heap[childIndex], heap[rightIndex])
+            childIndex := rightIndex
+
+        heap[index] := heap[childIndex]
+        index := childIndex
+        childIndex := index * 2
+    }
+
+    heap[index] := newItem
+    AhkStdlibHeapSiftDown(heap, startIndex, index, less)
+}
