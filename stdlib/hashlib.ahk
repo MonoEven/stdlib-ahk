@@ -138,6 +138,11 @@ class AhkStdlibHashlib
     {
         return AhkStdlibHashlibPbkdf2Hmac(hash_name, password, salt, iterations, dklen?)
     }
+
+    static scrypt(password, options := unset)
+    {
+        return AhkStdlibHashlibScrypt(password, options?)
+    }
 }
 
 stdlib.hashlib := AhkStdlibHashlib
@@ -1055,4 +1060,214 @@ AhkStdlibHashlibBlake2sG(v, a, b, c, d, x, y)
     v[d] := AhkStdlibHashlibBlake2Rotr32(v[d] ^ v[a], 8)
     v[c] := (v[c] + v[d]) & mask
     v[b] := AhkStdlibHashlibBlake2Rotr32(v[b] ^ v[c], 7)
+}
+
+; ---- scrypt (RFC 7914) ----
+; scrypt(password, {salt, n, r, p, dklen, maxmem}). Built on the existing
+; PBKDF2-HMAC-SHA256 plus Salsa20/8 + BlockMix + ROMix. Parameters here are
+; small (test vectors use n<=16), so the straightforward array-based core is
+; fast enough.
+AhkStdlibHashlibScrypt(password, options := unset)
+{
+    salt := ""
+    n := 0
+    r := 0
+    p := 0
+    dklen := 64
+    if IsSet(options) && IsObject(options) {
+        if HasProp(options, "salt")
+            salt := options.salt
+        if HasProp(options, "n")
+            n := options.n
+        if HasProp(options, "r")
+            r := options.r
+        if HasProp(options, "p")
+            p := options.p
+        if HasProp(options, "dklen")
+            dklen := options.dklen
+    }
+    if n <= 1 || (n & (n - 1)) != 0
+        throw ValueError("n must be a power of 2 greater than 1", -1)
+    if r < 1 || p < 1
+        throw ValueError("r and p must be >= 1", -1)
+
+    pwBuf := AhkStdlibHashlibRequireBytesLike(password)
+    saltBuf := (salt = "") ? Buffer(0) : AhkStdlibHashlibRequireBytesLike(salt)
+
+    ; 1) B = PBKDF2-HMAC-SHA256(pw, salt, 1, p*128*r)
+    blockLen := 128 * r
+    b := AhkStdlibHashlibPbkdf2Hmac("sha256", pwBuf, saltBuf, 1, p * blockLen)
+
+    ; 2) Each p-segment of 128*r bytes goes through ROMix independently.
+    i := 0
+    while i < p {
+        seg := AhkStdlibHashlibScryptSlice(b, i * blockLen, blockLen)
+        mixed := AhkStdlibHashlibScryptROMix(seg, n, r)
+        AhkStdlibHashlibScryptCopyInto(b, i * blockLen, mixed)
+        i += 1
+    }
+
+    ; 3) dk = PBKDF2-HMAC-SHA256(pw, B, 1, dklen)
+    return AhkStdlibHashlibPbkdf2Hmac("sha256", pwBuf, b, 1, dklen)
+}
+
+AhkStdlibHashlibScryptROMix(block, n, r)
+{
+    blockLen := 128 * r
+    x := AhkStdlibHashlibScryptCloneBuf(block)
+    v := []
+    i := 0
+    while i < n {
+        v.Push(AhkStdlibHashlibScryptCloneBuf(x))
+        x := AhkStdlibHashlibScryptBlockMix(x, r)
+        i += 1
+    }
+    i := 0
+    while i < n {
+        j := AhkStdlibHashlibScryptIntegerify(x, r) & (n - 1)
+        x := AhkStdlibHashlibScryptBlockMix(AhkStdlibHashlibScryptXorBuf(x, v[j + 1]), r)
+        i += 1
+    }
+    return x
+}
+
+; BlockMix over 2r 64-byte blocks.
+AhkStdlibHashlibScryptBlockMix(b, r)
+{
+    twoR := 2 * r
+    ; X = B[2r-1]
+    x := AhkStdlibHashlibScryptSlice(b, (twoR - 1) * 64, 64)
+    out := Buffer(twoR * 64)
+    even := []
+    odd := []
+    i := 0
+    while i < twoR {
+        bi := AhkStdlibHashlibScryptSlice(b, i * 64, 64)
+        x := AhkStdlibHashlibScryptSalsa20_8(AhkStdlibHashlibScryptXorBuf(x, bi))
+        if Mod(i, 2) = 0
+            even.Push(x)
+        else
+            odd.Push(x)
+        i += 1
+    }
+    ; Y_0,Y_2,...,Y_1,Y_3,...
+    pos := 0
+    for blk in even {
+        AhkStdlibHashlibScryptCopyInto(out, pos, blk)
+        pos += 64
+    }
+    for blk in odd {
+        AhkStdlibHashlibScryptCopyInto(out, pos, blk)
+        pos += 64
+    }
+    return out
+}
+
+; Salsa20/8 core on a 64-byte block (16 LE 32-bit words, 8 rounds).
+AhkStdlibHashlibScryptSalsa20_8(inBuf)
+{
+    x := []
+    i := 0
+    while i < 16 {
+        x.Push(NumGet(inBuf, i * 4, "UInt"))
+        i += 1
+    }
+    orig := x.Clone()
+    round := 0
+    while round < 8 {
+        ; Column rounds then row rounds (8 total = 4 double-rounds).
+        x := AhkStdlibHashlibScryptSalsaDoubleRound(x)
+        round += 2
+    }
+    out := Buffer(64)
+    i := 0
+    while i < 16 {
+        NumPut("UInt", (x[i + 1] + orig[i + 1]) & 0xFFFFFFFF, out, i * 4)
+        i += 1
+    }
+    return out
+}
+
+AhkStdlibHashlibScryptSalsaDoubleRound(x)
+{
+    ; 1-based indices; the RFC uses 0-based x0..x15.
+    R := AhkStdlibHashlibScryptRotl32
+    ; Column round
+    x[5]  := x[5]  ^ R((x[1]  + x[13]) & 0xFFFFFFFF, 7)
+    x[9]  := x[9]  ^ R((x[5]  + x[1])  & 0xFFFFFFFF, 9)
+    x[13] := x[13] ^ R((x[9]  + x[5])  & 0xFFFFFFFF, 13)
+    x[1]  := x[1]  ^ R((x[13] + x[9])  & 0xFFFFFFFF, 18)
+    x[10] := x[10] ^ R((x[6]  + x[2])  & 0xFFFFFFFF, 7)
+    x[14] := x[14] ^ R((x[10] + x[6])  & 0xFFFFFFFF, 9)
+    x[2]  := x[2]  ^ R((x[14] + x[10]) & 0xFFFFFFFF, 13)
+    x[6]  := x[6]  ^ R((x[2]  + x[14]) & 0xFFFFFFFF, 18)
+    x[15] := x[15] ^ R((x[11] + x[7])  & 0xFFFFFFFF, 7)
+    x[3]  := x[3]  ^ R((x[15] + x[11]) & 0xFFFFFFFF, 9)
+    x[7]  := x[7]  ^ R((x[3]  + x[15]) & 0xFFFFFFFF, 13)
+    x[11] := x[11] ^ R((x[7]  + x[3])  & 0xFFFFFFFF, 18)
+    x[4]  := x[4]  ^ R((x[16] + x[12]) & 0xFFFFFFFF, 7)
+    x[8]  := x[8]  ^ R((x[4]  + x[16]) & 0xFFFFFFFF, 9)
+    x[12] := x[12] ^ R((x[8]  + x[4])  & 0xFFFFFFFF, 13)
+    x[16] := x[16] ^ R((x[12] + x[8])  & 0xFFFFFFFF, 18)
+    ; Row round
+    x[2]  := x[2]  ^ R((x[1]  + x[4])  & 0xFFFFFFFF, 7)
+    x[3]  := x[3]  ^ R((x[2]  + x[1])  & 0xFFFFFFFF, 9)
+    x[4]  := x[4]  ^ R((x[3]  + x[2])  & 0xFFFFFFFF, 13)
+    x[1]  := x[1]  ^ R((x[4]  + x[3])  & 0xFFFFFFFF, 18)
+    x[7]  := x[7]  ^ R((x[6]  + x[5])  & 0xFFFFFFFF, 7)
+    x[8]  := x[8]  ^ R((x[7]  + x[6])  & 0xFFFFFFFF, 9)
+    x[5]  := x[5]  ^ R((x[8]  + x[7])  & 0xFFFFFFFF, 13)
+    x[6]  := x[6]  ^ R((x[5]  + x[8])  & 0xFFFFFFFF, 18)
+    x[12] := x[12] ^ R((x[11] + x[10]) & 0xFFFFFFFF, 7)
+    x[9]  := x[9]  ^ R((x[12] + x[11]) & 0xFFFFFFFF, 9)
+    x[10] := x[10] ^ R((x[9]  + x[12]) & 0xFFFFFFFF, 13)
+    x[11] := x[11] ^ R((x[10] + x[9])  & 0xFFFFFFFF, 18)
+    x[13] := x[13] ^ R((x[16] + x[15]) & 0xFFFFFFFF, 7)
+    x[14] := x[14] ^ R((x[13] + x[16]) & 0xFFFFFFFF, 9)
+    x[15] := x[15] ^ R((x[14] + x[13]) & 0xFFFFFFFF, 13)
+    x[16] := x[16] ^ R((x[15] + x[14]) & 0xFFFFFFFF, 18)
+    return x
+}
+
+AhkStdlibHashlibScryptRotl32(x, n)
+{
+    x &= 0xFFFFFFFF
+    return ((x << n) | ((x >> (32 - n)) & ((1 << n) - 1))) & 0xFFFFFFFF
+}
+
+AhkStdlibHashlibScryptIntegerify(b, r)
+{
+    ; The last 64-byte block's first 32-bit LE word.
+    offset := (2 * r - 1) * 64
+    return NumGet(b, offset, "UInt")
+}
+
+AhkStdlibHashlibScryptSlice(buf, offset, length)
+{
+    out := Buffer(length)
+    DllCall("RtlMoveMemory", "Ptr", out.Ptr, "Ptr", buf.Ptr + offset, "UPtr", length)
+    return out
+}
+
+AhkStdlibHashlibScryptCopyInto(dst, offset, src)
+{
+    DllCall("RtlMoveMemory", "Ptr", dst.Ptr + offset, "Ptr", src.Ptr, "UPtr", src.Size)
+}
+
+AhkStdlibHashlibScryptCloneBuf(buf)
+{
+    out := Buffer(buf.Size)
+    DllCall("RtlMoveMemory", "Ptr", out.Ptr, "Ptr", buf.Ptr, "UPtr", buf.Size)
+    return out
+}
+
+AhkStdlibHashlibScryptXorBuf(a, b)
+{
+    out := Buffer(a.Size)
+    i := 0
+    while i < a.Size {
+        NumPut("UChar", NumGet(a, i, "UChar") ^ NumGet(b, i, "UChar"), out, i)
+        i += 1
+    }
+    return out
 }

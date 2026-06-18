@@ -206,6 +206,16 @@ class StdlibHashlibTest
             , stdlib.hashlib.blake2s(StdlibHashlibTest.Bytes("abc"), { key: StdlibHashlibTest.Bytes("secret") }).hexdigest())
     }
 
+    static TestScryptMatchesRfc7914()
+    {
+        ; RFC 7914 / Python 3.10 hashlib.scrypt vectors.
+        AhkTest.AssertEqual("a2f63b8c062d326091944189baeb665b"
+            , StdlibHashlibTest.Hex(stdlib.hashlib.scrypt(StdlibHashlibTest.Bytes("password"), { salt: StdlibHashlibTest.Bytes("NaCl"), n: 2, r: 1, p: 1, dklen: 16 })))
+        AhkTest.AssertEqual("77d6576238657b203b19ca42c18a0497f16b4844e3074ae8dfdffa3fede21442fcd0069ded0948f8326a753a0fc81f17e8d3e0fb2e0d3628cf35e20c38d18906"
+            , StdlibHashlibTest.Hex(stdlib.hashlib.scrypt(StdlibHashlibTest.Bytes(""), { salt: StdlibHashlibTest.Bytes(""), n: 16, r: 1, p: 1, dklen: 64 })))
+        AhkTest.RaisesMatch(ValueError, "n must be a power of 2", (*) => stdlib.hashlib.scrypt(StdlibHashlibTest.Bytes("x"), { salt: StdlibHashlibTest.Bytes("y"), n: 3, r: 1, p: 1 }))
+    }
+
     static Hex(bytes)
     {
         text := ""
