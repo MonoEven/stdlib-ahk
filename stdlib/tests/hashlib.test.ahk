@@ -143,9 +143,10 @@ class StdlibHashlibTest
         for name in ["md5", "sha1", "sha224", "sha256", "sha384", "sha512"]
             AhkTest.AssertTrue(available.Has(name), "expected " name " in algorithms_available")
 
-        ; BLAKE2 has no CNG provider, so it must never be reported usable here.
-        AhkTest.AssertFalse(available.Has("blake2b"))
-        AhkTest.AssertFalse(available.Has("blake2s"))
+        ; BLAKE2 has no CNG provider but is implemented in pure AHK, so it is
+        ; reported usable.
+        AhkTest.AssertTrue(available.Has("blake2b"))
+        AhkTest.AssertTrue(available.Has("blake2s"))
 
         ; Every reported name must actually produce a digest (SHAKE needs a length).
         for name in available {
@@ -174,6 +175,35 @@ class StdlibHashlibTest
         AhkTest.RaisesMatch(ValueError, "iteration value must be greater than 0.", (*) => stdlib.hashlib.pbkdf2_hmac("sha256", StdlibHashlibTest.Bytes("pw"), StdlibHashlibTest.Bytes("salt"), 0))
         AhkTest.RaisesMatch(ValueError, "key length must be greater than 0.", (*) => stdlib.hashlib.pbkdf2_hmac("sha256", StdlibHashlibTest.Bytes("pw"), StdlibHashlibTest.Bytes("salt"), 1000, -1))
         AhkTest.RaisesMatch(ValueError, "unsupported hash type badhash", (*) => stdlib.hashlib.pbkdf2_hmac("badhash", StdlibHashlibTest.Bytes("pw"), StdlibHashlibTest.Bytes("salt"), 1))
+    }
+
+    static TestBlake2bMatchesPython310()
+    {
+        AhkTest.AssertEqual("786a02f742015903c6c6fd852552d272912f4740e15847618a86e217f71f5419d25e1031afee585313896444934eb04b903a685b1448b755d56f701afe9be2ce"
+            , stdlib.hashlib.blake2b(StdlibHashlibTest.Bytes("")).hexdigest())
+        AhkTest.AssertEqual("ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923"
+            , stdlib.hashlib.blake2b(StdlibHashlibTest.Bytes("abc")).hexdigest())
+        ; digest_size truncates the output.
+        AhkTest.AssertEqual("bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319"
+            , stdlib.hashlib.blake2b(StdlibHashlibTest.Bytes("abc"), { digest_size: 32 }).hexdigest())
+        ; Keyed hashing (MAC).
+        AhkTest.AssertEqual("204c828c56fbe6dfe80f110efd16649b9baaad573a6fe4a9a3f492857ec46f8f01eb46d3d6b777f014802967b258fdf631947e68e70cbf9054edf69fa3bbb4a8"
+            , stdlib.hashlib.blake2b(StdlibHashlibTest.Bytes("abc"), { key: StdlibHashlibTest.Bytes("secret") }).hexdigest())
+        ; Incremental update matches one-shot.
+        h := stdlib.hashlib.blake2b()
+        h.update(StdlibHashlibTest.Bytes("a"))
+        h.update(StdlibHashlibTest.Bytes("bc"))
+        AhkTest.AssertEqual(stdlib.hashlib.blake2b(StdlibHashlibTest.Bytes("abc")).hexdigest(), h.hexdigest())
+    }
+
+    static TestBlake2sMatchesPython310()
+    {
+        AhkTest.AssertEqual("69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9"
+            , stdlib.hashlib.blake2s(StdlibHashlibTest.Bytes("")).hexdigest())
+        AhkTest.AssertEqual("508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982"
+            , stdlib.hashlib.blake2s(StdlibHashlibTest.Bytes("abc")).hexdigest())
+        AhkTest.AssertEqual("d7d0d1441d31d042d6c1ef68ce5162e56f3b2a208de82b727b7c30c709b7bff2"
+            , stdlib.hashlib.blake2s(StdlibHashlibTest.Bytes("abc"), { key: StdlibHashlibTest.Bytes("secret") }).hexdigest())
     }
 
     static Hex(bytes)
