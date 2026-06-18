@@ -23,6 +23,24 @@ class AhkStdlibPathlib
             home := EnvGet("HOMEDRIVE") EnvGet("HOMEPATH")
         return AhkStdlibPathlibPath(home)
     }
+
+    ; PurePath* expose the pure (no-I/O) path-manipulation surface. On Windows,
+    ; PurePath and PureWindowsPath are the same flavor as the concrete Path
+    ; engine; PurePosixPath uses '/' separators and POSIX-style rules.
+    static PurePath(parts*)
+    {
+        return AhkStdlibPathlibPurePath(parts*)
+    }
+
+    static PureWindowsPath(parts*)
+    {
+        return AhkStdlibPathlibPureWindowsPath(parts*)
+    }
+
+    static PurePosixPath(parts*)
+    {
+        return AhkStdlibPathlibPurePosixPath(parts*)
+    }
 }
 
 class AhkStdlibPathlibPath
@@ -377,6 +395,198 @@ class AhkStdlibPathlibIterator
 }
 
 stdlib.pathlib := AhkStdlibPathlib
+
+; PureWindowsPath: the pure (no-filesystem) subset over the Windows path engine.
+; Inherits all path-manipulation from Path but blocks the I/O methods so callers
+; can't accidentally touch the disk through a "pure" object.
+class AhkStdlibPathlibPureWindowsPath extends AhkStdlibPathlibPath
+{
+    exists(*) => AhkStdlibPathlibPureNoIO("exists")
+    is_dir(*) => AhkStdlibPathlibPureNoIO("is_dir")
+    is_file(*) => AhkStdlibPathlibPureNoIO("is_file")
+    stat(*) => AhkStdlibPathlibPureNoIO("stat")
+    lstat(*) => AhkStdlibPathlibPureNoIO("lstat")
+    iterdir(*) => AhkStdlibPathlibPureNoIO("iterdir")
+    glob(*) => AhkStdlibPathlibPureNoIO("glob")
+    rglob(*) => AhkStdlibPathlibPureNoIO("rglob")
+    mkdir(*) => AhkStdlibPathlibPureNoIO("mkdir")
+    rmdir(*) => AhkStdlibPathlibPureNoIO("rmdir")
+    unlink(*) => AhkStdlibPathlibPureNoIO("unlink")
+    touch(*) => AhkStdlibPathlibPureNoIO("touch")
+    open(*) => AhkStdlibPathlibPureNoIO("open")
+    read_text(*) => AhkStdlibPathlibPureNoIO("read_text")
+    write_text(*) => AhkStdlibPathlibPureNoIO("write_text")
+    read_bytes(*) => AhkStdlibPathlibPureNoIO("read_bytes")
+    write_bytes(*) => AhkStdlibPathlibPureNoIO("write_bytes")
+    rename(*) => AhkStdlibPathlibPureNoIO("rename")
+    replace(*) => AhkStdlibPathlibPureNoIO("replace")
+    resolve(*) => AhkStdlibPathlibPureNoIO("resolve")
+    samefile(*) => AhkStdlibPathlibPureNoIO("samefile")
+
+    ; joinpath/parent/with_* must return Pure objects, not concrete Paths.
+    joinpath(parts*)
+    {
+        path := this.Path
+        for part in parts
+            path := AhkStdlibPathlibJoin(path, part)
+        return AhkStdlibPathlibPureWindowsPath(path)
+    }
+}
+
+; PurePath on Windows is an alias for PureWindowsPath (matches CPython, where
+; PurePath instantiates the OS-appropriate flavor).
+class AhkStdlibPathlibPurePath extends AhkStdlibPathlibPureWindowsPath
+{
+}
+
+AhkStdlibPathlibPureNoIO(method)
+{
+    throw AhkStdlibIoUnsupportedOrAttr(method)
+}
+
+AhkStdlibIoUnsupportedOrAttr(method)
+{
+    return stdlib.AttributeError("'PurePath' object has no attribute '" method "'", -1)
+}
+
+; PurePosixPath: pure POSIX-flavored paths ('/' separators, no drive letters).
+; Self-contained (does not share the Windows engine) so separator semantics stay
+; correct. No filesystem access.
+class AhkStdlibPathlibPurePosixPath
+{
+    __New(parts*)
+    {
+        this.Path := AhkStdlibPathlibPosixNormalizeParts(parts)
+    }
+
+    ToString() => this.Path
+
+    name
+    {
+        get {
+            trimmed := this.Path = "/" ? "" : RTrim(this.Path, "/")
+            slash := InStr(trimmed, "/", , -1)
+            return slash ? SubStr(trimmed, slash + 1) : trimmed
+        }
+    }
+
+    stem
+    {
+        get {
+            n := this.name
+            dot := AhkStdlibPathlibLastDot(n)
+            return (dot <= 1 || dot = StrLen(n)) ? n : SubStr(n, 1, dot - 1)
+        }
+    }
+
+    suffix
+    {
+        get {
+            n := this.name
+            dot := AhkStdlibPathlibLastDot(n)
+            return (dot <= 1 || dot = StrLen(n)) ? "" : SubStr(n, dot)
+        }
+    }
+
+    parent
+    {
+        get {
+            p := this.Path
+            if p = "/" || p = "."
+                return AhkStdlibPathlibPurePosixPath(p)
+            trimmed := RTrim(p, "/")
+            slash := InStr(trimmed, "/", , -1)
+            if !slash
+                return AhkStdlibPathlibPurePosixPath(".")
+            if slash = 1
+                return AhkStdlibPathlibPurePosixPath("/")
+            return AhkStdlibPathlibPurePosixPath(SubStr(trimmed, 1, slash - 1))
+        }
+    }
+
+    parts
+    {
+        get {
+            result := []
+            p := this.Path
+            if SubStr(p, 1, 1) = "/" {
+                result.Push("/")
+                p := LTrim(p, "/")
+            }
+            for seg in StrSplit(p, "/") {
+                if seg != ""
+                    result.Push(seg)
+            }
+            return stdlib.tuple(result)
+        }
+    }
+
+    is_absolute() => SubStr(this.Path, 1, 1) = "/"
+
+    joinpath(parts*)
+    {
+        path := this.Path
+        for part in parts
+            path := AhkStdlibPathlibPosixJoin(path, AhkStdlibPathlibPartToString(part))
+        return AhkStdlibPathlibPurePosixPath(path)
+    }
+
+    Join(parts*) => this.joinpath(parts*)
+
+    with_name(newName)
+    {
+        return this.parent.joinpath(newName)
+    }
+
+    with_suffix(newSuffix)
+    {
+        n := this.name
+        dot := AhkStdlibPathlibLastDot(n)
+        stem := (dot <= 1 || dot = StrLen(n)) ? n : SubStr(n, 1, dot - 1)
+        return this.parent.joinpath(stem newSuffix)
+    }
+}
+
+AhkStdlibPathlibPosixNormalizeParts(parts)
+{
+    path := ""
+    for part in parts {
+        text := AhkStdlibPathlibPartToString(part)
+        text := StrReplace(text, "\", "/")
+        if text = "" || text = "."
+            continue
+        path := (path = "") ? text : AhkStdlibPathlibPosixJoin(path, text)
+    }
+    return path = "" ? "." : AhkStdlibPathlibPosixCollapse(path)
+}
+
+AhkStdlibPathlibPosixJoin(base, part)
+{
+    part := StrReplace(part, "\", "/")
+    if SubStr(part, 1, 1) = "/"
+        return AhkStdlibPathlibPosixCollapse(part)
+    if base = "" || base = "."
+        return part
+    return AhkStdlibPathlibPosixCollapse(RTrim(base, "/") "/" part)
+}
+
+AhkStdlibPathlibPosixCollapse(path)
+{
+    ; Collapse runs of '/' but keep a single leading '/'.
+    leading := SubStr(path, 1, 1) = "/" ? "/" : ""
+    segs := []
+    for seg in StrSplit(path, "/") {
+        if seg != ""
+            segs.Push(seg)
+    }
+    joined := ""
+    for seg in segs
+        joined .= (joined = "" ? "" : "/") seg
+    result := leading joined
+    return result = "" ? "." : result
+}
+
+
 
 AhkStdlibPathlibNormalizeParts(parts)
 {

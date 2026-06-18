@@ -186,6 +186,29 @@ class StdlibPathlibTest
             out := out = "" ? String(item) : out "," String(item)
         return out
     }
+
+    static TestPureWindowsPathManipulatesWithoutIO()
+    {
+        p := stdlib.pathlib.PureWindowsPath("C:\dir", "file.txt")
+        AhkTest.AssertEqual("file.txt", p.name)
+        AhkTest.AssertEqual("file", p.stem)
+        AhkTest.AssertEqual(".txt", p.suffix)
+        ; joinpath returns another PurePath, and I/O methods are blocked.
+        joined := p.parent.joinpath("other.log")
+        AhkTest.AssertEqual("other.log", joined.name)
+        AhkTest.AssertThrows(stdlib.AttributeError, (*) => p.exists())
+        AhkTest.AssertThrows(stdlib.AttributeError, (*) => p.read_text())
+    }
+
+    static TestPurePosixPathUsesForwardSlashes()
+    {
+        p := stdlib.pathlib.PurePosixPath("/usr/bin/python")
+        AhkTest.AssertEqual("python", p.name)
+        AhkTest.AssertEqual("/usr/bin", String(p.parent))
+        AhkTest.AssertEqual("/usr/bin/python/x", String(p.joinpath("x")))
+        AhkTest.AssertEqual(true, p.is_absolute())
+        AhkTest.AssertEqual("a,b", this.JoinParts(stdlib.pathlib.PurePosixPath("a/b/c").parent.parts))
+    }
 }
 
 AhkTest.Collect(StdlibPathlibTest)
