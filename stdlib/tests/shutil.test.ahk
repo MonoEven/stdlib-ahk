@@ -202,6 +202,85 @@ class StdlibShutilTest
         AhkTest.AssertEqual(120, custom[1])
         AhkTest.AssertEqual(40, custom[2])
     }
+
+    static TestCopystatPreservesMtimeAndReadonly()
+    {
+        root := stdlib.tempfile.mkdtemp("", "stdlib-shutil-stat-", stdlib.tempfile.gettempdir())
+        try {
+            src := root "\src.txt"
+            dst := root "\dst.txt"
+            FileAppend "alpha", src
+            FileAppend "beta", dst
+            FileSetTime "20200102030405", src, "M"
+            FileSetAttrib "+R", src
+            stdlib.shutil.copystat(src, dst)
+            AhkTest.AssertEqual(FileGetTime(src, "M"), FileGetTime(dst, "M"))
+            AhkTest.AssertContains("R", FileGetAttrib(dst))
+            FileSetAttrib "-R", src
+            FileSetAttrib "-R", dst
+        } finally {
+            DirDelete root, true
+        }
+    }
+
+    static TestGetArchiveFormatsListsZipAndTarSorted()
+    {
+        formats := stdlib.shutil.get_archive_formats()
+        names := []
+        for entry in formats
+            names.Push(entry[1])
+        AhkTest.AssertContains("zip", AhkStdlibShutilTestJoin(names))
+        AhkTest.AssertContains("gztar", AhkStdlibShutilTestJoin(names))
+        AhkTest.AssertEqual("bztar", names[1])
+    }
+
+    static TestMakeAndUnpackZipArchiveRoundTrips()
+    {
+        root := stdlib.tempfile.mkdtemp("", "stdlib-shutil-zip-", stdlib.tempfile.gettempdir())
+        try {
+            srcDir := root "\payload"
+            DirCreate srcDir
+            FileAppend "hello-zip", srcDir "\a.txt"
+            base := root "\bundle"
+            archive := stdlib.shutil.make_archive(base, "zip", srcDir)
+            AhkTest.AssertTrue(FileExist(archive) != "")
+
+            outDir := root "\out"
+            stdlib.shutil.unpack_archive(archive, outDir)
+            AhkTest.AssertTrue(FileExist(outDir "\a.txt") != "")
+            AhkTest.AssertEqual("hello-zip", FileRead(outDir "\a.txt"))
+        } finally {
+            DirDelete root, true
+        }
+    }
+
+    static TestMakeAndUnpackTarArchiveRoundTrips()
+    {
+        root := stdlib.tempfile.mkdtemp("", "stdlib-shutil-tar-", stdlib.tempfile.gettempdir())
+        try {
+            srcDir := root "\payload"
+            DirCreate srcDir
+            FileAppend "hello-tar", srcDir "\b.txt"
+            base := root "\bundle"
+            archive := stdlib.shutil.make_archive(base, "gztar", srcDir)
+            AhkTest.AssertTrue(FileExist(archive) != "")
+
+            outDir := root "\out"
+            stdlib.shutil.unpack_archive(archive, outDir)
+            AhkTest.AssertTrue(FileExist(outDir "\b.txt") != "")
+            AhkTest.AssertEqual("hello-tar", FileRead(outDir "\b.txt"))
+        } finally {
+            DirDelete root, true
+        }
+    }
+}
+
+AhkStdlibShutilTestJoin(arr)
+{
+    out := ""
+    for value in arr
+        out .= value ","
+    return out
 }
 
 AhkTest.Collect(StdlibShutilTest)
