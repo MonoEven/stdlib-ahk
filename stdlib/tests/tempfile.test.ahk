@@ -148,6 +148,55 @@ class StdlibTempfileTest
                 DirDelete root, true
         }
     }
+
+    static TestSpooledTemporaryFileStaysInMemoryBelowMaxSize()
+    {
+        f := stdlib.tempfile.SpooledTemporaryFile(10, "w+")
+        try {
+            f.write("abc")
+            AhkTest.AssertFalse(f._rolled)
+            AhkTest.AssertTrue(AhkStdlibIsNone(f.name))
+            f.seek(0)
+            AhkTest.AssertEqual("abc", f.read())
+        } finally {
+            f.close()
+        }
+    }
+
+    static TestSpooledTemporaryFileRollsOverPastMaxSize()
+    {
+        f := stdlib.tempfile.SpooledTemporaryFile(10, "w+")
+        try {
+            f.write("abc")
+            f.write("defghijklmno")
+            AhkTest.AssertTrue(f._rolled)
+            AhkTest.AssertFalse(AhkStdlibIsNone(f.name))
+            AhkTest.AssertTrue(FileExist(f.name) != "")
+            f.seek(0)
+            AhkTest.AssertEqual("abcdefghijklmno", f.read())
+        } finally {
+            f.close()
+        }
+    }
+
+    static TestSpooledTemporaryFileExplicitRolloverPreservesData()
+    {
+        f := stdlib.tempfile.SpooledTemporaryFile(0, "w+")
+        try {
+            f.write("persisted")
+            AhkTest.AssertFalse(f._rolled)
+            f.rollover()
+            AhkTest.AssertTrue(f._rolled)
+            diskName := f.name
+            f.seek(0)
+            AhkTest.AssertEqual("persisted", f.read())
+            f.close()
+            ; close deletes the backing temp file.
+            AhkTest.AssertTrue(FileExist(diskName) = "")
+        } finally {
+            f.close()
+        }
+    }
 }
 
 AhkTest.Collect(StdlibTempfileTest)

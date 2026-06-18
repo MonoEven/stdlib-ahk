@@ -1,6 +1,7 @@
 #Requires AutoHotkey v2.0
 
 #Include <stdlib\init>
+#Include <stdlib\io>
 
 class AhkStdlibTempfile
 {
@@ -100,6 +101,11 @@ class AhkStdlibTempfile
     static TemporaryFile(options := unset)
     {
         return AhkStdlibTempfileNamedFile(options?)
+    }
+
+    static SpooledTemporaryFile(max_size := 0, mode := "w+b", options := unset)
+    {
+        return AhkStdlibSpooledTemporaryFile(max_size, mode, options?)
     }
 
     static TemporaryDirectory(suffix := unset, prefix := unset, dir := unset, ignore_cleanup_errors := false)
@@ -277,4 +283,215 @@ AhkStdlibTempfileJoin(dir, name)
     if dir = ""
         return name
     return RTrim(dir, "\") "\" name
+}
+
+; SpooledTemporaryFile keeps data in an in-memory io buffer until it exceeds
+; max_size, then transparently rolls over to a real on-disk temp file. A binary
+; mode (contains "b") uses io.BytesIO; otherwise io.StringIO. max_size = 0 means
+; never auto-roll (rollover only on explicit .rollover()). Mirrors CPython 3.10.
+class AhkStdlibSpooledTemporaryFile
+{
+    __New(max_size := 0, mode := "w+b", options := unset)
+    {
+        this.AhkStdlibMaxSize := max_size
+        this.AhkStdlibMode := mode
+        this.AhkStdlibBinary := InStr(mode, "b") ? true : false
+        this._rolled := false
+        this.AhkStdlibClosed := false
+        this.AhkStdlibSuffix := ""
+        this.AhkStdlibPrefix := AhkStdlibTempfile.gettempprefix()
+        this.AhkStdlibDir := AhkStdlibTempfile.gettempdir()
+        if IsSet(options) && IsObject(options) {
+            if HasProp(options, "suffix")
+                this.AhkStdlibSuffix := options.suffix
+            if HasProp(options, "prefix")
+                this.AhkStdlibPrefix := options.prefix
+            if HasProp(options, "dir")
+                this.AhkStdlibDir := options.dir
+        }
+        this.AhkStdlibFile := this.AhkStdlibBinary ? AhkStdlibIoBytesIO() : AhkStdlibIoStringIO()
+    }
+
+    ; .name is None until the file rolls over to disk (matches CPython).
+    name {
+        get => this._rolled ? this.AhkStdlibDiskName : stdlib.None
+    }
+
+    AhkStdlibCheckRollover(extra)
+    {
+        if this._rolled
+            return
+        if this.AhkStdlibMaxSize > 0 && (this.AhkStdlibFile.tell() + extra) > this.AhkStdlibMaxSize
+            this.rollover()
+    }
+
+    rollover()
+    {
+        if this._rolled
+            return stdlib.None
+        ; Drain the in-memory buffer into a fresh on-disk temp file.
+        memory := this.AhkStdlibFile
+        pos := memory.tell()
+        data := memory.getvalue()
+        result := AhkStdlibTempfile.mkstemp(this.AhkStdlibSuffix, this.AhkStdlibPrefix, this.AhkStdlibDir)
+        this.AhkStdlibDiskName := result[1]
+        flags := this.AhkStdlibBinary ? "rw" : "rw"
+        diskFile := FileOpen(this.AhkStdlibDiskName, flags, this.AhkStdlibBinary ? "" : "UTF-8-RAW")
+        if this.AhkStdlibBinary {
+            if data is Buffer && data.Size > 0
+                diskFile.RawWrite(data, data.Size)
+        } else {
+            if data != ""
+                diskFile.Write(data)
+        }
+        diskFile.Seek(pos, 0)
+        this.AhkStdlibFile := AhkStdlibSpooledDiskAdapter(diskFile, this.AhkStdlibBinary)
+        this._rolled := true
+        return stdlib.None
+    }
+
+    write(data)
+    {
+        this.AhkStdlibEnsureOpen()
+        extra := this.AhkStdlibBinary ? (data is Buffer ? data.Size : StrLen(data)) : StrLen(data)
+        this.AhkStdlibCheckRollover(extra)
+        return this.AhkStdlibFile.write(data)
+    }
+
+    read(args*)
+    {
+        this.AhkStdlibEnsureOpen()
+        return this.AhkStdlibFile.read(args*)
+    }
+
+    seek(offset, origin := 0)
+    {
+        this.AhkStdlibEnsureOpen()
+        return this.AhkStdlibFile.seek(offset, origin)
+    }
+
+    tell()
+    {
+        this.AhkStdlibEnsureOpen()
+        return this.AhkStdlibFile.tell()
+    }
+
+    truncate(size := unset)
+    {
+        this.AhkStdlibEnsureOpen()
+        if IsSet(size)
+            return this.AhkStdlibFile.truncate(size)
+        return this.AhkStdlibFile.truncate()
+    }
+
+    flush()
+    {
+        return stdlib.None
+    }
+
+    close()
+    {
+        if this.AhkStdlibClosed
+            return stdlib.None
+        this.AhkStdlibClosed := true
+        if this._rolled {
+            try this.AhkStdlibFile.close()
+            if FileExist(this.AhkStdlibDiskName)
+                try FileDelete this.AhkStdlibDiskName
+        }
+        return stdlib.None
+    }
+
+    AhkStdlibEnsureOpen()
+    {
+        if this.AhkStdlibClosed
+            throw ValueError("I/O operation on closed file", -1)
+    }
+
+    __Delete()
+    {
+        try this.close()
+    }
+}
+
+; Adapts a FileOpen handle to the StringIO/BytesIO method surface used above.
+class AhkStdlibSpooledDiskAdapter
+{
+    __New(file, binary)
+    {
+        this.AhkStdlibFile := file
+        this.AhkStdlibBinary := binary
+    }
+
+    write(data)
+    {
+        if this.AhkStdlibBinary {
+            if data is Buffer
+                return this.AhkStdlibFile.RawWrite(data, data.Size)
+            return this.AhkStdlibFile.Write(data)
+        }
+        return this.AhkStdlibFile.Write(data)
+    }
+
+    read(size := -1)
+    {
+        if this.AhkStdlibBinary {
+            remaining := this.AhkStdlibFile.Length - this.AhkStdlibFile.Pos
+            count := (size < 0) ? remaining : Min(size, remaining)
+            buf := Buffer(count)
+            got := this.AhkStdlibFile.RawRead(buf, count)
+            if got < count
+                buf := AhkStdlibSpooledTrimBuffer(buf, got)
+            return buf
+        }
+        if size < 0
+            return this.AhkStdlibFile.Read()
+        return this.AhkStdlibFile.Read(size)
+    }
+
+    seek(offset, origin := 0)
+    {
+        return this.AhkStdlibFile.Seek(offset, origin)
+    }
+
+    tell()
+    {
+        return this.AhkStdlibFile.Pos
+    }
+
+    getvalue()
+    {
+        saved := this.AhkStdlibFile.Pos
+        this.AhkStdlibFile.Seek(0, 0)
+        result := this.read(-1)
+        this.AhkStdlibFile.Seek(saved, 0)
+        return result
+    }
+
+    truncate(size := unset)
+    {
+        if IsSet(size) {
+            saved := this.AhkStdlibFile.Pos
+            this.AhkStdlibFile.Seek(size, 0)
+            this.AhkStdlibFile.Length := size
+            this.AhkStdlibFile.Seek(saved, 0)
+            return size
+        }
+        this.AhkStdlibFile.Length := this.AhkStdlibFile.Pos
+        return this.AhkStdlibFile.Pos
+    }
+
+    close()
+    {
+        try this.AhkStdlibFile.Close()
+        return ""
+    }
+}
+
+AhkStdlibSpooledTrimBuffer(buf, count)
+{
+    trimmed := Buffer(count)
+    if count > 0
+        DllCall("RtlMoveMemory", "Ptr", trimmed.Ptr, "Ptr", buf.Ptr, "UPtr", count)
+    return trimmed
 }
