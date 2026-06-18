@@ -265,6 +265,72 @@ class StdlibIoTest
         AhkTest.AssertEqual(2, writeWrapper.write("ab"))
         AhkTest.AssertEqual([97, 98], writeBuf.getvalue())
     }
+
+    static TestTextIOWrapperUniversalNewlinesOnRead()
+    {
+        ; \r\n collapses to \n on read (universal newlines), matching CPython.
+        bytes := []
+        for ch in StrSplit("line1`r`nline2`r`n")
+            bytes.Push(Ord(ch) & 0xFF)
+        buf := stdlib.io.BytesIO(bytes)
+        wrapper := stdlib.io.TextIOWrapper(buf, "UTF-8")
+        AhkTest.AssertEqual("line1`nline2`n", wrapper.read())
+    }
+
+    static TestTextIOWrapperUtf8RoundTrip()
+    {
+        buf := stdlib.io.BytesIO()
+        w := stdlib.io.TextIOWrapper(buf, "UTF-8")
+        w.write("caf" Chr(0xE9))            ; "café"
+        ; UTF-8 encodes é as two bytes 0xC3 0xA9.
+        raw := buf.getvalue()
+        AhkTest.AssertEqual(0xC3, raw[4])
+        AhkTest.AssertEqual(0xA9, raw[5])
+        ; Reading it back through a fresh wrapper restores the text.
+        buf2 := stdlib.io.BytesIO(raw)
+        r := stdlib.io.TextIOWrapper(buf2, "UTF-8")
+        AhkTest.AssertEqual("caf" Chr(0xE9), r.read())
+    }
+
+    static TestBufferedWriterReaderRoundTripThroughFile()
+    {
+        path := A_Temp "\ahk_io_buftest_" Random(100000, 999999) ".bin"
+        try {
+            raw := stdlib.io.FileIO(path, "w")
+            bw := stdlib.io.BufferedWriter(raw)
+            payload := Buffer(5)
+            loop 5
+                NumPut("UChar", 64 + A_Index, payload, A_Index - 1)   ; A B C D E
+            bw.write(payload)
+            bw.close()
+
+            rraw := stdlib.io.FileIO(path, "r")
+            br := stdlib.io.BufferedReader(rraw)
+            got := br.read(-1)
+            br.close()
+            AhkTest.AssertEqual(5, got.Size)
+            AhkTest.AssertEqual(65, NumGet(got, 0, "UChar"))
+            AhkTest.AssertEqual(69, NumGet(got, 4, "UChar"))
+        } finally {
+            if FileExist(path)
+                FileDelete path
+        }
+    }
+
+    static TestUnsupportedOperationOnNonSeekableStream()
+    {
+        ; A BufferedWriter wrapping a writable-only FileIO is not readable; read
+        ; raises UnsupportedOperation.
+        path := A_Temp "\ahk_io_unsupported_" Random(100000, 999999) ".bin"
+        try {
+            raw := stdlib.io.FileIO(path, "w")
+            AhkTest.AssertThrows(stdlib.io.UnsupportedOperation, (*) => raw.read(1))
+            raw.close()
+        } finally {
+            if FileExist(path)
+                FileDelete path
+        }
+    }
 }
 
 AhkTest.Collect(StdlibIoTest)

@@ -47,7 +47,37 @@ class AhkStdlibIo
 
     static TextIOWrapper(buffer, encoding := unset, errors := unset, newline := unset, line_buffering := false, write_through := false)
     {
-        return AhkStdlibIoTextIOWrapper(buffer)
+        return AhkStdlibIoTextIOWrapper(buffer, encoding?, newline?)
+    }
+
+    static IOBase := AhkStdlibIoIOBase
+    static RawIOBase := AhkStdlibIoRawIOBase
+    static BufferedIOBase := AhkStdlibIoBufferedIOBase
+    static TextIOBase := AhkStdlibIoTextIOBase
+
+    static FileIO(name, mode := "r")
+    {
+        return AhkStdlibIoFileIO(name, mode)
+    }
+
+    static BufferedReader(raw, buffer_size := unset)
+    {
+        return AhkStdlibIoBufferedReader(raw, buffer_size?)
+    }
+
+    static BufferedWriter(raw, buffer_size := unset)
+    {
+        return AhkStdlibIoBufferedWriter(raw, buffer_size?)
+    }
+
+    static BufferedRandom(raw, buffer_size := unset)
+    {
+        return AhkStdlibIoBufferedRandom(raw, buffer_size?)
+    }
+
+    static BufferedRWPair(reader, writer, buffer_size := unset)
+    {
+        return AhkStdlibIoBufferedRWPair(reader, writer, buffer_size?)
     }
 }
 
@@ -750,22 +780,26 @@ class AhkStdlibIoFileWrapper
 
 class AhkStdlibIoTextIOWrapper
 {
-    __New(buffer)
+    __New(buffer, encoding := unset, newline := unset)
     {
         this.AhkStdlibBuffer := buffer
         this.AhkStdlibPosition := 0
         this.closed := false
+        this.encoding := (IsSet(encoding) && !AhkStdlibIsNone(encoding)) ? encoding : "UTF-8"
+        ; newline: unset/None -> universal newlines (translate \r\n and \r to \n
+        ; on read). "" -> no translation. Any other string -> that terminator.
+        this.AhkStdlibNewline := IsSet(newline) ? newline : stdlib.None
         this.AhkStdlibLoad()
     }
 
     AhkStdlibLoad()
     {
-        bytes := this.AhkStdlibBuffer.getvalue()
-        text := ""
-        for byte in bytes
-            text .= Chr(byte)
-        this.AhkStdlibContent := text
-        this.AhkStdlibLength := StrLen(text)
+        ; Decode the buffer's raw bytes through the configured encoding, then
+        ; apply universal-newline translation for reads.
+        raw := this.AhkStdlibBuffer.getvalue()
+        text := AhkStdlibIoDecodeBytes(raw, this.encoding)
+        this.AhkStdlibContent := AhkStdlibIoTranslateReadNewlines(text, this.AhkStdlibNewline)
+        this.AhkStdlibLength := StrLen(this.AhkStdlibContent)
     }
 
     read(size := -1)
@@ -812,13 +846,11 @@ class AhkStdlibIoTextIOWrapper
         this.AhkStdlibEnsureOpen()
         if !(text is String)
             throw TypeError("write() argument must be str, not " AhkStdlibIoPythonTypeName(text), -1)
-        bytes := []
-        loop StrLen(text) {
-            code := Ord(SubStr(text, A_Index, 1))
-            bytes.Push(code & 0xFF)
-        }
+        ; Encode through the configured encoding into a byte-value array the
+        ; underlying BytesIO understands.
+        bytes := AhkStdlibIoEncodeBytes(text, this.encoding)
         this.AhkStdlibBuffer.write(bytes)
-        this.AhkStdlibContent .= text
+        this.AhkStdlibContent .= AhkStdlibIoTranslateReadNewlines(text, this.AhkStdlibNewline)
         this.AhkStdlibLength := StrLen(this.AhkStdlibContent)
         this.AhkStdlibPosition := this.AhkStdlibLength
         return StrLen(text)
@@ -858,6 +890,69 @@ class AhkStdlibIoTextIOWrapper
 }
 
 stdlib.io := AhkStdlibIo
+
+; Decode an int-array (or Buffer) of raw bytes into a string via `encoding`.
+AhkStdlibIoDecodeBytes(raw, encoding)
+{
+    if raw is Buffer {
+        if raw.Size = 0
+            return ""
+        return StrGet(raw, raw.Size, encoding)
+    }
+    ; Otherwise an array of byte values (BytesIO). Pack into a Buffer and decode.
+    if !(raw is Array) || raw.Length = 0
+        return ""
+    buf := Buffer(raw.Length)
+    for index, byte in raw
+        NumPut("UChar", byte & 0xFF, buf, index - 1)
+    return StrGet(buf, raw.Length, encoding)
+}
+
+; Encode a string into an array of byte values via `encoding` (no NUL term).
+AhkStdlibIoEncodeBytes(text, encoding)
+{
+    if text = ""
+        return []
+    size := StrPut(text, encoding) ; includes space for terminator
+    buf := Buffer(size)
+    written := StrPut(text, buf, encoding)
+    ; Drop the encoding's NUL terminator(s): StrPut returns chars for some
+    ; encodings, so recompute the true byte length from the buffer content.
+    byteLen := AhkStdlibIoEncodedByteLength(text, encoding, buf)
+    bytes := []
+    i := 0
+    while i < byteLen {
+        bytes.Push(NumGet(buf, i, "UChar"))
+        i += 1
+    }
+    return bytes
+}
+
+AhkStdlibIoEncodedByteLength(text, encoding, buf)
+{
+    ; StrPut's return value is in characters for UTF-16 and bytes for others,
+    ; minus reliability quirks; derive the byte length by re-encoding to a sized
+    ; buffer and trimming the single/double NUL terminator.
+    normalized := StrLower(StrReplace(encoding, "-"))
+    full := buf.Size
+    if (normalized = "utf16" || normalized = "utf16le" || normalized = "unicode" || normalized = "cp1200") {
+        ; 2-byte terminator.
+        return full - 2
+    }
+    return full - 1
+}
+
+; Universal-newline translation for reads: with None newline, \r\n and lone \r
+; collapse to \n. With "" or a specific terminator, leave text unchanged.
+AhkStdlibIoTranslateReadNewlines(text, newline)
+{
+    if !AhkStdlibIsNone(newline)
+        return text
+    text := StrReplace(text, "`r`n", "`n")
+    text := StrReplace(text, "`r", "`n")
+    return text
+}
+
 
 AhkStdlibIoPythonTypeName(value)
 {
@@ -914,4 +1009,530 @@ AhkStdlibIoRequireByte(value)
     if value < 0 || value > 255
         throw ValueError("byte must be in range(0, 256)", -1)
     return value
+}
+
+; ============================================================================
+; io class hierarchy (IOBase / RawIOBase / BufferedIOBase / TextIOBase) plus the
+; concrete FileIO and Buffered* wrappers. These mirror CPython's layered stream
+; model: a raw byte stream (FileIO) wrapped by a buffering layer (BufferedReader
+; /Writer/Random) and optionally decoded by TextIOWrapper. Single-threaded, so
+; no locking is needed.
+; ============================================================================
+
+class AhkStdlibIoIOBase
+{
+    __New()
+    {
+        this.closed := false
+    }
+
+    readable() => false
+    writable() => false
+    seekable() => false
+
+    AhkStdlibCheckClosed()
+    {
+        if this.closed
+            throw ValueError("I/O operation on closed file.", -1)
+    }
+
+    AhkStdlibCheckReadable()
+    {
+        if !this.readable()
+            throw AhkStdlibIoUnsupportedOperation("File or stream is not readable.", -1)
+    }
+
+    AhkStdlibCheckWritable()
+    {
+        if !this.writable()
+            throw AhkStdlibIoUnsupportedOperation("File or stream is not writable.", -1)
+    }
+
+    AhkStdlibCheckSeekable()
+    {
+        if !this.seekable()
+            throw AhkStdlibIoUnsupportedOperation("File or stream is not seekable.", -1)
+    }
+
+    flush()
+    {
+        this.AhkStdlibCheckClosed()
+        return ""
+    }
+
+    close()
+    {
+        if !this.closed {
+            try this.flush()
+            this.closed := true
+        }
+        return ""
+    }
+
+    tell()
+    {
+        return this.seek(0, 1)
+    }
+}
+
+class AhkStdlibIoRawIOBase extends AhkStdlibIoIOBase
+{
+}
+
+class AhkStdlibIoBufferedIOBase extends AhkStdlibIoIOBase
+{
+}
+
+class AhkStdlibIoTextIOBase extends AhkStdlibIoIOBase
+{
+}
+
+; FileIO: unbuffered raw bytes over a real file handle. read/readall return a
+; Buffer; write accepts a Buffer or a (latin-1) string. Mirrors io.FileIO.
+class AhkStdlibIoFileIO extends AhkStdlibIoRawIOBase
+{
+    __New(name, mode := "r")
+    {
+        this.name := name
+        this.AhkStdlibMode := mode
+        this.AhkStdlibParseMode(mode)
+        if this.AhkStdlibMustExist && !FileExist(name)
+            throw OSError("[Errno 2] No such file or directory: '" name "'", -1)
+        ; Open binary (no encoding) so bytes pass through verbatim.
+        flags := this.AhkStdlibCanWrite ? (this.AhkStdlibCanRead ? "rw" : "w") : "r"
+        if this.AhkStdlibAppend
+            flags := "a"
+        this.AhkStdlibFile := FileOpen(name, flags)
+        if this.AhkStdlibTruncate
+            this.AhkStdlibFile.Length := 0
+        if this.AhkStdlibAppend
+            this.AhkStdlibFile.Seek(0, 2)
+        this.closed := false
+    }
+
+    AhkStdlibParseMode(mode)
+    {
+        normalized := StrReplace(StrReplace(mode, "b"), "t")
+        this.AhkStdlibAppend := false
+        this.AhkStdlibTruncate := false
+        switch normalized {
+            case "r":
+                this.AhkStdlibCanRead := true, this.AhkStdlibCanWrite := false, this.AhkStdlibMustExist := true
+            case "w":
+                this.AhkStdlibCanRead := false, this.AhkStdlibCanWrite := true, this.AhkStdlibMustExist := false, this.AhkStdlibTruncate := true
+            case "a":
+                this.AhkStdlibCanRead := false, this.AhkStdlibCanWrite := true, this.AhkStdlibMustExist := false, this.AhkStdlibAppend := true
+            case "r+", "+r":
+                this.AhkStdlibCanRead := true, this.AhkStdlibCanWrite := true, this.AhkStdlibMustExist := true
+            case "w+", "+w":
+                this.AhkStdlibCanRead := true, this.AhkStdlibCanWrite := true, this.AhkStdlibMustExist := false, this.AhkStdlibTruncate := true
+            case "a+", "+a":
+                this.AhkStdlibCanRead := true, this.AhkStdlibCanWrite := true, this.AhkStdlibMustExist := false, this.AhkStdlibAppend := true
+            default:
+                throw ValueError("invalid mode: '" mode "'", -1)
+        }
+    }
+
+    readable() => this.AhkStdlibCanRead
+    writable() => this.AhkStdlibCanWrite
+    seekable() => true
+
+    read(size := -1)
+    {
+        this.AhkStdlibCheckClosed()
+        this.AhkStdlibCheckReadable()
+        if AhkStdlibIsNone(size) || size < 0
+            return this.readall()
+        if size = 0
+            return Buffer(0)
+        remaining := this.AhkStdlibFile.Length - this.AhkStdlibFile.Pos
+        count := Min(size, remaining)
+        buf := Buffer(count)
+        got := this.AhkStdlibFile.RawRead(buf, count)
+        return got = count ? buf : AhkStdlibIoTrimBuffer(buf, got)
+    }
+
+    readall()
+    {
+        remaining := this.AhkStdlibFile.Length - this.AhkStdlibFile.Pos
+        if remaining <= 0
+            return Buffer(0)
+        buf := Buffer(remaining)
+        got := this.AhkStdlibFile.RawRead(buf, remaining)
+        return got = remaining ? buf : AhkStdlibIoTrimBuffer(buf, got)
+    }
+
+    readinto(target)
+    {
+        this.AhkStdlibCheckClosed()
+        this.AhkStdlibCheckReadable()
+        return this.AhkStdlibFile.RawRead(target, target.Size)
+    }
+
+    write(data)
+    {
+        this.AhkStdlibCheckClosed()
+        this.AhkStdlibCheckWritable()
+        if data is Buffer
+            return this.AhkStdlibFile.RawWrite(data, data.Size)
+        ; A string is written as raw bytes (latin-1 style: low byte per char).
+        buf := AhkStdlibIoStringToByteBuffer(data)
+        return this.AhkStdlibFile.RawWrite(buf, buf.Size)
+    }
+
+    seek(pos, whence := 0)
+    {
+        this.AhkStdlibCheckClosed()
+        this.AhkStdlibFile.Seek(pos, whence)
+        return this.AhkStdlibFile.Pos
+    }
+
+    tell()
+    {
+        this.AhkStdlibCheckClosed()
+        return this.AhkStdlibFile.Pos
+    }
+
+    truncate(size := unset)
+    {
+        this.AhkStdlibCheckClosed()
+        this.AhkStdlibCheckWritable()
+        target := IsSet(size) ? size : this.AhkStdlibFile.Pos
+        this.AhkStdlibFile.Length := target
+        return target
+    }
+
+    flush()
+    {
+        this.AhkStdlibCheckClosed()
+        return ""
+    }
+
+    close()
+    {
+        if !this.closed {
+            try this.AhkStdlibFile.Close()
+            this.closed := true
+        }
+        return ""
+    }
+}
+
+; Convert a Buffer to a fresh Buffer of exactly `count` bytes.
+AhkStdlibIoTrimBuffer(buf, count)
+{
+    trimmed := Buffer(count)
+    if count > 0
+        DllCall("RtlMoveMemory", "Ptr", trimmed.Ptr, "Ptr", buf.Ptr, "UPtr", count)
+    return trimmed
+}
+
+; Pack a string's low byte per character into a Buffer (latin-1 semantics).
+AhkStdlibIoStringToByteBuffer(text)
+{
+    n := StrLen(text)
+    buf := Buffer(n)
+    i := 1
+    while i <= n {
+        NumPut("UChar", Ord(SubStr(text, i, 1)) & 0xFF, buf, i - 1)
+        i += 1
+    }
+    return buf
+}
+
+; BufferedReader: read-ahead buffering over a raw readable stream. read(size)
+; pulls from an internal byte buffer, refilling from the raw stream in
+; DEFAULT_BUFFER_SIZE chunks. peek/read1 mirror CPython.
+class AhkStdlibIoBufferedReader extends AhkStdlibIoBufferedIOBase
+{
+    __New(raw, buffer_size := unset)
+    {
+        this.raw := raw
+        this.AhkStdlibBufSize := IsSet(buffer_size) ? buffer_size : AhkStdlibIo.DEFAULT_BUFFER_SIZE
+        this.AhkStdlibPending := Buffer(0)   ; bytes read-ahead but not yet consumed
+        this.AhkStdlibPendingPos := 0
+        this.closed := false
+    }
+
+    readable() => true
+    writable() => false
+    seekable() => this.raw.seekable()
+
+    AhkStdlibPendingCount()
+    {
+        return this.AhkStdlibPending.Size - this.AhkStdlibPendingPos
+    }
+
+    AhkStdlibFill()
+    {
+        chunk := this.raw.read(this.AhkStdlibBufSize)
+        this.AhkStdlibPending := chunk
+        this.AhkStdlibPendingPos := 0
+        return chunk.Size
+    }
+
+    read(size := -1)
+    {
+        this.AhkStdlibCheckClosed()
+        if AhkStdlibIsNone(size) || size < 0 {
+            ; Read everything: drain pending then the raw tail.
+            parts := []
+            if this.AhkStdlibPendingCount() > 0
+                parts.Push(AhkStdlibIoSliceBuffer(this.AhkStdlibPending, this.AhkStdlibPendingPos, this.AhkStdlibPendingCount()))
+            this.AhkStdlibPendingPos := this.AhkStdlibPending.Size
+            rest := this.raw.read(-1)
+            if rest.Size > 0
+                parts.Push(rest)
+            return AhkStdlibIoConcatBuffers(parts)
+        }
+        if size = 0
+            return Buffer(0)
+        parts := []
+        need := size
+        while need > 0 {
+            avail := this.AhkStdlibPendingCount()
+            if avail = 0 {
+                if this.AhkStdlibFill() = 0
+                    break
+                avail := this.AhkStdlibPendingCount()
+                if avail = 0
+                    break
+            }
+            take := Min(need, avail)
+            parts.Push(AhkStdlibIoSliceBuffer(this.AhkStdlibPending, this.AhkStdlibPendingPos, take))
+            this.AhkStdlibPendingPos += take
+            need -= take
+        }
+        return AhkStdlibIoConcatBuffers(parts)
+    }
+
+    read1(size := -1)
+    {
+        this.AhkStdlibCheckClosed()
+        if this.AhkStdlibPendingCount() = 0
+            this.AhkStdlibFill()
+        avail := this.AhkStdlibPendingCount()
+        take := (size < 0) ? avail : Min(size, avail)
+        result := AhkStdlibIoSliceBuffer(this.AhkStdlibPending, this.AhkStdlibPendingPos, take)
+        this.AhkStdlibPendingPos += take
+        return result
+    }
+
+    peek(size := 0)
+    {
+        this.AhkStdlibCheckClosed()
+        if this.AhkStdlibPendingCount() = 0
+            this.AhkStdlibFill()
+        return AhkStdlibIoSliceBuffer(this.AhkStdlibPending, this.AhkStdlibPendingPos, this.AhkStdlibPendingCount())
+    }
+
+    seek(pos, whence := 0)
+    {
+        this.AhkStdlibCheckClosed()
+        this.AhkStdlibCheckSeekable()
+        ; Discard the read-ahead buffer and seek the raw stream.
+        this.AhkStdlibPending := Buffer(0)
+        this.AhkStdlibPendingPos := 0
+        return this.raw.seek(pos, whence)
+    }
+
+    tell()
+    {
+        this.AhkStdlibCheckClosed()
+        return this.raw.tell() - this.AhkStdlibPendingCount()
+    }
+
+    flush()
+    {
+        this.AhkStdlibCheckClosed()
+        return ""
+    }
+
+    close()
+    {
+        if !this.closed {
+            try this.raw.close()
+            this.closed := true
+        }
+        return ""
+    }
+}
+
+; BufferedWriter: accumulate writes and flush to the raw stream in bulk.
+class AhkStdlibIoBufferedWriter extends AhkStdlibIoBufferedIOBase
+{
+    __New(raw, buffer_size := unset)
+    {
+        this.raw := raw
+        this.AhkStdlibBufSize := IsSet(buffer_size) ? buffer_size : AhkStdlibIo.DEFAULT_BUFFER_SIZE
+        this.AhkStdlibParts := []
+        this.AhkStdlibPendingBytes := 0
+        this.closed := false
+    }
+
+    readable() => false
+    writable() => true
+    seekable() => this.raw.seekable()
+
+    write(data)
+    {
+        this.AhkStdlibCheckClosed()
+        buf := (data is Buffer) ? data : AhkStdlibIoStringToByteBuffer(data)
+        this.AhkStdlibParts.Push(buf)
+        this.AhkStdlibPendingBytes += buf.Size
+        if this.AhkStdlibPendingBytes >= this.AhkStdlibBufSize
+            this.flush()
+        return buf.Size
+    }
+
+    flush()
+    {
+        this.AhkStdlibCheckClosed()
+        if this.AhkStdlibParts.Length = 0
+            return ""
+        merged := AhkStdlibIoConcatBuffers(this.AhkStdlibParts)
+        this.raw.write(merged)
+        if HasMethod(this.raw, "flush")
+            this.raw.flush()
+        this.AhkStdlibParts := []
+        this.AhkStdlibPendingBytes := 0
+        return ""
+    }
+
+    seek(pos, whence := 0)
+    {
+        this.flush()
+        return this.raw.seek(pos, whence)
+    }
+
+    tell()
+    {
+        return this.raw.tell() + this.AhkStdlibPendingBytes
+    }
+
+    close()
+    {
+        if !this.closed {
+            try this.flush()
+            try this.raw.close()
+            this.closed := true
+        }
+        return ""
+    }
+}
+
+; BufferedRandom: a seekable read+write buffered stream. Keeps it simple by
+; flushing writes before reads/seeks so the raw position is authoritative.
+class AhkStdlibIoBufferedRandom extends AhkStdlibIoBufferedIOBase
+{
+    __New(raw, buffer_size := unset)
+    {
+        this.raw := raw
+        this.AhkStdlibBufSize := IsSet(buffer_size) ? buffer_size : AhkStdlibIo.DEFAULT_BUFFER_SIZE
+        this.closed := false
+    }
+
+    readable() => true
+    writable() => true
+    seekable() => true
+
+    read(size := -1)
+    {
+        this.AhkStdlibCheckClosed()
+        return this.raw.read(size)
+    }
+
+    write(data)
+    {
+        this.AhkStdlibCheckClosed()
+        return this.raw.write(data)
+    }
+
+    seek(pos, whence := 0)
+    {
+        this.AhkStdlibCheckClosed()
+        return this.raw.seek(pos, whence)
+    }
+
+    tell()
+    {
+        this.AhkStdlibCheckClosed()
+        return this.raw.tell()
+    }
+
+    flush()
+    {
+        this.AhkStdlibCheckClosed()
+        if HasMethod(this.raw, "flush")
+            this.raw.flush()
+        return ""
+    }
+
+    close()
+    {
+        if !this.closed {
+            try this.flush()
+            try this.raw.close()
+            this.closed := true
+        }
+        return ""
+    }
+}
+
+; BufferedRWPair: pairs an independent reader and writer (e.g. a socket).
+class AhkStdlibIoBufferedRWPair extends AhkStdlibIoBufferedIOBase
+{
+    __New(reader, writer, buffer_size := unset)
+    {
+        size := IsSet(buffer_size) ? buffer_size : AhkStdlibIo.DEFAULT_BUFFER_SIZE
+        this.AhkStdlibReader := AhkStdlibIoBufferedReader(reader, size)
+        this.AhkStdlibWriter := AhkStdlibIoBufferedWriter(writer, size)
+        this.closed := false
+    }
+
+    readable() => true
+    writable() => true
+    seekable() => false
+
+    read(size := -1) => this.AhkStdlibReader.read(size)
+    read1(size := -1) => this.AhkStdlibReader.read1(size)
+    peek(size := 0) => this.AhkStdlibReader.peek(size)
+    write(data) => this.AhkStdlibWriter.write(data)
+    flush() => this.AhkStdlibWriter.flush()
+
+    close()
+    {
+        if !this.closed {
+            try this.AhkStdlibWriter.close()
+            try this.AhkStdlibReader.close()
+            this.closed := true
+        }
+        return ""
+    }
+}
+
+; Return a fresh Buffer holding `count` bytes of `buf` starting at offset.
+AhkStdlibIoSliceBuffer(buf, offset, count)
+{
+    out := Buffer(count)
+    if count > 0
+        DllCall("RtlMoveMemory", "Ptr", out.Ptr, "Ptr", buf.Ptr + offset, "UPtr", count)
+    return out
+}
+
+; Concatenate an array of Buffers into one.
+AhkStdlibIoConcatBuffers(parts)
+{
+    total := 0
+    for part in parts
+        total += part.Size
+    out := Buffer(total)
+    pos := 0
+    for part in parts {
+        if part.Size > 0 {
+            DllCall("RtlMoveMemory", "Ptr", out.Ptr + pos, "Ptr", part.Ptr, "UPtr", part.Size)
+            pos += part.Size
+        }
+    }
+    return out
 }
