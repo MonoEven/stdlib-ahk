@@ -1048,6 +1048,41 @@ class StdlibCollectionsTest
         AhkTest.AssertEqual("ahk", userString.data)
         AhkTest.AssertEqual("AHK", userString.upper().data)
     }
+
+    static TestDequeRingBufferLeftEndCorrectnessUnderGrowth()
+    {
+        ; Exercise the ring buffer past its initial capacity from both ends.
+        dq := stdlib.collections.deque()
+        loop 100
+            dq.appendleft(A_Index)          ; 100,99,...,1 (left grows)
+        loop 100
+            dq.append(100 + A_Index)        ; ...,101..200 (right grows)
+        AhkTest.AssertEqual(200, dq.Length)
+        ; 0-based indexing (like Python): first element is the last appendleft
+        ; value (100); index 99 is 1; index 199 is 200.
+        AhkTest.AssertEqual(100, dq[0])
+        AhkTest.AssertEqual(1, dq[99])
+        AhkTest.AssertEqual(200, dq[199])
+        ; Drain from the left and confirm FIFO order of the left half.
+        expected := 100
+        loop 100 {
+            AhkTest.AssertEqual(expected, dq.popleft())
+            expected -= 1
+        }
+        ; Remaining 100 elements are 101..200 from the left.
+        AhkTest.AssertEqual(101, dq.popleft())
+        AhkTest.AssertEqual(200, dq.pop())
+        AhkTest.AssertEqual(98, dq.Length)
+    }
+
+    static TestDequeMaxlenDropsFromOppositeEnd()
+    {
+        dq := stdlib.collections.deque([1, 2, 3], 3)
+        dq.append(4)                        ; drops 1 from the left
+        AhkTest.AssertEqual([2, 3, 4], stdlib_collections_test_array(dq))
+        dq.appendleft(0)                    ; drops 4 from the right
+        AhkTest.AssertEqual([0, 2, 3], stdlib_collections_test_array(dq))
+    }
 }
 
 stdlib_collections_test_array(iterable)

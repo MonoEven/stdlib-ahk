@@ -429,9 +429,17 @@ class AhkStdlibCollectionsCounter extends Map
 
 class AhkStdlibCollectionsDeque
 {
+    ; Ring buffer: AhkStdlibBuf is a fixed-capacity backing Array, AhkStdlibHead
+    ; is the 0-based slot of the logical first element, AhkStdlibCount the live
+    ; element count. Both ends are O(1) amortized (no Array shifting), unlike the
+    ; previous RemoveAt(1)/InsertAt(1) which were O(n) on the left.
     __New(iterable := unset, maxlen := unset)
     {
-        this.AhkStdlibItems := []
+        this.AhkStdlibBuf := []
+        this.AhkStdlibBuf.Length := 8
+        this.AhkStdlibCap := 8
+        this.AhkStdlibHead := 0
+        this.AhkStdlibCount := 0
         this.maxlen := IsSet(maxlen) && !AhkStdlibIsNone(maxlen) ? maxlen : stdlib.None
         if IsSet(iterable) && !AhkStdlibIsNone(iterable) {
             for value in AhkStdlibCollectionsIterableItems(iterable)
@@ -441,31 +449,67 @@ class AhkStdlibCollectionsDeque
 
     Length
     {
-        get => this.AhkStdlibItems.Length
+        get => this.AhkStdlibCount
     }
 
     __Item[index]
     {
-        get => this.AhkStdlibItems[AhkStdlibCollectionsSequenceIndex(this.AhkStdlibItems.Length, index)]
-        set => this.AhkStdlibItems[AhkStdlibCollectionsSequenceIndex(this.AhkStdlibItems.Length, index)] := value
+        get => this.AhkStdlibSlot(AhkStdlibCollectionsSequenceIndex(this.AhkStdlibCount, index))
+        set => this.AhkStdlibSetSlot(AhkStdlibCollectionsSequenceIndex(this.AhkStdlibCount, index), value)
+    }
+
+    ; Translate a 1-based logical position into the backing slot and read it.
+    AhkStdlibSlot(pos1)
+    {
+        physical := Mod(this.AhkStdlibHead + (pos1 - 1), this.AhkStdlibCap)
+        return this.AhkStdlibBuf[physical + 1]
+    }
+
+    AhkStdlibSetSlot(pos1, value)
+    {
+        physical := Mod(this.AhkStdlibHead + (pos1 - 1), this.AhkStdlibCap)
+        this.AhkStdlibBuf[physical + 1] := value
+        return value
+    }
+
+    AhkStdlibEnsureCapacity()
+    {
+        ; Grow and re-linearize when full so head/tail math stays simple.
+        if this.AhkStdlibCount < this.AhkStdlibCap
+            return
+        newCap := this.AhkStdlibCap * 2
+        linear := []
+        linear.Length := newCap
+        count := this.AhkStdlibCount
+        loop count
+            linear[A_Index] := this.AhkStdlibSlot(A_Index)
+        this.AhkStdlibBuf := linear
+        this.AhkStdlibCap := newCap
+        this.AhkStdlibHead := 0
     }
 
     append(value)
     {
         if this.AhkStdlibMaxlenIsZero()
             return
-        while this.AhkStdlibHasMaxlen() && this.AhkStdlibItems.Length >= this.maxlen
-            this.AhkStdlibItems.RemoveAt(1)
-        this.AhkStdlibItems.Push(value)
+        if this.AhkStdlibHasMaxlen() && this.AhkStdlibCount >= this.maxlen
+            this.popleft()
+        this.AhkStdlibEnsureCapacity()
+        tail := Mod(this.AhkStdlibHead + this.AhkStdlibCount, this.AhkStdlibCap)
+        this.AhkStdlibBuf[tail + 1] := value
+        this.AhkStdlibCount += 1
     }
 
     appendleft(value)
     {
         if this.AhkStdlibMaxlenIsZero()
             return
-        while this.AhkStdlibHasMaxlen() && this.AhkStdlibItems.Length >= this.maxlen
-            this.AhkStdlibItems.Pop()
-        this.AhkStdlibItems.InsertAt(1, value)
+        if this.AhkStdlibHasMaxlen() && this.AhkStdlibCount >= this.maxlen
+            this.pop()
+        this.AhkStdlibEnsureCapacity()
+        this.AhkStdlibHead := Mod(this.AhkStdlibHead - 1 + this.AhkStdlibCap, this.AhkStdlibCap)
+        this.AhkStdlibBuf[this.AhkStdlibHead + 1] := value
+        this.AhkStdlibCount += 1
     }
 
     extend(iterable)
@@ -482,41 +526,57 @@ class AhkStdlibCollectionsDeque
 
     pop()
     {
-        if this.AhkStdlibItems.Length = 0
+        if this.AhkStdlibCount = 0
             throw IndexError("pop from an empty deque", -1)
-        return this.AhkStdlibItems.Pop()
+        tail := Mod(this.AhkStdlibHead + this.AhkStdlibCount - 1, this.AhkStdlibCap)
+        value := this.AhkStdlibBuf[tail + 1]
+        this.AhkStdlibBuf[tail + 1] := ""   ; release reference
+        this.AhkStdlibCount -= 1
+        return value
     }
 
     popleft()
     {
-        if this.AhkStdlibItems.Length = 0
+        if this.AhkStdlibCount = 0
             throw IndexError("pop from an empty deque", -1)
-        return this.AhkStdlibItems.RemoveAt(1)
+        value := this.AhkStdlibBuf[this.AhkStdlibHead + 1]
+        this.AhkStdlibBuf[this.AhkStdlibHead + 1] := ""   ; release reference
+        this.AhkStdlibHead := Mod(this.AhkStdlibHead + 1, this.AhkStdlibCap)
+        this.AhkStdlibCount -= 1
+        return value
     }
 
     rotate(n := 1)
     {
-        length := this.AhkStdlibItems.Length
-        if length = 0
+        if this.AhkStdlibCount = 0
             return
         while n > 0 {
-            this.AhkStdlibItems.InsertAt(1, this.AhkStdlibItems.Pop())
+            this.appendleft(this.pop())
             n -= 1
         }
         while n < 0 {
-            this.AhkStdlibItems.Push(this.AhkStdlibItems.RemoveAt(1))
+            this.append(this.popleft())
             n += 1
         }
     }
 
     clear()
     {
-        this.AhkStdlibItems := []
+        this.AhkStdlibBuf := []
+        this.AhkStdlibBuf.Length := 8
+        this.AhkStdlibCap := 8
+        this.AhkStdlibHead := 0
+        this.AhkStdlibCount := 0
     }
 
     __Enum(numberOfVars)
     {
-        return this.AhkStdlibItems.__Enum(numberOfVars)
+        ; Snapshot to a linear array so enumeration order is head..tail.
+        linear := []
+        count := this.AhkStdlibCount
+        loop count
+            linear.Push(this.AhkStdlibSlot(A_Index))
+        return linear.__Enum(numberOfVars)
     }
 
     AhkStdlibHasMaxlen()
