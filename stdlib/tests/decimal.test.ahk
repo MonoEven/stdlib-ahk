@@ -140,6 +140,20 @@ class StdlibDecimalTest
         AhkTest.AssertEqual("0.50", String(stdlib.operator.truediv(stdlib.decimal.Decimal("1.00"), stdlib.decimal.Decimal("2"))))
     }
 
+    static TestDecimalContextPrecisionAffectsDivision()
+    {
+        ; Changing context precision must change the result of arithmetic, not
+        ; just the stored attribute. py -3.10 with prec=5: 1/3 -> 0.33333.
+        original := stdlib.decimal.getcontext()
+        saved := original.prec
+        try {
+            original.prec := 5
+            AhkTest.AssertEqual("0.33333", String(stdlib.operator.truediv(stdlib.decimal.Decimal("1"), stdlib.decimal.Decimal("3"))))
+        } finally {
+            original.prec := saved
+        }
+    }
+
     static TestDecimalSupportsFloorDivisionAndModuloLikePython310()
     {
         AhkTest.AssertEqual("3", String(stdlib.operator.floordiv(stdlib.decimal.Decimal("7.5"), stdlib.decimal.Decimal("2"))))
