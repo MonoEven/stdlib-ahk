@@ -2,6 +2,14 @@
 
 #Include <stdlib\init>
 
+; SINGLE-THREAD DEVIATION: CPython's Queue blocks the calling thread when a
+; get() on an empty queue (or put() on a full one) would otherwise fail, waiting
+; until another thread makes room/data available. AutoHotkey is single-threaded
+; here, so there is no other thread to unblock us — a blocking wait would
+; deadlock. We therefore treat block=True like block=False: an empty get() or
+; full put() raises Empty/Full immediately rather than waiting. timeout is
+; validated but never actually waited on. This is an architectural limitation,
+; not a bug; code that relies on cross-thread blocking semantics will not port.
 class AhkStdlibQueue
 {
     class Empty extends Error
@@ -39,12 +47,17 @@ class AhkStdlibQueueQueue
     {
         this.maxsize := maxsize
         this.AhkStdlibItems := []
+        ; FIFO get() advances AhkStdlibHead instead of shifting the whole array
+        ; (RemoveAt(1) is O(n)); the consumed prefix is compacted periodically so
+        ; get() is O(1) amortized. Subclasses that pop from the tail (LifoQueue)
+        ; or use the heap helpers (PriorityQueue) leave head at 0.
+        this.AhkStdlibHead := 0
         this.unfinished_tasks := 0
     }
 
     qsize()
     {
-        return this.AhkStdlibItems.Length
+        return this.AhkStdlibItems.Length - this.AhkStdlibHead
     }
 
     empty()
@@ -65,19 +78,8 @@ class AhkStdlibQueueQueue
             AhkStdlibQueueValidateTimeout(block, timeout)
         else
             AhkStdlibQueueValidateTimeout(block)
-        if !block {
-            if this.full()
-                throw AhkStdlibQueue.Full("", -1)
-            this.AhkStdlibItems.Push(item)
-            this.unfinished_tasks += 1
-            return
-        }
-
-        if IsSet(timeout) {
-            if timeout = 0 && this.full()
-                throw AhkStdlibQueue.Full("", -1)
-        }
-
+        ; block is honored as immediate-raise (see module-level note): a full
+        ; queue raises Full whether or not block is requested.
         if this.full()
             throw AhkStdlibQueue.Full("", -1)
 
@@ -96,21 +98,24 @@ class AhkStdlibQueueQueue
             AhkStdlibQueueValidateTimeout(block, timeout)
         else
             AhkStdlibQueueValidateTimeout(block)
-        if !block {
-            if this.empty()
-                throw AhkStdlibQueue.Empty("", -1)
-            return this.AhkStdlibItems.RemoveAt(1)
-        }
-
-        if IsSet(timeout) {
-            if timeout = 0 && this.empty()
-                throw AhkStdlibQueue.Empty("", -1)
-        }
-
+        ; block is honored as immediate-raise (see module-level note): an empty
+        ; queue raises Empty whether or not block is requested.
         if this.empty()
             throw AhkStdlibQueue.Empty("", -1)
+        return this.AhkStdlibFifoTake()
+    }
 
-        return this.AhkStdlibItems.RemoveAt(1)
+    ; O(1) amortized dequeue from the logical front via a head cursor; the dead
+    ; prefix is dropped in one RemoveAt once it grows past half the array.
+    AhkStdlibFifoTake()
+    {
+        value := this.AhkStdlibItems[this.AhkStdlibHead + 1]
+        this.AhkStdlibHead += 1
+        if this.AhkStdlibHead >= 32 && this.AhkStdlibHead * 2 >= this.AhkStdlibItems.Length {
+            this.AhkStdlibItems.RemoveAt(1, this.AhkStdlibHead)
+            this.AhkStdlibHead := 0
+        }
+        return value
     }
 
     get_nowait()
@@ -137,11 +142,12 @@ class AhkStdlibQueueSimpleQueue
     __New()
     {
         this.AhkStdlibItems := []
+        this.AhkStdlibHead := 0
     }
 
     qsize()
     {
-        return this.AhkStdlibItems.Length
+        return this.AhkStdlibItems.Length - this.AhkStdlibHead
     }
 
     empty()
@@ -165,7 +171,14 @@ class AhkStdlibQueueSimpleQueue
             AhkStdlibQueueValidateTimeout(block, timeout)
         if this.empty()
             throw AhkStdlibQueue.Empty("", -1)
-        return this.AhkStdlibItems.RemoveAt(1)
+        ; O(1) amortized FIFO take with periodic prefix compaction.
+        value := this.AhkStdlibItems[this.AhkStdlibHead + 1]
+        this.AhkStdlibHead += 1
+        if this.AhkStdlibHead >= 32 && this.AhkStdlibHead * 2 >= this.AhkStdlibItems.Length {
+            this.AhkStdlibItems.RemoveAt(1, this.AhkStdlibHead)
+            this.AhkStdlibHead := 0
+        }
+        return value
     }
 
     get_nowait()

@@ -283,6 +283,39 @@ class StdlibQueueTest
 
         AhkTest.AssertEqual("", q.join())
     }
+
+    static TestQueueFifoOrderHoldsAcrossManyCyclesWithCompaction()
+    {
+        ; Interleave puts and gets well past the compaction threshold (32) to
+        ; exercise the head-cursor + prefix compaction path; order must stay FIFO.
+        q := stdlib.queue.Queue()
+        expected := 1
+        produced := 1
+        loop 200 {
+            q.put(produced)
+            produced += 1
+            q.put(produced)
+            produced += 1
+            AhkTest.AssertEqual(expected, q.get())
+            expected += 1
+        }
+        ; Drain the rest; values must continue in order with no gaps/dupes.
+        while !q.empty() {
+            AhkTest.AssertEqual(expected, q.get())
+            expected += 1
+        }
+        AhkTest.AssertEqual(produced, expected)
+    }
+
+    static TestSimpleQueueFifoOrderHoldsAcrossManyCycles()
+    {
+        q := stdlib.queue.SimpleQueue()
+        loop 100
+            q.put(A_Index)
+        loop 100
+            AhkTest.AssertEqual(A_Index, q.get())
+        AhkTest.AssertTrue(q.empty())
+    }
 }
 
 AhkTest.Collect(StdlibQueueTest)
