@@ -83,6 +83,20 @@ class AhkStdlibFunctools
         }
         return AhkStdlibFunctoolsPartialMethod(callback, boundArgs*)
     }
+
+    static singledispatch(target)
+    {
+        if !HasMethod(target, "Call")
+            throw TypeError("the first argument must be callable", -1)
+        return AhkStdlibFunctoolsSingleDispatch(target)
+    }
+
+    static singledispatchmethod(target)
+    {
+        if !HasMethod(target, "Call")
+            throw TypeError("the first argument must be callable", -1)
+        return AhkStdlibFunctoolsSingleDispatchMethod(target)
+    }
 }
 
 stdlib.functools := AhkStdlibFunctools
@@ -864,4 +878,155 @@ class AhkStdlibFunctoolsPartialMethodValue
         cls.Prototype.DefineProp(name, { Call: (instance, args*) => self.Call(instance, args*) })
         return this
     }
+}
+
+
+; ---- singledispatch ----
+; Generic-function dispatch on the type of the FIRST argument. .register(type,
+; fn) adds an implementation; .register(type) returns a decorator that
+; registers and returns fn. Resolution walks the value's prototype (.base)
+; chain so subclasses fall back to a registered superclass; primitives map to
+; the Integer/Float/String/Number built-in classes. Python's ABC-based virtual
+; dispatch is approximated by concrete AHK types only.
+class AhkStdlibFunctoolsSingleDispatch
+{
+    __New(target)
+    {
+        this.DefineProp("AhkStdlibDefault", { Value: target })
+        ; Keyed by class Prototype object for identity-safe MRO matching.
+        this.AhkStdlibRegistry := Map()
+        this.registry := this.AhkStdlibRegistry
+    }
+
+    register(cls, fn := unset)
+    {
+        if !IsSet(fn) {
+            captured := cls
+            return (implementation) => this.AhkStdlibRegisterImpl(captured, implementation)
+        }
+        return this.AhkStdlibRegisterImpl(cls, fn)
+    }
+
+    AhkStdlibRegisterImpl(cls, fn)
+    {
+        if !HasMethod(fn, "Call")
+            throw TypeError("Invalid registration: the implementation must be callable", -1)
+        this.AhkStdlibRegistry[AhkStdlibFunctoolsProtoKey(cls)] := fn
+        return fn
+    }
+
+    dispatch(cls)
+    {
+        found := AhkStdlibFunctoolsDispatchByClass(this.AhkStdlibRegistry, cls)
+        return IsSet(found) ? found : this.AhkStdlibDefault
+    }
+
+    Call(args*)
+    {
+        if args.Length < 1
+            throw TypeError("dispatcher requires at least 1 positional argument", -1)
+        fn := AhkStdlibFunctoolsDispatchByValue(this.AhkStdlibRegistry, args[1], this.AhkStdlibDefault)
+        return fn.Call(args*)
+    }
+}
+
+; singledispatchmethod: dispatch on the SECOND argument (first after `this`).
+class AhkStdlibFunctoolsSingleDispatchMethod
+{
+    __New(target)
+    {
+        this.DefineProp("AhkStdlibDefault", { Value: target })
+        this.AhkStdlibRegistry := Map()
+        this.registry := this.AhkStdlibRegistry
+    }
+
+    register(cls, fn := unset)
+    {
+        if !IsSet(fn) {
+            captured := cls
+            return (implementation) => this.AhkStdlibRegisterImpl(captured, implementation)
+        }
+        return this.AhkStdlibRegisterImpl(cls, fn)
+    }
+
+    AhkStdlibRegisterImpl(cls, fn)
+    {
+        if !HasMethod(fn, "Call")
+            throw TypeError("Invalid registration: the implementation must be callable", -1)
+        this.AhkStdlibRegistry[AhkStdlibFunctoolsProtoKey(cls)] := fn
+        return fn
+    }
+
+    dispatch(cls)
+    {
+        found := AhkStdlibFunctoolsDispatchByClass(this.AhkStdlibRegistry, cls)
+        return IsSet(found) ? found : this.AhkStdlibDefault
+    }
+
+    Call(instance, args*)
+    {
+        if args.Length < 1
+            throw TypeError("singledispatchmethod requires at least 1 positional argument after self", -1)
+        fn := AhkStdlibFunctoolsDispatchByValue(this.AhkStdlibRegistry, args[1], this.AhkStdlibDefault)
+        return fn.Call(instance, args*)
+    }
+
+    Bind(cls, name)
+    {
+        self := this
+        cls.Prototype.DefineProp(name, { Call: (instance, args*) => self.Call(instance, args*) })
+        return this
+    }
+}
+
+; A class registers under its Prototype; built-in primitive classes (Integer,
+; Float, String, Number, Object) likewise expose .Prototype, so one rule works
+; for both. A bare prototype passed in is used as-is.
+AhkStdlibFunctoolsProtoKey(cls)
+{
+    if IsObject(cls) && HasProp(cls, "Prototype") && IsObject(cls.Prototype)
+        return cls.Prototype
+    return cls
+}
+
+; Resolve for a concrete runtime value.
+AhkStdlibFunctoolsDispatchByValue(registry, value, default)
+{
+    if IsObject(value) {
+        proto := value.base
+        while IsObject(proto) {
+            if registry.Has(proto)
+                return registry[proto]
+            proto := proto.base
+        }
+        return default
+    }
+    ; Primitive: exact type first, then Number for numerics.
+    if value is Integer {
+        if registry.Has(Integer.Prototype)
+            return registry[Integer.Prototype]
+        if registry.Has(Number.Prototype)
+            return registry[Number.Prototype]
+    } else if value is Float {
+        if registry.Has(Float.Prototype)
+            return registry[Float.Prototype]
+        if registry.Has(Number.Prototype)
+            return registry[Number.Prototype]
+    } else if value is String {
+        if registry.Has(String.Prototype)
+            return registry[String.Prototype]
+    }
+    return default
+}
+
+; Resolve for an explicit class argument (.dispatch(Type)).
+AhkStdlibFunctoolsDispatchByClass(registry, cls)
+{
+    proto := AhkStdlibFunctoolsProtoKey(cls)
+    while IsObject(proto) {
+        if registry.Has(proto)
+            return registry[proto]
+        proto := proto.base
+    }
+    return unset
 }

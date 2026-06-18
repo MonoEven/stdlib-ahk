@@ -600,6 +600,68 @@ class StdlibFunctoolsTest
         AhkTest.AssertEqual(15, obj.addTen(5))
     }
 
+    static TestSingleDispatchByPrimitiveType()
+    {
+        fn := stdlib.functools.singledispatch((x) => "default:" String(x))
+        fn.register(Integer, (x) => "int:" x)
+        fn.register(String, (x) => "str:" x)
+        AhkTest.AssertEqual("int:5", fn(5))
+        AhkTest.AssertEqual("str:hi", fn("hi"))
+        ; Float has no registration -> default (matches CPython int!=float).
+        AhkTest.AssertEqual("default:3.5", fn(3.5))
+    }
+
+    static TestSingleDispatchRegisterAsDecoratorReturnsFn()
+    {
+        fn := stdlib.functools.singledispatch((x) => "default")
+        impl := (x) => "int:" x
+        returned := fn.register(Integer)(impl)
+        AhkTest.AssertSame(impl, returned)
+        AhkTest.AssertEqual("int:7", fn(7))
+    }
+
+    static TestSingleDispatchWalksClassMro()
+    {
+        fn := stdlib.functools.singledispatch((x) => "default")
+        fn.register(StdlibFunctoolsDispatchBase, (x) => "base")
+        ; A subclass instance with no own registration falls back to the base.
+        AhkTest.AssertEqual("base", fn(StdlibFunctoolsDispatchDerived()))
+        ; The base itself also resolves to its registration.
+        AhkTest.AssertEqual("base", fn(StdlibFunctoolsDispatchBase()))
+    }
+
+    static TestSingleDispatchMethodDispatchesOnSecondArg()
+    {
+        obj := StdlibFunctoolsDispatchMethodDemo()
+        AhkTest.AssertEqual("int:5", obj.describe(5))
+        AhkTest.AssertEqual("str:hi", obj.describe("hi"))
+        AhkTest.AssertEqual("default", obj.describe(3.5))
+    }
+
+    static TestSingleDispatchRejectsNonCallable()
+    {
+        AhkTest.Raises(TypeError, (*) => stdlib.functools.singledispatch(5))
+    }
+
+}
+
+class StdlibFunctoolsDispatchBase
+{
+}
+
+class StdlibFunctoolsDispatchDerived extends StdlibFunctoolsDispatchBase
+{
+}
+
+class StdlibFunctoolsDispatchMethodDemo
+{
+    __New()
+    {
+        m := stdlib.functools.singledispatchmethod((this2, x) => "default")
+        m.register(Integer, (this2, x) => "int:" x)
+        m.register(String, (this2, x) => "str:" x)
+        m.Bind(StdlibFunctoolsDispatchMethodDemo, "describe")
+    }
 }
 
 class StdlibFunctoolsOrderingDemo
