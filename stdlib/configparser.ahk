@@ -9,10 +9,23 @@ class AhkStdlibConfigParserModule
     static DuplicateSectionError := AhkStdlibConfigParserDuplicateSectionError
     static NoOptionError := AhkStdlibConfigParserNoOptionError
     static MissingSectionHeaderError := AhkStdlibConfigParserMissingSectionHeaderError
-
-    static ConfigParser()
+    static InterpolationError := AhkStdlibConfigParserInterpolationError
+    static InterpolationDepthError := AhkStdlibConfigParserInterpolationDepthError
+    static InterpolationMissingOptionError := AhkStdlibConfigParserInterpolationMissingOptionError
+    static InterpolationSyntaxError := AhkStdlibConfigParserInterpolationSyntaxError
+    static ConfigParser(options := unset)
     {
-        return AhkStdlibConfigParser()
+        return AhkStdlibConfigParser(options?)
+    }
+
+    static BasicInterpolation()
+    {
+        return AhkStdlibConfigParserBasicInterpolation()
+    }
+
+    static ExtendedInterpolation()
+    {
+        return AhkStdlibConfigParserExtendedInterpolation()
     }
 }
 
@@ -36,13 +49,56 @@ class AhkStdlibConfigParserMissingSectionHeaderError extends AhkStdlibConfigPars
 {
 }
 
+; Interpolation errors mirror CPython's hierarchy so callers can catch the
+; family with a single except clause.
+class AhkStdlibConfigParserInterpolationError extends AhkStdlibConfigParserError
+{
+}
+
+class AhkStdlibConfigParserInterpolationDepthError extends AhkStdlibConfigParserInterpolationError
+{
+}
+
+class AhkStdlibConfigParserInterpolationMissingOptionError extends AhkStdlibConfigParserInterpolationError
+{
+}
+
+class AhkStdlibConfigParserInterpolationSyntaxError extends AhkStdlibConfigParserInterpolationError
+{
+}
+
 class AhkStdlibConfigParser
 {
-    __New()
+    __New(options := unset)
     {
         this.AhkStdlibSections := Map()
         this.AhkStdlibSectionOrder := []
         this.AhkStdlibDefaults := AhkStdlibConfigParserSection()
+        ; Default interpolation matches CPython: BasicInterpolation. Pass
+        ; { interpolation: stdlib.None } to opt out, or a custom interpolation
+        ; object that exposes before_get(parser, section, option, value, defaults).
+        this.AhkStdlibInterpolation := AhkStdlibConfigParserBasicInterpolation()
+        this.AhkStdlibConverters := Map()
+        if IsSet(options) && IsObject(options) {
+            if HasProp(options, "interpolation") {
+                interp := options.interpolation
+                if AhkStdlibIsNone(interp)
+                    this.AhkStdlibInterpolation := stdlib.None
+                else
+                    this.AhkStdlibInterpolation := interp
+            }
+            if HasProp(options, "converters") && IsObject(options.converters) {
+                ; converters: { name: Func } — exposes get<name>(section, option) on
+                ; the parser by routing the raw value through the Func.
+                if options.converters is Map {
+                    for name, fn in options.converters
+                        this.AhkStdlibConverters[name] := fn
+                } else {
+                    for name, fn in options.converters.OwnProps()
+                        this.AhkStdlibConverters[name] := fn
+                }
+            }
+        }
     }
 
     __Item[section]
@@ -55,22 +111,38 @@ class AhkStdlibConfigParser
     read_string(text)
     {
         currentSection := ""
+        currentOption := ""
         lineNumber := 0
 
         for rawLine in AhkStdlibConfigParserLines(text) {
             lineNumber += 1
-            line := Trim(rawLine)
-            if line = "" || SubStr(line, 1, 1) = "#" || SubStr(line, 1, 1) = ";"
+            ; CPython continuation: a line that begins with whitespace is
+            ; appended to the previous option's value with a "`n" separator.
+            if rawLine != "" && AhkStdlibConfigParserIsContinuationLine(rawLine) && currentOption != "" && currentSection != "" {
+                continuation := Trim(rawLine)
+                if continuation = ""
+                    continue
+                AhkStdlibConfigParserAppendContinuation(this, currentSection, currentOption, continuation)
                 continue
+            }
+            line := Trim(rawLine)
+            if line = "" || SubStr(line, 1, 1) = "#" || SubStr(line, 1, 1) = ";" {
+                ; Blank/comment lines reset the "still continuing" state to
+                ; avoid silently absorbing later indented blocks.
+                currentOption := ""
+                continue
+            }
 
             if SubStr(line, 1, 1) = "[" && SubStr(line, -1) = "]" {
                 section := Trim(SubStr(line, 2, StrLen(line) - 2))
                 if AhkStdlibConfigParserIsDefaultSectionName(section) {
                     currentSection := section
+                    currentOption := ""
                     continue
                 }
                 this.add_section(section)
                 currentSection := section
+                currentOption := ""
                 continue
             }
 
@@ -84,6 +156,7 @@ class AhkStdlibConfigParser
             option := Trim(SubStr(line, 1, delimiterPos - 1))
             value := Trim(SubStr(line, delimiterPos + 1))
             this.AhkStdlibSetOption(currentSection, option, value)
+            currentOption := AhkStdlibConfigParserNormalizeOption(option)
         }
     }
 
@@ -116,6 +189,7 @@ class AhkStdlibConfigParser
     get(section, option, options := unset)
     {
         hasFallback := IsSet(options) && IsObject(options) && HasProp(options, "fallback")
+        raw := IsSet(options) && IsObject(options) && HasProp(options, "raw") && AhkStdlibTruthValue(options.raw)
         option := AhkStdlibConfigParserNormalizeOption(option)
         if AhkStdlibConfigParserIsDefaultSectionName(section) {
             if !this.AhkStdlibDefaults.Has(option) {
@@ -123,7 +197,8 @@ class AhkStdlibConfigParser
                     return options.fallback
                 throw AhkStdlibConfigParserNoOptionError("No option '" option "' in section: '" section "'", -1)
             }
-            return this.AhkStdlibDefaults[option]
+            value := this.AhkStdlibDefaults[option]
+            return raw ? value : this.AhkStdlibInterpolate(section, option, value)
         }
 
         if !this.AhkStdlibSections.Has(section) {
@@ -133,12 +208,23 @@ class AhkStdlibConfigParser
         }
         values := this.AhkStdlibSections[section]
         if values.Has(option)
-            return values[option]
-        if this.AhkStdlibDefaults.Has(option)
-            return this.AhkStdlibDefaults[option]
-        if hasFallback
+            value := values[option]
+        else if this.AhkStdlibDefaults.Has(option)
+            value := this.AhkStdlibDefaults[option]
+        else if hasFallback
             return options.fallback
-        throw AhkStdlibConfigParserNoOptionError("No option '" option "' in section: '" section "'", -1)
+        else
+            throw AhkStdlibConfigParserNoOptionError("No option '" option "' in section: '" section "'", -1)
+        return raw ? value : this.AhkStdlibInterpolate(section, option, value)
+    }
+
+    AhkStdlibInterpolate(section, option, value)
+    {
+        if !IsObject(this.AhkStdlibInterpolation) || AhkStdlibIsNone(this.AhkStdlibInterpolation)
+            return value
+        if !HasMethod(this.AhkStdlibInterpolation, "before_get")
+            return value
+        return this.AhkStdlibInterpolation.before_get(this, section, option, value, this.AhkStdlibDefaults)
     }
 
     getint(section, option, options := unset)
@@ -359,6 +445,28 @@ class AhkStdlibConfigParser
             throw AhkStdlibConfigParserNoSectionError("No section: '" section "'", -1)
         return this.AhkStdlibSections[section]
     }
+
+    ; Dynamic dispatch for converters: parser.getlist(section, option) when the
+    ; constructor was given converters={list: fn}. Mirrors CPython's behavior.
+    __Call(name, args)
+    {
+        if SubStr(name, 1, 3) = "get" {
+            converterName := SubStr(name, 4)
+            if this.AhkStdlibConverters.Has(converterName) {
+                converter := this.AhkStdlibConverters[converterName]
+                if args.Length < 2
+                    throw TypeError(name "() requires section and option arguments", -1)
+                section := args[1]
+                option := args[2]
+                options := args.Length >= 3 ? args[3] : unset
+                hasFallback := IsSet(options) && IsObject(options) && HasProp(options, "fallback")
+                if hasFallback && !this.has_option(section, option)
+                    return options.fallback
+                return converter(this.get(section, option))
+            }
+        }
+        throw MethodError("'" Type(this) "' object has no method '" name "'", -1)
+    }
 }
 
 class AhkStdlibConfigParserSectionProxy
@@ -446,6 +554,168 @@ class AhkStdlibConfigParserSection
 }
 
 stdlib.configparser := AhkStdlibConfigParserModule
+
+; CPython BasicInterpolation: "%(option)s" references resolve from the current
+; section, with DEFAULT as a fallback. Stops at depth 10 to match Python's
+; MAX_INTERPOLATION_DEPTH guard against cycles.
+class AhkStdlibConfigParserBasicInterpolation
+{
+    static MAX_DEPTH := 10
+
+    before_get(parser, section, option, value, defaults)
+    {
+        return this._interpolate(parser, section, option, value, 0)
+    }
+
+    _interpolate(parser, section, option, value, depth)
+    {
+        if depth > AhkStdlibConfigParserBasicInterpolation.MAX_DEPTH
+            throw AhkStdlibConfigParserInterpolationDepthError("Recursion limit exceeded in value '" value "' for option '" option "' in section '" section "'", -1)
+        result := ""
+        i := 1
+        n := StrLen(value)
+        while i <= n {
+            ch := SubStr(value, i, 1)
+            if ch != "%" {
+                result .= ch
+                i += 1
+                continue
+            }
+            ; %% → literal %; %(name)s → reference; anything else is a syntax error.
+            next := SubStr(value, i + 1, 1)
+            if next = "%" {
+                result .= "%"
+                i += 2
+                continue
+            }
+            if next != "(" {
+                throw AhkStdlibConfigParserInterpolationSyntaxError("'" SubStr(value, i, 2) "' must be followed by '%' or '(', found: '" SubStr(value, i + 1) "'", -1)
+            }
+            closePos := InStr(value, ")", , i + 2)
+            if !closePos
+                throw AhkStdlibConfigParserInterpolationSyntaxError("bad interpolation variable reference '" SubStr(value, i) "'", -1)
+            refName := SubStr(value, i + 2, closePos - (i + 2))
+            ; CPython requires "(name)s" — the trailing 's' formats as a string.
+            if SubStr(value, closePos + 1, 1) != "s"
+                throw AhkStdlibConfigParserInterpolationSyntaxError("bad interpolation variable reference '" SubStr(value, i, closePos - i + 2) "' — expected 's' format", -1)
+            referenced := AhkStdlibConfigParserResolveBasicReference(parser, section, refName)
+            result .= this._interpolate(parser, section, refName, referenced, depth + 1)
+            i := closePos + 2
+        }
+        return result
+    }
+}
+
+; CPython ExtendedInterpolation: "${section:option}" references resolve across
+; sections. "${option}" inside a section means the same as ${section:option}.
+class AhkStdlibConfigParserExtendedInterpolation
+{
+    static MAX_DEPTH := 10
+
+    before_get(parser, section, option, value, defaults)
+    {
+        return this._interpolate(parser, section, option, value, 0)
+    }
+
+    _interpolate(parser, section, option, value, depth)
+    {
+        if depth > AhkStdlibConfigParserExtendedInterpolation.MAX_DEPTH
+            throw AhkStdlibConfigParserInterpolationDepthError("Recursion limit exceeded in value '" value "' for option '" option "' in section '" section "'", -1)
+        result := ""
+        i := 1
+        n := StrLen(value)
+        while i <= n {
+            ch := SubStr(value, i, 1)
+            if ch != "$" {
+                result .= ch
+                i += 1
+                continue
+            }
+            next := SubStr(value, i + 1, 1)
+            if next = "$" {
+                result .= "$"
+                i += 2
+                continue
+            }
+            if next != "{"
+                throw AhkStdlibConfigParserInterpolationSyntaxError("bad interpolation variable reference '" SubStr(value, i) "'", -1)
+            closePos := InStr(value, "}", , i + 2)
+            if !closePos
+                throw AhkStdlibConfigParserInterpolationSyntaxError("bad interpolation variable reference '" SubStr(value, i) "'", -1)
+            refSpec := SubStr(value, i + 2, closePos - (i + 2))
+            ; A colon splits "section:option"; bare names default to current section.
+            colon := InStr(refSpec, ":")
+            if colon {
+                refSection := SubStr(refSpec, 1, colon - 1)
+                refOption := SubStr(refSpec, colon + 1)
+            } else {
+                refSection := section
+                refOption := refSpec
+            }
+            referenced := AhkStdlibConfigParserResolveExtendedReference(parser, refSection, refOption)
+            result .= this._interpolate(parser, refSection, refOption, referenced, depth + 1)
+            i := closePos + 1
+        }
+        return result
+    }
+}
+
+AhkStdlibConfigParserIsContinuationLine(rawLine)
+{
+    if rawLine = ""
+        return false
+    first := SubStr(rawLine, 1, 1)
+    return first = " " || first = "`t"
+}
+
+AhkStdlibConfigParserAppendContinuation(parser, section, option, continuation)
+{
+    if AhkStdlibConfigParserIsDefaultSectionName(section)
+        values := parser.AhkStdlibDefaults
+    else if !parser.AhkStdlibSections.Has(section)
+        return
+    else
+        values := parser.AhkStdlibSections[section]
+    if !values.Values.Has(option)
+        return
+    values.Values[option] := values.Values[option] "`n" continuation
+}
+
+AhkStdlibConfigParserResolveBasicReference(parser, section, refName)
+{
+    refOpt := AhkStdlibConfigParserNormalizeOption(refName)
+    if AhkStdlibConfigParserIsDefaultSectionName(section) {
+        if parser.AhkStdlibDefaults.Has(refOpt)
+            return parser.AhkStdlibDefaults[refOpt]
+    } else if parser.AhkStdlibSections.Has(section) {
+        sect := parser.AhkStdlibSections[section]
+        if sect.Has(refOpt)
+            return sect[refOpt]
+        if parser.AhkStdlibDefaults.Has(refOpt)
+            return parser.AhkStdlibDefaults[refOpt]
+    } else if parser.AhkStdlibDefaults.Has(refOpt) {
+        return parser.AhkStdlibDefaults[refOpt]
+    }
+    throw AhkStdlibConfigParserInterpolationMissingOptionError("Bad value substitution: option '" refName "' in section '" section "' contains an interpolation key '" refName "' which is not a valid option name. Raw value: ", -1)
+}
+
+AhkStdlibConfigParserResolveExtendedReference(parser, section, refOption)
+{
+    refOpt := AhkStdlibConfigParserNormalizeOption(refOption)
+    if AhkStdlibConfigParserIsDefaultSectionName(section) {
+        if parser.AhkStdlibDefaults.Has(refOpt)
+            return parser.AhkStdlibDefaults[refOpt]
+    } else if parser.AhkStdlibSections.Has(section) {
+        sect := parser.AhkStdlibSections[section]
+        if sect.Has(refOpt)
+            return sect[refOpt]
+        if parser.AhkStdlibDefaults.Has(refOpt)
+            return parser.AhkStdlibDefaults[refOpt]
+    } else if parser.AhkStdlibDefaults.Has(refOpt) {
+        return parser.AhkStdlibDefaults[refOpt]
+    }
+    throw AhkStdlibConfigParserInterpolationMissingOptionError("Bad value substitution: option '" refOption "' in section '" section "' references missing key", -1)
+}
 
 AhkStdlibConfigParserLines(text)
 {

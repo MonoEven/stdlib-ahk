@@ -220,6 +220,59 @@ class StdlibConfigParserTest
         AhkTest.AssertContains("[A]", text)
         AhkTest.AssertContains("x = 2", text)
     }
+
+    static TestConfigParserBasicInterpolationResolvesPercentReferencesLikePython310()
+    {
+        parser := stdlib.configparser.ConfigParser()
+        parser.read_string("[server]`nhost = api.example.com`nport = 8080`nurl = http://%(host)s:%(port)s/v1`n")
+        AhkTest.AssertEqual("http://api.example.com:8080/v1", parser.get("server", "url"))
+        AhkTest.AssertEqual("http://%(host)s:%(port)s/v1", parser.get("server", "url", { raw: true }))
+    }
+
+    static TestConfigParserBasicInterpolationFallsThroughDefaultSectionLikePython310()
+    {
+        parser := stdlib.configparser.ConfigParser()
+        parser.read_string("[DEFAULT]`nhost = a`n[s]`nurl = %(host)s`n")
+        AhkTest.AssertEqual("a", parser.get("s", "url"))
+    }
+
+    static TestConfigParserBasicInterpolationRaisesMissingOptionLikePython310()
+    {
+        parser := stdlib.configparser.ConfigParser()
+        parser.read_string("[s]`nurl = %(missing)s`n")
+        AhkTest.RaisesMatch(stdlib.configparser.InterpolationMissingOptionError, "Bad value substitution", (*) => parser.get("s", "url"))
+    }
+
+    static TestConfigParserExtendedInterpolationResolvesAcrossSectionsLikePython310()
+    {
+        parser := stdlib.configparser.ConfigParser({ interpolation: stdlib.configparser.ExtendedInterpolation() })
+        text := "[base]`nhost = api.example.com`n[s]`nurl = http://" . Chr(36) . "{base:host}/v1`n"
+        parser.read_string(text)
+        AhkTest.AssertEqual("http://api.example.com/v1", parser.get("s", "url"))
+    }
+
+    static TestConfigParserNoneInterpolationLeavesPercentLiteralLikePython310()
+    {
+        parser := stdlib.configparser.ConfigParser({ interpolation: stdlib.None })
+        parser.read_string("[s]`nurl = %(host)s`n")
+        AhkTest.AssertEqual("%(host)s", parser.get("s", "url"))
+    }
+
+    static TestConfigParserMultilineValueContinuationLikePython310()
+    {
+        parser := stdlib.configparser.ConfigParser({ interpolation: stdlib.None })
+        parser.read_string("[s]`nkey = first line`n    second line`n    third line`n")
+        AhkTest.AssertEqual("first line`nsecond line`nthird line", parser.get("s", "key"))
+    }
+
+    static TestConfigParserCustomConverterRegistersGetMethodLikePython310()
+    {
+        toList := (v) => StrSplit(v, ",", " `t")
+        parser := stdlib.configparser.ConfigParser({ converters: { list: toList } })
+        parser.read_string("[s]`nitems = a, b, c`n")
+        AhkTest.AssertEqual(["a", "b", "c"], parser.getlist("s", "items"))
+        AhkTest.AssertEqual(["x"], parser.getlist("s", "missing", { fallback: ["x"] }))
+    }
 }
 
 AhkTest.Collect(StdlibConfigParserTest)

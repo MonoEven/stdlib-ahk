@@ -291,3 +291,22 @@ AhkStdlibQuopriUtf8Bytes(text)
         StrPut(text, bytes, "UTF-8")
     return bytes
 }
+
+AhkStdlibQuopriMissingArgs(names, given)
+{
+    needed := names.Length - given
+    missing := []
+    loop needed
+        missing.Push("'" names[given + A_Index] "'")
+    if missing.Length = 1
+        return "1 required positional argument: " missing[1]
+    if missing.Length = 2
+        return "2 required positional arguments: " missing[1] " and " missing[2]
+    head := ""
+    loop missing.Length - 1 {
+        if A_Index > 1
+            head .= ", "
+        head .= missing[A_Index]
+    }
+    return missing.Length " required positional arguments: " head ", and " missing[missing.Length]
+}

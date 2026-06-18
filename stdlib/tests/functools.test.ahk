@@ -676,7 +676,7 @@ stdlib_functools_test_identity(value)
 
 stdlib_functools_test_pm_add(instance, addend, extra)
 {
-    return instance.base + addend - extra + extra
+    return instance.baseValue + addend - extra + extra
 }
 
 AhkTest.Collect(StdlibFunctoolsTest)
