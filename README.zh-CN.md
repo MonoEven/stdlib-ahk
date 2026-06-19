@@ -52,6 +52,43 @@ decoded := stdlib.base64.b64decode(encoded)
 FileAppend "encoded=" StrGet(encoded, "UTF-8") "`n", "*", "UTF-8"
 ```
 
+### 文件、路径、哈希和 HMAC
+
+```ahk
+#Requires AutoHotkey v2.0
+
+#Include <stdlib\hashlib>
+#Include <stdlib\hmac>
+#Include <stdlib\pathlib>
+#Include <stdlib\tempfile>
+
+payload := StdlibReadmeBytes("abc")
+root := stdlib.tempfile.mkdtemp("", "stdlib-readme-", stdlib.tempfile.gettempdir())
+
+try {
+    file := stdlib.pathlib.Path(root, "payload.txt")
+    file.write_text("abc", "UTF-8")
+    text := file.read_text("UTF-8")
+
+    sha3 := stdlib.hashlib.sha3_256(payload).hexdigest()
+    mac := stdlib.hmac.new(StdlibReadmeBytes("key"), payload, "sha256").hexdigest()
+
+    FileAppend file.name ":" text " sha3=" SubStr(sha3, 1, 8) " hmac=" SubStr(mac, 1, 8) "`n", "*", "UTF-8"
+} finally {
+    if DirExist(root)
+        DirDelete root, true
+}
+
+StdlibReadmeBytes(text)
+{
+    size := StrPut(text, "UTF-8") - 1
+    bytes := Buffer(size, 0)
+    if size > 0
+        StrPut(text, bytes, "UTF-8")
+    return bytes
+}
+```
+
 ### 协作式 async
 
 ```ahk

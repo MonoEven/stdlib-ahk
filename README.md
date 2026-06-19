@@ -30,6 +30,8 @@ value := stdlib.module.Class(args*)
 
 Current work focuses on practical Python-compatible behavior. `stdlib.pillow` is an independent module and should be included with `#Include <stdlib\pillow>` when needed.
 
+Current examples cover core helpers, arrays, bytes streams, files and paths, hashing/HMAC, cooperative async, thread workers, Pillow-style images, and tkinter/ttk windows.
+
 ## 中文
 
 `stdlib` 将 Python 3.10 风格的标准库接口带到 AutoHotkey v2。
@@ -59,6 +61,8 @@ value := stdlib.module.Class(args*)
 | 架构说明 | `docs\stdlib-architecture.md` |
 
 当前工作重点是实用的 Python 兼容行为。`stdlib.pillow` 是独立模块，需要时使用 `#Include <stdlib\pillow>` 引入。
+
+当前示例覆盖核心 helper、数组、字节流、文件和路径、哈希/HMAC、协作式 async、thread worker、Pillow 风格图像处理，以及 tkinter/ttk 窗口。
 
 ## Friendly Links
 
