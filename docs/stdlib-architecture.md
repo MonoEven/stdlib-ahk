@@ -14248,3 +14248,47 @@ implementation, test, example, and capture files, and captured example gate
 `.codex/pillow-spiderimageplugin-example.json` passing
 `.codex/pillow_example_capture.test.ahk` 2/2 without warning/error output and
 with System.Text.RegularExpressions / MatchEvaluator pollution assertions.
+
+## Cross-Module Integration Example
+
+The `stdlib/examples/data_pipeline.ahk` example validates a common reporting
+pipeline across multiple promoted modules: `tempfile` creates the workspace,
+`pathlib` manages paths and text I/O, `csv` writes and reads order rows,
+`collections.Counter` aggregates statuses and regions, `statistics` computes
+paid-order mean/median/sample standard deviation, `json` emits a sorted compact
+report, `hashlib` hashes it, `hmac` signs it, `base64` URL-safe encodes the
+signature, `shutil.copy2` archives the report, `logging` records deterministic
+pipeline events through `io.StringIO`, and `textwrap.dedent` formats the
+captured stdout summary.
+
+Fresh local Python 3.10.11 evidence is stored in the ignored
+`.codex/data_pipeline_python310_probe.py` and
+`.codex/data_pipeline_python310_probe.output.json` files. The probe fixes the
+canonical report JSON as
+`{"gross_mean":"44.00","gross_median":"39.50","gross_stdev":"13.09","orders":"6","paid_orders":"4","top_region":"west:3"}`,
+the SHA-256 digest as
+`d83a4dc5a6bb0a27a473473d872f86bc6f53276f0f89de6188764496adeff467`, and the
+URL-safe HMAC/base64 signature as
+`ywBFDX57cfGFlj9d8dR6jcVeu_93I3Hi4-j98Hl7FI4=`.
+
+The fresh red gate
+`tools\run-ahktest.ps1 stdlib\tests\integration_examples.test.ahk
+-TimeoutSeconds 90` failed 0/1 because `data_pipeline.ahk` was missing. After
+adding the example, the captured example gate
+`tools\run-ahktest.ps1 stdlib\examples\data_pipeline.ahk -TimeoutSeconds 90`
+ran without stderr and printed the Python-matching summary, and the focused
+integration test gate passed 1/1 in 641 ms. No new full-suite aggregate
+baseline is promoted by this example-only slice.
+
+The example also exposes `--bench N` so the same pipeline can be timed without
+duplicating logic. Fresh local comparison evidence used
+`.codex/data_pipeline_python_benchmark.py` for Python 3.10.11 and
+`.codex/data_pipeline_ahk_benchmark_capture.ahk` for ahktest-captured AHK child
+execution. At `N=100`, Python reported 564.764 ms total / 5.648 ms average for
+the in-process pipeline and 809.333 ms including Python process startup and
+imports; AHK reported 38007.334 ms total / 380.073 ms average for the in-script
+pipeline and 38115.441 ms for the captured AHK child process. At `N=1`, Python
+reported 8.539 ms pipeline / 261.628 ms process wall time, while AHK reported
+580.545 ms pipeline / 713.899 ms captured child wall time. These numbers are
+machine-local performance observations only; they verify same-result execution
+and show current overhead, but they do not promote a portable benchmark target.
