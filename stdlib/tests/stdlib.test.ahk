@@ -26,6 +26,7 @@
 #Include <stdlib\random>
 #Include <stdlib\array>
 #Include <stdlib\hashlib>
+#Include <stdlib\hmac>
 #Include <stdlib\statistics>
 #Include <stdlib\comparser>
 #Include <stdlib\json>
@@ -3743,6 +3744,22 @@ class StdlibBootstrapTest
         AhkTest.AssertEqual("900150983cd24fb0d6963f7d28e17f72", hash.hexdigest())
     }
 
+    static HmacUsesStdlibNamespace()
+    {
+        key := Buffer(3, 0)
+        StrPut("key", key, "UTF-8")
+        message := Buffer(7, 0)
+        StrPut("message", message, "UTF-8")
+
+        mac := stdlib.hmac.new(key, message, "sha256")
+
+        AhkTest.AssertEqual("hmac-sha256", mac.name)
+        AhkTest.AssertEqual(32, mac.digest_size)
+        AhkTest.AssertEqual(64, mac.block_size)
+        AhkTest.AssertEqual("6e9ef29b75fffc5b7abae527d58fdadb2fe42e7219011976917343065f58ed4a", mac.hexdigest())
+        AhkTest.AssertTrue(stdlib.hmac.compare_digest(mac.digest(), stdlib.hmac.digest(key, message, "sha256")))
+    }
+
     static PprintUsesStdlibNamespace()
     {
         stream := stdlib.io.StringIO()
@@ -5378,6 +5395,7 @@ AhkTest.Test("stdlib math uses root stdlib namespace", (*) => StdlibBootstrapTes
 AhkTest.Test("stdlib random uses root stdlib namespace", (*) => StdlibBootstrapTest.RandomUsesStdlibNamespace())
 AhkTest.Test("stdlib array uses root stdlib namespace", (*) => StdlibBootstrapTest.ArrayUsesStdlibNamespace())
 AhkTest.Test("stdlib hashlib uses root stdlib namespace", (*) => StdlibBootstrapTest.HashlibUsesStdlibNamespace())
+AhkTest.Test("stdlib hmac uses root stdlib namespace", (*) => StdlibBootstrapTest.HmacUsesStdlibNamespace())
 AhkTest.Test("stdlib pprint uses root stdlib namespace", (*) => StdlibBootstrapTest.PprintUsesStdlibNamespace())
 AhkTest.Test("stdlib asyncio uses root stdlib namespace", (*) => StdlibBootstrapTest.AsyncioUsesStdlibNamespace())
 AhkTest.Test("stdlib tkinter uses root stdlib namespace", (*) => StdlibBootstrapTest.TkinterUsesStdlibNamespace())

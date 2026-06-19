@@ -63,6 +63,7 @@ small TDD slices. Current direct modules:
 - `stdlib\random.ahk`
 - `stdlib\array.ahk`
 - `stdlib\hashlib.ahk`
+- `stdlib\hmac.ahk`
 - `stdlib\pprint.ahk`
 - `stdlib\statistics.ahk`
 - `stdlib\decimal.ahk`
@@ -99,16 +100,18 @@ small TDD slices. Current direct modules:
 - `stdlib\tkinter.ahk`
 - `stdlib\pillow.ahk`
 
-The framework manifest currently tracks `59` total module slots: `59` direct,
+The framework manifest currently tracks `60` total module slots: `60` direct,
 `0` candidate, and `0` native-quarantine.
 
 Current verified wrapper baseline is
-`stdlib/tests: 1140 passed, 0 failed, 0 errors` from
-`run-ahktest stdlib/tests -TimeoutSeconds 90`, with the existing
-`plain fallback` stderr line from the logging bootstrap smoke still treated as
-expected output rather than a failure. This raises the aggregate evidence from
-the previous 90-second 1139-test baseline; it uses the current 90-second
-default aggregate gate and does not claim lower-timeout aggregate stability.
+`stdlib/tests: 1732 passed, 0 failed, 0 errors` from
+`tools\run-ahktest.ps1 stdlib\tests -TimeoutSeconds 0 -Quiet -JsonReport
+.codex\ahktest-full-quiet.json`. The JSON report recorded 1732 total entries,
+1732 pass, 0 fail, 0 error, 0 skip, 0 deselected, and 97438 ms duration. The
+existing `plain fallback` stderr line from the logging bootstrap smoke remains
+expected output rather than a failure. This run was intentionally unlimited
+(`TimeoutSeconds 0`) and quiet to avoid report-output pressure in the aggregate
+process; it does not claim lower-timeout aggregate stability.
 
 The latest concurrency slice expands `stdlib.thread` as a process-backed
 interpreter worker module with bounded memory access. This follows the
@@ -5938,6 +5941,29 @@ digests matching local Python's covered vectors, clones state through
 such as `crc32`, and raises Python-style
 `TypeError("Strings must be encoded before hashing")` when passed text
 payloads directly instead of bytes.
+
+`stdlib.hmac` is now direct as a Python-path runtime module layered on the
+promoted `stdlib.hashlib` digest core. The current public shape covers
+`stdlib.hmac.new(key, msg?, digestmod)`, `stdlib.hmac.digest(key, msg,
+digest)`, `stdlib.hmac.compare_digest(a, b)`, streamed `.update(...)`,
+`.digest()`, `.hexdigest()`, `.copy()`, and hash-object metadata `.name`,
+`.digest_size`, and `.block_size` for the covered SHA/MD5 algorithms. Covered
+behavior matches the local Python 3.10.11 probe for `sha1`, `sha256`, `sha512`,
+one-shot digest output, independent copy state, and string/bytes
+`compare_digest(...)` truth values. Strings are rejected as key/update payloads
+with Python-style bytes-like errors; unsupported digest names raise
+`ValueError("unsupported hash type ...")`. Fresh evidence includes
+`.codex/hmac_python310_probe.py` plus `.codex/hmac_python310_probe.output.json`,
+`tools\run-ahktest.ps1 stdlib\tests\hmac.test.ahk -TimeoutSeconds 90` passing
+6/6, captured execution of `stdlib/examples/hmac.ahk` and the expanded
+`stdlib/examples/quickstart.ahk`, and README.en/README.zh-CN extraction gates
+for the new files/paths/hash/HMAC snippet passing through `run-ahktest` with
+explicit `System.Text.RegularExpressions` / `MatchEvaluator` pollution checks.
+The same docs/examples sync expands `stdlib/examples/hashlib.ahk` for
+SHA3/SHAKE/BLAKE2/PBKDF2/scrypt, `stdlib/examples/pathlib.ahk` for concrete
+and pure path operations plus filesystem iteration/glob/rglob, and
+`stdlib/examples/statistics.ahk` for grouped medians, pairwise statistics,
+linear regression, and `NormalDist`.
 
 `stdlib.string` is now direct as a first slice of Python 3.10.11 `string`,
 promoted onto the public Python-path root as `stdlib.string.*`. The current
