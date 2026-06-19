@@ -174,9 +174,9 @@ AhkStdlibCopyLookupDispatch(value, dispatch)
     if dispatch.Has(typeName)
         return dispatch[typeName]
 
-    pyName := AhkStdlibPythonTypeName(value)
-    if dispatch.Has(pyName)
-        return dispatch[pyName]
+    canonicalName := AhkStdlibPythonTypeName(value)
+    if dispatch.Has(canonicalName)
+        return dispatch[canonicalName]
 
     return ""
 }

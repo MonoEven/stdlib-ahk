@@ -209,6 +209,74 @@ class StdlibOperatorTest
         AhkTest.AssertEqual(7, stdlib.operator.index(7))
         AhkTest.AssertEqual(1, stdlib.operator.index(stdlib.True))
     }
+
+    static TestMatmulDispatchesToHookOrRaises()
+    {
+        ; Plain numbers don't support @ in Python; matmul raises.
+        AhkTest.RaisesMatch(
+            TypeError,
+            "unsupported operand type\(s\) for @: 'int' and 'int'",
+            (*) => stdlib.operator.matmul(3, 4)
+        )
+        AhkTest.RaisesMatch(
+            TypeError,
+            "unsupported operand type\(s\) for @=: 'int' and 'int'",
+            (*) => stdlib.operator.imatmul(3, 4)
+        )
+        ; Objects opt in via __Matmul / __Imatmul.
+        m := StdlibOperatorMatmulValue()
+        AhkTest.AssertEqual("mm:5", stdlib.operator.matmul(m, 5))
+        AhkTest.AssertEqual("imm:7", stdlib.operator.imatmul(m, 7))
+    }
+
+    static TestInPlaceScalarMatchesBinaryResult()
+    {
+        AhkTest.AssertEqual(3, stdlib.operator.iadd(1, 2))
+        AhkTest.AssertEqual(2, stdlib.operator.isub(5, 3))
+        AhkTest.AssertEqual(6, stdlib.operator.imul(2, 3))
+        AhkTest.AssertEqual(3.5, stdlib.operator.itruediv(7, 2))
+        AhkTest.AssertEqual(3, stdlib.operator.ifloordiv(7, 2))
+        AhkTest.AssertEqual(1, stdlib.operator.imod(7, 3))
+        AhkTest.AssertEqual(8, stdlib.operator.ipow(2, 3))
+        AhkTest.AssertEqual(8, stdlib.operator.ilshift(1, 3))
+        AhkTest.AssertEqual(2, stdlib.operator.irshift(8, 2))
+        AhkTest.AssertEqual(2, stdlib.operator.iand(6, 3))
+        AhkTest.AssertEqual(5, stdlib.operator.ior(4, 1))
+        AhkTest.AssertEqual(6, stdlib.operator.ixor(5, 3))
+        AhkTest.AssertEqual("abcd", stdlib.operator.iconcat("ab", "cd"))
+    }
+
+    static TestInPlaceListMutatesSameObject()
+    {
+        ; iadd extends the list in place and returns the same object.
+        target := [1, 2]
+        result := stdlib.operator.iadd(target, [3, 4])
+        AhkTest.AssertTrue(result == target)
+        AhkTest.AssertEqual([1, 2, 3, 4], target)
+
+        ; imul repeats the list in place.
+        target2 := [1, 2]
+        result2 := stdlib.operator.imul(target2, 3)
+        AhkTest.AssertTrue(result2 == target2)
+        AhkTest.AssertEqual([1, 2, 1, 2, 1, 2], target2)
+
+        ; imul by 0 empties the list.
+        target3 := [1, 2, 3]
+        stdlib.operator.imul(target3, 0)
+        AhkTest.AssertEqual([], target3)
+
+        ; iconcat extends the list in place.
+        target4 := [1]
+        result4 := stdlib.operator.iconcat(target4, [2])
+        AhkTest.AssertTrue(result4 == target4)
+        AhkTest.AssertEqual([1, 2], target4)
+    }
+}
+
+class StdlibOperatorMatmulValue
+{
+    __Matmul(other) => "mm:" other
+    __Imatmul(other) => "imm:" other
 }
 
 class StdlibOperatorLengthHintValue

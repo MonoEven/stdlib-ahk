@@ -2,6 +2,7 @@
 
 #Include <stdlib\init>
 #Include <stdlib\collections>
+#Include <stdlib\cmath>
 
 class AhkStdlibOperator
 {
@@ -36,6 +37,26 @@ class AhkStdlibOperator
     static invert(a) => AhkStdlibOperatorInvert(a)
     static concat(a, b) => AhkStdlibOperatorConcat(a, b)
     static index(a) => AhkStdlibOperatorIndex(a)
+    static matmul(a, b) => AhkStdlibOperatorMatmul(a, b)
+
+    ; In-place operators. CPython's operator.iadd etc. call the __i*__ hook when
+    ; present and otherwise fall back to the binary op. For our mutable sequence
+    ; (Array) iadd/imul/iconcat mutate in place and return the same object,
+    ; matching list semantics; scalar forms just return the binary result.
+    static iadd(a, b) => AhkStdlibOperatorIAdd(a, b)
+    static isub(a, b) => AhkStdlibOperatorSub(a, b)
+    static imul(a, b) => AhkStdlibOperatorIMul(a, b)
+    static itruediv(a, b) => AhkStdlibOperatorTrueDiv(a, b)
+    static ifloordiv(a, b) => AhkStdlibOperatorFloorDiv(a, b)
+    static imod(a, b) => AhkStdlibOperatorMod(a, b)
+    static ipow(a, b) => AhkStdlibOperatorPow(a, b)
+    static imatmul(a, b) => AhkStdlibOperatorIMatmul(a, b)
+    static ilshift(a, b) => AhkStdlibOperatorLshift(a, b)
+    static irshift(a, b) => AhkStdlibOperatorRshift(a, b)
+    static iand(a, b) => AhkStdlibOperatorAnd(a, b)
+    static ior(a, b) => AhkStdlibOperatorOr(a, b)
+    static ixor(a, b) => AhkStdlibOperatorXor(a, b)
+    static iconcat(a, b) => AhkStdlibOperatorIConcat(a, b)
 
     static contains(a, b) => AhkStdlibOperatorContains(a, b)
     static countOf(a, b) => AhkStdlibOperatorCountOf(a, b)
@@ -147,6 +168,12 @@ AhkStdlibOperatorCompare(operation, left, right)
         if AhkStdlibOperatorComparableCrossTypeEqual(operation)
             return AhkStdlibOperatorObjectEqNe(operation, right, left)
         return AhkStdlibOperatorObjectCompare(AhkStdlibOperatorReverseComparison(operation), right, left)
+    }
+    if AhkStdlibOperatorIsComplex(left) || AhkStdlibOperatorIsComplex(right) {
+        if !AhkStdlibOperatorComparableCrossTypeEqual(operation)
+            throw TypeError("'" AhkStdlibOperatorComparisonSymbol(operation) "' not supported between instances of '" AhkStdlibOperatorPythonTypeName(left) "' and '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
+        complexValue := AhkStdlibOperatorIsComplex(left) ? left : right
+        return AhkStdlibOperatorObjectEqNe(operation, complexValue, AhkStdlibOperatorIsComplex(left) ? right : left)
     }
     if AhkStdlibOperatorIsDateTimeComparable(left) {
         if AhkStdlibOperatorComparableCrossTypeEqual(operation)
@@ -335,6 +362,8 @@ AhkStdlibOperatorMod(a, b)
 
 AhkStdlibOperatorTrueDiv(left, right)
 {
+    if AhkStdlibOperatorIsComplex(left) || AhkStdlibOperatorIsComplex(right)
+        return AhkStdlibOperatorComplexBinary("/", left, right)
     if AhkStdlibOperatorIsDecimal(left) {
         result := left.__Div(right)
         if result = ""
@@ -366,6 +395,8 @@ AhkStdlibOperatorTrueDiv(left, right)
 
 AhkStdlibOperatorAdd(left, right)
 {
+    if AhkStdlibOperatorIsComplex(left) || AhkStdlibOperatorIsComplex(right)
+        return AhkStdlibOperatorComplexBinary("+", left, right)
     if left is AhkStdlibCollectionsCounter
         return left.AhkStdlibCounterAdd(right)
     if right is AhkStdlibCollectionsCounter
@@ -452,6 +483,8 @@ AhkStdlibOperatorAdd(left, right)
 
 AhkStdlibOperatorSub(left, right)
 {
+    if AhkStdlibOperatorIsComplex(left) || AhkStdlibOperatorIsComplex(right)
+        return AhkStdlibOperatorComplexBinary("-", left, right)
     if left is AhkStdlibCollectionsCounter
         return left.AhkStdlibCounterSub(right)
     if right is AhkStdlibCollectionsCounter
@@ -531,6 +564,8 @@ AhkStdlibOperatorOr(left, right)
 
 AhkStdlibOperatorPow(left, right)
 {
+    if AhkStdlibOperatorIsComplex(left) || AhkStdlibOperatorIsComplex(right)
+        return AhkStdlibOperatorComplexBinary("**", left, right)
     if !(left is Number) || !(right is Number)
         throw TypeError("unsupported operand type(s) for ** or pow(): '" AhkStdlibOperatorPythonTypeName(left) "' and '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
     return left ** right
@@ -583,6 +618,107 @@ AhkStdlibOperatorConcat(left, right)
     throw TypeError("'" AhkStdlibOperatorPythonTypeName(left) "' object can't be concatenated", -1)
 }
 
+; matmul has no AHK operator, but CPython's operator.matmul is a plain function
+; that dispatches to the left operand's __matmul__ (then the right operand's
+; reflected __rmatmul__) and otherwise raises "unsupported operand type(s) for @".
+; Objects opt in by exposing a __Matmul / __Rmatmul method.
+AhkStdlibOperatorMatmul(left, right)
+{
+    if IsObject(left) && HasMethod(left, "__Matmul") {
+        result := left.__Matmul(right)
+        if !AhkStdlibIsNotImplemented(result)
+            return result
+    }
+    if IsObject(right) && HasMethod(right, "__Rmatmul") {
+        result := right.__Rmatmul(left)
+        if !AhkStdlibIsNotImplemented(result)
+            return result
+    }
+    throw TypeError("unsupported operand type(s) for @: '" AhkStdlibOperatorPythonTypeName(left) "' and '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
+}
+
+AhkStdlibOperatorIMatmul(left, right)
+{
+    if IsObject(left) && HasMethod(left, "__Imatmul") {
+        result := left.__Imatmul(right)
+        if !AhkStdlibIsNotImplemented(result)
+            return result
+    }
+    if IsObject(left) && HasMethod(left, "__Matmul") {
+        result := left.__Matmul(right)
+        if !AhkStdlibIsNotImplemented(result)
+            return result
+    }
+    throw TypeError("unsupported operand type(s) for @=: '" AhkStdlibOperatorPythonTypeName(left) "' and '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
+}
+
+; In-place add/concat on a list extends it in place and returns the same object
+; (CPython list.__iadd__). The right operand must be iterable, like += in Python.
+AhkStdlibOperatorIAdd(left, right)
+{
+    if left is Array {
+        AhkStdlibOperatorExtendInPlace(left, right)
+        return left
+    }
+    return AhkStdlibOperatorAdd(left, right)
+}
+
+AhkStdlibOperatorIConcat(left, right)
+{
+    if left is Array {
+        if !(right is Array)
+            throw TypeError("can only concatenate list (not '" AhkStdlibOperatorPythonTypeName(right) "') to list", -1)
+        AhkStdlibOperatorExtendInPlace(left, right)
+        return left
+    }
+    return AhkStdlibOperatorConcat(left, right)
+}
+
+; In-place multiply on a list repeats it in place and returns the same object
+; (CPython list.__imul__). Scalars/strings fall through to the binary product.
+AhkStdlibOperatorIMul(left, right)
+{
+    if left is Array {
+        if !(right is Integer)
+            throw TypeError("can't multiply sequence by non-int of type '" AhkStdlibOperatorPythonTypeName(right) "'", -1)
+        original := []
+        for value in left
+            original.Push(value)
+        ; Reduce to empty for count <= 0, else append (count-1) more copies.
+        if right <= 1 {
+            if right <= 0
+                left.Length := 0
+            return left
+        }
+        Loop right - 1 {
+            for value in original
+                left.Push(value)
+        }
+        return left
+    }
+    return AhkStdlibOperatorMul(left, right)
+}
+
+AhkStdlibOperatorExtendInPlace(target, source)
+{
+    if source is Array {
+        for value in source
+            target.Push(value)
+        return
+    }
+    if source is String {
+        Loop Parse, source
+            target.Push(A_LoopField)
+        return
+    }
+    if IsObject(source) && HasMethod(source, "__Enum") {
+        for value in source
+            target.Push(value)
+        return
+    }
+    throw TypeError("'" AhkStdlibOperatorPythonTypeName(source) "' object is not iterable", -1)
+}
+
 AhkStdlibOperatorIndex(value)
 {
     if value is Integer
@@ -600,6 +736,8 @@ AhkStdlibOperatorNeg(value)
         return value.__Neg()
     if AhkStdlibOperatorIsFraction(value)
         return value.__Neg()
+    if AhkStdlibOperatorIsComplex(value)
+        return value.__Neg()
     if AhkStdlibOperatorIsTimedelta(value)
         return value.__Neg()
     return -value
@@ -613,6 +751,8 @@ AhkStdlibOperatorPos(value)
         return value.__Pos()
     if AhkStdlibOperatorIsFraction(value)
         return value.__Pos()
+    if AhkStdlibOperatorIsComplex(value)
+        return value.__Pos()
     if AhkStdlibOperatorIsTimedelta(value)
         return value.__Pos()
     return +value
@@ -624,11 +764,15 @@ AhkStdlibOperatorAbs(value)
         return value.sign ? value.__Neg() : value.__Pos()
     if AhkStdlibOperatorIsFraction(value)
         return value.numerator < 0 ? value.__Neg() : value.__Pos()
+    if AhkStdlibOperatorIsComplex(value)
+        return AhkStdlibComplexHypot(value.real, value.imag)
     return Abs(value)
 }
 
 AhkStdlibOperatorMul(left, right)
 {
+    if AhkStdlibOperatorIsComplex(left) || AhkStdlibOperatorIsComplex(right)
+        return AhkStdlibOperatorComplexBinary("*", left, right)
     if AhkStdlibOperatorIsArrayValue(left) {
         result := left.__Mul(right)
         if result = ""
@@ -942,6 +1086,8 @@ AhkStdlibOperatorPythonTypeName(value)
         return "decimal.Decimal"
     if AhkStdlibOperatorIsFraction(value)
         return "Fraction"
+    if AhkStdlibOperatorIsComplex(value)
+        return "complex"
     if AhkStdlibOperatorIsDateTime(value)
         return "datetime.datetime"
     if AhkStdlibOperatorIsTime(value)
@@ -985,6 +1131,56 @@ AhkStdlibOperatorIsTimedelta(value)
 AhkStdlibOperatorIsFraction(value)
 {
     return Type(value) = "AhkStdlibFractionsFractionValue"
+}
+
+AhkStdlibOperatorIsComplex(value)
+{
+    return Type(value) = "AhkStdlibComplexValue"
+}
+
+; Complex arithmetic dispatch. The complex value class lives in cmath.ahk; its
+; metamethods coerce a real operand, so we only need to surface the right
+; metamethod and translate a "" result (non-numeric operand) into the standard
+; "unsupported operand" TypeError. Operands may appear on either side.
+AhkStdlibOperatorComplexBinary(symbol, left, right)
+{
+    if AhkStdlibOperatorIsComplex(left) {
+        result := AhkStdlibOperatorComplexApply(symbol, left, right)
+        if result = ""
+            throw TypeError(AhkStdlibOperatorComplexError(symbol, left, right), -1)
+        return result
+    }
+
+    ; left is a real number, right is complex: promote left to complex.
+    if !(left is Number) && !AhkStdlibIsBool(left)
+        throw TypeError(AhkStdlibOperatorComplexError(symbol, left, right), -1)
+    promoted := AhkStdlibComplexCoerce(left)
+    result := AhkStdlibOperatorComplexApply(symbol, promoted, right)
+    if result = ""
+        throw TypeError(AhkStdlibOperatorComplexError(symbol, left, right), -1)
+    return result
+}
+
+AhkStdlibOperatorComplexApply(symbol, complexLeft, right)
+{
+    switch symbol {
+        case "+":
+            return complexLeft.__Add(right)
+        case "-":
+            return complexLeft.__Sub(right)
+        case "*":
+            return complexLeft.__Mul(right)
+        case "/":
+            return complexLeft.__Div(right)
+        case "**":
+            return complexLeft.__Pow(right)
+    }
+    throw ValueError("unknown complex operator", -1)
+}
+
+AhkStdlibOperatorComplexError(symbol, left, right)
+{
+    return "unsupported operand type(s) for " symbol ": '" AhkStdlibOperatorPythonTypeName(left) "' and '" AhkStdlibOperatorPythonTypeName(right) "'"
 }
 
 AhkStdlibOperatorIsDecimal(value)

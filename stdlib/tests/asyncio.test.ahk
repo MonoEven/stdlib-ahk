@@ -954,12 +954,12 @@ class StdlibAsyncioTest
         eventLoop := stdlib.asyncio.new_event_loop()
         stdlib.asyncio.set_event_loop(eventLoop)
         try {
-            pythonCode := "import sys; data=sys.stdin.buffer.read(); sys.stdout.buffer.write(data.upper()); sys.stderr.buffer.write(b'err:' + data); sys.exit(7)"
+            subprocessSource := "import sys; data=sys.stdin.buffer.read(); sys.stdout.buffer.write(data.upper()); sys.stderr.buffer.write(b'err:' + data); sys.exit(7)"
             proc := stdlib.await(stdlib.asyncio.create_subprocess_exec(
                 "py",
                 "-3.10",
                 "-c",
-                pythonCode,
+                subprocessSource,
                 { stdin: stdlib.asyncio.subprocess.PIPE, stdout: stdlib.asyncio.subprocess.PIPE, stderr: stdlib.asyncio.subprocess.PIPE }
             ), { loop: eventLoop })
             AhkTest.AssertEqual("AhkStdlibAsyncioStreamWriter", Type(proc.stdin))

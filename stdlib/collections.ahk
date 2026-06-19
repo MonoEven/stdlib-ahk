@@ -1071,9 +1071,16 @@ stdlib.collections := AhkStdlibCollections
 
 ; collections.abc: AHK has no metaclass/virtual-subclass machinery, so the ABCs
 ; are modeled as protocol objects whose isinstance(obj) duck-types the relevant
-; capability. This covers the structural ABCs (Hashable/Sized/Container/Callable
-; /Iterable) that map cleanly onto AHK runtime checks; the registration-heavy
-; ABCs (Mapping/Sequence/Set hierarchies) remain out of scope.
+; capability. This covers the structural ABCs that map cleanly onto AHK runtime
+; types: the one-method protocols (Hashable/Sized/Container/Callable/Iterable),
+; their structural composites (Iterator/Reversible/Collection), and the
+; Mapping/Sequence/Set hierarchies. The mapping mirrors CPython's isinstance
+; results for the native types: Map -> Mapping/MutableMapping, Array ->
+; Sequence/MutableSequence, String/tuple -> (immutable) Sequence. AHK has no
+; native set type, so Set/MutableSet recognize only objects that duck-type the
+; required methods. What stays out of scope is metaclass-driven mixin-method
+; *derivation* (subclassing Mapping to inherit get/keys/items): these protocols
+; answer isinstance-style structural questions, not method injection.
 class AhkStdlibCollectionsAbc
 {
     static Hashable := AhkStdlibCollectionsAbcHashable
@@ -1081,6 +1088,15 @@ class AhkStdlibCollectionsAbc
     static Container := AhkStdlibCollectionsAbcContainer
     static Callable := AhkStdlibCollectionsAbcCallable
     static Iterable := AhkStdlibCollectionsAbcIterable
+    static Iterator := AhkStdlibCollectionsAbcIterator
+    static Reversible := AhkStdlibCollectionsAbcReversible
+    static Collection := AhkStdlibCollectionsAbcCollection
+    static Mapping := AhkStdlibCollectionsAbcMapping
+    static MutableMapping := AhkStdlibCollectionsAbcMutableMapping
+    static Sequence := AhkStdlibCollectionsAbcSequence
+    static MutableSequence := AhkStdlibCollectionsAbcMutableSequence
+    static Set := AhkStdlibCollectionsAbcSet
+    static MutableSet := AhkStdlibCollectionsAbcMutableSet
 }
 
 class AhkStdlibCollectionsAbcHashable
@@ -1132,6 +1148,140 @@ class AhkStdlibCollectionsAbcIterable
         if !IsObject(obj)
             return obj is String   ; strings iterate by character in our helpers
         return obj is Array || obj is Map || HasMethod(obj, "__Enum")
+    }
+}
+
+class AhkStdlibCollectionsAbcIterator
+{
+    ; A live iterator: in AHK an iterator is an enumerator (a Func exposing Call)
+    ; that may also re-expose __Enum (so `for` works on it). Arrays/Maps are
+    ; iterable but are NOT themselves iterators (matching CPython: a list is not
+    ; an Iterator). We accept objects that are callable AND enumerable, or that
+    ; expose a Python-style __next__.
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return false
+        if obj is Array || obj is Map
+            return false
+        if HasMethod(obj, "__next__")
+            return true
+        return HasMethod(obj, "Call") && HasMethod(obj, "__Enum")
+    }
+}
+
+class AhkStdlibCollectionsAbcReversible
+{
+    ; Iterable that also supports reverse iteration. Arrays/Strings have a
+    ; defined order and reverse cleanly; Maps in CPython 3.8+ are Reversible too.
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return obj is String
+        return obj is Array || obj is Map || HasMethod(obj, "__Reversed") || HasMethod(obj, "__reversed__")
+    }
+}
+
+class AhkStdlibCollectionsAbcCollection
+{
+    ; Sized + Iterable + Container (CPython Collection). Native arrays/maps and
+    ; strings all qualify; an object qualifies if it duck-types all three.
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return obj is String
+        if obj is Array || obj is Map
+            return true
+        return AhkStdlibCollectionsAbcSized.isinstance(obj)
+            && AhkStdlibCollectionsAbcIterable.isinstance(obj)
+            && AhkStdlibCollectionsAbcContainer.isinstance(obj)
+    }
+}
+
+class AhkStdlibCollectionsAbcMapping
+{
+    ; Key/value association: AHK Map (and our Counter, a Map subclass) is the
+    ; canonical mapping. Objects opt in by exposing __getitem__/keys-style access.
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return false
+        if obj is Map
+            return true
+        return HasMethod(obj, "Has") && HasMethod(obj, "__Item") && HasProp(obj, "Count") && HasMethod(obj, "__Enum")
+    }
+}
+
+class AhkStdlibCollectionsAbcMutableMapping
+{
+    ; AHK Maps are mutable, so every Map is a MutableMapping (matching dict).
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return false
+        if obj is Map
+            return true
+        return AhkStdlibCollectionsAbcMapping.isinstance(obj) && HasMethod(obj, "Delete")
+    }
+}
+
+class AhkStdlibCollectionsAbcSequence
+{
+    ; Ordered, integer-indexed: AHK Array, plus immutable strings/tuples.
+    ; Maps are explicitly NOT sequences (matching dict).
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return obj is String
+        if obj is Map
+            return false
+        if obj is Array
+            return true
+        return HasMethod(obj, "__Item") && HasProp(obj, "Length") && HasMethod(obj, "__Enum")
+    }
+}
+
+class AhkStdlibCollectionsAbcMutableSequence
+{
+    ; AHK Array is mutable (Push/RemoveAt/InsertAt), so it is a MutableSequence;
+    ; a tuple (AhkStdlibTuple) blocks mutation and is therefore NOT mutable.
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return false
+        if obj is AhkStdlibTuple
+            return false
+        if obj is Array
+            return true
+        return AhkStdlibCollectionsAbcSequence.isinstance(obj)
+            && HasMethod(obj, "InsertAt") && HasMethod(obj, "RemoveAt")
+    }
+}
+
+class AhkStdlibCollectionsAbcSet
+{
+    ; AHK has no native set type. An object is set-like only if it duck-types the
+    ; CPython Set protocol (__contains__ + __iter__ + __len__): membership, plus
+    ; iteration, plus a length. We map those onto Has + __Enum + Count/Length.
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return false
+        if obj is Array || obj is Map
+            return false
+        return HasMethod(obj, "Has") && HasMethod(obj, "__Enum")
+            && (HasProp(obj, "Count") || HasProp(obj, "Length"))
+    }
+}
+
+class AhkStdlibCollectionsAbcMutableSet
+{
+    ; Set protocol plus add/discard mutators (CPython MutableSet).
+    static isinstance(obj)
+    {
+        if !AhkStdlibCollectionsAbcSet.isinstance(obj)
+            return false
+        return HasMethod(obj, "add") && HasMethod(obj, "discard")
     }
 }
 

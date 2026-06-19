@@ -1103,6 +1103,72 @@ class StdlibCollectionsTest
         AhkTest.AssertTrue(abc.Iterable.isinstance([1]))
         AhkTest.AssertTrue(abc.Iterable.isinstance("abc"))
     }
+
+    static TestCollectionsAbcStructuralHierarchies()
+    {
+        abc := stdlib.collections.abc
+        list := [1, 2, 3]
+        dict := Map("a", 1)
+        text := "abc"
+        tup := stdlib.tuple([1, 2])
+
+        ; Collection = Sized + Iterable + Container. list/dict/str all qualify.
+        AhkTest.AssertTrue(abc.Collection.isinstance(list))
+        AhkTest.AssertTrue(abc.Collection.isinstance(dict))
+        AhkTest.AssertTrue(abc.Collection.isinstance(text))
+        AhkTest.AssertFalse(abc.Collection.isinstance(5))
+
+        ; Reversible: ordered sequences and (3.8+) dicts.
+        AhkTest.AssertTrue(abc.Reversible.isinstance(list))
+        AhkTest.AssertTrue(abc.Reversible.isinstance(text))
+        AhkTest.AssertTrue(abc.Reversible.isinstance(dict))
+
+        ; Mapping/MutableMapping: AHK Map mirrors dict (both true).
+        AhkTest.AssertTrue(abc.Mapping.isinstance(dict))
+        AhkTest.AssertTrue(abc.MutableMapping.isinstance(dict))
+        AhkTest.AssertFalse(abc.Mapping.isinstance(list))
+        AhkTest.AssertFalse(abc.Mapping.isinstance(text))
+
+        ; Sequence: Array/String/tuple yes; Map no (matching dict).
+        AhkTest.AssertTrue(abc.Sequence.isinstance(list))
+        AhkTest.AssertTrue(abc.Sequence.isinstance(text))
+        AhkTest.AssertTrue(abc.Sequence.isinstance(tup))
+        AhkTest.AssertFalse(abc.Sequence.isinstance(dict))
+
+        ; MutableSequence: Array yes; tuple (mutation-blocked) no; str no.
+        AhkTest.AssertTrue(abc.MutableSequence.isinstance(list))
+        AhkTest.AssertFalse(abc.MutableSequence.isinstance(tup))
+        AhkTest.AssertFalse(abc.MutableSequence.isinstance(text))
+
+        ; Iterator: a live enumerator is an Iterator; a list is not.
+        AhkTest.AssertFalse(abc.Iterator.isinstance(list))
+        AhkTest.AssertTrue(abc.Iterator.isinstance(StdlibCollectionsAbcIteratorLike()))
+
+        ; Set/MutableSet: AHK has no native set; native containers are excluded;
+        ; only objects duck-typing the protocol qualify.
+        AhkTest.AssertFalse(abc.Set.isinstance(list))
+        AhkTest.AssertFalse(abc.Set.isinstance(dict))
+        setLike := StdlibCollectionsAbcSetLike()
+        AhkTest.AssertTrue(abc.Set.isinstance(setLike))
+        AhkTest.AssertTrue(abc.MutableSet.isinstance(setLike))
+    }
+}
+
+class StdlibCollectionsAbcSetLike
+{
+    Count => 0
+    Has(x) => false
+    add(x) => ""
+    discard(x) => ""
+    __Enum(n) => (&v) => false
+}
+
+class StdlibCollectionsAbcIteratorLike
+{
+    ; A live iterator: callable as an enumerator and self-iterable, but not an
+    ; Array/Map. Mirrors how itertools iterators present in this stdlib.
+    Call(&v) => false
+    __Enum(n) => this
 }
 
 stdlib_collections_test_array(iterable)

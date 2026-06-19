@@ -23,6 +23,7 @@
 #Include <stdlib\warnings>
 #Include <stdlib\init>
 #Include <stdlib\math>
+#Include <stdlib\cmath>
 #Include <stdlib\random>
 #Include <stdlib\array>
 #Include <stdlib\hashlib>
