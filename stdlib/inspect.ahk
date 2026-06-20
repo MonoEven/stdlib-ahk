@@ -76,6 +76,38 @@ class AhkStdlibInspect
         return IsObject(object) && object is Func && !object.IsBuiltIn && InStr(object.Name, ".Prototype.")
     }
 
+    ; Generators require yield, which AHK lacks: no value is ever a generator,
+    ; so these faithfully return false for every object (matching CPython, where
+    ; only true generator/generator-function objects qualify).
+    static isgenerator(object)
+    {
+        return false
+    }
+
+    static isgeneratorfunction(object)
+    {
+        return false
+    }
+
+    ; Coroutines/awaitables are modeled by stdlib.asyncio. Detect them by their
+    ; structural markers (duck-typing) so inspect does not hard-require asyncio
+    ; to be loaded: a coroutine exposes the asyncio step hook; a future/task is
+    ; awaitable; a coroutine function returns a coroutine when called.
+    static iscoroutine(object)
+    {
+        return AhkStdlibInspectIsCoroutine(object)
+    }
+
+    static iscoroutinefunction(object)
+    {
+        return AhkStdlibInspectIsCoroutineFunction(object)
+    }
+
+    static isawaitable(object)
+    {
+        return AhkStdlibInspectIsAwaitable(object)
+    }
+
     static callable(object)
     {
         return IsObject(object) && HasMethod(object, "Call")
@@ -330,6 +362,38 @@ class AhkStdlibInspectSignature
 }
 
 stdlib.inspect := AhkStdlibInspect
+
+; Coroutine/awaitable detection mirrors stdlib.asyncio's model without requiring
+; it to be loaded: a coroutine carries the asyncio step hook (AhkStdlibAsyncioStep),
+; a future/task additionally exposes add_done_callback + done.
+AhkStdlibInspectIsCoroutine(object)
+{
+    return IsObject(object) && HasMethod(object, "AhkStdlibAsyncioStep")
+}
+
+AhkStdlibInspectIsAwaitable(object)
+{
+    if !IsObject(object)
+        return false
+    if HasMethod(object, "AhkStdlibAsyncioStep")
+        return true
+    ; Futures/Tasks are awaitable: they expose add_done_callback + done.
+    return HasMethod(object, "add_done_callback") && HasMethod(object, "done")
+}
+
+AhkStdlibInspectIsCoroutineFunction(object)
+{
+    if !IsObject(object) || !HasMethod(object, "Call")
+        return false
+    ; A coroutine function returns a coroutine when invoked with no args. Guard
+    ; the probe call so non-coroutine callables (which may need args or have
+    ; side effects) never raise out of a predicate.
+    try result := object.Call()
+    catch
+        return false
+    return AhkStdlibInspectIsCoroutine(result)
+}
+
 
 ; ---------------------------------------------------------------------------
 ; Sentinel for "no value" (Python's inspect._empty).

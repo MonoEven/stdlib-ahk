@@ -161,6 +161,64 @@ class StdlibInspectTest
     {
         AhkTest.AssertEqual(0, stdlib.inspect.trace().Length)
     }
+
+    static TestGeneratorPredicatesAreAlwaysFalse()
+    {
+        ; AHK has no generators, so nothing is a generator (faithful, not a stub).
+        AhkTest.AssertFalse(stdlib.inspect.isgenerator(5))
+        AhkTest.AssertFalse(stdlib.inspect.isgenerator([1, 2]))
+        AhkTest.AssertFalse(stdlib.inspect.isgenerator((*) => 1))
+        AhkTest.AssertFalse(stdlib.inspect.isgeneratorfunction((*) => 1))
+    }
+
+    static TestCoroutineAndAwaitablePredicates()
+    {
+        coroutine := StdlibInspectCoroutineProbe()
+        coroutineFunc := StdlibInspectCoroutineFactory
+        future := StdlibInspectFutureProbe()
+
+        AhkTest.AssertTrue(stdlib.inspect.iscoroutine(coroutine))
+        AhkTest.AssertFalse(stdlib.inspect.iscoroutine(5))
+        AhkTest.AssertFalse(stdlib.inspect.iscoroutine((*) => 1))
+
+        AhkTest.AssertTrue(stdlib.inspect.iscoroutinefunction(coroutineFunc))
+        AhkTest.AssertFalse(stdlib.inspect.iscoroutinefunction((*) => 1))
+        AhkTest.AssertFalse(stdlib.inspect.iscoroutinefunction(5))
+
+        ; Awaitable: a coroutine, or a future/task (add_done_callback + done).
+        AhkTest.AssertTrue(stdlib.inspect.isawaitable(coroutine))
+        AhkTest.AssertTrue(stdlib.inspect.isawaitable(future))
+        AhkTest.AssertFalse(stdlib.inspect.isawaitable(5))
+        AhkTest.AssertFalse(stdlib.inspect.isawaitable([1, 2]))
+    }
+}
+
+; Minimal coroutine: carries the asyncio step hook used by stdlib.asyncio.
+class StdlibInspectCoroutineProbe
+{
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        return "done"
+    }
+}
+
+; A coroutine function returns a coroutine when called.
+StdlibInspectCoroutineFactory()
+{
+    return StdlibInspectCoroutineProbe()
+}
+
+; Future-like: awaitable via add_done_callback + done, but not a coroutine.
+class StdlibInspectFutureProbe
+{
+    add_done_callback(callback)
+    {
+    }
+
+    done()
+    {
+        return true
+    }
 }
 
 StdlibInspectTraceRaiser()
