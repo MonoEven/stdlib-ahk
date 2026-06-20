@@ -111,4 +111,142 @@ class StdlibEnumTest
     }
 }
 
+; --- Class-syntax enums (Python's `class Color(Enum)`) ---
+; Members declared via the member()/auto() factories so static __New can recover
+; definition order. The class itself becomes the enum type.
+
+class ClassColor extends AhkStdlibEnum
+{
+    static RED := AhkStdlibEnum.member(1)
+    static GREEN := AhkStdlibEnum.member(2)
+    static BLUE := AhkStdlibEnum.member(3)
+}
+
+class ClassAuto extends AhkStdlibEnum
+{
+    static ALPHA := AhkStdlibEnum.auto()
+    static BETA := AhkStdlibEnum.auto()
+    static GAMMA := AhkStdlibEnum.auto()
+}
+
+class ClassMixed extends AhkStdlibEnum
+{
+    static A := AhkStdlibEnum.member(10)
+    static B := AhkStdlibEnum.auto()
+    static C := AhkStdlibEnum.auto()
+}
+
+class ClassPriority extends AhkStdlibIntEnum
+{
+    static LOW := AhkStdlibIntEnum.member(1)
+    static HIGH := AhkStdlibIntEnum.member(10)
+}
+
+class ClassPerm extends AhkStdlibFlag
+{
+    static R := AhkStdlibFlag.auto()
+    static W := AhkStdlibFlag.auto()
+    static X := AhkStdlibFlag.auto()
+    static D := AhkStdlibFlag.auto()
+}
+
+class ClassAliased extends AhkStdlibEnum
+{
+    static A := AhkStdlibEnum.member(1)
+    static B := AhkStdlibEnum.member(1)
+    static C := AhkStdlibEnum.member(2)
+}
+
+class ClassCustomGen extends AhkStdlibEnum
+{
+    static _generate_next_value_(name, start, count, last_values)
+    {
+        return StrLower(name)
+    }
+    static RED := AhkStdlibEnum.auto()
+    static GREEN := AhkStdlibEnum.auto()
+}
+
+class StdlibEnumClassSyntaxTest
+{
+    static TestClassSyntaxPreservesDefinitionOrderAndValues()
+    {
+        ; Iteration follows definition order (not alphabetical), values explicit.
+        names := []
+        values := []
+        for m in ClassColor {
+            names.Push(m.name)
+            values.Push(m.value)
+        }
+        AhkTest.AssertEqual(["RED", "GREEN", "BLUE"], names)
+        AhkTest.AssertEqual([1, 2, 3], values)
+        ; Member objects carry name/value and a class-qualified repr.
+        AhkTest.AssertEqual("RED", ClassColor.RED.name)
+        AhkTest.AssertEqual(1, ClassColor.RED.value)
+        AhkTest.AssertEqual("ClassColor.RED", String(ClassColor.RED))
+        AhkTest.AssertEqual("<ClassColor.RED: 1>", ClassColor.RED.__Repr())
+        AhkTest.AssertEqual("ClassColor", ClassColor.__name)
+    }
+
+    static TestClassSyntaxValueAndNameLookup()
+    {
+        AhkTest.AssertSame(ClassColor.GREEN, ClassColor(2))
+        AhkTest.AssertSame(ClassColor.BLUE, ClassColor["BLUE"])
+        AhkTest.RaisesMatch(ValueError, "^99 is not a valid ClassColor$", (*) => ClassColor(99))
+        AhkTest.RaisesMatch(KeyError, "^'NOPE'$", (*) => ClassColor["NOPE"])
+    }
+
+    static TestClassSyntaxAutoNumbersFromOne()
+    {
+        AhkTest.AssertEqual([1, 2, 3], StdlibEnumClassSyntaxTest.Values(ClassAuto))
+        AhkTest.AssertEqual("<auto>", ClassAuto.ALPHA._value_factory.__Repr())
+    }
+
+    static TestClassSyntaxMixedExplicitThenAuto()
+    {
+        ; auto() continues from the last explicit value (10 -> 11 -> 12).
+        AhkTest.AssertEqual([10, 11, 12], StdlibEnumClassSyntaxTest.Values(ClassMixed))
+    }
+
+    static TestClassSyntaxIntEnumKind()
+    {
+        AhkTest.AssertEqual("IntEnum", ClassPriority.__kind)
+        AhkTest.AssertEqual(10, ClassPriority.HIGH.value)
+        AhkTest.AssertSame(ClassPriority.HIGH, ClassPriority(10))
+    }
+
+    static TestClassSyntaxFlagAutoUsesPowersOfTwo()
+    {
+        AhkTest.AssertEqual("Flag", ClassPerm.__kind)
+        AhkTest.AssertEqual([1, 2, 4, 8], StdlibEnumClassSyntaxTest.Values(ClassPerm))
+    }
+
+    static TestClassSyntaxAliasesShareMemberAndExcludeFromIteration()
+    {
+        AhkTest.AssertSame(ClassAliased.A, ClassAliased.B)
+        names := []
+        for m in ClassAliased
+            names.Push(m.name)
+        AhkTest.AssertEqual(["A", "C"], names)
+        AhkTest.AssertSame(ClassAliased.A, ClassAliased(1))
+    }
+
+    static TestClassSyntaxGenerateNextValueOverride()
+    {
+        ; A user-defined _generate_next_value_ controls auto() values.
+        AhkTest.AssertEqual("red", ClassCustomGen.RED.value)
+        AhkTest.AssertEqual("green", ClassCustomGen.GREEN.value)
+    }
+
+    static Values(enumType)
+    {
+        out := []
+        for m in enumType
+            out.Push(m.value)
+        return out
+    }
+}
+
+AhkTest.Collect(StdlibEnumClassSyntaxTest)
+
 AhkTest.Collect(StdlibEnumTest)
