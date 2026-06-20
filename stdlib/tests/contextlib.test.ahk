@@ -57,6 +57,73 @@ class StdlibContextlibTestDecoratorCore
     }
 }
 
+; A hand-written single-yield generator object (no AHK `yield`): a small state
+; machine implementing __next__/throw/close. setup runs before the yield,
+; teardown after. CPython would write this as a @contextmanager generator
+; function; here the same protocol is expressed explicitly and driven identically.
+class StdlibContextlibTestGen
+{
+    __New(events, value, catchThrow := false)
+    {
+        this.events := events
+        this.value := value
+        this.catchThrow := catchThrow
+        this.state := "start"
+    }
+
+    __next__()
+    {
+        if this.state = "start" {
+            this.events.Push("setup")
+            this.state := "yielded"
+            return this.value
+        }
+        ; Resume after the (single) yield: run teardown then stop.
+        if this.state = "yielded" {
+            this.events.Push("teardown")
+            this.state := "done"
+            throw StopIteration("", -1)
+        }
+        throw StopIteration("", -1)
+    }
+
+    throw(exc)
+    {
+        ; Exception thrown in at the yield point.
+        if this.state = "yielded" {
+            this.state := "done"
+            if this.catchThrow {
+                this.events.Push("caught")
+                this.events.Push("teardown")
+                throw StopIteration("", -1)   ; caught + ran to completion
+            }
+            this.events.Push("teardown")
+            throw exc                          ; re-raise the same exception
+        }
+        throw exc
+    }
+
+    close()
+    {
+    }
+}
+
+; A generator that never yields (state machine stops immediately).
+class StdlibContextlibTestEmptyGen
+{
+    __next__()
+    {
+        throw StopIteration("", -1)
+    }
+    throw(exc)
+    {
+        throw exc
+    }
+    close()
+    {
+    }
+}
+
 class StdlibContextlibTest
 {
     static TestCoveredNullcontextSuppressAndClosingMatchObservedLocal310()
@@ -130,6 +197,73 @@ class StdlibContextlibTest
             ["decorated-call", 21],
             ["decorator-exit", stdlib.None]
         ], events)
+    }
+
+    static TestContextManagerDrivesGeneratorObjectLikePython310()
+    {
+        ; @contextmanager over a hand-written single-yield generator object.
+        events := []
+        factory := stdlib.contextlib.contextmanager((evts, val) => StdlibContextlibTestGen(evts, val))
+
+        cm := factory(events, 5)
+        ; __enter advances to the yield and returns the yielded value.
+        yielded := cm.__enter()
+        AhkTest.AssertEqual(5, yielded)
+        events.Push(["body", yielded])
+        ; __exit with no exception resumes the generator, running teardown.
+        AhkTest.AssertFalse(cm.__exit(stdlib.None, stdlib.None, stdlib.None))
+        AhkTest.AssertEqual(["setup", ["body", 5], "teardown"], events)
+    }
+
+    static TestContextManagerSuppressesWhenGeneratorCatchesThrow()
+    {
+        ; Generator that catches the thrown exception and completes -> suppressed.
+        events := []
+        factory := stdlib.contextlib.contextmanager((evts) => StdlibContextlibTestGen(evts, 1, true))
+        cm := factory(events)
+        cm.__enter()
+        suppressed := cm.__exit(ValueError, ValueError("boom", -1), stdlib.None)
+        AhkTest.AssertTrue(suppressed)
+        AhkTest.AssertEqual(["setup", "caught", "teardown"], events)
+    }
+
+    static TestContextManagerRepropagatesWhenGeneratorReraises()
+    {
+        ; Generator that re-raises the same exception -> NOT suppressed.
+        events := []
+        factory := stdlib.contextlib.contextmanager((evts) => StdlibContextlibTestGen(evts, 1, false))
+        cm := factory(events)
+        cm.__enter()
+        err := ValueError("boom", -1)
+        suppressed := cm.__exit(ValueError, err, stdlib.None)
+        AhkTest.AssertFalse(suppressed)
+        AhkTest.AssertEqual(["setup", "teardown"], events)
+    }
+
+    static TestContextManagerRaisesWhenGeneratorDoesNotYield()
+    {
+        factory := stdlib.contextlib.contextmanager((*) => StdlibContextlibTestEmptyGen())
+        cm := factory()
+        AhkTest.RaisesMatch(RuntimeError, "^generator didn't yield$", (*) => cm.__enter())
+    }
+
+    static TestContextManagerComposesWithExitStack()
+    {
+        ; A @contextmanager CM plugs into ExitStack.enter_context like any other.
+        events := []
+        factory := stdlib.contextlib.contextmanager((evts) => StdlibContextlibTestGen(evts, "res"))
+        stack := stdlib.contextlib.ExitStack()
+        stack.__enter()
+        resource := stack.enter_context(factory(events))
+        AhkTest.AssertEqual("res", resource)
+        events.Push(["body", resource])
+        stack.__exit(stdlib.None, stdlib.None, stdlib.None)
+        AhkTest.AssertEqual(["setup", ["body", "res"], "teardown"], events)
+    }
+
+    static TestContextManagerRejectsNonCallable()
+    {
+        AhkTest.RaisesMatch(TypeError, "object is not callable", (*) => stdlib.contextlib.contextmanager(5))
     }
 }
 

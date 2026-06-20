@@ -47,6 +47,99 @@ class AhkStdlibContextlib
     {
         return AhkStdlibContextlibRedirectStream(new_target, "stderr")
     }
+
+    ; contextmanager(genfunc) — CPython decorates a *generator function* with this
+    ; and `with cm():` drives the generator: __enter__ advances to the single
+    ; yield, __exit__ resumes it (or throws an exception in). AHK has no `yield`,
+    ; but — exactly as collections.abc.Generator recognizes a hand-written
+    ; generator-protocol object — this DRIVES one: genfunc returns an object with
+    ; __next__()/throw(exc)/close() that yields exactly once. The produced context
+    ; manager plugs into ExitStack/enter_context and the __enter/__exit protocol
+    ; like every other CM here. (Driving the protocol needs no language primitive;
+    ; only *creating* a generator from `yield` does — which is why this is
+    ; feasible while async-generator-based asynccontextmanager is not.)
+    static contextmanager(genfunc)
+    {
+        if !IsObject(genfunc) || !HasMethod(genfunc, "Call")
+            throw TypeError("'" AhkStdlibPythonTypeName(genfunc) "' object is not callable", -1)
+        return AhkStdlibContextlibContextManagerFactory(genfunc)
+    }
+}
+
+; Returned by contextmanager(genfunc): a callable factory. Calling it with args
+; produces a fresh generator (genfunc(args*)) wrapped in a driver CM, mirroring
+; CPython's helper(*args, **kwds) -> _GeneratorContextManager(func, args, kwds).
+class AhkStdlibContextlibContextManagerFactory
+{
+    __New(genfunc)
+    {
+        this.AhkStdlibGenFunc := genfunc
+    }
+
+    Call(args*)
+    {
+        generator := this.AhkStdlibGenFunc.Call(args*)
+        if !IsObject(generator) || !HasMethod(generator, "__next__")
+            throw TypeError("@contextmanager function must return a generator-protocol object (with __next__)", -1)
+        return AhkStdlibContextlibGeneratorCM(generator)
+    }
+}
+
+; Faithful port of CPython's _GeneratorContextManager.__enter__/__exit__.
+class AhkStdlibContextlibGeneratorCM
+{
+    __New(generator)
+    {
+        this.AhkStdlibGen := generator
+    }
+
+    __enter()
+    {
+        ; Advance to the first yield; a generator that never yields is an error.
+        try {
+            return this.AhkStdlibGen.__next__()
+        } catch as err {
+            if err is StopIteration
+                throw RuntimeError("generator didn't yield", -1)
+            throw err
+        }
+    }
+
+    __exit(excType, exc, tb)
+    {
+        if AhkStdlibIsNone(excType) {
+            ; No exception in the body: resume; the generator must now stop.
+            try {
+                this.AhkStdlibGen.__next__()
+            } catch as err {
+                if err is StopIteration
+                    return false
+                throw err
+            }
+            throw RuntimeError("generator didn't stop", -1)
+        }
+
+        ; Exception in the body: throw it into the generator at the yield point.
+        try {
+            this.AhkStdlibGen.throw(exc)
+        } catch as thrown {
+            ; Generator caught it and ran to completion -> suppress (StopIteration).
+            if thrown is StopIteration
+                return true
+            ; Generator re-raised the SAME exception -> do not suppress.
+            if thrown == exc
+                return false
+            ; A different exception -> propagate it.
+            throw thrown
+        }
+        ; Generator yielded again instead of stopping.
+        throw RuntimeError("generator didn't stop after throw()", -1)
+    }
+
+    __Repr()
+    {
+        return "<contextlib._GeneratorContextManager object at 0x" AhkStdlibContextlibHexAddress(this) ">"
+    }
 }
 
 class AhkStdlibContextlibNullcontext
