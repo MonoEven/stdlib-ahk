@@ -265,6 +265,28 @@ class StdlibContextlibTest
     {
         AhkTest.RaisesMatch(TypeError, "object is not callable", (*) => stdlib.contextlib.contextmanager(5))
     }
+
+    static TestChdirChangesAndRestoresWorkingDirLikePython311()
+    {
+        original := A_WorkingDir
+        tempRoot := EnvGet("TEMP")
+        cm := stdlib.contextlib.chdir(tempRoot)
+        cm.__enter()
+        ; Inside: cwd is the target (compare case-insensitively, trim trailing \).
+        AhkTest.AssertEqual(StrLower(RTrim(tempRoot, "\")), StrLower(RTrim(A_WorkingDir, "\")))
+        cm.__exit(stdlib.None, stdlib.None, stdlib.None)
+        ; Restored afterwards.
+        AhkTest.AssertEqual(original, A_WorkingDir)
+
+        ; Restores even when the body raised (exit always runs in the protocol).
+        cm2 := stdlib.contextlib.chdir(tempRoot)
+        cm2.__enter()
+        cm2.__exit(ValueError, ValueError("x", -1), stdlib.None)
+        AhkTest.AssertEqual(original, A_WorkingDir)
+
+        ; Missing directory raises on enter.
+        AhkTest.RaisesMatch(OSError, "No such file or directory", (*) => stdlib.contextlib.chdir(tempRoot "\does-not-exist-zzz").__enter())
+    }
 }
 
 StdlibContextlibTestCallback(events, label)

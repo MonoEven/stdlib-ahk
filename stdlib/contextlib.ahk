@@ -64,6 +64,48 @@ class AhkStdlibContextlib
             throw TypeError("'" AhkStdlibPythonTypeName(genfunc) "' object is not callable", -1)
         return AhkStdlibContextlibContextManagerFactory(genfunc)
     }
+
+    ; chdir(path) (3.11+, implemented ahead like itertools.batched) — a context
+    ; manager that changes the working directory on enter and restores the prior
+    ; one on exit. CPython's is a reentrant stack; this one captures the cwd at
+    ; enter and restores it at exit (correct for nested use too).
+    static chdir(path)
+    {
+        return AhkStdlibContextlibChdir(path)
+    }
+}
+
+class AhkStdlibContextlibChdir
+{
+    __New(path)
+    {
+        this.AhkStdlibTarget := AhkStdlibContextlibPathString(path)
+        this.AhkStdlibSaved := []
+    }
+
+    __enter()
+    {
+        this.AhkStdlibSaved.Push(A_WorkingDir)
+        try {
+            SetWorkingDir(this.AhkStdlibTarget)
+        } catch as err {
+            this.AhkStdlibSaved.Pop()
+            throw OSError("No such file or directory: '" this.AhkStdlibTarget "'", -1)
+        }
+        return stdlib.None
+    }
+
+    __exit(excType, exc, tb)
+    {
+        if this.AhkStdlibSaved.Length
+            SetWorkingDir(this.AhkStdlibSaved.Pop())
+        return false
+    }
+
+    __Repr()
+    {
+        return "<contextlib.chdir object at 0x" AhkStdlibContextlibHexAddress(this) ">"
+    }
 }
 
 ; Returned by contextmanager(genfunc): a callable factory. Calling it with args
@@ -401,6 +443,19 @@ stdlib.contextlib := AhkStdlibContextlib
 AhkStdlibContextlibHexAddress(value)
 {
     return Format("{:016X}", ObjPtr(value))
+}
+
+; Coerce a path argument (string or os.PathLike-ish object with a Path/__fspath__)
+; to a plain string for SetWorkingDir.
+AhkStdlibContextlibPathString(path)
+{
+    if !IsObject(path)
+        return path ""
+    if HasProp(path, "Path")
+        return path.Path
+    if HasMethod(path, "__fspath__")
+        return path.__fspath__()
+    return String(path)
 }
 
 AhkStdlibContextlibExceptionType(err)
