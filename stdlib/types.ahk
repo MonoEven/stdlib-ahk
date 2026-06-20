@@ -34,6 +34,182 @@ class AhkStdlibTypes
     ; yield, so GeneratorType matches nothing.
     static CoroutineType := AhkStdlibTypesCoroutineType
     static GeneratorType := AhkStdlibTypesGeneratorType
+
+    ; GenericAlias: the runtime object Python builds for `list[int]`. CPython
+    ; exposes it via the direct constructor types.GenericAlias(origin, args) as
+    ; well, which is fully reproducible here (no syntax needed) — a value class
+    ; holding __origin__/__args__ with a `origin[arg, ...]` repr.
+    static GenericAlias(origin, args)
+    {
+        return AhkStdlibTypesGenericAlias(origin, args)
+    }
+
+    ; UnionType: the runtime type of `int | str`. CPython forbids constructing it
+    ; directly (`types.UnionType(...)` raises TypeError); unions are born from the
+    ; `|` operator, which AHK cannot overload on class objects. We mirror both: the
+    ; type marker (.isinstance duck-types a union value, like CoroutineType) raises
+    ; on call, and a Union(a, b, ...) builder stands in for the unavailable `|`,
+    ; producing a value with __args__, an `a | b` repr, and member isinstance().
+    static UnionType := AhkStdlibTypesUnionType
+
+    static Union(members*)
+    {
+        return AhkStdlibTypesMakeUnion(members)
+    }
+}
+
+; types.GenericAlias(origin, args) — e.g. GenericAlias(Array, [Integer, String])
+; reprs as `Array[Integer, String]`. args may be a single value or an Array; it is
+; always normalized to a tuple, mirroring CPython's __args__.
+class AhkStdlibTypesGenericAlias
+{
+    __New(origin, args)
+    {
+        this.__origin := origin
+        normalized := (args is Array) ? args : [args]
+        this.__args := stdlib.tuple(normalized)
+        this.__parameters := stdlib.tuple([])
+    }
+
+    __origin__ => this.__origin
+    __args__ => this.__args
+    __parameters__ => this.__parameters
+
+    isinstance(obj)
+    {
+        ; Python: isinstance(x, list[int]) checks against the origin only
+        ; (parameters are not enforced at runtime).
+        return AhkStdlibTypesValueIsType(obj, this.__origin)
+    }
+
+    __Repr()
+    {
+        parts := []
+        for arg in this.__args
+            parts.Push(AhkStdlibTypesTypeName(arg))
+        joined := ""
+        for index, part in parts {
+            if index > 1
+                joined .= ", "
+            joined .= part
+        }
+        return AhkStdlibTypesTypeName(this.__origin) "[" joined "]"
+    }
+
+    ToString() => this.__Repr()
+}
+
+; types.UnionType marker. `int | str` produces an instance of this type; the type
+; itself cannot be instantiated (matches CPython's TypeError on call). Used here as
+; an isinstance protocol object that recognizes union values built via types.Union.
+class AhkStdlibTypesUnionType
+{
+    static Call(args*)
+    {
+        throw TypeError("cannot create 'types.UnionType' instances", -1)
+    }
+
+    static isinstance(obj)
+    {
+        return obj is AhkStdlibTypesUnion
+    }
+}
+
+; A union value (what `int | str` evaluates to). Members are flattened (a union of
+; unions merges) and de-duplicated, preserving first-seen order, exactly like
+; CPython's `|`.
+class AhkStdlibTypesUnion
+{
+    __New(members)
+    {
+        this.__members := members
+    }
+
+    __args__ => stdlib.tuple(this.__members)
+
+    isinstance(obj)
+    {
+        for member in this.__members {
+            if AhkStdlibTypesValueIsType(obj, member)
+                return true
+        }
+        return false
+    }
+
+    Or(other)
+    {
+        ; Stand-in for `union | x` — returns a new merged union.
+        return AhkStdlibTypesMakeUnion([this, other])
+    }
+
+    __Repr()
+    {
+        joined := ""
+        for index, member in this.__members {
+            if index > 1
+                joined .= " | "
+            joined .= AhkStdlibTypesTypeName(member)
+        }
+        return joined
+    }
+
+    ToString() => this.__Repr()
+}
+
+; Build a union from raw members: flatten nested unions, drop duplicates.
+AhkStdlibTypesMakeUnion(members)
+{
+    flat := []
+    for member in members {
+        if member is AhkStdlibTypesUnion {
+            for inner in member.__members
+                AhkStdlibTypesUnionPush(flat, inner)
+        } else {
+            AhkStdlibTypesUnionPush(flat, member)
+        }
+    }
+    if flat.Length < 2
+        throw TypeError("a union requires at least two members", -1)
+    return AhkStdlibTypesUnion(flat)
+}
+
+AhkStdlibTypesUnionPush(flat, member)
+{
+    for existing in flat {
+        if existing == member
+            return
+    }
+    flat.Push(member)
+}
+
+; Python-style name for a type/value used in GenericAlias / Union reprs.
+AhkStdlibTypesTypeName(value)
+{
+    if value is AhkStdlibTypesGenericAlias || value is AhkStdlibTypesUnion
+        return value.__Repr()
+    if AhkStdlibIsNone(value)
+        return "None"
+    if Type(value) = "Class" {
+        try
+            return value.Prototype.__Class
+    }
+    if value is String
+        return value
+    return String(value)
+}
+
+; Does `obj` satisfy `expectedType` for GenericAlias/Union isinstance checks?
+; Accepts an AHK Class (native `is`), a nested GenericAlias/Union (delegates), or
+; None (matches the None singleton, mirroring `int | None`).
+AhkStdlibTypesValueIsType(obj, expectedType)
+{
+    if expectedType is AhkStdlibTypesGenericAlias || expectedType is AhkStdlibTypesUnion
+        return expectedType.isinstance(obj)
+    if AhkStdlibIsNone(expectedType)
+        return AhkStdlibIsNone(obj)
+    if Type(expectedType) = "Class"
+        return obj is expectedType
+    return false
 }
 
 class AhkStdlibTypesCoroutineType

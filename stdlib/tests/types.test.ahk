@@ -90,6 +90,70 @@ class StdlibTypesTest
         AhkTest.AssertFalse(stdlib.types.GeneratorType.isinstance([1, 2]))
         AhkTest.AssertFalse(stdlib.types.GeneratorType.isinstance(5))
     }
+
+    static TestGenericAliasReprAndIntrospection()
+    {
+        ; types.GenericAlias(Array, [Integer, String]) mirrors list[int, str].
+        alias := stdlib.types.GenericAlias(Array, [Integer, String])
+        AhkTest.AssertEqual("Array[Integer, String]", alias.__Repr())
+        AhkTest.AssertSame(Array, alias.__origin__)
+        AhkTest.AssertEqual(2, alias.__args__.Length)
+        AhkTest.AssertSame(Integer, alias.__args__[1])
+        AhkTest.AssertSame(String, alias.__args__[2])
+        AhkTest.AssertEqual(0, alias.__parameters__.Length)
+
+        ; Single (non-array) arg is normalized to a one-element tuple.
+        single := stdlib.types.GenericAlias(Array, Integer)
+        AhkTest.AssertEqual("Array[Integer]", single.__Repr())
+        AhkTest.AssertEqual(1, single.__args__.Length)
+
+        ; Nested alias reprs recursively, like list[dict[str, int]].
+        nested := stdlib.types.GenericAlias(Array, stdlib.types.GenericAlias(Map, [String, Integer]))
+        AhkTest.AssertEqual("Array[Map[String, Integer]]", nested.__Repr())
+
+        ; isinstance checks the origin only (parameters not enforced at runtime).
+        AhkTest.AssertTrue(alias.isinstance([1, 2]))
+        AhkTest.AssertFalse(alias.isinstance("not a list"))
+    }
+
+    static TestUnionTypeBuilderAndMembership()
+    {
+        ; Stand-in for `Integer | String` (AHK can't overload `|` on classes).
+        union := stdlib.types.Union(Integer, String)
+        AhkTest.AssertEqual("Integer | String", union.__Repr())
+        AhkTest.AssertEqual(2, union.__args__.Length)
+
+        ; isinstance matches any member.
+        AhkTest.AssertTrue(union.isinstance(5))
+        AhkTest.AssertTrue(union.isinstance("text"))
+        AhkTest.AssertFalse(union.isinstance([1, 2]))
+
+        ; UnionType marker recognizes union values and rejects construction.
+        AhkTest.AssertTrue(stdlib.types.UnionType.isinstance(union))
+        AhkTest.AssertFalse(stdlib.types.UnionType.isinstance(Integer))
+        AhkTest.RaisesMatch(TypeError, "cannot create 'types.UnionType' instances", (*) => stdlib.types.UnionType(Integer, String))
+    }
+
+    static TestUnionFlattensDedupesAndIncludesNone()
+    {
+        ; Nested unions flatten and duplicates collapse, like CPython's `|`.
+        base := stdlib.types.Union(Integer, String)
+        merged := stdlib.types.Union(base, Float)
+        AhkTest.AssertEqual("Integer | String | Float", merged.__Repr())
+        AhkTest.AssertEqual(3, merged.__args__.Length)
+
+        deduped := stdlib.types.Union(Integer, Integer, String)
+        AhkTest.AssertEqual("Integer | String", deduped.__Repr())
+
+        ; None member shows as None and matches the None singleton (int | None).
+        optional := stdlib.types.Union(Integer, stdlib.None)
+        AhkTest.AssertEqual("Integer | None", optional.__Repr())
+        AhkTest.AssertTrue(optional.isinstance(5))
+        AhkTest.AssertTrue(optional.isinstance(stdlib.None))
+        AhkTest.AssertFalse(optional.isinstance("text"))
+
+        AhkTest.RaisesMatch(TypeError, "a union requires at least two members", (*) => stdlib.types.Union(Integer))
+    }
 }
 
 class StdlibTypesCoroutineProbe
