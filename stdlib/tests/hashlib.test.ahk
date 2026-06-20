@@ -2,6 +2,7 @@
 
 #Include <stdlib\ahktest>
 #Include <stdlib\hashlib>
+#Include <stdlib\io>
 
 class StdlibHashlibTest
 {
@@ -259,6 +260,42 @@ class StdlibHashlibTest
             }
         }
         return copied
+    }
+
+    static TestFileDigestHashesFileContentsLikePython311()
+    {
+        ; file_digest (3.11+, implemented ahead like itertools.batched).
+        path := EnvGet("TEMP") "\stdlib-filedigest-" A_TickCount ".bin"
+        data := Buffer(11)
+        for i, code in [104,101,108,108,111,32,119,111,114,108,100]   ; "hello world"
+            NumPut("UChar", code, data, i - 1)
+        f := FileOpen(path, "w")
+        f.RawWrite(data, 11)
+        f.Close()
+        try {
+            ; digest by name string.
+            fobj := stdlib.io.FileIO(path, "r")
+            h := stdlib.hashlib.file_digest(fobj, "sha256")
+            AhkTest.AssertEqual("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9", h.hexdigest())
+            fobj.close()
+
+            ; digest by callable producing a fresh hash object.
+            fobj2 := stdlib.io.FileIO(path, "r")
+            h2 := stdlib.hashlib.file_digest(fobj2, () => stdlib.hashlib.md5())
+            AhkTest.AssertEqual("5eb63bbbe01eeed093cb22bb8f5acdc3", h2.hexdigest())
+            fobj2.close()
+
+            ; tiny _bufsize forces multiple read chunks; result is identical.
+            fobj3 := stdlib.io.FileIO(path, "r")
+            h3 := stdlib.hashlib.file_digest(fobj3, "sha256", { _bufsize: 4 })
+            AhkTest.AssertEqual("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9", h3.hexdigest())
+            fobj3.close()
+
+            ; non-readable arg raises.
+            AhkTest.RaisesMatch(ValueError, "not a readable file object", (*) => stdlib.hashlib.file_digest(5, "sha256"))
+        } finally {
+            FileDelete path
+        }
     }
 }
 

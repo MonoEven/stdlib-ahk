@@ -1146,6 +1146,8 @@ class AhkStdlibIoFileIO extends AhkStdlibIoRawIOBase
         if size = 0
             return Buffer(0)
         remaining := this.AhkStdlibFile.Length - this.AhkStdlibFile.Pos
+        if remaining <= 0
+            return Buffer(0)
         count := Min(size, remaining)
         buf := Buffer(count)
         got := this.AhkStdlibFile.RawRead(buf, count)

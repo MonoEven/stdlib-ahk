@@ -143,9 +143,48 @@ class AhkStdlibHashlib
     {
         return AhkStdlibHashlibScrypt(password, options?)
     }
+
+    ; file_digest(fileobj, digest, *, _bufsize=2**18) (3.11+, implemented ahead
+    ; like itertools.batched). Reads a binary file object in chunks and feeds them
+    ; to a hash. `digest` is a hash-name string (-> hashlib.new(name)) or a
+    ; callable returning a fresh hash object. Returns the digest object.
+    static file_digest(fileobj, digest, options := unset)
+    {
+        return AhkStdlibHashlibFileDigest(fileobj, digest, options?)
+    }
 }
 
 stdlib.hashlib := AhkStdlibHashlib
+
+; Read fileobj in _bufsize chunks (default 2**18) and update a hash. Mirrors
+; CPython's hashlib.file_digest: requires a binary file object exposing read();
+; digest may be a name string or a zero-arg callable producing a hash object.
+AhkStdlibHashlibFileDigest(fileobj, digest, options := unset)
+{
+    if !IsObject(fileobj) || !HasMethod(fileobj, "read")
+        throw ValueError("'" AhkStdlibPythonTypeName(fileobj) "' is not a readable file object", -1)
+
+    bufsize := 262144
+    if IsSet(options) && IsObject(options) && options.HasOwnProp("_bufsize")
+        bufsize := options._bufsize
+    if bufsize <= 0
+        bufsize := 262144
+
+    if digest is String
+        hash := AhkStdlibHashlib.new(digest)
+    else if IsObject(digest) && HasMethod(digest, "Call")
+        hash := digest.Call()
+    else
+        throw TypeError("digest must be a hash name or a callable returning a hash object", -1)
+
+    loop {
+        chunk := fileobj.read(bufsize)
+        if !IsObject(chunk) || chunk.Size = 0
+            break
+        hash.update(chunk)
+    }
+    return hash
+}
 
 class AhkStdlibHash
 {
