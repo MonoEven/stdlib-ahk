@@ -77,6 +77,27 @@ class StdlibTypesTest
         copied["c"] := 3
         AhkTest.AssertFalse(proxy.Has("c"))
     }
+
+    static TestCoroutineAndGeneratorTypeProtocols()
+    {
+        ; CoroutineType matches asyncio-style coroutines (asyncio step hook).
+        coroutine := StdlibTypesCoroutineProbe()
+        AhkTest.AssertTrue(stdlib.types.CoroutineType.isinstance(coroutine))
+        AhkTest.AssertFalse(stdlib.types.CoroutineType.isinstance((*) => 1))
+        AhkTest.AssertFalse(stdlib.types.CoroutineType.isinstance(5))
+        ; GeneratorType matches nothing (AHK has no generators).
+        AhkTest.AssertFalse(stdlib.types.GeneratorType.isinstance(coroutine))
+        AhkTest.AssertFalse(stdlib.types.GeneratorType.isinstance([1, 2]))
+        AhkTest.AssertFalse(stdlib.types.GeneratorType.isinstance(5))
+    }
+}
+
+class StdlibTypesCoroutineProbe
+{
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        return "done"
+    }
 }
 
 AhkTest.Collect(StdlibTypesTest)

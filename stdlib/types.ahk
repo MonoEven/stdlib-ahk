@@ -26,6 +26,30 @@ class AhkStdlibTypes
     {
         return AhkStdlibTypesMappingProxy(mapping)
     }
+
+    ; CoroutineType / GeneratorType: AHK has no native coroutine/generator
+    ; objects, so these are protocol objects whose isinstance(obj) duck-types the
+    ; relevant capability (same pattern as collections.abc / inspect). Coroutines
+    ; come from stdlib.asyncio (carry the asyncio step hook); generators require
+    ; yield, so GeneratorType matches nothing.
+    static CoroutineType := AhkStdlibTypesCoroutineType
+    static GeneratorType := AhkStdlibTypesGeneratorType
+}
+
+class AhkStdlibTypesCoroutineType
+{
+    static isinstance(obj)
+    {
+        return IsObject(obj) && HasMethod(obj, "AhkStdlibAsyncioStep")
+    }
+}
+
+class AhkStdlibTypesGeneratorType
+{
+    static isinstance(obj)
+    {
+        return false
+    }
 }
 
 class AhkStdlibTypesSimpleNamespace
