@@ -17,6 +17,13 @@ class StdlibMathTest
         AhkTest.AssertEqual(-3, stdlib.math.trunc(-3.9))
         AhkTest.AssertEqual(3.5, stdlib.math.fabs(-3.5))
         AhkTest.AssertEqual(5, stdlib.math.sqrt(25))
+        ; cbrt (3.11+, implemented ahead like itertools.batched): real cube root,
+        ; sign-preserving.
+        AhkTest.AssertEqual(3.0, stdlib.math.cbrt(27))
+        AhkTest.AssertEqual(-2.0, stdlib.math.cbrt(-8))
+        AhkTest.AssertEqual(0.0, stdlib.math.cbrt(0))
+        AhkTest.AssertTrue(Abs(stdlib.math.cbrt(2) - 1.2599210498948732) < 1e-12)
+        AhkTest.RaisesMatch(TypeError, "must be real number", (*) => stdlib.math.cbrt("x"))
     }
 
     static TestCombinatoricsAndIntegerHelpersFollowPythonMath()

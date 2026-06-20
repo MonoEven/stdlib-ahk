@@ -13,6 +13,7 @@ class AhkStdlibMath
     static trunc(x) => Integer(x)
     static fabs(x) => Abs(x)
     static sqrt(x) => Sqrt(x)
+    static cbrt(x) => AhkStdlibMathCbrt(x)
 
     static factorial(n) => AhkStdlibMathFactorial(n)
     static gcd(values*) => AhkStdlibMathGcd(values*)
@@ -283,6 +284,14 @@ AhkStdlibMathCrt1(name, x)
 {
     x := AhkStdlibMathRequireNumber(x)
     return DllCall("ucrtbase\" name, "Double", x, "Cdecl Double")
+}
+
+; math.cbrt (3.11+) — real cube root, preserving sign for negatives. ucrtbase's
+; cbrt handles sign and ±0 natively (cbrt(-8)=-2, cbrt(0)=0).
+AhkStdlibMathCbrt(x)
+{
+    x := AhkStdlibMathRequireNumber(x)
+    return DllCall("ucrtbase\cbrt", "Double", x, "Cdecl Double")
 }
 
 AhkStdlibMathCrt2(name, a, b)
