@@ -2,6 +2,7 @@
 
 #Include <stdlib\ahktest>
 #Include <stdlib\pathlib>
+#Include <stdlib\operator>
 
 class StdlibPathlibTest
 {
@@ -208,6 +209,31 @@ class StdlibPathlibTest
         AhkTest.AssertEqual("/usr/bin/python/x", String(p.joinpath("x")))
         AhkTest.AssertEqual(true, p.is_absolute())
         AhkTest.AssertEqual("a,b", this.JoinParts(stdlib.pathlib.PurePosixPath("a/b/c").parent.parts))
+    }
+
+    static TestTrueDivJoinOperatorViaOperatorModule()
+    {
+        ; AHK can't overload native `/`, so Path.__truediv__/__rtruediv__ are
+        ; reachable through stdlib.operator.truediv — the same channel
+        ; decimal/fractions/complex use for their arithmetic operators.
+        base := stdlib.pathlib.Path("alpha")
+
+        ; Path / str  ->  Path("alpha\beta")
+        joined := stdlib.operator.truediv(base, "beta")
+        AhkTest.AssertEqual("alpha\beta", String(joined))
+        AhkTest.AssertTrue(joined is AhkStdlibPathlibPath)
+
+        ; Path / Path chains
+        chained := stdlib.operator.truediv(stdlib.operator.truediv(base, "beta"), "gamma.txt")
+        AhkTest.AssertEqual("alpha\beta\gamma.txt", String(chained))
+
+        ; str / Path  ->  reflected __rtruediv__  ->  Path("root\alpha")
+        reflected := stdlib.operator.truediv("root", base)
+        AhkTest.AssertEqual("root\alpha", String(reflected))
+        AhkTest.AssertTrue(reflected is AhkStdlibPathlibPath)
+
+        ; An absolute right operand replaces, matching joinpath/CPython semantics.
+        AhkTest.AssertEqual("D:\child", String(stdlib.operator.truediv(stdlib.pathlib.Path("C:/base"), "D:/child")))
     }
 }
 

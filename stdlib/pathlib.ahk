@@ -124,6 +124,22 @@ class AhkStdlibPathlibPath
         return this.joinpath(parts*)
     }
 
+    ; Python's Path.__truediv__ / __rtruediv__ (the `/` join operator). AHK can't
+    ; overload `/`, so — exactly like decimal/fractions/complex expose arithmetic
+    ; through stdlib.operator — these are reachable via stdlib.operator.truediv:
+    ; operator.truediv(Path("a"), "b") == Path("a") / "b" in CPython, and
+    ; operator.truediv("a", Path("b")) == "a" / Path("b") (the reflected form).
+    __TrueDiv(other)
+    {
+        return this.joinpath(other)
+    }
+
+    __RTrueDiv(other)
+    {
+        ; other / self: other is the left (a str/Path prefix), self the right.
+        return AhkStdlibPathlibPath(AhkStdlibPathlibJoin(other, this.Path))
+    }
+
     exists()
     {
         return FileExist(this.Path) != ""

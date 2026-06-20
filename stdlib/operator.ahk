@@ -390,6 +390,12 @@ AhkStdlibOperatorTrueDiv(left, right)
             return left / right.to_float()
         throw TypeError("unsupported operand type(s) for /: '" AhkStdlibOperatorPythonTypeName(left) "' and 'Fraction'", -1)
     }
+    ; Generic __truediv__/__rtruediv__ hook (e.g. pathlib.Path's `/` join). Mirrors
+    ; CPython dispatching `a / b` to a.__truediv__(b), then b.__rtruediv__(a).
+    if IsObject(left) && HasMethod(left, "__TrueDiv")
+        return left.__TrueDiv(right)
+    if IsObject(right) && HasMethod(right, "__RTrueDiv")
+        return right.__RTrueDiv(left)
     return left / right
 }
 
