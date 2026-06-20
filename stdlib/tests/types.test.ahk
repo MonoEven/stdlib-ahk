@@ -154,6 +154,52 @@ class StdlibTypesTest
 
         AhkTest.RaisesMatch(TypeError, "a union requires at least two members", (*) => stdlib.types.Union(Integer))
     }
+
+    static TestNewClassSynthesizesClassWithMembers()
+    {
+        ; Body callback populates a namespace; callables become methods, other
+        ; values become class attributes (mirrors CPython exec_body(ns)).
+        body := (ns) => (
+            ns["CONST"] := 42,
+            ns["greet"] := (self) => "hi",
+            ns["__New"] := (self, label) => (self.label := label)
+        )
+        Widget := stdlib.types.new_class("Widget", , , body)
+
+        ; Class attribute.
+        AhkTest.AssertEqual(42, Widget.CONST)
+        ; Instantiation runs the custom __New.
+        w := Widget("ok")
+        AhkTest.AssertEqual("ok", w.label)
+        AhkTest.AssertEqual("hi", w.greet())
+        AhkTest.AssertTrue(w is Widget)
+    }
+
+    static TestNewClassInheritsFromBase()
+    {
+        D := stdlib.types.new_class("Derived", [StdlibTypesNewClassBase], , (ns) => (ns["d"] := 1))
+        inst := D()
+        AhkTest.AssertEqual("base", inst.base_method())
+        AhkTest.AssertEqual(1, D.d)
+        AhkTest.AssertTrue(inst is D)
+        AhkTest.AssertTrue(inst is StdlibTypesNewClassBase)
+    }
+
+    static TestNewClassRejectsBadArgs()
+    {
+        AhkTest.RaisesMatch(TypeError, "new_class\(\) bases must be classes", (*) => stdlib.types.new_class("X", [5]))
+        AhkTest.RaisesMatch(TypeError, "exec_body must be callable", (*) => stdlib.types.new_class("X", , , 7))
+    }
+
+    static TestPrepareClassReturnsMetaclassNamespaceKwds()
+    {
+        result := stdlib.types.prepare_class("E")
+        AhkTest.AssertEqual(3, result.Length)
+        AhkTest.AssertSame(Class, result[1])      ; metaclass (AHK's `type` analog)
+        AhkTest.AssertEqual("Map", Type(result[2]))  ; empty namespace
+        AhkTest.AssertEqual(0, result[2].Count)
+        AhkTest.AssertEqual("Map", Type(result[3]))  ; kwds
+    }
 }
 
 class StdlibTypesCoroutineProbe
@@ -162,6 +208,11 @@ class StdlibTypesCoroutineProbe
     {
         return "done"
     }
+}
+
+class StdlibTypesNewClassBase
+{
+    base_method() => "base"
 }
 
 AhkTest.Collect(StdlibTypesTest)

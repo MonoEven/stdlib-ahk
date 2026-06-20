@@ -56,6 +56,24 @@ class AhkStdlibTypes
     {
         return AhkStdlibTypesMakeUnion(members)
     }
+
+    ; new_class(name, bases, kwds, exec_body) — synthesize a class at runtime,
+    ; mirroring CPython's types.new_class. AHK has no metaclass, but a Class can be
+    ; cloned and re-prototyped at runtime, which covers the real use case: a body
+    ; callback populates a namespace, callables become methods, other values become
+    ; class attributes. Single inheritance only (AHK limit): the first base is used.
+    static new_class(name, bases := unset, kwds := unset, exec_body := unset)
+    {
+        return AhkStdlibTypesNewClass(name, bases?, kwds?, exec_body?)
+    }
+
+    ; prepare_class(name, bases, kwds) -> (metaclass, namespace, kwds). With no
+    ; metaclass system the metaclass is Class (AHK's nearest analog to `type`),
+    ; the namespace is a fresh Map to be filled then handed to new_class.
+    static prepare_class(name, bases := unset, kwds := unset)
+    {
+        return AhkStdlibTypesPrepareClass(name, bases?, kwds?)
+    }
 }
 
 ; types.GenericAlias(origin, args) — e.g. GenericAlias(Array, [Integer, String])
@@ -210,6 +228,76 @@ AhkStdlibTypesValueIsType(obj, expectedType)
     if Type(expectedType) = "Class"
         return obj is expectedType
     return false
+}
+
+; A minimal root class to clone when types.new_class is given no bases (CPython's
+; `object`). Cloning a real Class yields a working Call/__New we then re-prototype.
+class AhkStdlibTypesNewClassRoot
+{
+}
+
+AhkStdlibTypesNewClass(name, bases := unset, kwds := unset, exec_body := unset)
+{
+    if !(name is String)
+        throw TypeError("new_class() argument 1 must be str", -1)
+
+    baseClass := AhkStdlibTypesNewClassResolveBase(bases?)
+
+    ; Run the body callback to populate the namespace, like CPython exec_body(ns).
+    namespace := Map()
+    if IsSet(exec_body) && !AhkStdlibIsNone(exec_body) {
+        if !HasMethod(exec_body, "Call")
+            throw TypeError("exec_body must be callable", -1)
+        exec_body.Call(namespace)
+    }
+
+    ; Clone the base to inherit a functioning Class object, then give the new
+    ; class its own prototype chained to the base's prototype.
+    made := baseClass.Clone()
+    proto := Object()
+    proto.Base := baseClass.Prototype
+    proto.DefineProp("__Class", { value: name })
+
+    for memberName, memberValue in namespace {
+        if IsObject(memberValue) && HasMethod(memberValue, "Call")
+            proto.DefineProp(memberName, { call: memberValue })
+        else
+            made.DefineProp(memberName, { value: memberValue })
+    }
+
+    made.DefineProp("Prototype", { value: proto })
+    return made
+}
+
+AhkStdlibTypesNewClassResolveBase(bases := unset)
+{
+    if !IsSet(bases) || AhkStdlibIsNone(bases)
+        return AhkStdlibTypesNewClassRoot
+
+    if bases is Array {
+        if bases.Length = 0
+            return AhkStdlibTypesNewClassRoot
+        ; AHK is single-inheritance: use the first base. Reject non-class bases.
+        first := bases[1]
+        if Type(first) != "Class"
+            throw TypeError("new_class() bases must be classes", -1)
+        return first
+    }
+
+    ; A single class passed directly (not wrapped in an array) is also accepted.
+    if Type(bases) = "Class"
+        return bases
+
+    throw TypeError("new_class() bases must be a sequence of classes", -1)
+}
+
+AhkStdlibTypesPrepareClass(name, bases := unset, kwds := unset)
+{
+    if !(name is String)
+        throw TypeError("prepare_class() argument 1 must be str", -1)
+    resolvedKwds := (IsSet(kwds) && !AhkStdlibIsNone(kwds)) ? kwds : Map()
+    ; (metaclass, namespace, kwds) — metaclass is Class (AHK's `type` analog).
+    return stdlib.tuple([Class, Map(), resolvedKwds])
 }
 
 class AhkStdlibTypesCoroutineType
