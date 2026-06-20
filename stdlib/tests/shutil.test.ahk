@@ -273,6 +273,26 @@ class StdlibShutilTest
             DirDelete root, true
         }
     }
+
+    static TestChownReproducesPython310WindowsBehavior()
+    {
+        ; CPython 3.10's shutil.chown exists on Windows but cannot function:
+        ; no pwd/grp database, and os.chown is undefined. We reproduce its
+        ; exact observed errors.
+        ; Neither user nor group set -> ValueError.
+        AhkTest.RaisesMatch(ValueError, "^user and/or group must be set$", (*) => stdlib.shutil.chown("anything"))
+
+        ; String user/group: name resolution fails -> LookupError.
+        AhkTest.RaisesMatch(LookupError, "^no such user: 'x'$", (*) => stdlib.shutil.chown("anything", "x"))
+        AhkTest.RaisesMatch(LookupError, "^no such group: 'g'$", (*) => stdlib.shutil.chown("anything", , "g"))
+
+        ; Integer id: skips name lookup, reaches the absent os.chown -> AttributeError.
+        AhkTest.RaisesMatch(AttributeError, "module 'os' has no attribute 'chown'", (*) => stdlib.shutil.chown("anything", 1000))
+        AhkTest.RaisesMatch(AttributeError, "module 'os' has no attribute 'chown'", (*) => stdlib.shutil.chown("anything", 1000, 1000))
+
+        ; LookupError is the base of KeyError in our hierarchy (matching CPython).
+        AhkTest.AssertTrue(KeyError("k") is LookupError)
+    }
 }
 
 AhkStdlibShutilTestJoin(arr)

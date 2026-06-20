@@ -91,6 +91,18 @@ class AhkStdlibShutil
     {
         return AhkStdlibShutilGetUnpackFormats()
     }
+
+    ; chown exists on Windows CPython but cannot function: there is no pwd/grp
+    ; database and os.chown is undefined. We reproduce 3.10's exact Windows error
+    ; behavior — ValueError when neither is set, LookupError for string user/group
+    ; (name resolution always fails), AttributeError for integer ids (os.chown
+    ; missing). user/group default to None (stdlib.None) like CPython.
+    static chown(path, user := unset, group := unset)
+    {
+        userArg := IsSet(user) ? user : stdlib.None
+        groupArg := IsSet(group) ? group : stdlib.None
+        return AhkStdlibShutilChown(path, userArg, groupArg)
+    }
 }
 
 class AhkStdlibShutilError extends Error
@@ -102,6 +114,52 @@ class AhkStdlibShutilSameFileError extends OSError
 }
 
 stdlib.shutil := AhkStdlibShutil
+
+; Faithful port of CPython 3.10 shutil.chown on Windows. CPython's logic:
+;   if user is None and group is None: raise ValueError(...)
+;   _get_uid(user)/_get_gid(group) return None on Windows (no pwd/grp module),
+;     so a *string* name yields "no such user/group: '<name>'" (LookupError);
+;   an *int* id skips name lookup and reaches os.chown, which is absent on
+;     Windows -> AttributeError("module 'os' has no attribute 'chown'").
+AhkStdlibShutilChown(path, user, group)
+{
+    userSet := !AhkStdlibIsNone(user)
+    groupSet := !AhkStdlibIsNone(group)
+
+    if !userSet && !groupSet
+        throw ValueError("user and/or group must be set", -1)
+
+    ; Match CPython evaluation order: user resolved before group.
+    if userSet {
+        if user is String
+            throw AhkStdlibShutilLookupError("no such user: '" user "'")
+        if user is Integer
+            throw AhkStdlibShutilNoOsChown()
+        throw TypeError("user must be an int or str", -1)
+    }
+
+    if groupSet {
+        if group is String
+            throw AhkStdlibShutilLookupError("no such group: '" group "'")
+        if group is Integer
+            throw AhkStdlibShutilNoOsChown()
+        throw TypeError("group must be an int or str", -1)
+    }
+}
+
+AhkStdlibShutilLookupError(message)
+{
+    if IsSet(LookupError)
+        return LookupError(message, -1)
+    ; LookupError is the base of KeyError/IndexError; fall back if unavailable.
+    return Error(message, -1)
+}
+
+AhkStdlibShutilNoOsChown()
+{
+    return AttributeError("module 'os' has no attribute 'chown'", -1)
+}
+
 
 AhkStdlibShutilCopyfile(src, dst)
 {

@@ -152,7 +152,11 @@ class StopIteration extends Error
 {
 }
 
-class KeyError extends Error
+class LookupError extends Error
+{
+}
+
+class KeyError extends LookupError
 {
 }
 
