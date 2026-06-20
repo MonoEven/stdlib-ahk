@@ -200,6 +200,41 @@ class StdlibTypesTest
         AhkTest.AssertEqual(0, result[2].Count)
         AhkTest.AssertEqual("Map", Type(result[3]))  ; kwds
     }
+
+    static TestDynamicClassAttributeDescriptorContract()
+    {
+        ; Instance access returns fget(instance); class-level access (instance
+        ; None) raises AttributeError — exactly CPython's descriptor contract.
+        dca := stdlib.types.DynamicClassAttribute((self) => "inst-" self._c)
+        probe := { _c: "red" }
+        AhkTest.AssertEqual("inst-red", dca.Get(probe))
+        AhkTest.RaisesMatch(AttributeError, "", (*) => dca.Get())
+        AhkTest.AssertFalse(dca.__isabstractmethod__)
+
+        ; Unreadable / unsettable / undeletable raise like CPython.
+        ro := stdlib.types.DynamicClassAttribute()
+        AhkTest.RaisesMatch(AttributeError, "unreadable attribute", (*) => ro.Get(probe))
+        AhkTest.RaisesMatch(AttributeError, "can't set attribute", (*) => ro.Set(probe, 1))
+        AhkTest.RaisesMatch(AttributeError, "can't delete attribute", (*) => ro.Delete(probe))
+    }
+
+    static TestDynamicClassAttributeChainAndRouting()
+    {
+        ; getter/setter/deleter chaining returns a new descriptor.
+        captured := Map()
+        base := stdlib.types.DynamicClassAttribute()
+        withGet := base.getter((self) => "G")
+        withSet := withGet.setter((self, v) => captured["v"] := v)
+        AhkTest.AssertEqual("G", withSet.Get({}))
+        withSet.Set({}, 99)
+        AhkTest.AssertEqual(99, captured["v"])
+
+        ; Full pattern: class-level access of a DynamicClassAttribute name routes
+        ; through the owning class's static __Get (the metaclass __getattr__ analog),
+        ; while instance access returns the dynamic per-instance value.
+        AhkTest.AssertEqual("inst-value", StdlibTypesDcaHost().color)
+        AhkTest.AssertEqual("META-COLOR", StdlibTypesDcaHost.color)
+    }
 }
 
 class StdlibTypesCoroutineProbe
@@ -213,6 +248,24 @@ class StdlibTypesCoroutineProbe
 class StdlibTypesNewClassBase
 {
     base_method() => "base"
+}
+
+; Demonstrates the DynamicClassAttribute routing pattern: an instance property
+; (the dynamic attribute) returns a per-instance value, while class-level access
+; of the same name routes through static __Get (AHK's metaclass __getattr__).
+class StdlibTypesDcaHost
+{
+    _c := "value"
+    ; Instance access: Host().color -> the dynamic per-instance value.
+    color => "inst-" this._c
+    ; Class access: Host.color -> not a static, so static __Get fires (the
+    ; metaclass __getattr__ analog) and returns the class-level meaning.
+    static __Get(name, params)
+    {
+        if name = "color"
+            return "META-COLOR"
+        throw PropertyError("no static property '" name "'", -1)
+    }
 }
 
 AhkTest.Collect(StdlibTypesTest)

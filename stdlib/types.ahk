@@ -74,6 +74,19 @@ class AhkStdlibTypes
     {
         return AhkStdlibTypesPrepareClass(name, bases?, kwds?)
     }
+
+    ; DynamicClassAttribute: a descriptor whose defining trait is that class-level
+    ; access raises AttributeError (so it routes to the metaclass __getattr__),
+    ; while instance access returns fget(instance). In AHK the metaclass
+    ; __getattr__ role is filled by a `static __Get` on the owning class, and a
+    ; prototype property getter naturally fires only on instance access — so the
+    ; descriptor's contract is reproducible. Exposed as a forwarding method (not a
+    ; bare `static := class`) because the latter injects `this` as a leading arg to
+    ; __New, shifting fget/fset/fdel (same facade pitfall as decimal/statistics).
+    static DynamicClassAttribute(fget := unset, fset := unset, fdel := unset, doc := unset)
+    {
+        return AhkStdlibTypesDynamicClassAttribute(fget?, fset?, fdel?, doc?)
+    }
 }
 
 ; types.GenericAlias(origin, args) — e.g. GenericAlias(Array, [Integer, String])
@@ -298,6 +311,90 @@ AhkStdlibTypesPrepareClass(name, bases := unset, kwds := unset)
     resolvedKwds := (IsSet(kwds) && !AhkStdlibIsNone(kwds)) ? kwds : Map()
     ; (metaclass, namespace, kwds) — metaclass is Class (AHK's `type` analog).
     return stdlib.tuple([Class, Map(), resolvedKwds])
+}
+
+; types.DynamicClassAttribute — faithful descriptor. __get__(None, owner) raises
+; AttributeError (CPython routes that to the metaclass __getattr__; in AHK the
+; owning class's `static __Get` plays that role). __get__(instance, owner) returns
+; fget(instance). Supports set/delete, getter/setter/deleter chaining, and
+; __isabstractmethod__ (true if any of the underlying funcs is abstract).
+class AhkStdlibTypesDynamicClassAttribute
+{
+    __New(fget := unset, fset := unset, fdel := unset, doc := unset)
+    {
+        this.fget := (IsSet(fget) && !AhkStdlibIsNone(fget)) ? fget : stdlib.None
+        this.fset := (IsSet(fset) && !AhkStdlibIsNone(fset)) ? fset : stdlib.None
+        this.fdel := (IsSet(fdel) && !AhkStdlibIsNone(fdel)) ? fdel : stdlib.None
+        if IsSet(doc) && !AhkStdlibIsNone(doc)
+            this.__doc__ := doc
+        else if !AhkStdlibIsNone(this.fget) && HasProp(this.fget, "__doc__")
+            this.__doc__ := this.fget.__doc__
+        else
+            this.__doc__ := stdlib.None
+        this.overwrite_doc := !(IsSet(doc) && !AhkStdlibIsNone(doc))
+    }
+
+    __isabstractmethod__ {
+        get {
+            for fn in [this.fget, this.fset, this.fdel] {
+                if !AhkStdlibIsNone(fn) && IsObject(fn) && fn.HasOwnProp("__isabstractmethod") && fn.__isabstractmethod
+                    return true
+            }
+            return false
+        }
+    }
+
+    ; Python descriptor __get__. instance unset/None => class-level access => raise
+    ; (routes to metaclass __getattr__ / AHK static __Get).
+    Get(instance := unset, ownerclass := unset)
+    {
+        if !IsSet(instance) || AhkStdlibIsNone(instance)
+            throw AttributeError("", -1)
+        if AhkStdlibIsNone(this.fget)
+            throw AttributeError("unreadable attribute", -1)
+        return this.fget.Call(instance)
+    }
+
+    Set(instance, value)
+    {
+        if AhkStdlibIsNone(this.fset)
+            throw AttributeError("can't set attribute", -1)
+        this.fset.Call(instance, value)
+        return stdlib.None
+    }
+
+    Delete(instance)
+    {
+        if AhkStdlibIsNone(this.fdel)
+            throw AttributeError("can't delete attribute", -1)
+        this.fdel.Call(instance)
+        return stdlib.None
+    }
+
+    getter(fget)
+    {
+        return AhkStdlibTypesDynamicClassAttributeChain(this, fget, this.fset, this.fdel)
+    }
+
+    setter(fset)
+    {
+        return AhkStdlibTypesDynamicClassAttributeChain(this, this.fget, fset, this.fdel)
+    }
+
+    deleter(fdel)
+    {
+        return AhkStdlibTypesDynamicClassAttributeChain(this, this.fget, this.fset, fdel)
+    }
+}
+
+; getter/setter/deleter return a new descriptor carrying over the original doc
+; unless this one was given an explicit doc (mirrors CPython's overwrite_doc).
+AhkStdlibTypesDynamicClassAttributeChain(original, fget, fset, fdel)
+{
+    doc := original.overwrite_doc ? unset : original.__doc__
+    result := AhkStdlibTypesDynamicClassAttribute(fget, fset, fdel, doc?)
+    result.overwrite_doc := original.overwrite_doc
+    return result
 }
 
 class AhkStdlibTypesCoroutineType
