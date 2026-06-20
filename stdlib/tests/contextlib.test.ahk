@@ -3,6 +3,7 @@
 #Include <stdlib\ahktest>
 #Include <stdlib\contextlib>
 #Include <stdlib\io>
+#Include <stdlib\asyncio>
 
 class StdlibContextlibTestCloser
 {
@@ -121,6 +122,69 @@ class StdlibContextlibTestEmptyGen
     }
     close()
     {
+    }
+}
+
+; A hand-written async generator object: __anext__/athrow return single-step
+; awaitables (the asyncio model's awaitable shape). One ayield, sync setup/teardown.
+class StdlibContextlibTestAsyncGen
+{
+    __New(events, value, catchThrow := false)
+    {
+        this.events := events
+        this.value := value
+        this.catchThrow := catchThrow
+        this.state := "start"
+    }
+
+    __anext__()
+    {
+        return StdlibContextlibTestAsyncStep(ObjBindMethod(this, "AhkAdvance"))
+    }
+
+    athrow(exc)
+    {
+        return StdlibContextlibTestAsyncStep(ObjBindMethod(this, "AhkThrowIn", exc))
+    }
+
+    AhkAdvance()
+    {
+        if this.state = "start" {
+            this.events.Push("setup")
+            this.state := "yielded"
+            return this.value
+        }
+        this.events.Push("teardown")
+        this.state := "done"
+        throw StopIteration("", -1)
+    }
+
+    AhkThrowIn(exc)
+    {
+        this.state := "done"
+        if this.catchThrow {
+            this.events.Push("caught")
+            this.events.Push("teardown")
+            throw StopIteration("", -1)
+        }
+        this.events.Push("teardown")
+        throw exc
+    }
+}
+
+class StdlibContextlibTestAsyncStep
+{
+    __New(thunk)
+    {
+        this.thunk := thunk
+        this.idx := 0
+    }
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        if this.idx != 0
+            return value
+        this.idx += 1
+        return this.thunk.Call()
     }
 }
 
@@ -287,6 +351,73 @@ class StdlibContextlibTest
         ; Missing directory raises on enter.
         AhkTest.RaisesMatch(OSError, "No such file or directory", (*) => stdlib.contextlib.chdir(tempRoot "\does-not-exist-zzz").__enter())
     }
+
+    static TestAsyncContextManagerDrivesAsyncGeneratorObject()
+    {
+        ; @asynccontextmanager over a hand-written single-ayield async generator.
+        events := []
+        factory := stdlib.contextlib.asynccontextmanager((evts, v) => StdlibContextlibTestAsyncGen(evts, v))
+        cm := factory(events, 7)
+        ; __aenter__ returns an awaitable -> driven via stdlib.await -> yielded value.
+        yielded := stdlib.await(cm.__aenter__())
+        AhkTest.AssertEqual(7, yielded)
+        events.Push(["body", yielded])
+        ; __aexit__ returns an awaitable; no exception -> teardown, returns false.
+        suppressed := stdlib.await(cm.__aexit__(stdlib.None, stdlib.None, stdlib.None))
+        AhkTest.AssertFalse(suppressed)
+        AhkTest.AssertEqual(["setup", ["body", 7], "teardown"], events)
+    }
+
+    static TestAsyncContextManagerSuppressesAndRepropagates()
+    {
+        ; Caught-and-completed -> suppressed.
+        events := []
+        f1 := stdlib.contextlib.asynccontextmanager((evts) => StdlibContextlibTestAsyncGen(evts, 1, true))
+        cm1 := f1(events)
+        stdlib.await(cm1.__aenter__())
+        AhkTest.AssertTrue(stdlib.await(cm1.__aexit__(ValueError, ValueError("boom", -1), stdlib.None)))
+        AhkTest.AssertEqual(["setup", "caught", "teardown"], events)
+
+        ; Re-raised same exception -> not suppressed.
+        events2 := []
+        f2 := stdlib.contextlib.asynccontextmanager((evts) => StdlibContextlibTestAsyncGen(evts, 1, false))
+        cm2 := f2(events2)
+        stdlib.await(cm2.__aenter__())
+        err := ValueError("boom", -1)
+        AhkTest.AssertFalse(stdlib.await(cm2.__aexit__(ValueError, err, stdlib.None)))
+        AhkTest.AssertEqual(["setup", "teardown"], events2)
+    }
+
+    static TestAsyncExitStackEntersAndUnwindsAsyncContextManagers()
+    {
+        events := []
+        f := stdlib.contextlib.asynccontextmanager((evts, tag) => StdlibContextlibTestAsyncGen(evts, tag))
+        stack := stdlib.contextlib.AsyncExitStack()
+        stdlib.await(stack.__aenter__())
+        ; enter_async_context returns an awaitable yielding the entered value.
+        r1 := stdlib.await(stack.enter_async_context(f(events, "a")))
+        r2 := stdlib.await(stack.enter_async_context(f(events, "b")))
+        AhkTest.AssertEqual("a", r1)
+        AhkTest.AssertEqual("b", r2)
+        events.Push(["body", r1, r2])
+        ; aclose unwinds in LIFO order (b torn down before a).
+        stdlib.await(stack.aclose())
+        AhkTest.AssertEqual(["setup", "setup", ["body", "a", "b"], "teardown", "teardown"], events)
+    }
+
+    static TestAsyncExitStackPushCallbackAndProtocolErrors()
+    {
+        events := []
+        stack := stdlib.contextlib.AsyncExitStack()
+        stack.push_async_callback(StdlibContextlibTestAsyncCallback, events, "done")
+        stdlib.await(stack.aclose())
+        AhkTest.AssertEqual([["acallback", "done"]], events)
+
+        ; Non-async-CM rejected by enter_async_context.
+        AhkTest.RaisesMatch(TypeError, "asynchronous context manager protocol", (*) => stack.enter_async_context({ x: 1 }))
+        ; Non-callable factory rejected.
+        AhkTest.RaisesMatch(TypeError, "object is not callable", (*) => stdlib.contextlib.asynccontextmanager(5))
+    }
 }
 
 StdlibContextlibTestCallback(events, label)
@@ -298,6 +429,11 @@ StdlibContextlibTestDecoratedCall(events, value)
 {
     events.Push(["decorated-call", value])
     return value * 2
+}
+
+StdlibContextlibTestAsyncCallback(events, label)
+{
+    events.Push(["acallback", label])
 }
 
 AhkTest.Collect(StdlibContextlibTest)

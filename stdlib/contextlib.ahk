@@ -73,6 +73,27 @@ class AhkStdlibContextlib
     {
         return AhkStdlibContextlibChdir(path)
     }
+
+    ; asynccontextmanager(genfunc) — the async analog of contextmanager. genfunc
+    ; returns a hand-written async generator object: __anext__()/athrow(exc) return
+    ; single-step awaitables (driven by the asyncio loop / stdlib.await). The
+    ; produced async CM's __aenter__/__aexit__ return awaitables, exactly the
+    ; protocol AsyncExitStack.enter_async_context consumes. (Same accommodation as
+    ; the sync version: an explicit generator-protocol object stands in for `async
+    ; def ... yield`, which AHK lacks; driving the protocol needs no new primitive.)
+    static asynccontextmanager(genfunc)
+    {
+        if !IsObject(genfunc) || !HasMethod(genfunc, "Call")
+            throw TypeError("'" AhkStdlibPythonTypeName(genfunc) "' object is not callable", -1)
+        return AhkStdlibContextlibAsyncContextManagerFactory(genfunc)
+    }
+
+    static AsyncExitStack(args*)
+    {
+        if args.Length > 0
+            throw TypeError("AsyncExitStack() takes no arguments", -1)
+        return AhkStdlibContextlibAsyncExitStack()
+    }
 }
 
 class AhkStdlibContextlibChdir
@@ -182,6 +203,123 @@ class AhkStdlibContextlibGeneratorCM
     {
         return "<contextlib._GeneratorContextManager object at 0x" AhkStdlibContextlibHexAddress(this) ">"
     }
+}
+
+; A single-step awaitable: when the asyncio loop steps it, it runs `thunk` once
+; and the result becomes the awaited value (a thrown StopIteration signals
+; completion, like any coroutine). This is the bridge that lets __aenter__/
+; __aexit__ be awaited via stdlib.await / the event loop.
+class AhkStdlibContextlibAsyncStep
+{
+    __New(thunk)
+    {
+        this.AhkStdlibThunk := thunk
+        this.AhkStdlibStepIndex := 0
+    }
+
+    AhkStdlibAsyncioStep(task, value := unset)
+    {
+        if this.AhkStdlibStepIndex != 0
+            return value
+        this.AhkStdlibStepIndex += 1
+        return this.AhkStdlibThunk.Call()
+    }
+}
+
+; Returned by asynccontextmanager(genfunc): a callable factory producing an
+; async CM wrapping a fresh async generator object (genfunc(args*)).
+class AhkStdlibContextlibAsyncContextManagerFactory
+{
+    __New(genfunc)
+    {
+        this.AhkStdlibGenFunc := genfunc
+    }
+
+    Call(args*)
+    {
+        generator := this.AhkStdlibGenFunc.Call(args*)
+        if !IsObject(generator) || !HasMethod(generator, "__anext__")
+            throw TypeError("@asynccontextmanager function must return an async-generator object (with __anext__)", -1)
+        return AhkStdlibContextlibAsyncGeneratorCM(generator)
+    }
+}
+
+; Async analog of _GeneratorContextManager. __aenter__/__aexit__ return awaitables
+; (driven by the loop). The faithful semantics mirror the sync version: enter
+; advances to the single ayield (RuntimeError if none); exit resumes (must stop)
+; or throws the exception in (StopIteration -> suppress, same exception ->
+; propagate, didn't-stop -> RuntimeError).
+class AhkStdlibContextlibAsyncGeneratorCM
+{
+    __New(generator)
+    {
+        this.AhkStdlibGen := generator
+    }
+
+    __aenter__()
+    {
+        return AhkStdlibContextlibAsyncStep(ObjBindMethod(this, "AhkStdlibDoEnter"))
+    }
+
+    __aexit__(excType, exc, tb)
+    {
+        bound := ObjBindMethod(this, "AhkStdlibDoExit", excType, exc, tb)
+        return AhkStdlibContextlibAsyncStep(bound)
+    }
+
+    AhkStdlibDoEnter()
+    {
+        ; Drive the async generator's first awaitable to the ayield value. The
+        ; common case has synchronous setup, so __anext__'s awaitable resolves in
+        ; one step; we drive it via the running loop's synchronous advance.
+        try {
+            return AhkStdlibContextlibDriveAwaitable(this.AhkStdlibGen.__anext__())
+        } catch as err {
+            if err is StopIteration
+                throw RuntimeError("generator didn't yield", -1)
+            throw err
+        }
+    }
+
+    AhkStdlibDoExit(excType, exc, tb)
+    {
+        if AhkStdlibIsNone(excType) {
+            try {
+                AhkStdlibContextlibDriveAwaitable(this.AhkStdlibGen.__anext__())
+            } catch as err {
+                if err is StopIteration
+                    return false
+                throw err
+            }
+            throw RuntimeError("generator didn't stop", -1)
+        }
+
+        try {
+            AhkStdlibContextlibDriveAwaitable(this.AhkStdlibGen.athrow(exc))
+        } catch as thrown {
+            if thrown is StopIteration
+                return true
+            if thrown == exc
+                return false
+            throw thrown
+        }
+        throw RuntimeError("generator didn't stop after athrow()", -1)
+    }
+
+    __Repr()
+    {
+        return "<contextlib._AsyncGeneratorContextManager object at 0x" AhkStdlibContextlibHexAddress(this) ">"
+    }
+}
+
+; Drive a single-step awaitable (the async generator's __anext__/athrow result) to
+; its value without a nested event loop: step it once. A non-awaitable result is
+; returned as-is; StopIteration propagates to signal generator completion.
+AhkStdlibContextlibDriveAwaitable(awaitable)
+{
+    if IsObject(awaitable) && HasMethod(awaitable, "AhkStdlibAsyncioStep")
+        return awaitable.AhkStdlibAsyncioStep(stdlib.None)
+    return awaitable
 }
 
 class AhkStdlibContextlibNullcontext
@@ -401,6 +539,148 @@ class AhkStdlibContextlibPlainCallback
     }
 
     __exit(excType, exc, tb)
+    {
+        this.AhkStdlibFunc.Call(this.AhkStdlibArgs*)
+        return false
+    }
+}
+
+; AsyncExitStack (3.10) — async analog of ExitStack. enter_async_context awaits a
+; CM's __aenter__ (via stdlib.await) and registers its __aexit__; aclose() unwinds
+; the stack, awaiting each async __aexit__ and calling sync callbacks. Async exits
+; return awaitables driven through the loop, so the stack is fully exercisable
+; through asyncio.run / stdlib.await together with asynccontextmanager.
+class AhkStdlibContextlibAsyncExitStack
+{
+    __New()
+    {
+        this.AhkStdlibExitCallbacks := []
+    }
+
+    __aenter__()
+    {
+        return AhkStdlibContextlibAsyncStep(() => this)
+    }
+
+    __aexit__(excType, exc, tb)
+    {
+        return AhkStdlibContextlibAsyncStep(ObjBindMethod(this, "AhkStdlibDoAclose", excType, exc, tb))
+    }
+
+    enter_async_context(cm)
+    {
+        if !HasMethod(cm, "__aenter__") || !HasMethod(cm, "__aexit__")
+            throw TypeError("'" AhkStdlibPythonTypeName(cm) "' object does not support the asynchronous context manager protocol", -1)
+        ; Awaiting __aenter__ yields the entered value; return an awaitable so the
+        ; caller awaits it like CPython's `await stack.enter_async_context(cm)`.
+        return AhkStdlibContextlibAsyncStep(() => this.AhkStdlibEnterAndRegister(cm))
+    }
+
+    AhkStdlibEnterAndRegister(cm)
+    {
+        result := AhkStdlibContextlibDriveAwaitable(cm.__aenter__())
+        this.AhkStdlibExitCallbacks.Push(AhkStdlibContextlibAsyncExitCallback(cm))
+        return result
+    }
+
+    push_async_exit(cm)
+    {
+        if !HasMethod(cm, "__aexit__")
+            throw TypeError("'" AhkStdlibPythonTypeName(cm) "' object does not support the asynchronous context manager protocol", -1)
+        this.AhkStdlibExitCallbacks.Push(AhkStdlibContextlibAsyncExitCallback(cm))
+        return cm
+    }
+
+    push_async_callback(func, args*)
+    {
+        if !IsObject(func) || !HasMethod(func, "Call")
+            throw TypeError("'" AhkStdlibPythonTypeName(func) "' object is not callable", -1)
+        this.AhkStdlibExitCallbacks.Push(AhkStdlibContextlibAsyncPlainCallback(func, args))
+        return func
+    }
+
+    ; Synchronous registrations are also allowed (CPython AsyncExitStack inherits
+    ; enter_context/push/callback from ExitStack).
+    enter_context(cm)
+    {
+        result := cm.__enter()
+        this.push(cm)
+        return result
+    }
+
+    push(exit)
+    {
+        if !HasMethod(exit, "__exit")
+            throw TypeError("'" AhkStdlibPythonTypeName(exit) "' object does not support the context manager protocol", -1)
+        this.AhkStdlibExitCallbacks.Push(AhkStdlibContextlibExitCallback(exit))
+        return exit
+    }
+
+    callback(func, args*)
+    {
+        if !IsObject(func) || !HasMethod(func, "Call")
+            throw TypeError("'" AhkStdlibPythonTypeName(func) "' object is not callable", -1)
+        this.AhkStdlibExitCallbacks.Push(AhkStdlibContextlibPlainCallback(func, args))
+        return func
+    }
+
+    aclose()
+    {
+        return AhkStdlibContextlibAsyncStep(ObjBindMethod(this, "AhkStdlibDoAclose", stdlib.None, stdlib.None, stdlib.None))
+    }
+
+    AhkStdlibDoAclose(excType, exc, tb)
+    {
+        suppressed := false
+        while this.AhkStdlibExitCallbacks.Length {
+            callback := this.AhkStdlibExitCallbacks.Pop()
+            if HasProp(callback, "AhkStdlibAsyncAware") && callback.AhkStdlibAsyncAware
+                handled := AhkStdlibContextlibDriveAwaitable(callback.AhkStdlibAsyncExit(excType, exc, tb))
+            else
+                handled := callback.__exit(excType, exc, tb)
+            if handled {
+                suppressed := true
+                excType := stdlib.None
+                exc := stdlib.None
+                tb := stdlib.None
+            }
+        }
+        return suppressed
+    }
+
+    __Repr()
+    {
+        return "<contextlib.AsyncExitStack object at 0x" AhkStdlibContextlibHexAddress(this) ">"
+    }
+}
+
+; Wraps an async CM so the stack can await its __aexit__ during unwind.
+class AhkStdlibContextlibAsyncExitCallback
+{
+    __New(cm)
+    {
+        this.AhkStdlibCM := cm
+        this.AhkStdlibAsyncAware := true
+    }
+
+    AhkStdlibAsyncExit(excType, exc, tb)
+    {
+        return this.AhkStdlibCM.__aexit__(excType, exc, tb)
+    }
+}
+
+; Wraps a plain async callback (run during unwind; no awaiting needed here since
+; the callback body is synchronous in this model).
+class AhkStdlibContextlibAsyncPlainCallback
+{
+    __New(func, args)
+    {
+        this.AhkStdlibFunc := func
+        this.AhkStdlibArgs := args
+        this.AhkStdlibAsyncAware := true
+    }
+
+    AhkStdlibAsyncExit(excType, exc, tb)
     {
         this.AhkStdlibFunc.Call(this.AhkStdlibArgs*)
         return false
