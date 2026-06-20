@@ -1097,6 +1097,7 @@ class AhkStdlibCollectionsAbc
     static MutableSequence := AhkStdlibCollectionsAbcMutableSequence
     static Set := AhkStdlibCollectionsAbcSet
     static MutableSet := AhkStdlibCollectionsAbcMutableSet
+    static Generator := AhkStdlibCollectionsAbcGenerator
 }
 
 class AhkStdlibCollectionsAbcHashable
@@ -1282,6 +1283,26 @@ class AhkStdlibCollectionsAbcMutableSet
         if !AhkStdlibCollectionsAbcSet.isinstance(obj)
             return false
         return HasMethod(obj, "add") && HasMethod(obj, "discard")
+    }
+}
+
+class AhkStdlibCollectionsAbcGenerator
+{
+    ; CPython's Generator.__subclasshook__ is purely structural: it recognizes any
+    ; object exposing send + throw + close on top of the Iterator protocol
+    ; (__iter__ + __next__). It does NOT require the object to be a *real* generator
+    ; produced by `yield` — it answers an isinstance structural question. AHK has no
+    ; yield, so nothing here CREATES a generator, but an object that hand-implements
+    ; the protocol (send/throw/close/__next__) is correctly recognized, exactly as
+    ; CPython recognizes such a class. Like every sibling protocol this injects no
+    ; methods; it only answers isinstance(obj).
+    static isinstance(obj)
+    {
+        if !IsObject(obj)
+            return false
+        if !AhkStdlibCollectionsAbcIterator.isinstance(obj)
+            return false
+        return HasMethod(obj, "send") && HasMethod(obj, "throw") && HasMethod(obj, "close")
     }
 }
 

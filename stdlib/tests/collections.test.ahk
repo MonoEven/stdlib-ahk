@@ -1151,7 +1151,33 @@ class StdlibCollectionsTest
         setLike := StdlibCollectionsAbcSetLike()
         AhkTest.AssertTrue(abc.Set.isinstance(setLike))
         AhkTest.AssertTrue(abc.MutableSet.isinstance(setLike))
+
+        ; Generator: a structural protocol (Iterator + send + throw + close),
+        ; matching CPython's purely structural Generator.__subclasshook__. AHK has
+        ; no `yield`, so nothing CREATES a generator, but an object that
+        ; hand-implements the protocol is recognized, exactly as CPython
+        ; recognizes such a class. A plain iterator (no send/throw/close) is NOT a
+        ; Generator, and native containers never qualify.
+        AhkTest.AssertFalse(abc.Generator.isinstance(list))
+        AhkTest.AssertFalse(abc.Generator.isinstance(StdlibCollectionsAbcIteratorLike()))
+        genLike := StdlibCollectionsAbcGeneratorLike()
+        AhkTest.AssertTrue(abc.Generator.isinstance(genLike))
+        ; A Generator is also an Iterator (the protocol subsumes it).
+        AhkTest.AssertTrue(abc.Iterator.isinstance(genLike))
     }
+}
+
+class StdlibCollectionsAbcGeneratorLike
+{
+    ; Hand-implements the CPython Generator protocol: Iterator (Call/__Enum or
+    ; __next__) plus send/throw/close. Not produced by `yield` (AHK has none),
+    ; but structurally a generator.
+    Call(&v) => false
+    __Enum(n) => this
+    __next__() => ""
+    send(value) => ""
+    throw(exc) => ""
+    close() => ""
 }
 
 class StdlibCollectionsAbcSetLike
