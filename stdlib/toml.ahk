@@ -1,6 +1,7 @@
 ﻿#Requires AutoHotkey v2.0
 
 #Include <stdlib\init>
+#Include <stdlib\datetime>
 
 class AhkStdlibTextToml
 {
@@ -458,7 +459,9 @@ _Toml_ParseValue(text, lineNumber := 0)
     if RegExMatch(numberText, "^[+-]?(\d+\.\d*|\d*\.\d+)([eE][+-]?\d+)?$") || RegExMatch(numberText, "^[+-]?\d+[eE][+-]?\d+$")
         return Float(numberText)
     if RegExMatch(text, "^\d{4}-\d{2}-\d{2}")
-        return text
+        return _Toml_ParseDateTime(text, lineNumber)
+    if RegExMatch(text, "^\d{2}:\d{2}:\d{2}")
+        return _Toml_ParseTime(text, lineNumber)
 
     _Toml_FailValue(lineNumber, "unsupported value: " text)
 }
@@ -478,6 +481,41 @@ _Toml_Nan()
     b := Buffer(8, 0)
     NumPut("Int64", 0x7FF8000000000000, b, 0)
     return NumGet(b, 0, "Double")
+}
+
+; TOML date / datetime -> stdlib.datetime.date / .datetime (faithful to the
+; reference `toml` package, which decodes these to datetime objects). A bare
+; date returns a date; a date+time (T or space separator, optional Z/offset)
+; returns a datetime. Fractional seconds -> microseconds.
+_Toml_ParseDateTime(text, lineNumber)
+{
+    if !RegExMatch(text, "^(\d{4})-(\d{2})-(\d{2})(?:[Tt ](\d{2}):(\d{2}):(\d{2})(\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?)?$", &m)
+        _Toml_FailValue(lineNumber, "invalid date: " text)
+
+    year := Integer(m[1]), month := Integer(m[2]), day := Integer(m[3])
+    if m[4] = ""
+        return AhkStdlibDateTimeDateValue(year, month, day)
+
+    hour := Integer(m[4]), minute := Integer(m[5]), second := Integer(m[6])
+    micro := m[7] = "" ? 0 : _Toml_FractionToMicroseconds(m[7])
+    return AhkStdlibDateTimeDateTimeValue(year, month, day, hour, minute, second, micro)
+}
+
+; TOML local time -> stdlib.datetime.time.
+_Toml_ParseTime(text, lineNumber)
+{
+    if !RegExMatch(text, "^(\d{2}):(\d{2}):(\d{2})(\.\d+)?$", &m)
+        _Toml_FailValue(lineNumber, "invalid time: " text)
+    micro := m[4] = "" ? 0 : _Toml_FractionToMicroseconds(m[4])
+    return AhkStdlibDateTimeTimeValue(Integer(m[1]), Integer(m[2]), Integer(m[3]), micro)
+}
+
+; ".123" -> 123000 microseconds (pad/truncate the fractional part to 6 digits).
+_Toml_FractionToMicroseconds(fraction)
+{
+    digits := SubStr(fraction, 2)
+    digits := SubStr(digits "000000", 1, 6)
+    return Integer(digits)
 }
 
 _Toml_ParseArray(text, lineNumber)
@@ -584,6 +622,14 @@ _Toml_FormatValue(value)
             parts.Push(_Toml_FormatValue(item))
         return "[" _Toml_Join(parts, ", ") "]"
     }
+
+    ; date / datetime / time -> bare ISO token (datetime uses the "T" separator,
+    ; matching the reference `toml` package's encoder). DateTimeValue extends
+    ; DateValue, so it must be checked first.
+    if value is AhkStdlibDateTimeDateTimeValue
+        return value.isoformat()
+    if (value is AhkStdlibDateTimeDateValue) || (value is AhkStdlibDateTimeTimeValue)
+        return value.isoformat()
 
     valueType := Type(value)
     switch valueType {

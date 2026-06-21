@@ -2,6 +2,7 @@
 
 #Include <stdlib\ahktest>
 #Include <stdlib\toml>
+#Include <stdlib\datetime>
 
 class StdlibTomlTest
 {
@@ -81,6 +82,44 @@ class StdlibTomlTest
         ; Multiline literal string ('''): no escape processing, newline kept.
         lit := stdlib.toml.loads("x = '''lit`neral'''")
         AhkTest.AssertEqual("lit`neral", lit["x"])
+    }
+
+    static TestDateTimeValuesCoercedToDatetimeObjects()
+    {
+        parsed := stdlib.toml.loads("d = 1979-05-27`ndt = 1979-05-27T07:32:00`nsp = 1979-05-27 07:32:00`nt = 07:32:00`nfrac = 1979-05-27T07:32:00.123")
+
+        ; bare date -> date
+        AhkTest.AssertEqual("AhkStdlibDateTimeDateValue", Type(parsed["d"]))
+        AhkTest.AssertEqual(1979, parsed["d"].year)
+        AhkTest.AssertEqual(5, parsed["d"].month)
+        AhkTest.AssertEqual(27, parsed["d"].day)
+
+        ; date+time (T separator) -> datetime
+        AhkTest.AssertEqual("AhkStdlibDateTimeDateTimeValue", Type(parsed["dt"]))
+        AhkTest.AssertEqual(7, parsed["dt"].hour)
+        AhkTest.AssertEqual(32, parsed["dt"].minute)
+        AhkTest.AssertEqual(0, parsed["dt"].second)
+
+        ; space separator also -> datetime
+        AhkTest.AssertEqual("AhkStdlibDateTimeDateTimeValue", Type(parsed["sp"]))
+        AhkTest.AssertEqual(1979, parsed["sp"].year)
+
+        ; bare time -> time
+        AhkTest.AssertEqual("AhkStdlibDateTimeTimeValue", Type(parsed["t"]))
+        AhkTest.AssertEqual(7, parsed["t"].hour)
+        AhkTest.AssertEqual(32, parsed["t"].minute)
+
+        ; fractional seconds -> microseconds
+        AhkTest.AssertEqual(123000, parsed["frac"].microsecond)
+    }
+
+    static TestDateTimeRoundTripThroughDumps()
+    {
+        source := Map("d", stdlib.datetime.date(1979, 5, 27), "dt", stdlib.datetime.datetime(1979, 5, 27, 7, 32, 0), "t", stdlib.datetime.time(7, 32, 0))
+        text := stdlib.toml.dumps(source)
+        AhkTest.AssertTrue(InStr(text, "d = 1979-05-27") > 0)
+        AhkTest.AssertTrue(InStr(text, "dt = 1979-05-27T07:32:00") > 0)
+        AhkTest.AssertTrue(InStr(text, "t = 07:32:00") > 0)
     }
 }
 
