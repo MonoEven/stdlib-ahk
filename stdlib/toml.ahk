@@ -403,6 +403,16 @@ _Toml_ParseValue(text, lineNumber := 0)
     if lowered = "false"
         return false
 
+    ; inf / nan floats (TOML spec + the reference `toml` package). AHK has no
+    ; inf/nan literal, but a Double materialised from the IEEE-754 bit pattern
+    ; behaves and stringifies ("inf"/"-inf"/"nan") exactly as CPython's toml.
+    if lowered = "inf" || lowered = "+inf"
+        return _Toml_Inf(false)
+    if lowered = "-inf"
+        return _Toml_Inf(true)
+    if lowered = "nan" || lowered = "+nan" || lowered = "-nan"
+        return _Toml_Nan()
+
     numberText := StrReplace(text, "_", "")
     if RegExMatch(numberText, "^[+-]?\d+$")
         return Integer(numberText)
@@ -412,6 +422,23 @@ _Toml_ParseValue(text, lineNumber := 0)
         return text
 
     _Toml_FailValue(lineNumber, "unsupported value: " text)
+}
+
+; Materialise +/-infinity from its IEEE-754 double bit pattern.
+_Toml_Inf(negative)
+{
+    bits := negative ? 0xFFF0000000000000 : 0x7FF0000000000000
+    b := Buffer(8, 0)
+    NumPut("Int64", bits, b, 0)
+    return NumGet(b, 0, "Double")
+}
+
+; Materialise a quiet NaN double.
+_Toml_Nan()
+{
+    b := Buffer(8, 0)
+    NumPut("Int64", 0x7FF8000000000000, b, 0)
+    return NumGet(b, 0, "Double")
 }
 
 _Toml_ParseArray(text, lineNumber)
