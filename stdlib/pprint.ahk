@@ -22,6 +22,21 @@ class AhkStdlibPPrint
         return printer.pprint(object)
     }
 
+    static saferepr(object)
+    {
+        return AhkStdlibPPrintSafeRepr(object, Map(), stdlib.None, 0, true).repr
+    }
+
+    static isreadable(object)
+    {
+        return AhkStdlibBool(AhkStdlibPPrintSafeRepr(object, Map(), stdlib.None, 0, true).readable)
+    }
+
+    static isrecursive(object)
+    {
+        return AhkStdlibBool(AhkStdlibPPrintSafeRepr(object, Map(), stdlib.None, 0, true).recursive)
+    }
+
     static PrettyPrinter := AhkStdlibPPrintPrettyPrinterClass
 }
 
@@ -240,4 +255,72 @@ AhkStdlibPPrintNeedsCompoundLeadingSpace(parts)
         return false
     first := parts[1]
     return RegExMatch(first, "^[\[\{\(]")
+}
+
+; Faithful port of CPython 3.10 pprint._safe_repr. Returns an object with
+; .repr (string), .readable (bool), .recursive (bool). maxlevels is None
+; (no truncation) for the public saferepr/isreadable/isrecursive helpers.
+; Recursion is detected by tracking container identity (ObjPtr) in context.
+AhkStdlibPPrintSafeRepr(object, context, maxlevels, level, sort_dicts)
+{
+    if object is Map {
+        if object.Count = 0
+            return {repr: "{}", readable: true, recursive: false}
+        objid := ObjPtr(object)
+        if !AhkStdlibIsNone(maxlevels) && level >= maxlevels
+            return {repr: "{...}", readable: false, recursive: context.Has(objid)}
+        if context.Has(objid)
+            return {repr: AhkStdlibPPrintRecursion(object), readable: false, recursive: true}
+        context[objid] := 1
+        readable := true
+        recursive := false
+        components := []
+        pairs := []
+        for key, value in object
+            pairs.Push([key, value])
+        if AhkStdlibTruthValue(sort_dicts)
+            AhkStdlibPPrintSortPairsByKey(&pairs)
+        for pair in pairs {
+            kres := AhkStdlibPPrintSafeRepr(pair[1], context, maxlevels, level + 1, sort_dicts)
+            vres := AhkStdlibPPrintSafeRepr(pair[2], context, maxlevels, level + 1, sort_dicts)
+            components.Push(kres.repr ": " vres.repr)
+            readable := readable && kres.readable && vres.readable
+            if kres.recursive || vres.recursive
+                recursive := true
+        }
+        context.Delete(objid)
+        return {repr: "{" AhkStdlibPPrintJoin(components, ", ") "}", readable: readable, recursive: recursive}
+    }
+
+    if object is Array {
+        if object.Length = 0
+            return {repr: "[]", readable: true, recursive: false}
+        objid := ObjPtr(object)
+        if !AhkStdlibIsNone(maxlevels) && level >= maxlevels
+            return {repr: "[...]", readable: false, recursive: context.Has(objid)}
+        if context.Has(objid)
+            return {repr: AhkStdlibPPrintRecursion(object), readable: false, recursive: true}
+        context[objid] := 1
+        readable := true
+        recursive := false
+        components := []
+        for value in object {
+            res := AhkStdlibPPrintSafeRepr(value, context, maxlevels, level + 1, sort_dicts)
+            components.Push(res.repr)
+            if !res.readable
+                readable := false
+            if res.recursive
+                recursive := true
+        }
+        context.Delete(objid)
+        return {repr: "[" AhkStdlibPPrintJoin(components, ", ") "]", readable: readable, recursive: recursive}
+    }
+
+    rep := AhkStdlibPPrintScalarRepr(object)
+    return {repr: rep, readable: (rep != "" && SubStr(rep, 1, 1) != "<"), recursive: false}
+}
+
+AhkStdlibPPrintRecursion(object)
+{
+    return "<Recursion on " AhkStdlibPythonTypeName(object) " with id=" ObjPtr(object) ">"
 }

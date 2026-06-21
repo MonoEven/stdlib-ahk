@@ -39,6 +39,36 @@ class StdlibPprintTest
         AhkTest.RaisesMatch(ValueError, "invalid literal for int\(\) with base 10: 'x'", (*) => stdlib.pprint.PrettyPrinter(1, "x"))
         AhkTest.RaisesMatch(AttributeError, "'int' object has no attribute 'write'", (*) => stdlib.pprint.pprint(Map("a", 1), 1))
     }
+
+    static TestSafeReprMatchesObservedLocal310()
+    {
+        ; saferepr sorts dict keys (sort_dicts=True default in _safe_repr).
+        AhkTest.AssertEqual("{'a': 2, 'b': 1}", stdlib.pprint.saferepr(Map("b", 1, "a", 2)))
+        AhkTest.AssertEqual("[1, 'two', [3]]", stdlib.pprint.saferepr([1, "two", [3]]))
+        AhkTest.AssertEqual("[]", stdlib.pprint.saferepr([]))
+        AhkTest.AssertEqual("{}", stdlib.pprint.saferepr(Map()))
+        AhkTest.AssertEqual("'hi'", stdlib.pprint.saferepr("hi"))
+        AhkTest.AssertEqual("42", stdlib.pprint.saferepr(42))
+    }
+
+    static TestIsReadableMatchesObservedLocal310()
+    {
+        AhkTest.AssertSame(stdlib.True, stdlib.pprint.isreadable([1, 2, 3]))
+        AhkTest.AssertSame(stdlib.True, stdlib.pprint.isreadable(Map("a", 1)))
+        AhkTest.AssertSame(stdlib.True, stdlib.pprint.isreadable("hi"))
+    }
+
+    static TestIsRecursiveMatchesObservedLocal310()
+    {
+        AhkTest.AssertSame(stdlib.False, stdlib.pprint.isrecursive([1, 2, 3]))
+
+        ; A self-referencing list is recursive; saferepr emits the recursion marker.
+        cyclic := [1, 2]
+        cyclic.Push(cyclic)
+        AhkTest.AssertSame(stdlib.True, stdlib.pprint.isrecursive(cyclic))
+        AhkTest.AssertSame(stdlib.False, stdlib.pprint.isreadable(cyclic))
+        AhkTest.AssertEqual(true, InStr(stdlib.pprint.saferepr(cyclic), "<Recursion on list with id=") > 0)
+    }
 }
 
 AhkTest.Collect(StdlibPprintTest)
