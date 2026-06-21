@@ -242,10 +242,26 @@ class _TomlParser
 
     Parse()
     {
-        for lineNumber, rawLine in StrSplit(this.Text, "`n", "`r") {
-            line := Trim(_Toml_StripComment(rawLine))
-            if line = ""
+        lines := StrSplit(this.Text, "`n", "`r")
+        i := 1
+        while i <= lines.Length {
+            rawLine := lines[i]
+            lineNumber := i
+
+            ; A key/value whose value opens a multiline string (""" or ''')
+            ; may span several physical lines; buffer until it closes.
+            joined := _Toml_MaybeJoinMultiline(lines, &i)
+            if joined != "" {
+                this.ParseKeyValue(joined, lineNumber)
+                i += 1
                 continue
+            }
+
+            line := Trim(_Toml_StripComment(rawLine))
+            if line = "" {
+                i += 1
+                continue
+            }
 
             if SubStr(line, 1, 2) = "[[" {
                 this.ParseTableArray(line, lineNumber)
@@ -254,6 +270,7 @@ class _TomlParser
             } else {
                 this.ParseKeyValue(line, lineNumber)
             }
+            i += 1
         }
         return this.Root
     }
@@ -376,6 +393,22 @@ _Toml_ParseValue(text, lineNumber := 0)
     if text = ""
         _Toml_FailValue(lineNumber, "empty value")
 
+    ; Multiline strings: """...""" (basic) and '''...''' (literal). A leading
+    ; newline immediately after the opening delimiter is trimmed (TOML spec).
+    if SubStr(text, 1, 3) = "`"`"`"" {
+        if SubStr(text, -3) != "`"`"`"" || StrLen(text) < 6
+            _Toml_FailValue(lineNumber, "unterminated multiline string")
+        body := SubStr(text, 4, StrLen(text) - 6)
+        body := _Toml_TrimLeadingNewline(body)
+        return _Toml_UnquoteBasic(body, lineNumber)
+    }
+    if SubStr(text, 1, 3) = "'''" {
+        if SubStr(text, -3) != "'''" || StrLen(text) < 6
+            _Toml_FailValue(lineNumber, "unterminated multiline literal string")
+        body := SubStr(text, 4, StrLen(text) - 6)
+        return _Toml_TrimLeadingNewline(body)
+    }
+
     first := SubStr(text, 1, 1)
     last := SubStr(text, -1)
 
@@ -492,6 +525,55 @@ _Toml_ParseInlineTable(text, lineNumber)
         target[leaf] := _Toml_ParseValue(valueText, lineNumber)
     }
     return table
+}
+
+; If lines[i] is a `key = """` / `key = '''` whose multiline string does not
+; close on the same physical line, consume continuation lines (joined with
+; "`n") through the closing delimiter and return the joined statement. Advances
+; &i to the last consumed line. Returns "" when no multiline join applies.
+_Toml_MaybeJoinMultiline(lines, &i)
+{
+    raw := lines[i]
+    eqPos := _Toml_FindUnquoted(raw, "=")
+    if eqPos = 0
+        return ""
+    valuePart := Trim(SubStr(raw, eqPos + 1))
+    opener := ""
+    if SubStr(valuePart, 1, 3) = "`"`"`""
+        opener := "`"`"`""
+    else if SubStr(valuePart, 1, 3) = "'''"
+        opener := "'''"
+    else
+        return ""
+
+    ; Already closed on the same line (and longer than just the opener)?
+    rest := SubStr(valuePart, 4)
+    if StrLen(valuePart) >= 6 && InStr(rest, opener)
+        return ""
+
+    buffer := raw
+    j := i + 1
+    while j <= lines.Length {
+        buffer .= "`n" lines[j]
+        if InStr(lines[j], opener) {
+            i := j
+            return buffer
+        }
+        j += 1
+    }
+    ; Unterminated; let ParseKeyValue surface the error on the original line.
+    i := lines.Length
+    return buffer
+}
+
+; Trim a single leading newline (CR/LF or LF) right after an opening """/'''.
+_Toml_TrimLeadingNewline(text)
+{
+    if SubStr(text, 1, 2) = "`r`n"
+        return SubStr(text, 3)
+    if SubStr(text, 1, 1) = "`n"
+        return SubStr(text, 2)
+    return text
 }
 
 _Toml_FormatValue(value)

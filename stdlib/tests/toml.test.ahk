@@ -65,6 +65,23 @@ class StdlibTomlTest
         dotted := stdlib.toml.loads("p = { a.b = 1 }")
         AhkTest.AssertEqual(1, dotted["p"]["a"]["b"])
     }
+
+    static TestMultilineStringsMatchReferenceTomlPackage()
+    {
+        ; Basic multiline string with a trimmed leading newline.
+        src := "a = `"`"`"`nline one`nline two`"`"`"`nb = 1"
+        parsed := stdlib.toml.loads(src)
+        AhkTest.AssertEqual("line one`nline two", parsed["a"])
+        AhkTest.AssertEqual(1, parsed["b"])
+
+        ; Single-line triple-quoted basic string.
+        one := stdlib.toml.loads("a = `"`"`"one line`"`"`"")
+        AhkTest.AssertEqual("one line", one["a"])
+
+        ; Multiline literal string ('''): no escape processing, newline kept.
+        lit := stdlib.toml.loads("x = '''lit`neral'''")
+        AhkTest.AssertEqual("lit`neral", lit["x"])
+    }
 }
 
 AhkTest.Collect(StdlibTomlTest)
