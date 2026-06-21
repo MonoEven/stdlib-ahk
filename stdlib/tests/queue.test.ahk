@@ -316,6 +316,70 @@ class StdlibQueueTest
             AhkTest.AssertEqual(A_Index, q.get())
         AhkTest.AssertTrue(q.empty())
     }
+
+    ; --- Blocking semantics: a SetTimer-scheduled producer/consumer fires during
+    ; the sleep-poll wait and unblocks the call, mirroring CPython unblocking on
+    ; another thread. ---
+
+    static TestBlockingGetWaitsForTimerProducer()
+    {
+        q := stdlib.queue.Queue()
+        ; Schedule a producer to put an item ~40ms from now.
+        SetTimer(() => q.put("delayed"), -40)
+        ; Blocking get with a generous timeout must wait, then receive it.
+        start := A_TickCount
+        AhkTest.AssertEqual("delayed", q.get(true, 2))
+        AhkTest.AssertTrue(A_TickCount - start >= 30)
+        AhkTest.AssertTrue(q.empty())
+    }
+
+    static TestBlockingGetNoTimeoutWaitsForTimerProducer()
+    {
+        q := stdlib.queue.LifoQueue()
+        SetTimer(() => q.put("eventually"), -40)
+        ; block=True, timeout=None waits indefinitely until the producer fires.
+        AhkTest.AssertEqual("eventually", q.get())
+    }
+
+    static TestBlockingGetTimesOutWhenNoProducer()
+    {
+        q := stdlib.queue.Queue()
+        start := A_TickCount
+        ; Nothing ever fills it; the timeout must expire and raise Empty.
+        AhkTest.Raises(stdlib.queue.Empty, (*) => q.get(true, 0.1))
+        AhkTest.AssertTrue(A_TickCount - start >= 90)
+    }
+
+    static TestBlockingPutWaitsForTimerConsumer()
+    {
+        q := stdlib.queue.Queue(1)
+        q.put_nowait("first")
+        AhkTest.AssertTrue(q.full())
+        ; Schedule a consumer to drain one slot ~40ms from now.
+        SetTimer(() => q.get_nowait(), -40)
+        ; Blocking put must wait for room, then succeed.
+        start := A_TickCount
+        q.put("second", true, 2)
+        AhkTest.AssertTrue(A_TickCount - start >= 30)
+        AhkTest.AssertEqual("second", q.get_nowait())
+    }
+
+    static TestBlockingPutTimesOutWhenFull()
+    {
+        q := stdlib.queue.Queue(1)
+        q.put_nowait("only")
+        start := A_TickCount
+        ; No consumer drains it; the timeout must expire and raise Full.
+        AhkTest.Raises(stdlib.queue.Full, (*) => q.put("blocked", true, 0.1))
+        AhkTest.AssertTrue(A_TickCount - start >= 90)
+    }
+
+    static TestBlockingPriorityQueueGetWaitsForTimerProducer()
+    {
+        q := stdlib.queue.PriorityQueue()
+        SetTimer(() => q.put([5, "p"]), -40)
+        AhkTest.AssertEqual([5, "p"], q.get(true, 2))
+    }
 }
 
 AhkTest.Collect(StdlibQueueTest)

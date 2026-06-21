@@ -2,14 +2,21 @@
 
 #Include <stdlib\init>
 
-; SINGLE-THREAD DEVIATION: CPython's Queue blocks the calling thread when a
-; get() on an empty queue (or put() on a full one) would otherwise fail, waiting
-; until another thread makes room/data available. AutoHotkey is single-threaded
-; here, so there is no other thread to unblock us — a blocking wait would
-; deadlock. We therefore treat block=True like block=False: an empty get() or
-; full put() raises Empty/Full immediately rather than waiting. timeout is
-; validated but never actually waited on. This is an architectural limitation,
-; not a bug; code that relies on cross-thread blocking semantics will not port.
+; BLOCKING SEMANTICS: CPython's Queue blocks the calling thread when a get() on
+; an empty queue (or put() on a full one) would otherwise fail, waiting until
+; another thread makes data/room available. AutoHotkey has no preemptive
+; threads, BUT SetTimer and GUI callbacks interrupt the running thread during
+; Sleep — that is AHK's cooperative concurrency. A blocking get()/put() here
+; sleep-polls (Sleep pumps the message queue, so timer-scheduled producers /
+; consumers fire and mutate the queue), exactly as a blocking CPython call lets
+; another thread make progress. So block/timeout behave faithfully:
+;   • block=False (or timeout=0)  → raise Empty/Full immediately if not ready
+;   • block=True,  timeout=None   → wait indefinitely until ready
+;   • block=True,  timeout>0      → wait up to timeout, then raise Empty/Full
+;   • block=True,  timeout<0      → ValueError, like CPython
+; A get(block=True, timeout=None) on a queue no timer ever fills waits forever —
+; that is genuine CPython behavior (a consumer with no producer blocks), not a
+; bug. Schedule a producer via SetTimer to unblock it.
 class AhkStdlibQueue
 {
     class Empty extends Error
@@ -78,9 +85,9 @@ class AhkStdlibQueueQueue
             AhkStdlibQueueValidateTimeout(block, timeout)
         else
             AhkStdlibQueueValidateTimeout(block)
-        ; block is honored as immediate-raise (see module-level note): a full
-        ; queue raises Full whether or not block is requested.
-        if this.full()
+        ; Sleep-poll until the queue has room (a SetTimer-scheduled consumer can
+        ; fire during the wait and drain it); raise Full if it never does.
+        if !AhkStdlibQueueWait(() => !this.full(), block, timeout?)
             throw AhkStdlibQueue.Full("", -1)
 
         this.AhkStdlibItems.Push(item)
@@ -98,9 +105,9 @@ class AhkStdlibQueueQueue
             AhkStdlibQueueValidateTimeout(block, timeout)
         else
             AhkStdlibQueueValidateTimeout(block)
-        ; block is honored as immediate-raise (see module-level note): an empty
-        ; queue raises Empty whether or not block is requested.
-        if this.empty()
+        ; Sleep-poll until an item is available (a SetTimer-scheduled producer
+        ; can fire during the wait and fill it); raise Empty if it never does.
+        if !AhkStdlibQueueWait(() => !this.empty(), block, timeout?)
             throw AhkStdlibQueue.Empty("", -1)
         return this.AhkStdlibFifoTake()
     }
@@ -169,7 +176,7 @@ class AhkStdlibQueueSimpleQueue
     {
         if IsSet(timeout)
             AhkStdlibQueueValidateTimeout(block, timeout)
-        if this.empty()
+        if !AhkStdlibQueueWait(() => !this.empty(), block, timeout?)
             throw AhkStdlibQueue.Empty("", -1)
         ; O(1) amortized FIFO take with periodic prefix compaction.
         value := this.AhkStdlibItems[this.AhkStdlibHead + 1]
@@ -195,20 +202,8 @@ class AhkStdlibQueueLifoQueue extends AhkStdlibQueueQueue
             AhkStdlibQueueValidateTimeout(block, timeout)
         else
             AhkStdlibQueueValidateTimeout(block)
-        if !block {
-            if this.empty()
-                throw AhkStdlibQueue.Empty("", -1)
-            return this.AhkStdlibItems.Pop()
-        }
-
-        if IsSet(timeout) {
-            if timeout = 0 && this.empty()
-                throw AhkStdlibQueue.Empty("", -1)
-        }
-
-        if this.empty()
+        if !AhkStdlibQueueWait(() => !this.empty(), block, timeout?)
             throw AhkStdlibQueue.Empty("", -1)
-
         return this.AhkStdlibItems.Pop()
     }
 }
@@ -221,20 +216,7 @@ class AhkStdlibQueuePriorityQueue extends AhkStdlibQueueQueue
             AhkStdlibQueueValidateTimeout(block, timeout)
         else
             AhkStdlibQueueValidateTimeout(block)
-        if !block {
-            if this.full()
-                throw AhkStdlibQueue.Full("", -1)
-            AhkStdlibQueuePriorityPush(this.AhkStdlibItems, item)
-            this.unfinished_tasks += 1
-            return
-        }
-
-        if IsSet(timeout) {
-            if timeout = 0 && this.full()
-                throw AhkStdlibQueue.Full("", -1)
-        }
-
-        if this.full()
+        if !AhkStdlibQueueWait(() => !this.full(), block, timeout?)
             throw AhkStdlibQueue.Full("", -1)
 
         AhkStdlibQueuePriorityPush(this.AhkStdlibItems, item)
@@ -247,18 +229,7 @@ class AhkStdlibQueuePriorityQueue extends AhkStdlibQueueQueue
             AhkStdlibQueueValidateTimeout(block, timeout)
         else
             AhkStdlibQueueValidateTimeout(block)
-        if !block {
-            if this.empty()
-                throw AhkStdlibQueue.Empty("", -1)
-            return AhkStdlibQueuePriorityPop(this.AhkStdlibItems)
-        }
-
-        if IsSet(timeout) {
-            if timeout = 0 && this.empty()
-                throw AhkStdlibQueue.Empty("", -1)
-        }
-
-        if this.empty()
+        if !AhkStdlibQueueWait(() => !this.empty(), block, timeout?)
             throw AhkStdlibQueue.Empty("", -1)
 
         return AhkStdlibQueuePriorityPop(this.AhkStdlibItems)
@@ -266,6 +237,45 @@ class AhkStdlibQueuePriorityQueue extends AhkStdlibQueueQueue
 }
 
 stdlib.queue := AhkStdlibQueue
+
+; Sleep-poll until readyPredicate() is true, honoring CPython's block/timeout
+; contract. Returns true once ready, false once the wait is exhausted (caller
+; then raises Empty/Full). Sleep pumps the message queue so SetTimer-scheduled
+; producers/consumers fire during the wait — that is how a single blocked call
+; lets cooperative "other work" make progress, mirroring CPython unblocking on
+; another thread.
+;   block=False                → check once, never sleep
+;   block=True, timeout=None    → wait indefinitely
+;   block=True, timeout>=0      → wait up to timeout seconds
+AhkStdlibQueueWait(readyPredicate, block := true, timeout := unset)
+{
+    if readyPredicate()
+        return true
+    ; Non-blocking, or a zero timeout: a single check already happened above.
+    if !block
+        return false
+    if IsSet(timeout) && !AhkStdlibIsNone(timeout) {
+        if timeout = 0
+            return false
+        deadline := A_TickCount + Round(timeout * 1000)
+        while A_TickCount < deadline {
+            Sleep AhkStdlibQueuePollIntervalMs
+            if readyPredicate()
+                return true
+        }
+        return false
+    }
+    ; block=True with no timeout (or None): wait indefinitely.
+    loop {
+        Sleep AhkStdlibQueuePollIntervalMs
+        if readyPredicate()
+            return true
+    }
+}
+
+; Poll cadence for blocking waits: small enough to feel responsive, large
+; enough not to spin the CPU. Sleep(1) still pumps timers/messages each tick.
+AhkStdlibQueuePollIntervalMs := 1
 
 AhkStdlibQueueValidateTimeout(block, timeout := unset)
 {
