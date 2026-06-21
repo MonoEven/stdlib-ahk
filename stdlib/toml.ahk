@@ -397,6 +397,12 @@ _Toml_ParseValue(text, lineNumber := 0)
         return _Toml_ParseArray(SubStr(text, 2, StrLen(text) - 2), lineNumber)
     }
 
+    if first = "{" {
+        if last != "}"
+            _Toml_FailValue(lineNumber, "unterminated inline table")
+        return _Toml_ParseInlineTable(SubStr(text, 2, StrLen(text) - 2), lineNumber)
+    }
+
     lowered := StrLower(text)
     if lowered = "true"
         return true
@@ -451,6 +457,41 @@ _Toml_ParseArray(text, lineNumber)
         values.Push(_Toml_ParseValue(item, lineNumber))
     }
     return values
+}
+
+; Inline table: { key = value, key2 = value2 }  ->  Map. Dotted keys allowed.
+_Toml_ParseInlineTable(text, lineNumber)
+{
+    table := Map()
+    for entry in _Toml_SplitTopLevel(text, ",") {
+        entry := Trim(entry)
+        if entry = ""
+            continue
+        equalsPos := _Toml_FindUnquoted(entry, "=")
+        if equalsPos = 0
+            _Toml_FailValue(lineNumber, "expected '=' in inline table")
+        keyText := Trim(SubStr(entry, 1, equalsPos - 1))
+        valueText := Trim(SubStr(entry, equalsPos + 1))
+        if keyText = ""
+            _Toml_FailValue(lineNumber, "empty key in inline table")
+        if valueText = ""
+            _Toml_FailValue(lineNumber, "missing value in inline table for key " keyText)
+
+        parts := _Toml_KeyParts(keyText)
+        leaf := parts.Pop()
+        target := table
+        for part in parts {
+            if !target.Has(part)
+                target[part] := Map()
+            else if !(target[part] is Map)
+                _Toml_FailValue(lineNumber, "inline table key conflict: " part)
+            target := target[part]
+        }
+        if target.Has(leaf)
+            _Toml_FailValue(lineNumber, "duplicate key in inline table: " keyText)
+        target[leaf] := _Toml_ParseValue(valueText, lineNumber)
+    }
+    return table
 }
 
 _Toml_FormatValue(value)
@@ -642,9 +683,9 @@ _Toml_SplitTopLevel(text, delimiter)
             continue
         }
 
-        if ch = "["
+        if ch = "[" || ch = "{"
             depth += 1
-        else if ch = "]"
+        else if ch = "]" || ch = "}"
             depth -= 1
         else if ch = delimiter && depth = 0 {
             values.Push(SubStr(text, start, A_Index - start))
