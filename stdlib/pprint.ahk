@@ -97,15 +97,66 @@ AhkStdlibPPrintParseInt(value)
 AhkStdlibPPrintFormatValue(value, printer, depthLevel, inlineIndent)
 {
     if !(AhkStdlibIsNone(printer.depth)) && depthLevel >= printer.depth {
+        if value is AhkStdlibTuple
+            return "(...)"
         if value is Array || value is Map
             return "[...]"
     }
 
     if value is Map
         return AhkStdlibPPrintFormatMap(value, printer, depthLevel, inlineIndent)
+    if AhkStdlibPPrintIsNamedTuple(value)
+        return AhkStdlibPPrintFormatNamedTuple(value, printer, depthLevel, inlineIndent)
+    if value is AhkStdlibTuple
+        return AhkStdlibPPrintFormatTuple(value, printer, depthLevel, inlineIndent)
     if value is Array
         return AhkStdlibPPrintFormatArray(value, printer, depthLevel, inlineIndent)
     return AhkStdlibPPrintScalarRepr(value)
+}
+
+; A namedtuple instance is a tuple carrying AhkStdlibNamedTupleType (with
+; _fields + __name). pprint renders it as Name(field=valuerepr, ...).
+AhkStdlibPPrintIsNamedTuple(value)
+{
+    return (value is AhkStdlibTuple) && value.HasProp("AhkStdlibNamedTupleType")
+}
+
+AhkStdlibPPrintFormatNamedTuple(value, printer, depthLevel, inlineIndent)
+{
+    typeInfo := value.AhkStdlibNamedTupleType
+    name := typeInfo.__name
+    parts := []
+    for index, field in typeInfo._fields
+        parts.Push(field "=" AhkStdlibPPrintFormatValue(value[index], printer, depthLevel + 1, inlineIndent + StrLen(name) + 1))
+
+    single := name "(" AhkStdlibPPrintJoin(parts, ", ") ")"
+    multilineThreshold := printer.width - inlineIndent
+    if StrLen(single) <= multilineThreshold
+        return single
+
+    indentText := AhkStdlibPPrintRepeat(" ", StrLen(name) + 1)
+    return name "(" AhkStdlibPPrintJoin(parts, ",`n" indentText) ")"
+}
+
+AhkStdlibPPrintFormatTuple(values, printer, depthLevel, inlineIndent)
+{
+    if values.Length = 0
+        return "()"
+
+    parts := []
+    for value in values
+        parts.Push(AhkStdlibPPrintFormatValue(value, printer, depthLevel + 1, inlineIndent + 1))
+
+    ; A single-element tuple renders with a trailing comma: (x,)
+    trailing := parts.Length = 1 ? "," : ""
+    single := "(" AhkStdlibPPrintJoin(parts, ", ") trailing ")"
+    multilineThreshold := printer.width - inlineIndent
+    if StrLen(single) <= multilineThreshold
+        return single
+
+    indentText := AhkStdlibPPrintRepeat(" ", printer.indent)
+    leadingSpace := AhkStdlibPPrintNeedsCompoundLeadingSpace(parts) ? " " : ""
+    return "(" leadingSpace AhkStdlibPPrintJoin(parts, ",`n" indentText) trailing ")"
 }
 
 AhkStdlibPPrintFormatArray(values, printer, depthLevel, inlineIndent)
@@ -215,6 +266,10 @@ AhkStdlibPPrintScalarRepr(value)
         return String(value)
     if value is Map
         return AhkStdlibPPrintFormatMap(value, AhkStdlibPPrintPrettyPrinter(), 0, 0)
+    if AhkStdlibPPrintIsNamedTuple(value)
+        return AhkStdlibPPrintFormatNamedTuple(value, AhkStdlibPPrintPrettyPrinter(), 0, 0)
+    if value is AhkStdlibTuple
+        return AhkStdlibPPrintFormatTuple(value, AhkStdlibPPrintPrettyPrinter(), 0, 0)
     if value is Array
         return AhkStdlibPPrintFormatArray(value, AhkStdlibPPrintPrettyPrinter(), 0, 0)
     return "<" Type(value) " object>"
@@ -290,6 +345,52 @@ AhkStdlibPPrintSafeRepr(object, context, maxlevels, level, sort_dicts)
         }
         context.Delete(objid)
         return {repr: "{" AhkStdlibPPrintJoin(components, ", ") "}", readable: readable, recursive: recursive}
+    }
+
+    if AhkStdlibPPrintIsNamedTuple(object) {
+        objid := ObjPtr(object)
+        if context.Has(objid)
+            return {repr: AhkStdlibPPrintRecursion(object), readable: false, recursive: true}
+        context[objid] := 1
+        typeInfo := object.AhkStdlibNamedTupleType
+        readable := true
+        recursive := false
+        components := []
+        for index, field in typeInfo._fields {
+            res := AhkStdlibPPrintSafeRepr(object[index], context, maxlevels, level + 1, sort_dicts)
+            components.Push(field "=" res.repr)
+            if !res.readable
+                readable := false
+            if res.recursive
+                recursive := true
+        }
+        context.Delete(objid)
+        return {repr: typeInfo.__name "(" AhkStdlibPPrintJoin(components, ", ") ")", readable: readable, recursive: recursive}
+    }
+
+    if object is AhkStdlibTuple {
+        if object.Length = 0
+            return {repr: "()", readable: true, recursive: false}
+        objid := ObjPtr(object)
+        if !AhkStdlibIsNone(maxlevels) && level >= maxlevels
+            return {repr: "(...)", readable: false, recursive: context.Has(objid)}
+        if context.Has(objid)
+            return {repr: AhkStdlibPPrintRecursion(object), readable: false, recursive: true}
+        context[objid] := 1
+        readable := true
+        recursive := false
+        components := []
+        for value in object {
+            res := AhkStdlibPPrintSafeRepr(value, context, maxlevels, level + 1, sort_dicts)
+            components.Push(res.repr)
+            if !res.readable
+                readable := false
+            if res.recursive
+                recursive := true
+        }
+        context.Delete(objid)
+        trailing := components.Length = 1 ? "," : ""
+        return {repr: "(" AhkStdlibPPrintJoin(components, ", ") trailing ")", readable: readable, recursive: recursive}
     }
 
     if object is Array {

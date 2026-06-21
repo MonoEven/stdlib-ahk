@@ -3,6 +3,7 @@
 #Include <stdlib\ahktest>
 #Include <stdlib\pprint>
 #Include <stdlib\io>
+#Include <stdlib\collections>
 
 class StdlibPprintTest
 {
@@ -68,6 +69,28 @@ class StdlibPprintTest
         AhkTest.AssertSame(stdlib.True, stdlib.pprint.isrecursive(cyclic))
         AhkTest.AssertSame(stdlib.False, stdlib.pprint.isreadable(cyclic))
         AhkTest.AssertEqual(true, InStr(stdlib.pprint.saferepr(cyclic), "<Recursion on list with id=") > 0)
+    }
+
+    static TestTupleFormattingMatchesObservedLocal310()
+    {
+        AhkTest.AssertEqual("(1, 2, 3)", stdlib.pprint.pformat(stdlib.tuple([1, 2, 3])))
+        ; single-element tuple keeps the trailing comma
+        AhkTest.AssertEqual("(1,)", stdlib.pprint.pformat(stdlib.tuple([1])))
+        AhkTest.AssertEqual("()", stdlib.pprint.pformat(stdlib.tuple()))
+        ; tuples nested in lists / dicts
+        AhkTest.AssertEqual("[(1, 2), (3, 4)]", stdlib.pprint.pformat([stdlib.tuple([1, 2]), stdlib.tuple([3, 4])]))
+        AhkTest.AssertEqual("{'t': (1, 2)}", stdlib.pprint.pformat(Map("t", stdlib.tuple([1, 2]))))
+        ; saferepr handles tuples + nested tuples and the single-element comma
+        AhkTest.AssertEqual("(1, 'two', (3,))", stdlib.pprint.saferepr(stdlib.tuple([1, "two", stdlib.tuple([3])])))
+    }
+
+    static TestNamedTupleFormattingMatchesObservedLocal310()
+    {
+        Point := stdlib.collections.namedtuple("Point", ["x", "y"])
+        AhkTest.AssertEqual("Point(x=1, y=2)", stdlib.pprint.pformat(Point(1, 2)))
+        AhkTest.AssertEqual("[Point(x=1, y=2), Point(x=3, y=4)]", stdlib.pprint.pformat([Point(1, 2), Point(3, 4)]))
+        AhkTest.AssertEqual("{'p': Point(x=1, y=2)}", stdlib.pprint.pformat(Map("p", Point(1, 2))))
+        AhkTest.AssertEqual("Point(x=1, y='two')", stdlib.pprint.saferepr(Point(1, "two")))
     }
 }
 
