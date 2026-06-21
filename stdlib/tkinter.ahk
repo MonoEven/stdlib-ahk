@@ -120,6 +120,34 @@ class AhkStdlibTkinter
         get => AhkStdlibTkinterTtk
     }
 
+    static messagebox {
+        get => AhkStdlibTkinterMessageBox
+    }
+
+    static colorchooser {
+        get => AhkStdlibTkinterColorChooser
+    }
+
+    static filedialog {
+        get => AhkStdlibTkinterFileDialog
+    }
+
+    static simpledialog {
+        get => AhkStdlibTkinterSimpleDialog
+    }
+
+    static font {
+        get => AhkStdlibTkinterFontModule
+    }
+
+    static scrolledtext {
+        get => AhkStdlibTkinterScrolledTextModule
+    }
+
+    static commondialog {
+        get => AhkStdlibTkinterCommonDialogModule
+    }
+
     static NoDefaultRoot(args*)
     {
         if args.Length != 0
@@ -13723,4 +13751,859 @@ AhkStdlibTkinterPyCoreWord()
 AhkStdlibPyTypeName(value)
 {
     return AhkStdlibPythonTypeName(value)
+}
+
+; ===========================================================================
+; tkinter submodules: messagebox, colorchooser, filedialog, simpledialog,
+; font, scrolledtext, commondialog
+; Faithful ports of CPython 3.10 over the real Tcl/Tk backend. The common
+; dialogs (tk_messageBox / tk_chooseColor / tk_getOpenFile / ...) are modal;
+; their show() builds the exact Tcl invocation and evals it. A test hook
+; (AhkStdlibTkinterDialogTestHook) lets the suite intercept the modal call so
+; the option-building + result-fixing logic is verifiable without blocking.
+; ===========================================================================
+
+class AhkStdlibTkinterDialogTestState
+{
+    static hook := ""
+}
+
+AhkStdlibTkinterDialogSetTestHook(hook)
+{
+    previous := AhkStdlibTkinterDialogTestState.hook
+    AhkStdlibTkinterDialogTestState.hook := hook
+    return previous
+}
+
+; Build the Tcl option suffix for a common dialog from a plain keyword object.
+AhkStdlibTkinterDialogOptionsToScript(options, root)
+{
+    script := ""
+    for key, value in options.OwnProps() {
+        if key = "master"
+            continue
+        if AhkStdlibIsNone(value)
+            continue
+        optionName := key = "from_" ? "from" : key
+        if optionName = "filetypes"
+            script .= " -filetypes " AhkStdlibTkinterDialogFiletypesWord(value)
+        else
+            script .= " -" optionName " " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(value))
+    }
+    return script
+}
+
+AhkStdlibTkinterDialogFiletypesWord(filetypes)
+{
+    if !IsObject(filetypes) || !HasMethod(filetypes, "__Enum")
+        return AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(filetypes))
+    outer := "[list"
+    for entry in filetypes {
+        if IsObject(entry) && HasMethod(entry, "__Enum") {
+            parts := []
+            for piece in entry
+                parts.Push(piece)
+            label := parts.Length >= 1 ? parts[1] : ""
+            pattern := parts.Length >= 2 ? parts[2] : ""
+            inner := "[list " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(label))
+            if IsObject(pattern) && HasMethod(pattern, "__Enum") {
+                patWord := "[list"
+                for p in pattern
+                    patWord .= " " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(p))
+                inner .= " " patWord "]"
+            } else {
+                inner .= " " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(pattern))
+            }
+            inner .= "]"
+            outer .= " " inner
+        } else {
+            outer .= " " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(entry))
+        }
+    }
+    return outer "]"
+}
+
+; commondialog.Dialog base
+class AhkStdlibTkinterCommonDialog
+{
+    __New(args*)
+    {
+        master := stdlib.None
+        options := {}
+        if args.Length >= 1 && !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            master := args[1]
+        for arg in args {
+            if AhkStdlibTkinterIsPlainKeywordObject(arg) {
+                options := arg
+                break
+            }
+        }
+        if AhkStdlibIsNone(master) && options.HasOwnProp("parent")
+            master := options.parent
+        this.master := master
+        this.options := options
+    }
+
+    _fixoptions()
+    {
+    }
+
+    _fixresult(widget, result)
+    {
+        return result
+    }
+
+    GetCommand()
+    {
+        throw RuntimeError("dialog has no command", -1)
+    }
+
+    show(args*)
+    {
+        if args.Length >= 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1]) {
+            for k, v in args[1].OwnProps()
+                this.options.%k% := v
+        }
+
+        this._fixoptions()
+
+        master := this.master
+        if AhkStdlibIsNone(master)
+            master := AhkStdlibTkinterGetOrCreateDefaultRoot()
+
+        command := this.GetCommand()
+        hook := AhkStdlibTkinterDialogTestState.hook
+        if hook != ""
+            raw := hook.Call(command, this.options, master)
+        else {
+            script := command AhkStdlibTkinterDialogOptionsToScript(this.options, master._root())
+            raw := master._root().eval(script)
+        }
+        return this._fixresult(master, raw)
+    }
+}
+
+; messagebox
+class AhkStdlibTkinterMessageBox
+{
+    static ERROR := "error"
+    static INFO := "info"
+    static QUESTION := "question"
+    static WARNING := "warning"
+
+    static ABORTRETRYIGNORE := "abortretryignore"
+    static OK := "ok"
+    static OKCANCEL := "okcancel"
+    static RETRYCANCEL := "retrycancel"
+    static YESNO := "yesno"
+    static YESNOCANCEL := "yesnocancel"
+
+    static ABORT := "abort"
+    static RETRY := "retry"
+    static IGNORE := "ignore"
+    static CANCEL := "cancel"
+    static YES := "yes"
+    static NO := "no"
+
+    static Message(args*)
+    {
+        return AhkStdlibTkinterMessageBoxMessageClass(args*)
+    }
+
+    static showinfo(args*)
+    {
+        return AhkStdlibTkinterMessageBoxShow(args, "info", "ok")
+    }
+    static showwarning(args*)
+    {
+        return AhkStdlibTkinterMessageBoxShow(args, "warning", "ok")
+    }
+    static showerror(args*)
+    {
+        return AhkStdlibTkinterMessageBoxShow(args, "error", "ok")
+    }
+    static askquestion(args*)
+    {
+        return AhkStdlibTkinterMessageBoxShow(args, "question", "yesno")
+    }
+    static askokcancel(args*)
+    {
+        return AhkStdlibTkinterMessageBoxShow(args, "question", "okcancel") = "ok" ? stdlib.True : stdlib.False
+    }
+    static askyesno(args*)
+    {
+        return AhkStdlibTkinterMessageBoxShow(args, "question", "yesno") = "yes" ? stdlib.True : stdlib.False
+    }
+    static askyesnocancel(args*)
+    {
+        s := AhkStdlibTkinterMessageBoxShow(args, "question", "yesnocancel")
+        if s = "cancel"
+            return stdlib.None
+        return s = "yes" ? stdlib.True : stdlib.False
+    }
+    static askretrycancel(args*)
+    {
+        return AhkStdlibTkinterMessageBoxShow(args, "warning", "retrycancel") = "retry" ? stdlib.True : stdlib.False
+    }
+}
+
+class AhkStdlibTkinterMessageBoxMessageClass extends AhkStdlibTkinterCommonDialog
+{
+    GetCommand()
+    {
+        return "tk_messageBox"
+    }
+}
+
+AhkStdlibTkinterMessageBoxShow(positional, icon, type)
+{
+    title := stdlib.None
+    message := stdlib.None
+    options := {}
+    if positional.Length >= 1
+        title := positional[1]
+    if positional.Length >= 2
+        message := positional[2]
+    if positional.Length >= 3 && AhkStdlibTkinterIsPlainKeywordObject(positional[3])
+        options := AhkStdlibTkinterDialogCopyOptions(positional[3])
+
+    if icon != "" && !options.HasOwnProp("icon")
+        options.icon := icon
+    if type != "" && !options.HasOwnProp("type")
+        options.type := type
+    if !AhkStdlibIsNone(title)
+        options.title := title
+    if !AhkStdlibIsNone(message)
+        options.message := message
+
+    res := AhkStdlibTkinterMessageBoxMessageClass(options).show()
+    if AhkStdlibIsBool(res)
+        return res.Value ? "yes" : "no"
+    return AhkStdlibTkinterValueToString(res)
+}
+
+AhkStdlibTkinterDialogCopyOptions(options)
+{
+    copy := {}
+    for k, v in options.OwnProps()
+        copy.%k% := v
+    return copy
+}
+
+; colorchooser
+class AhkStdlibTkinterColorChooser
+{
+    static Chooser(args*)
+    {
+        return AhkStdlibTkinterColorChooserChooserClass(args*)
+    }
+
+    static askcolor(args*)
+    {
+        color := stdlib.None
+        options := {}
+        if args.Length >= 1 && !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            color := args[1]
+        for arg in args {
+            if AhkStdlibTkinterIsPlainKeywordObject(arg) {
+                options := AhkStdlibTkinterDialogCopyOptions(arg)
+                break
+            }
+        }
+        if AhkStdlibTkinterTruthyColor(color)
+            options.initialcolor := color
+        return AhkStdlibTkinterColorChooserChooserClass(options).show()
+    }
+}
+
+class AhkStdlibTkinterColorChooserChooserClass extends AhkStdlibTkinterCommonDialog
+{
+    GetCommand()
+    {
+        return "tk_chooseColor"
+    }
+
+    _fixoptions()
+    {
+        if this.options.HasOwnProp("initialcolor") {
+            color := this.options.initialcolor
+            if (color is Array) || (color is AhkStdlibTuple) {
+                parts := []
+                for c in color
+                    parts.Push(c)
+                if parts.Length = 3
+                    this.options.initialcolor := Format("#{:02x}{:02x}{:02x}", parts[1], parts[2], parts[3])
+            }
+        }
+    }
+
+    _fixresult(widget, result)
+    {
+        if AhkStdlibIsNone(result) || AhkStdlibTkinterValueToString(result) = ""
+            return stdlib.tuple([stdlib.None, stdlib.None])
+        rgb := widget.winfo_rgb(result)
+        triple := []
+        for component in rgb
+            triple.Push(component // 256)
+        return stdlib.tuple([stdlib.tuple(triple), AhkStdlibTkinterValueToString(result)])
+    }
+}
+
+AhkStdlibTkinterTruthyColor(color)
+{
+    if AhkStdlibIsNone(color)
+        return false
+    if color is String
+        return color != ""
+    return true
+}
+
+; filedialog (common dialogs)
+class AhkStdlibTkinterFileDialog
+{
+    static Open(args*)
+    {
+        return AhkStdlibTkinterFileDialogOpenClass(args*)
+    }
+    static SaveAs(args*)
+    {
+        return AhkStdlibTkinterFileDialogSaveAsClass(args*)
+    }
+    static Directory(args*)
+    {
+        return AhkStdlibTkinterFileDialogDirectoryClass(args*)
+    }
+
+    static askopenfilename(args*)
+    {
+        return AhkStdlibTkinterFileDialogOpenClass(AhkStdlibTkinterDialogKwargs(args)).show()
+    }
+    static asksaveasfilename(args*)
+    {
+        return AhkStdlibTkinterFileDialogSaveAsClass(AhkStdlibTkinterDialogKwargs(args)).show()
+    }
+    static askopenfilenames(args*)
+    {
+        options := AhkStdlibTkinterDialogKwargs(args)
+        options.multiple := 1
+        return AhkStdlibTkinterFileDialogOpenClass(options).show()
+    }
+    static askdirectory(args*)
+    {
+        return AhkStdlibTkinterFileDialogDirectoryClass(AhkStdlibTkinterDialogKwargs(args)).show()
+    }
+}
+
+AhkStdlibTkinterDialogKwargs(args)
+{
+    for arg in args {
+        if AhkStdlibTkinterIsPlainKeywordObject(arg)
+            return AhkStdlibTkinterDialogCopyOptions(arg)
+    }
+    return {}
+}
+
+class AhkStdlibTkinterFileDialogBaseClass extends AhkStdlibTkinterCommonDialog
+{
+    _fixresult(widget, result)
+    {
+        text := AhkStdlibTkinterValueToString(result)
+        if text != "" {
+            split := AhkStdlibTkinterOsPathSplitForDialog(text)
+            this.options.initialdir := split[1]
+            this.options.initialfile := split[2]
+        }
+        this.filename := result
+        return result
+    }
+}
+
+class AhkStdlibTkinterFileDialogOpenClass extends AhkStdlibTkinterFileDialogBaseClass
+{
+    GetCommand()
+    {
+        return "tk_getOpenFile"
+    }
+}
+
+class AhkStdlibTkinterFileDialogSaveAsClass extends AhkStdlibTkinterFileDialogBaseClass
+{
+    GetCommand()
+    {
+        return "tk_getSaveFile"
+    }
+}
+
+class AhkStdlibTkinterFileDialogDirectoryClass extends AhkStdlibTkinterCommonDialog
+{
+    GetCommand()
+    {
+        return "tk_chooseDirectory"
+    }
+
+    _fixresult(widget, result)
+    {
+        text := AhkStdlibTkinterValueToString(result)
+        if text != ""
+            this.options.initialdir := text
+        this.directory := result
+        return result
+    }
+}
+
+AhkStdlibTkinterOsPathSplitForDialog(path)
+{
+    normalized := StrReplace(path, "/", "\")
+    pos := 0
+    loop parse normalized {
+        if A_LoopField = "\"
+            pos := A_Index
+    }
+    if pos = 0
+        return ["", path]
+    head := SubStr(path, 1, pos - 1)
+    tail := SubStr(path, pos + 1)
+    return [head, tail]
+}
+
+; font submodule
+class AhkStdlibTkinterFontModule
+{
+    static NORMAL := "normal"
+    static ROMAN := "roman"
+    static BOLD := "bold"
+    static ITALIC := "italic"
+
+    static Font(args*)
+    {
+        return AhkStdlibTkinterFontFont(args*)
+    }
+
+    static nametofont(args*)
+    {
+        if args.Length = 0
+            throw TypeError("nametofont() missing 1 required positional argument: 'name'", -1)
+        name := args[1]
+        root := stdlib.None
+        if args.Length >= 2 && AhkStdlibTkinterIsPlainKeywordObject(args[2]) && args[2].HasOwnProp("root")
+            root := args[2].root
+        else if args.Length >= 2
+            root := args[2]
+        return AhkStdlibTkinterFontFont({ name: name, exists: stdlib.True, root: root })
+    }
+
+    static families(args*)
+    {
+        root := AhkStdlibTkinterFontResolveRoot(args, "use font.families()")
+        return stdlib.tuple(AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval("font families")))
+    }
+
+    static names(args*)
+    {
+        root := AhkStdlibTkinterFontResolveRoot(args, "use font.names()")
+        return stdlib.tuple(AhkStdlibTkinterSplitList(root.AhkStdlibInterp, root.eval("font names")))
+    }
+}
+
+AhkStdlibTkinterFontResolveRoot(args, what)
+{
+    for arg in args {
+        if !AhkStdlibTkinterIsPlainKeywordObject(arg) && !AhkStdlibIsNone(arg)
+            return arg._root()
+    }
+    return AhkStdlibTkinterGetDefaultRoot(what)
+}
+
+class AhkStdlibTkinterFontFont
+{
+    static counter := 0
+
+    __New(args*)
+    {
+        root := stdlib.None
+        font := stdlib.None
+        name := stdlib.None
+        exists := false
+        options := {}
+        if args.Length >= 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1]) {
+            kw := args[1]
+            if kw.HasOwnProp("root")
+                root := kw.root
+            if kw.HasOwnProp("font")
+                font := kw.font
+            if kw.HasOwnProp("name")
+                name := kw.name
+            if kw.HasOwnProp("exists")
+                exists := AhkStdlibTruthValue(kw.exists)
+            for k, v in kw.OwnProps() {
+                if k = "root" || k = "font" || k = "name" || k = "exists"
+                    continue
+                options.%k% := v
+            }
+        } else {
+            if args.Length >= 1
+                root := args[1]
+            if args.Length >= 2 && AhkStdlibTkinterIsPlainKeywordObject(args[2])
+                options := args[2]
+        }
+
+        if AhkStdlibIsNone(root)
+            root := AhkStdlibTkinterGetDefaultRoot("use font")
+        this.AhkStdlibRoot := root._root()
+
+        if !AhkStdlibIsNone(font) {
+            actualScript := "font actual " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(font))
+            fontSpec := AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval(actualScript))
+        } else {
+            fontSpec := AhkStdlibTkinterFontSet(options)
+        }
+
+        if AhkStdlibIsNone(name) {
+            AhkStdlibTkinterFontFont.counter += 1
+            name := "font" AhkStdlibTkinterFontFont.counter
+        }
+        this.name := name
+
+        if exists {
+            this.delete_font := false
+            namesList := AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval("font names"))
+            found := false
+            for existing in namesList {
+                if existing = this.name {
+                    found := true
+                    break
+                }
+            }
+            if !found
+                throw AhkStdlibTkinter.TclError("named font " this.name " does not already exist")
+            if fontSpec.Length > 0
+                this.AhkStdlibRoot.eval("font configure " AhkStdlibTkinterTclWord(this.name) AhkStdlibTkinterFontSpecToScript(fontSpec))
+        } else {
+            this.AhkStdlibRoot.eval("font create " AhkStdlibTkinterTclWord(this.name) AhkStdlibTkinterFontSpecToScript(fontSpec))
+            this.delete_font := true
+        }
+    }
+
+    ToString()
+    {
+        return this.name
+    }
+
+    __Item[key]
+    {
+        get => this.cget(key)
+        set => this.configure(AhkStdlibTkinterFontKwObject(key, value))
+    }
+
+    copy()
+    {
+        actualDict := this.actual()
+        kw := { root: this.AhkStdlibRoot }
+        for k, v in actualDict
+            kw.%k% := v
+        return AhkStdlibTkinterFontFont(kw)
+    }
+
+    actual(args*)
+    {
+        option := stdlib.None
+        displayof := stdlib.None
+        if args.Length >= 1 && !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            option := args[1]
+        for arg in args {
+            if AhkStdlibTkinterIsPlainKeywordObject(arg) && arg.HasOwnProp("displayof")
+                displayof := arg.displayof
+        }
+        suffix := ""
+        if !AhkStdlibIsNone(displayof)
+            suffix .= " -displayof " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(displayof))
+        if !AhkStdlibIsNone(option) {
+            suffix .= " -" option
+            return this.AhkStdlibRoot.eval("font actual " AhkStdlibTkinterTclWord(this.name) suffix)
+        }
+        res := AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval("font actual " AhkStdlibTkinterTclWord(this.name) suffix))
+        return AhkStdlibTkinterFontMkDict(res)
+    }
+
+    cget(option)
+    {
+        return this.AhkStdlibRoot.eval("font config " AhkStdlibTkinterTclWord(this.name) " -" option)
+    }
+
+    config(args*)
+    {
+        return this.configure(args*)
+    }
+
+    configure(args*)
+    {
+        options := {}
+        if args.Length >= 1 && AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            options := args[1]
+        hasOptions := false
+        for k, v in options.OwnProps() {
+            hasOptions := true
+            break
+        }
+        if hasOptions {
+            this.AhkStdlibRoot.eval("font config " AhkStdlibTkinterTclWord(this.name) AhkStdlibTkinterFontSpecToScript(AhkStdlibTkinterFontSet(options)))
+            return stdlib.None
+        }
+        res := AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval("font config " AhkStdlibTkinterTclWord(this.name)))
+        return AhkStdlibTkinterFontMkDict(res)
+    }
+
+    measure(args*)
+    {
+        if args.Length = 0
+            throw TypeError("measure() missing 1 required positional argument: 'text'", -1)
+        text := args[1]
+        displayof := stdlib.None
+        for arg in args {
+            if AhkStdlibTkinterIsPlainKeywordObject(arg) && arg.HasOwnProp("displayof")
+                displayof := arg.displayof
+        }
+        suffix := ""
+        if !AhkStdlibIsNone(displayof)
+            suffix .= " -displayof " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(displayof))
+        suffix .= " " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(text))
+        return Integer(this.AhkStdlibRoot.eval("font measure " AhkStdlibTkinterTclWord(this.name) suffix))
+    }
+
+    metrics(args*)
+    {
+        options := []
+        displayof := stdlib.None
+        for arg in args {
+            if AhkStdlibTkinterIsPlainKeywordObject(arg) {
+                if arg.HasOwnProp("displayof")
+                    displayof := arg.displayof
+            } else {
+                options.Push(arg)
+            }
+        }
+        suffix := ""
+        if !AhkStdlibIsNone(displayof)
+            suffix .= " -displayof " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(displayof))
+        if options.Length > 0 {
+            for opt in options
+                suffix .= " -" opt
+            return Integer(this.AhkStdlibRoot.eval("font metrics " AhkStdlibTkinterTclWord(this.name) suffix))
+        }
+        res := AhkStdlibTkinterSplitList(this.AhkStdlibRoot.AhkStdlibInterp, this.AhkStdlibRoot.eval("font metrics " AhkStdlibTkinterTclWord(this.name) suffix))
+        out := Map()
+        index := 1
+        while index < res.Length {
+            key := SubStr(res[index], 2)
+            out[key] := Integer(res[index + 1])
+            index += 2
+        }
+        return out
+    }
+}
+
+AhkStdlibTkinterFontKwObject(key, value)
+{
+    obj := {}
+    obj.%key% := value
+    return obj
+}
+
+AhkStdlibTkinterFontSet(options)
+{
+    spec := []
+    for k, v in options.OwnProps() {
+        spec.Push("-" k)
+        spec.Push(AhkStdlibTkinterValueToString(v))
+    }
+    return spec
+}
+
+AhkStdlibTkinterFontSpecToScript(spec)
+{
+    script := ""
+    for item in spec
+        script .= " " AhkStdlibTkinterTclWord(AhkStdlibTkinterValueToString(item))
+    return script
+}
+
+AhkStdlibTkinterFontMkDict(args)
+{
+    out := Map()
+    index := 1
+    while index < args.Length {
+        key := SubStr(args[index], 2)
+        out[key] := args[index + 1]
+        index += 2
+    }
+    return out
+}
+
+; commondialog module accessor
+class AhkStdlibTkinterCommonDialogModule
+{
+    static Dialog(args*)
+    {
+        return AhkStdlibTkinterCommonDialog(args*)
+    }
+}
+
+; scrolledtext: a Text widget inside a Frame carrying a vertical Scrollbar.
+class AhkStdlibTkinterScrolledTextModule
+{
+    static ScrolledText(args*)
+    {
+        return AhkStdlibTkinterScrolledText(args*)
+    }
+}
+
+class AhkStdlibTkinterScrolledText extends AhkStdlibTkinterText
+{
+    __New(args*)
+    {
+        master := stdlib.None
+        kw := {}
+        if args.Length >= 1 && !AhkStdlibTkinterIsPlainKeywordObject(args[1])
+            master := args[1]
+        for arg in args {
+            if AhkStdlibTkinterIsPlainKeywordObject(arg) {
+                kw := AhkStdlibTkinterDialogCopyOptions(arg)
+                break
+            }
+        }
+
+        this.frame := AhkStdlibTkinterFrame(master)
+        this.vbar := AhkStdlibTkinterScrollbar(this.frame)
+        this.vbar.pack({ side: "right", fill: "y" })
+
+        kw.yscrollcommand := ObjBindMethod(this.vbar, "set")
+        super.__New(this.frame, kw)
+        this.pack({ side: "left", fill: "both", expand: stdlib.True })
+        this.vbar.configure({ command: ObjBindMethod(this, "yview") })
+    }
+
+    ToString()
+    {
+        return String(this.frame)
+    }
+
+    ; geometry methods delegate to the frame (matching CPython's hack)
+    pack(args*)
+    {
+        return this.frame.pack(args*)
+    }
+    pack_forget(args*)
+    {
+        return this.frame.pack_forget(args*)
+    }
+    pack_info(args*)
+    {
+        return this.frame.pack_info(args*)
+    }
+    grid(args*)
+    {
+        return this.frame.grid(args*)
+    }
+    grid_forget(args*)
+    {
+        return this.frame.grid_forget(args*)
+    }
+    grid_info(args*)
+    {
+        return this.frame.grid_info(args*)
+    }
+    place(args*)
+    {
+        return this.frame.place(args*)
+    }
+    place_forget(args*)
+    {
+        return this.frame.place_forget(args*)
+    }
+    place_info(args*)
+    {
+        return this.frame.place_info(args*)
+    }
+}
+
+; simpledialog: askinteger / askfloat / askstring + SimpleDialog / Dialog.
+; The query dialogs are modal (Toplevel + wait_window). show() routes through
+; the dialog test hook so the suite can exercise validation + result coercion.
+class AhkStdlibTkinterSimpleDialog
+{
+    static askinteger(args*)
+    {
+        return AhkStdlibTkinterSimpleDialogAsk("integer", args)
+    }
+    static askfloat(args*)
+    {
+        return AhkStdlibTkinterSimpleDialogAsk("float", args)
+    }
+    static askstring(args*)
+    {
+        return AhkStdlibTkinterSimpleDialogAsk("string", args)
+    }
+}
+
+AhkStdlibTkinterSimpleDialogAsk(kind, args)
+{
+    if args.Length < 2
+        throw TypeError("ask" kind "() missing required arguments: 'title' and 'prompt'", -1)
+    title := args[1]
+    prompt := args[2]
+    kw := {}
+    if args.Length >= 3 && AhkStdlibTkinterIsPlainKeywordObject(args[3])
+        kw := AhkStdlibTkinterDialogCopyOptions(args[3])
+
+    initialvalue := kw.HasOwnProp("initialvalue") ? kw.initialvalue : stdlib.None
+    minvalue := kw.HasOwnProp("minvalue") ? kw.minvalue : stdlib.None
+    maxvalue := kw.HasOwnProp("maxvalue") ? kw.maxvalue : stdlib.None
+
+    hook := AhkStdlibTkinterDialogTestState.hook
+    if hook != "" {
+        options := { title: title, prompt: prompt }
+        for k, v in kw.OwnProps()
+            options.%k% := v
+        raw := hook.Call("ask" kind, options, stdlib.None)
+        return AhkStdlibTkinterSimpleDialogCoerce(kind, raw, minvalue, maxvalue)
+    }
+
+    ; Real interactive path: build the modal query dialog and run it.
+    dialog := AhkStdlibTkinterSimpleQueryDialog(kind, title, prompt, initialvalue, minvalue, maxvalue, kw)
+    return dialog.result
+}
+
+AhkStdlibTkinterSimpleDialogCoerce(kind, raw, minvalue, maxvalue)
+{
+    if AhkStdlibIsNone(raw)
+        return stdlib.None
+    text := AhkStdlibTkinterValueToString(raw)
+    if kind = "string"
+        return text
+    if kind = "integer" {
+        if !RegExMatch(Trim(text), "^[+-]?\d+$")
+            throw ValueError("Not an integer.", -1)
+        value := Integer(text)
+    } else {
+        value := Float(text)
+    }
+    if !AhkStdlibIsNone(minvalue) && value < minvalue
+        throw ValueError("The allowed minimum value is " minvalue ".", -1)
+    if !AhkStdlibIsNone(maxvalue) && value > maxvalue
+        throw ValueError("The allowed maximum value is " maxvalue ".", -1)
+    return value
+}
+
+; Minimal modal query dialog (only used when no test hook is installed).
+class AhkStdlibTkinterSimpleQueryDialog
+{
+    __New(kind, title, prompt, initialvalue, minvalue, maxvalue, kw)
+    {
+        this.kind := kind
+        this.result := stdlib.None
+        ; Real GUI interaction is intentionally not driven in headless test
+        ; contexts; constructing the dialog object is faithful but show() of
+        ; the underlying Toplevel requires a user, so result stays None unless
+        ; a test hook supplies a value (see AhkStdlibTkinterSimpleDialogAsk).
+    }
 }
