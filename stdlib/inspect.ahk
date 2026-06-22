@@ -129,6 +129,52 @@ class AhkStdlibInspect
         return stdlib.tuple(chain)
     }
 
+    static getsourcefile(object)
+    {
+        located := AhkStdlibInspectLocateSource(object)
+        if located = ""
+            return stdlib.None
+        return located.file
+    }
+
+    static getfile(object)
+    {
+        if !IsObject(object)
+            throw TypeError("module, class, method, function, traceback, frame, or code object was expected, got " AhkStdlibPythonTypeName(object), -1)
+        located := AhkStdlibInspectLocateSource(object)
+        if located = ""
+            throw OSError("could not find the source file for the given object", -1)
+        return located.file
+    }
+
+    static getsource(object)
+    {
+        lines := AhkStdlibInspect.getsourcelines(object)[1]
+        text := ""
+        for line in lines
+            text .= line
+        return text
+    }
+
+    static getsourcelines(object)
+    {
+        if !IsObject(object)
+            throw TypeError("module, class, method, function, traceback, frame, or code object was expected, got " AhkStdlibPythonTypeName(object), -1)
+        if !(object is Func) && !(object is Class)
+            throw TypeError("module, class, method, function, traceback, frame, or code object was expected, got " AhkStdlibPythonTypeName(object), -1)
+        located := AhkStdlibInspectLocateSource(object)
+        if located = ""
+            throw OSError("could not get source code", -1)
+        ; CPython getsourcelines returns (list-of-lines-with-newline, startline).
+        lineList := []
+        for raw in StrSplit(located.source, "`n", "`r")
+            lineList.Push(raw "`n")
+        ; The final source line carries no trailing newline unless the file did.
+        if lineList.Length > 0 && !located.trailingNewline
+            lineList[lineList.Length] := RTrim(lineList[lineList.Length], "`n")
+        return stdlib.tuple([lineList, located.line])
+    }
+
     static getmembers(object, predicate := unset)
     {
         members := []
@@ -533,4 +579,233 @@ AhkStdlibInspectValueRepr(value)
     if IsObject(value)
         return "<object>"
     return String(value)
+}
+
+; ---------------------------------------------------------------------------
+; Source location (getsource/getsourcelines/getsourcefile/getfile)
+;
+; AHK exposes no file/line metadata on a Func/Class, but a named function or
+; class is locatable by scanning the source roots (the stdlib directory and
+; the running script's directory) for its definition. This mirrors CPython's
+; contract: return the source when it can be found, raise OSError otherwise
+; (CPython's getsource raises OSError for C builtins / REPL-defined objects
+; that have no retrievable source). Closures/bound methods carry no name and
+; are reported unavailable, exactly as CPython reports lambdas it cannot find.
+; ---------------------------------------------------------------------------
+AhkStdlibInspectLocateSource(object)
+{
+    if !IsObject(object)
+        return ""
+
+    if object is Class {
+        name := ""
+        try name := object.Prototype.__Class
+        if name = ""
+            return ""
+        ; A nested name like "Outer.Inner" is located by its final segment.
+        if InStr(name, ".") {
+            parts := StrSplit(name, ".")
+            name := parts[parts.Length]
+        }
+        return AhkStdlibInspectScanForDefinition(name, "class")
+    }
+
+    if object is Func {
+        if object is BoundFunc
+            return ""
+        name := ""
+        try name := object.Name
+        if name = "" || InStr(name, ">")   ; fat-arrow funcs report a "...=>..." synthetic name
+            return ""
+        return AhkStdlibInspectScanForDefinition(name, "func")
+    }
+
+    return ""
+}
+
+AhkStdlibInspectSourceRoots()
+{
+    static roots := ""
+    if roots != ""
+        return roots
+    list := []
+    ; The stdlib directory is the directory holding this file (lexical A_LineFile).
+    SplitPath(A_LineFile, , &stdlibDir)
+    if stdlibDir != ""
+        list.Push(stdlibDir)
+    ; The running script's directory (user code).
+    if A_ScriptDir != "" && A_ScriptDir != stdlibDir
+        list.Push(A_ScriptDir)
+    roots := list
+    return roots
+}
+
+AhkStdlibInspectScanForDefinition(name, kind)
+{
+    found := ""
+    matchCount := 0
+    seen := Map()
+    for root in AhkStdlibInspectSourceRoots() {
+        loop files root "\*.ahk", "FR" {
+            ; The roots can overlap (A_ScriptDir may sit under the stdlib dir),
+            ; so dedupe by canonical full path before counting a match.
+            key := StrLower(A_LoopFileFullPath)
+            if seen.Has(key)
+                continue
+            seen[key] := true
+            try content := FileRead(A_LoopFileFullPath, "UTF-8")
+            catch
+                continue
+            hit := AhkStdlibInspectFindInFile(content, name, kind)
+            if hit != "" {
+                matchCount += 1
+                if found = "" {
+                    found := hit
+                    found.file := A_LoopFileFullPath
+                }
+            }
+        }
+    }
+    ; A unique definition is safe to return; an ambiguous name (same identifier
+    ; defined in multiple files) cannot be resolved without real metadata, so
+    ; report it unavailable rather than guess wrong.
+    if matchCount != 1
+        return ""
+    return found
+}
+
+AhkStdlibInspectFindInFile(content, name, kind)
+{
+    lines := StrSplit(content, "`n", "`r")
+    if kind = "class"
+        pattern := "^\s*class\s+\Q" name "\E\b"
+    else
+        pattern := "^\s*\Q" name "\E\s*\("
+    for index, line in lines {
+        if !RegExMatch(line, pattern)
+            continue
+        block := AhkStdlibInspectExtractBlock(lines, index)
+        if block = ""
+            continue
+        return {line: index, source: block.text, trailingNewline: block.trailingNewline}
+    }
+    return ""
+}
+
+; From a definition's first line, accumulate the full block. A brace block
+; runs until brace depth returns to zero; a fat-arrow (=>) single-statement
+; body with no opening brace is just its own line(s) up to balanced parens.
+AhkStdlibInspectExtractBlock(lines, startIndex)
+{
+    depth := 0
+    sawBrace := false
+    collected := []
+    i := startIndex
+    while i <= lines.Length {
+        line := lines[i]
+        collected.Push(line)
+        scan := AhkStdlibInspectScanBraces(line)
+        depth += scan.delta
+        if scan.hadBrace
+            sawBrace := true
+        ; Fat-arrow body on the very first line with no brace -> single line.
+        if i = startIndex && !sawBrace && InStr(AhkStdlibInspectStripCommentsAndStrings(line), "=>")
+            return {text: line, trailingNewline: true}
+        if sawBrace && depth <= 0
+            return {text: AhkStdlibInspectJoinLines(collected), trailingNewline: true}
+        i += 1
+    }
+    ; Unterminated (should not happen on valid source).
+    if sawBrace
+        return ""
+    return ""
+}
+
+AhkStdlibInspectJoinLines(lines)
+{
+    text := ""
+    for idx, line in lines {
+        if idx > 1
+            text .= "`n"
+        text .= line
+    }
+    return text
+}
+
+; Count net brace depth change on a line, ignoring braces inside double-quoted
+; strings (with `" escapes) and after an unquoted line comment (;).
+AhkStdlibInspectScanBraces(line)
+{
+    delta := 0
+    hadBrace := false
+    inString := false
+    i := 1
+    n := StrLen(line)
+    while i <= n {
+        ch := SubStr(line, i, 1)
+        if inString {
+            if ch = "``" {
+                i += 2          ; skip escaped char
+                continue
+            }
+            if ch = '"'
+                inString := false
+            i += 1
+            continue
+        }
+        if ch = '"' {
+            inString := true
+            i += 1
+            continue
+        }
+        if ch = ";" {
+            ; Line comment: only when preceded by whitespace or at column 1.
+            prev := i > 1 ? SubStr(line, i - 1, 1) : " "
+            if prev = " " || prev = "`t" || i = 1
+                break
+        }
+        if ch = "{" {
+            delta += 1
+            hadBrace := true
+        } else if ch = "}" {
+            delta -= 1
+            hadBrace := true
+        }
+        i += 1
+    }
+    return {delta: delta, hadBrace: hadBrace}
+}
+
+AhkStdlibInspectStripCommentsAndStrings(line)
+{
+    out := ""
+    inString := false
+    i := 1
+    n := StrLen(line)
+    while i <= n {
+        ch := SubStr(line, i, 1)
+        if inString {
+            if ch = "``" {
+                i += 2
+                continue
+            }
+            if ch = '"'
+                inString := false
+            i += 1
+            continue
+        }
+        if ch = '"' {
+            inString := true
+            i += 1
+            continue
+        }
+        if ch = ";" {
+            prev := i > 1 ? SubStr(line, i - 1, 1) : " "
+            if prev = " " || prev = "`t" || i = 1
+                break
+        }
+        out .= ch
+        i += 1
+    }
+    return out
 }
