@@ -6,5 +6,8 @@
 /docs/
 !/stdlib/
 !/stdlib/**
+!/.review/
+/.review/*
+!/.review/IMPLEMENTATION_CHECKLIST.md
 
 /stdlib/STDLIB_FRAMEWORK.json
