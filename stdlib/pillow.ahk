@@ -2,6 +2,7 @@
 
 #Include <stdlib\init>
 #Include <stdlib\assert>
+#Include <stdlib\io>
 #Include <stdlib\warnings>
 
 class AhkStdlibPillow
@@ -1522,6 +1523,27 @@ class AhkStdlibPillowAvifImagePluginModule
     static SUPPORTED := true
     static DECODE_CODEC_CHOICE := "auto"
     static DEFAULT_MAX_THREADS := 0
+    static AhkStdlibBackend := ""
+
+    ; Backend-pluggable decode/encode. Real Pillow only decodes AVIF when it was
+    ; built against libavif; this machine ships no AVIF codec in GDI+ or WIC
+    ; (probed: WIC CreateDecoder for the HEIF/AVIF container returns
+    ; WINCODEC_ERR_COMPONENTNOTFOUND), so by default decode/encode raise OSError
+    ; exactly as Pillow-without-libavif does. A caller may supply a libavif (or
+    ; any) backend object exposing decode(bytes) -> {mode,width,height,rgba} and
+    ; optionally encode(image, options) -> bytes; once registered, open/save work.
+    static register_backend(backend)
+    {
+        AhkStdlibPillowAvifImagePluginModule.AhkStdlibBackend := backend
+        AhkStdlibPillowAvifEnsureRegistered()
+        return stdlib.None
+    }
+
+    static unregister_backend()
+    {
+        AhkStdlibPillowAvifImagePluginModule.AhkStdlibBackend := ""
+        return stdlib.None
+    }
 
     static AvifImageFile
     {
@@ -1575,18 +1597,61 @@ class AhkStdlibPillowAvifImageFileFactory
 
     Call(args*)
     {
-        if args.Length = 1 && IsObject(args[1]) && ObjPtr(args[1]) = ObjPtr(this)
+        hasSelf := args.Length >= 1 && IsObject(args[1]) && ObjPtr(args[1]) = ObjPtr(this)
+        firstArg := hasSelf ? 2 : 1
+        argCount := args.Length - (hasSelf ? 1 : 0)
+        if argCount < 1
             throw TypeError("ImageFile.__init__() missing 1 required positional argument: 'fp'", -1)
-        if args.Length < 1
-            throw TypeError("ImageFile.__init__() missing 1 required positional argument: 'fp'", -1)
-        if args.Length > 2
-            throw TypeError("ImageFile.__init__() takes from 2 to 3 positional arguments but " (args.Length + 1) " were given", -1)
-        throw OSError("AVIF decode backend is not available in stdlib.pillow.AvifImagePlugin", -1)
+        if argCount > 2
+            throw TypeError("ImageFile.__init__() takes from 2 to 3 positional arguments but " (argCount + 1) " were given", -1)
+        return AhkStdlibPillowAvifDecode(args[firstArg])
     }
+}
+
+; Decode an AVIF source via a registered backend; raise OSError when none.
+AhkStdlibPillowAvifDecode(source)
+{
+    backend := AhkStdlibPillowAvifImagePluginModule.AhkStdlibBackend
+    if backend = "" || !IsObject(backend) || !HasMethod(backend, "decode")
+        throw OSError("AVIF decode backend is not available in stdlib.pillow.AvifImagePlugin", -1)
+
+    bytes := AhkStdlibPillowGdSourceBytes(source)
+    decoded := backend.decode(bytes)
+    if !IsObject(decoded) || !decoded.HasProp("mode") || !decoded.HasProp("width") || !decoded.HasProp("height") || !decoded.HasProp("rgba")
+        throw OSError("AVIF backend returned an invalid decode result", -1)
+
+    mode := decoded.mode
+    width := decoded.width
+    height := decoded.height
+    data := AhkStdlibPillowAvifBytesToBuffer(decoded.rgba)
+    image := AhkStdlibPillowImageFromBytesFactory(mode, [width, height], data)
+    image.info["avif"] := true
+    return image
+}
+
+; Accept the backend's rgba as a Buffer, byte array, or string of bytes.
+AhkStdlibPillowAvifBytesToBuffer(rgba)
+{
+    if rgba is Buffer
+        return rgba
+    if rgba is Array {
+        buf := Buffer(rgba.Length, 0)
+        for index, value in rgba
+            NumPut("UChar", value & 0xFF, buf, index - 1)
+        return buf
+    }
+    return rgba
+}
+
+AhkStdlibPillowAvifAccept(prefix)
+{
+    return AhkStdlibPillowAvifImagePluginModule._accept(prefix)
 }
 
 AhkStdlibPillowAvifEnsureRegistered()
 {
+    if !AhkStdlibPillowRegistryMap("OPEN").Has("AVIF")
+        AhkStdlibPillowRegisterOpen("AVIF", AhkStdlibPillowAvifImageFileFactory(), AhkStdlibPillowAvifAccept)
     if !AhkStdlibPillowRegistryMap("SAVE").Has("AVIF")
         AhkStdlibPillowRegistryMap("SAVE")["AVIF"] := AhkStdlibPillowAvifSave
     if !AhkStdlibPillowRegistryMap("SAVE_ALL").Has("AVIF")
@@ -1601,7 +1666,8 @@ class AhkStdlibPillowAvifSave
     static Call(image, fp, filename)
     {
         AhkStdlibPillowAvifValidateEncoderInfo(image)
-        throw OSError("AVIF encode backend is not available in stdlib.pillow.AvifImagePlugin", -1)
+        AhkStdlibPillowAvifEncode(image, fp)
+        return stdlib.None
     }
 }
 
@@ -1610,8 +1676,21 @@ class AhkStdlibPillowAvifSaveAll
     static Call(image, fp, filename)
     {
         AhkStdlibPillowAvifValidateEncoderInfo(image)
-        throw OSError("AVIF encode backend is not available in stdlib.pillow.AvifImagePlugin", -1)
+        AhkStdlibPillowAvifEncode(image, fp)
+        return stdlib.None
     }
+}
+
+; Encode via a registered backend's encode(image) -> bytes; raise OSError when
+; no backend (or no encode method) is available, matching Pillow-without-libavif.
+AhkStdlibPillowAvifEncode(image, fp)
+{
+    backend := AhkStdlibPillowAvifImagePluginModule.AhkStdlibBackend
+    if backend = "" || !IsObject(backend) || !HasMethod(backend, "encode")
+        throw OSError("AVIF encode backend is not available in stdlib.pillow.AvifImagePlugin", -1)
+    encoded := backend.encode(image, image.HasOwnProp("encoderinfo") ? image.encoderinfo : Map())
+    fp.write(AhkStdlibPillowAvifBytesToBuffer(encoded))
+    return stdlib.None
 }
 
 class AhkStdlibPillowBufrStubImagePluginModule

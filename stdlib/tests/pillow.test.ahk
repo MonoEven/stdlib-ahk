@@ -1867,9 +1867,83 @@ class StdlibPillowTest
             image := stdlib.pillow.Image.new("RGB", [1, 1], [10, 20, 30])
             AhkTest.RaisesMatch(ValueError, "^Invalid quality setting$", (*) => image.save(stdlib.io.BytesIO(), "AVIF", { quality: 101 }))
             AhkTest.RaisesMatch(ValueError, "^advanced codec options must be a dict of key-value string pairs or a series of key-value two-tuples$", (*) => image.save(stdlib.io.BytesIO(), "AVIF", { advanced: ["bad"] }))
+            AhkTest.RaisesMatch(OSError, "^AVIF encode backend is not available", (*) => image.save(stdlib.io.BytesIO(), "AVIF"))
+            AhkTest.RaisesMatch(OSError, "^AVIF decode backend is not available", (*) => stdlib.pillow.Image.open(StdlibPillowTest.MockAvifSource(StdlibPillowTest.AvifFtyp("avif")), "r", ["AVIF"]))
+
+            backend := StdlibPillowTest.MockAvifBackend()
+            if stdlib.pillow.Image.OPEN.Has("AVIF")
+                stdlib.pillow.Image.OPEN.Delete("AVIF")
+            if stdlib.pillow.Image.SAVE.Has("AVIF")
+                stdlib.pillow.Image.SAVE.Delete("AVIF")
+            if stdlib.pillow.Image.SAVE_ALL.Has("AVIF")
+                stdlib.pillow.Image.SAVE_ALL.Delete("AVIF")
+            plugin.register_backend(backend)
+            try {
+                avifBytes := StdlibPillowTest.AvifFtyp("avif")
+                opened := stdlib.pillow.Image.open(StdlibPillowTest.MockAvifSource(avifBytes), "r", ["AVIF"])
+                try {
+                    AhkTest.AssertEqual("RGBA", opened.mode)
+                    AhkTest.AssertEqual([1, 1], opened.size)
+                    AhkTest.AssertEqual([1, 2, 3, 4], opened.tobytes())
+                    AhkTest.AssertEqual(avifBytes, backend.lastDecodeBytes)
+                } finally {
+                    StdlibPillowTest.CloseImage(opened)
+                }
+
+                out := stdlib.io.BytesIO()
+                image.save(out, "AVIF", { quality: 80 })
+                AhkTest.AssertEqual(StdlibPillowTest.AsciiBytes("mock-avif"), out.getvalue())
+                AhkTest.AssertSame(image, backend.lastEncodeImage)
+                AhkTest.AssertEqual(80, backend.lastEncodeOptions["quality"])
+            } finally {
+                plugin.unregister_backend()
+            }
         } finally {
             if IsSet(image)
                 StdlibPillowTest.CloseImage(image)
+        }
+    }
+
+    class MockAvifBackend
+    {
+        lastDecodeBytes := unset
+        lastEncodeImage := unset
+        lastEncodeOptions := unset
+
+        decode(bytes)
+        {
+            this.lastDecodeBytes := bytes
+            return { mode: "RGBA", width: 1, height: 1, rgba: [1, 2, 3, 4] }
+        }
+
+        encode(image, options)
+        {
+            this.lastEncodeImage := image
+            this.lastEncodeOptions := options
+            return StdlibPillowTest.AsciiBytes("mock-avif")
+        }
+    }
+
+    class MockAvifSource
+    {
+        __New(bytes)
+        {
+            this.bytes := bytes
+        }
+
+        read(size := unset)
+        {
+            return this.bytes
+        }
+
+        seek(pos)
+        {
+            return stdlib.None
+        }
+
+        tell()
+        {
+            return 0
         }
     }
 
